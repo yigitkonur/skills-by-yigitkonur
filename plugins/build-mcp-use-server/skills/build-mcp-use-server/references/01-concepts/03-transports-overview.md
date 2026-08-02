@@ -1,33 +1,50 @@
-# Transports overview
+# Transports Overview
 
-`mcp-use/server` is HTTP-first. `MCPServer` exposes `listen(port?)` for a standalone HTTP server and `getHandler()` for a Fetch-compatible handler. There is no first-class server-side stdio transport.
+*Read this when you need to understand how clients reach your MCP server.*
 
-| Transport | Who calls it | When to use |
-|---|---|---|
-| **Streamable HTTP** | Claude Desktop (URL form), ChatGPT, Cursor (URL form), Inspector, programmatic clients | Default for local, hosted, and deployed mcp-use servers |
-| **Serverless handler** | Vercel / Cloudflare Workers / Supabase Edge / Deno Deploy | Same as Streamable HTTP, returned via `getHandler()` |
-| **SSE (legacy)** | Older MCP clients before the Streamable HTTP migration | Backward-compatibility only; `/sse` is an automatic alias for `/mcp` |
-| **stdio** | Legacy hosts requiring a spawned child process with JSON-RPC over stdin/stdout | **Not supported by `mcp-use/server`** — drop to `@modelcontextprotocol/sdk` directly (see `09-transports/02-stdio.md`) |
+## v2 transport: Streamable HTTP
 
-## Default decisions
+v2 uses **Web-standard Fetch API only** — no stdio, no SSE aliases.
 
-- **Greenfield local server** → Streamable HTTP on `localhost`. `mcp-use dev` runs it with HMR; `mcp-use start` runs the built artifact. Configure URL-capable clients with `{ "url": "http://localhost:3000/mcp" }`.
-- **Greenfield hosted server** → Streamable HTTP. `mcp-use deploy` ships it.
-- **Greenfield serverless** → Streamable HTTP via the platform's handler adapter (`05-serverless-handlers.md`).
-- **Adding to existing app** → side-car HTTP server on its own port; do not embed as middleware (`08-server-config/05`).
-- **Strict stdio-only client** → not an `mcp-use/server` use case. See `02-setup/04-manual-stdio-server.md` for the raw-SDK fallback.
+**How it works:**
+- Server exports `server.fetch(request: Request): Promise<Response>` handler
+- Client sends HTTP POST to `/mcp` endpoint (configurable basePath, default `/mcp`)
+- SDK manages streaming, stateless exchanges
+- MCP protocol envelope frames sent as JSON request/response bodies
 
-## What about WebSockets?
+**Capabilities:**
+- GET, POST, DELETE, OPTIONS (CORS preflight)
+- View assets served at `/_mcp-use/views/` subtree
+- Inspector automounts at `/mcp/inspector` during `mcp-use dev`
 
-Not a first-class transport in `mcp-use`. Streamable HTTP supports the streaming patterns most servers need (progress, notifications, sampling, elicitation) over normal HTTP.
+## Binding to runtimes
 
-## Stateful vs stateless
+| Runtime | Adapter | How |
+|---------|---------|-----|
+| **Node.js** | `mcp-use/node` | `toNodeHandler(server)` wraps `server.fetch` for `http.createServer((req, res) => ...)` |
+| **Next.js** | `mcp-use/next` | `createNextHandler(server)` exports `{ GET, POST, DELETE, OPTIONS }` for App Router |
+| **Cloudflare Workers** | `server.fetch` | Direct mount; views via static binding |
+| **Vercel Functions** | `server.fetch` | Catch-all function; views included in bundle |
+| **Deno Deploy** | `server.fetch` | Direct mount; external assets via CDN |
+| **Hono** | `server.fetch` | Mount at route: `app.all("/mcp", c => server.fetch(c.req.raw))` |
+| **Supabase Edge Fn** | `server.fetch` | Deployed with `static_files` config |
+| **Google Cloud Run** | `server.fetch` | Default export or `POST` export |
 
-A second axis on top of transport choice — see `04-stateful-vs-stateless.md`.
+## No stdio in v2
 
-## Read next
+v1 supported:
+- `server.listen({ stdio: true })` — Claude Desktop integration (removed)
+- Stdio child-process proxy (removed)
+- Express/Connect adapters (removed)
+- SSE transport (removed; streamable HTTP is the replacement)
 
-- `04-stateful-vs-stateless.md` — second axis
-- `09-transports/` — full per-transport guide
+**v2 path:** Use HTTP endpoints only. Claude Desktop, Cursor, and other clients connect via HTTP.
 
-**Canonical doc:** https://manufact.com/docs/typescript/server
+## What stayed
+
+- MCP protocol wire format (tools, resources, prompts, notifications, resource subscriptions)
+- Zod schemas for input/output validation
+- Context (`ctx`) per-request surface
+- Middleware patterns (`mcp:*` events)
+
+See `09-transports/01-overview.md` for detailed HTTP mechanics and `09-transports/05-no-stdio-and-sse-history.md` for migration context.

@@ -1,68 +1,40 @@
 # Version Drift Policy
 
-Use this before editing version-sensitive references, CLI command docs, package examples, protocol dates, Inspector notes, or migration claims.
+*Read this before editing examples, command docs, or migration guidance, and whenever the user's installed versions differ from what this skill assumes.*
 
-## Source order
+## What this skill is grounded in
 
-Prefer sources in this order when docs disagree:
+This skill documents **mcp-use v2** — the `beta` npm dist-tag line — verified against these exact artifacts (as of 2026-08-02):
 
-1. Local `package.json` declarations and lockfile.
-2. Installed package declarations under `node_modules`, especially `mcp-use`, `@mcp-use/cli`, `@mcp-use/react`, and `@mcp-use/inspector`.
-3. Installed binary help: `mcp-use --help`, `mcp-use <command> --help`, `npx @mcp-use/cli --help`.
-4. Package metadata: `npm view mcp-use version`, `npm view @mcp-use/cli version`, `npm view @mcp-use/react version`.
-5. Official docs and changelogs.
+| Artifact | Version | Facts verified against |
+|---|---|---|
+| `mcp-use` | `2.0.0-beta.66` (`beta` tag) | shipped `.d.ts` type contracts |
+| `@mcp-use/cli` | `4.0.0-beta.15` (`beta` tag) | shipped package + command dispatch source |
+| `create-mcp-use-app` | `2.0.0-beta.14` (`beta` tag) | shipped templates |
+| `@mcp-use/inspector` | `20.0.0-beta.58` | inspector docs |
+| npm `latest` tag | `1.34.x` — this is **v1**, not what this skill teaches | v1 docs (used in migration references only) |
 
-Package declarations and installed binary help beat stale docs. Official docs still matter for intent and migration notes, but do not override a verified installed API surface.
+`npm install mcp-use` without a tag installs **v1**. v2 requires the `beta` tag (or an exact 2.x version). `@mcp-use/react` is not an npm package — react hooks ship inside `mcp-use` at the `mcp-use/react` subpath.
 
-## Required checks before changing examples
+## Precedence when sources disagree
 
-```bash
-npm view mcp-use version
-npm view @mcp-use/cli version
-npm view @mcp-use/react version
-npm ls mcp-use @mcp-use/cli @mcp-use/react zod typescript
-mcp-use --help
-```
+1. The **installed package's `.d.ts`** under the project's `node_modules` — always wins.
+2. Installed binary help: `npx @mcp-use/cli --help`, `mcp-use <command> --help`.
+3. This skill's references.
+4. Published docs (docs.mcp-use.com) — they mix v1 and v2 pages and can lag or lead the shipped beta.
 
-If `node_modules` exists, inspect declarations before editing API claims:
+Known documented-but-not-shipped surfaces in `2.0.0-beta.66` (docs describe them; the package does not export them):
 
-```bash
-rg "export .*MCPServer|listen\\(|getHandler\\(|proxy\\(" node_modules/mcp-use -g '*.d.ts'
-rg "program\\.command|\\.command\\(" node_modules/@mcp-use/cli -g '*.js' -g '*.cjs' -g '*.mjs'
-```
+- Session stores (`InMemorySessionStore`, `RedisSessionStore`, filesystem storage) — v2 is stateless; see `references/10-sessions/01-overview-stateless-truth.md`.
+- Parts of the elicitation helper surface — see `references/12-elicitation/01-overview.md` for what beta.66 actually ships.
 
-## Grep before one-off edits
+## Detecting drift in a real project
 
-Never update a single version-specific reference in isolation. First grep for the same value across this skill:
+Run `scripts/check-mcp-use-version.sh` (usage: `scripts/check-mcp-use-version.sh.md`). It reports installed vs dist-tag versions and classifies the project as v1 or v2 by import shape:
 
-```bash
-rg "1\\.26\\.0|3\\.1\\.2|2025-11-25|v1\\.25|@mcp-use/cli" references SKILL.md
-```
+- `from "mcp-use/server"` anywhere → **v1 project**. Route through `references/28-migration/02-v1-to-v2-overview.md` before applying any other reference.
+- Root `MCPServer` import, `views/` directory, `mcp-use/oauth/*` imports → **v2 project**. Apply this skill directly.
 
-Update every affected claim or leave a local source note explaining why the claim intentionally differs.
+## When the user's beta is newer than beta.66
 
-## Tombstone policy
-
-Keep tombstones for non-shipped commands until the installed CLI proves the command exists:
-
-- `03-cli/09-mcp-use-introspect.md`
-- `03-cli/10-mcp-use-serve.md`
-- `03-cli/11-mcp-use-generate-docs.md`
-
-Do not expand tombstones into fake command docs. Before removing one, verify:
-
-```bash
-mcp-use --help
-mcp-use introspect --help
-mcp-use serve --help
-mcp-use generate-docs --help
-```
-
-If a future CLI ships one of these commands, update the overview, the tombstone file, every workflow that avoided it, and this policy in the same commit.
-
-## Review posture
-
-- Mark claims grounded in installed package declarations as package-verified.
-- Mark claims grounded only in docs as docs-verified and re-check them during maintenance.
-- Do not infer a version fix from memory. Verify with package metadata or installed declarations first.
-- Prefer `latest` in greenfield package examples unless a version pin is required to document a known behavior.
+Beta releases move fast. If an API in this skill fails to typecheck against the user's installed version, trust the installed `.d.ts`, note the drift in your report, and prefer the nearest equivalent API. Do not silently substitute v1 APIs — v1 and v2 do not mix.

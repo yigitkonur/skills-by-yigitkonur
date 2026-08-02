@@ -1,5 +1,7 @@
 # URI Conventions
 
+*Read this when choosing URI schemes and naming for resources.*
+
 Resource URIs are the routing layer of the server. A consistent scheme makes the registry navigable, prevents collisions, and produces autocompletable paths.
 
 ## Scheme rules

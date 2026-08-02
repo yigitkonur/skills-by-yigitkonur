@@ -1,69 +1,157 @@
-# Canonical Anchor — `mcp-use/mcp-i18n-adaptive`
+# Canonical Client Introspection Example
 
-Reference repository for client-aware user context and widget host-context adaptation:
-
-**https://github.com/mcp-use/mcp-i18n-adaptive**
-
-## What it demonstrates
-
-| Pattern | Where to look |
-|---|---|
-| Client name/version via `ctx.client.info()` | `index.ts` (`detect-caller`) |
-| Per-invocation user context via `ctx.client.user()` | `index.ts` (`detect-caller`) |
-| Widget-side locale/timezone/viewport context via `useWidget()` | `resources/context-display/widget.tsx` |
-| Widget props schema | `resources/context-display/types.ts` |
-| Repo-level feature statement and run instructions | `README.md` |
-
-This repo does **not** demonstrate `ctx.client.can(...)` or `ctx.client.supportsApps()`; use the package declarations for those APIs.
-
-## Patterns worth copying
-
-### 1. Server-side locale detection
+*The one reference example for capability detection and per-client adaptation.*
 
 ```typescript
-const user = ctx.client.user();
-const info = ctx.client.info();
+import { MCPServer, inputRequired } from "mcp-use";
+import { z } from "zod";
 
-return object({
-  userId: user?.subject ?? null,
-  conversationId: user?.conversationId ?? null,
-  locale: user?.locale ?? null,
-  location: user?.location ?? null,
-  client: {
-    name: info?.name ?? "unknown",
-    version: info?.version ?? "unknown",
-  },
+const server = new MCPServer({
+  name: "smart-tool-server",
+  version: "1.0.0",
 });
+
+// Tool that adapts to client capabilities
+export const performAnalysis = server.tool(
+  {
+    name: "analyze_data",
+    description: "Analyze data and return results in best format for client",
+    inputSchema: z.object({
+      dataUrl: z.string().url(),
+    }),
+    outputSchema: z.object({
+      summary: z.string(),
+      chart: z.unknown().optional(),
+      metrics: z.array(z.number()),
+    }),
+    view: {
+      name: "analysis-results",
+      description: "Rich visualization of analysis results",
+    },
+  },
+  async ({ dataUrl }, ctx) => {
+    // Fetch and analyze data
+    const response = await fetch(dataUrl);
+    const data = await response.json();
+    const metrics = computeMetrics(data);
+
+    // Adapt response based on client capabilities
+    const result = {
+      content: [
+        {
+          type: "text",
+          text: `Analysis of ${dataUrl}: metrics = [${metrics.join(", ")}]`,
+        },
+      ],
+      structuredContent: {
+        summary: `Processed ${data.length} items`,
+        metrics,
+      } as any,
+    };
+
+    // If client supports views, include chart
+    if (ctx.client.supportsViews()) {
+      result.structuredContent.chart = {
+        type: "bar",
+        data: metrics,
+        title: "Analysis Results",
+      };
+    }
+
+    return result;
+  }
+);
+
+// Tool that uses elicitation capability detection
+export const deleteDatabase = server.tool(
+  {
+    name: "delete_database",
+    description: "Permanently delete a database",
+    inputSchema: z.object({
+      databaseId: z.string(),
+      confirmed: z.boolean().optional(),
+    }),
+  },
+  async ({ databaseId, confirmed }, ctx) => {
+    if (!confirmed) {
+      // Check if client can handle form-based elicitation
+      const caps = ctx.client.capabilities();
+      if (caps.elicitation?.form) {
+        // Client supports form mode — ask for confirmation
+        return inputRequired.elicit({
+          schema: z.object({
+            confirmed: z
+              .boolean()
+              .describe("I understand this cannot be undone"),
+          }),
+          correlationKey: `delete_db_${databaseId}`,
+        });
+      } else {
+        // Client doesn't support elicitation
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Cannot delete ${databaseId}: client does not support confirmation. Retry with confirmed: true.`,
+            },
+          ],
+        };
+      }
+    }
+
+    // Confirmed — perform deletion
+    await db.delete(databaseId);
+    return {
+      content: [{ type: "text", text: `Deleted database ${databaseId}` }],
+    };
+  }
+);
+
+// Tool that logs client info
+export const inspectClient = server.tool(
+  {
+    name: "inspect_client",
+    description: "Inspect current client capabilities",
+    inputSchema: z.object({}),
+  },
+  async (params, ctx) => {
+    const info = ctx.client.info();
+    const caps = ctx.client.capabilities();
+    const uiExt = ctx.client.extension("io.modelcontextprotocol/ui");
+
+    await ctx.sendLog("info", `Client: ${info.name} v${info.version}`, "client");
+    await ctx.sendLog(
+      "debug",
+      { elicitation: caps.elicitation, extensions: !!uiExt },
+      "client"
+    );
+
+    const clientProfile = {
+      name: info.name || "unknown",
+      version: info.version || "unknown",
+      supportsViews: ctx.client.supportsViews(),
+      supportsElicitation: !!caps.elicitation?.form,
+      capabilities: Object.keys(caps),
+    };
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(clientProfile, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+await server.listen(3000);
 ```
 
-### 2. Widget viewport adaptation
+## Key patterns
 
-Widgets read viewport and host context from `useWidget()` and adapt layout. The widget pulls `locale`, `timeZone`, `userAgent`, `safeArea`, `maxWidth`, `maxHeight`, `hostInfo`, `hostCapabilities`, `theme`, and `displayMode`.
-
-### 3. Widget response shape
-
-```typescript
-return widget({
-  props: {
-    greeting: "Hello!",
-    timestamp: new Date().toISOString(),
-    sampleNumbers: [1234.56, 9876543.21, 0.005],
-    sampleDates: [new Date().toISOString()],
-  },
-  output: text("Context display loaded"),
-});
-```
-
-### 4. Safe-area aware UI in widgets
-
-The widget reads `safeArea?.insets` from `useWidget()` and renders an inset visualization using those values.
-
-## How to use this anchor
-
-When teaching or implementing client-adaptive behavior:
-
-1. Explain the API surface from `01-overview.md` through `05-extension-and-user.md`.
-2. Show the canonical layout from `mcp-i18n-adaptive`.
-3. Add `ctx.client.can(...)` and `ctx.client.supportsApps()` checks from the package API when the implementation needs sampling, elicitation, roots, or widgets.
-
-The demo is useful for the shape of a small host-context-aware mcp-use server. Do not copy nonexistent paths or infer capability-gating patterns from it.
+1. **Capability check per request:** `ctx.client.supportsViews()`, `ctx.client.capabilities()`, `ctx.client.can()`.
+2. **Always return text:** Structured content is optional rendering; text block is fallback.
+3. **Elicitation guard:** Check `ctx.client.capabilities().elicitation` before calling `inputRequired.elicit()`.
+4. **Per-request state:** Capabilities are not cached across requests; check them inside every callback.

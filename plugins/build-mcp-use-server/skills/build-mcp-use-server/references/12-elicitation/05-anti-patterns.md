@@ -1,81 +1,92 @@
 # Elicitation Anti-Patterns
 
+*Read this for common pitfalls and their fixes.*
+
 | Anti-pattern | Problem | Fix |
 |---|---|---|
-| No `ctx.client.can("elicitation")` guard | Crashes on clients without support | Capability-check before calling, return `error()` on mismatch |
-| Ignoring `decline` / `cancel` | Tool hangs or returns wrong path on non-accept | Handle all three actions explicitly |
-| Form mode for passwords / tokens | Credentials pass through the MCP transport | Use URL mode for sensitive data |
-| No `try/catch` around `ctx.elicit()` | Timeouts and validation errors crash the handler | Wrap in try/catch, return `error()` on failure |
-| Unbounded loops re-prompting on decline | User cannot escape | Cap retry count or treat decline as terminal |
-| Missing `.describe()` on fields | Form labels are field names, not human text | Always add `.describe()` |
-| No `.default()` on optional fields | Defensive code in handler unwrapping `undefined` | Use `.default()` so the data shape is total |
-| Free-text where an enum fits | Ambiguous parsing, slower paths | `z.enum([...])` with concrete values |
-| Massive single-step form | Low completion rate | Split into 2-3 small steps |
-| Storing in-flight state in module scope | Bleeds across sessions and users | Keep state inside the handler closure or backend per-user |
+| No capability gate | Tool errors on clients without elicitation support | Always check `ctx.client.capabilities().elicitation` |
+| Ignoring `cancel` status | Tool hangs waiting for user to submit | Handle all three statuses: `accept`, `cancel`, and error cases |
+| Form mode for passwords | Credentials cross MCP transport | Use `inputRequired.elicitUrl()` for sensitive data |
+| Missing `.describe()` on fields | Form shows field names, not user-friendly labels | Every Zod field needs `.describe()` |
+| No `.default()` on optional fields | Handler code must defensively check `undefined` | Use `.default()` for total data shape |
+| Unbounded retry loops | User cannot escape the prompt | Cap retries (e.g., max 3 attempts), treat `cancel` as terminal |
+| Massive single form | Low completion rate | Split into 2-3 small sequential elicitations |
+| Free-text instead of enum | Ambiguous parsing, LLM friction | Use `z.enum([...])` for bounded choices |
+| State in module scope | Leaks across tool invocations and users | Keep state in handler closure or external DB with user scope |
+| Chaining elicit + side effects | Side effects run even on cancel/decline | Only perform mutations after `status === "accept"` |
 
-## Don't elicit secrets
+## Don't collect secrets through forms
 
 ```typescript
-// BAD — password reaches the MCP transport
-await ctx.elicit("Sign in", z.object({
-  password: z.string().describe("Password"),
-}));
+// BAD — password travels via MCP
+return inputRequired.elicit("password", {
+  schema: z.object({ password: z.string() }),
+}).result;
 
 // GOOD — browser owns the credential
-await ctx.elicit("Sign in via browser.", "https://app.example.com/login");
+return inputRequired.elicitUrl("https://app.example.com/login").result;
+```
+
+## Handle all three statuses
+
+```typescript
+// BAD — assumes accept
+const r = await ctx.elicit("confirm", { schema: confirmSchema });
+return { content: [{ type: "text", text: `Confirmed by ${r.data.user}` }] };
+
+// GOOD — exhaustive branching
+if (response.status === "required") {
+  return response.result;
+} else if (response.status === "accept") {
+  return { content: [{ type: "text", text: `Confirmed by ${response.data.user}` }] };
+} else {
+  return { content: [{ type: "text", text: "User cancelled." }] };
+}
 ```
 
 ## Don't loop unbounded
 
 ```typescript
-// BAD — loops forever on decline
+// BAD — user trapped
 while (true) {
-  const r = await ctx.elicit("Confirm?", schema);
-  if (r.action === "accept") break;
+  const r = await ctx.elicit("retry", { schema });
+  if (r.status === "accept") break;
 }
 
-// GOOD — bounded retries with terminal exit
-for (let i = 0; i < 3; i++) {
-  const r = await ctx.elicit(`Confirm? (attempt ${i + 1}/3)`, schema);
-  if (r.action === "accept") return text("Confirmed.");
-  if (r.action === "decline") return text("User declined."); // terminal
+// GOOD — bounded with terminal exit
+for (let attempt = 1; attempt <= 3; attempt++) {
+  const r = await ctx.elicit("retry", { schema });
+  if (r.status === "required") return r.result;
+  if (r.status === "accept") return { content: [...] };
+  if (attempt === 3) return { content: [{ type: "text", text: "Max retries reached." }] };
 }
-return text("No confirmation after 3 attempts.");
 ```
 
-## Always provide defaults where sensible
+## Defer side effects until accept
 
 ```typescript
-// BAD — handler must defensively check undefined
-z.object({ theme: z.enum(["light", "dark"]).optional() })
+// BAD — transfers money even on cancel
+const r = await ctx.elicit("confirm-xfer", { schema });
+await transferMoney(params.amount, params.recipient);
 
-// GOOD — total data shape
-z.object({ theme: z.enum(["light", "dark"]).default("light") })
-```
-
-## Always handle all three actions
-
-```typescript
-// BAD — assumes accept
-const r = await ctx.elicit("Approve?", schema);
-return text(`Approved by ${r.data.name}`); // crashes on decline/cancel
-
-// GOOD — exhaustive switch
-switch (r.action) {
-  case "accept":  return text(`Approved by ${r.data.name}`);
-  case "decline": return text("User declined.");
-  case "cancel":  return text("Cancelled.");
+// GOOD — mutation only after validation
+if (!ctx.inputResponses) {
+  // First call: ask for confirmation
+  return inputRequired.elicit("confirm-xfer", { schema }).result;
 }
+// Re-entry: validation passed, safe to mutate
+await transferMoney(params.amount, params.recipient);
 ```
 
 ## Pre-flight checklist
 
-| Check | Why |
+| Item | Why |
 |---|---|
-| Capability gated? | Avoids runtime crash on unsupported clients |
-| All three actions handled? | Avoids hung tools |
-| Sensitive steps use URL mode? | Better security posture |
-| `.describe()` on every field? | Improves form clarity |
-| `maxTokens` on any chained `ctx.sample()` call? | Cost control |
-| Step count ≤ 3? | Better completion |
-| Irreversible actions gated by explicit boolean? | Reduces accidents |
+| Capability gated? | Prevents crashes on unsupported clients |
+| All statuses handled? | Prevents hung or broken tools |
+| Secrets use URL mode? | Security: credentials stay in browser |
+| `.describe()` on fields? | Improves user experience |
+| `.default()` where sensible? | Cleaner handler code |
+| Max 3 steps? | Higher completion rate |
+| Side effects after `accept`? | Avoids partial state on cancel |
+| No module-scope state? | Prevents cross-user data leaks |

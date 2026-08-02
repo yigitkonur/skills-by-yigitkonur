@@ -1,6 +1,8 @@
 # Tool Anti-Patterns
 
-Tight catalog of what not to do. Each entry is a do-X-not-Y rule with the underlying reason.
+*Read this when reviewing your tools for common pitfalls.*
+
+Vendor guardrails and patterns to avoid when designing and implementing tools.
 
 ## Schema design
 
@@ -36,34 +38,34 @@ Tight catalog of what not to do. Each entry is a do-X-not-Y rule with the underl
 | Don't | Do | Why |
 |---|---|---|
 | Side-effects in `readOnlyHint: true` tools | Make read tools actually read-only | Annotation contract; clients trust it. |
-| `throw "Failed"` (string) | `return error("Operation failed: …")` | Strings aren't `Error` objects; loses stack traces and breaks client error handling. |
-| Throw on expected failures (not-found, validation) | `return error("…")` | Throws become 500s; `error()` returns a graceful tool failure. |
-| Swallow errors silently | Log with `ctx.log("error", …)` and `return error(…)` | Hidden failures look like successful no-ops. |
-| Return raw API responses | `object({ … })` with curated fields | Bloats context; the model wades through irrelevant nesting. |
+| `throw "Failed"` (string) | Return `{ isError: true, content: [...] }` | Strings aren't `Error` objects; loses stack traces and breaks client error handling. |
+| Throw on expected failures (not-found, validation) | Return `{ isError: true, content: [...] }` | Throws become transport/server errors; raw error envelopes report a graceful tool failure. |
+| Swallow errors silently | Log with `ctx.sendLog("error", …)` and return an error envelope | Hidden failures look like successful no-ops. |
+| Return raw API responses | Return curated `content` and, when schema'd, `structuredContent` | Bloats context; the model wades through irrelevant nesting. |
 
 ## Output shape
 
 | Don't | Do | Why |
 |---|---|---|
-| `structuredContent` contains only metadata | Mirror essential answer into `structuredContent` | Structured-first clients surface "success" with no answer body. See `05-responses/08-content-vs-structured-content.md`. |
+| `structuredContent` contains only metadata | Mirror essential answer into `structuredContent` | Structured-first clients surface "success" with no answer body. |
 | Structured-only response (no `content`) | Add readable `content` with the same essential facts | Content-first adapters drop `structuredContent` and lose the answer. |
-| `text(JSON.stringify(obj))` | `object(obj)` | Makes downstream parsing fragile; loses MIME and structured surface. |
-| Serialize binary as `text(base64)` | `binary(base64, mime)` or `image()` / `audio()` | Wrong MIME; clients can't render. |
-| Build `CallToolResult` by hand | Use response helpers (`text`, `object`, `mix`, `error`) | Easy to miss `_meta.mimeType` or `isError`. |
-| Import helpers from `@modelcontextprotocol/sdk` | `import { … } from "mcp-use/server"` | Wrong package; mcp-use helpers are different. |
+| `text(JSON.stringify(obj))` | Return `content` text block and `structuredContent` | Makes downstream parsing fragile; loses MIME and structured surface. |
+| Serialize binary as `text(base64)` | Use binary MIME types or explicit content blocks | Wrong MIME; clients can't render. |
+| Build `CallToolResult` by hand | Return standard envelope `{ content, structuredContent?, isError? }` | Keep envelopes explicit and standard. |
+| Import SDK types from wrong path | Import from `mcp-use` or `@modelcontextprotocol/server` | Wrong package; mcp-use exports current SDK types. |
 
 ## Composition
 
 | Don't | Do | Why |
 |---|---|---|
-| `mix()` with one argument | Return the helper directly | Pointless wrapper. |
-| Repeat the same payload across multiple `mix()` parts | One readable surface, one structured surface | Duplicated information confuses adapters. |
+| `mix()` with one argument | Return the raw envelope directly | Pointless wrapper. |
+| Repeat the same payload across multiple content parts | One readable surface, one structured surface | Duplicated information confuses adapters. |
 | Cram secrets into `structuredContent` | Put private/UI-only data in `_meta` | Some hosts surface `structuredContent` to the model and the transcript. |
 
 ## Logging and progress
 
 | Don't | Do | Why |
 |---|---|---|
-| `console.log()` in handler | `await ctx.log("info", …)` | `console.log` doesn't reach the client; ctx.log does. |
+| `console.log()` in handler | `await ctx.sendLog("info", …)` | `console.log` doesn't reach the client; ctx.sendLog does. |
 | Log raw user input verbatim | Log redacted/summarized info | Logs are model-visible; secrets leak into transcripts. |
-| No progress for long-running tools | `ctx.reportProgress?.(loaded, total, msg)` | Without progress, clients can't show feedback or cancel. |
+| No progress for long-running tools | `await ctx.reportProgress(loaded, total, msg)` | Without progress, clients can't show feedback or cancel. |

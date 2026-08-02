@@ -1,80 +1,41 @@
 # Notifications Overview
 
-Notifications are server-to-client one-way messages with no response. mcp-use exposes a small surface for sending them, plus standard MCP-defined notification types (progress, list_changed, resource updates).
+*Read this when you need to understand what notifications can and cannot do in a stateless v2 server.*
 
-> **Stateful only.** Notifications require a persistent session — SSE or StreamableHTTP transport. They are silently dropped in stateless mode. See `06-when-notifications-fail.md`.
+MCP v2 sends notifications via two distinct mechanisms:
 
-## The surface
+| Mechanism | Scope | Delivery | When to use |
+|-----------|-------|----------|------------|
+| **Request-scoped** | Single tool call | Arrives on same request's response stream | Progress during long operations; status within a tool |
+| **Cross-request** | Server-wide | Sent to clients with active subscriptions | List/resource changes after tool execution |
 
-| API | Scope | Use when |
-|---|---|---|
-| `server.sendNotification(method, params)` | All clients | Broadcasting events to every active session |
-| `server.sendNotificationToSession(id, method, params)` | One client | Targeting a specific session by ID |
-| `ctx.sendNotification(method, params)` | Current client | Notifying only the caller from inside a tool handler |
-| `ctx.reportProgress?.(progress, total?, msg?)` | Current client | Reporting progress in a long-running tool when the request has a progress token |
-| `server.notifyResourceUpdated(uri)` | Subscribers | A subscribed resource's content changed |
-| `server.sendToolsListChanged()` | All clients | Tool list was added/removed dynamically |
-| `server.sendResourcesListChanged()` | All clients | Resource list was added/removed dynamically |
-| `server.sendPromptsListChanged()` | All clients | Prompt list was added/removed dynamically |
-| `server.onRootsChanged(cb)` | Server handler | Receiving root changes from clients |
-| `server.listRoots(sessionId)` | Server-initiated request | Asking a client for its current roots |
-| `server.getActiveSessions()` | Server | Listing connected session IDs |
+## Request-scoped (ctx methods)
 
-## Where each section lives
+Within a tool callback, call `ctx.sendNotification()`, `ctx.reportProgress()`, or `ctx.sendLog()` to send a one-way message to the originating request before the result is returned. The client receives these on the same connection it used to invoke the tool.
 
-| Topic | File |
-|---|---|
-| `server.sendNotification` and custom methods | `02-server-send-notification.md` |
-| Progress tokens, `ctx.reportProgress` | `03-progress-tokens.md` |
-| `list_changed` events | `04-list-changed-events.md` |
-| Roots (client-side state) | `05-roots.md` |
-| Stateless mode and detection | `06-when-notifications-fail.md` |
-| Reference example repo | `canonical-anchor.md` |
-
-## Notification vs subscription
-
-| | Notification | Subscription |
-|---|---|---|
-| **Purpose** | Broadcast arbitrary events | Track changes to a specific resource URI |
-| **Targeting** | All clients (or one session) | Only clients that subscribed |
-| **Protocol** | `notifications/*` (server → client) | `resources/subscribe` (client → server) → `resources/updated` |
-| **Use case** | Status updates, custom events | Data sync, document/widget refresh |
-
-Subscriptions are documented under resources — see `../06-resources/`. The sole "notification" surface for subscriptions is `server.notifyResourceUpdated(uri)`, called when the resource's content changes.
-
-## Minimal example
+**Key constraint:** The HTTP response ends when your callback returns. Any notifications must be **awaited and sent before callback completion**:
 
 ```typescript
-import { MCPServer, text } from "mcp-use/server";
-
-const server = new MCPServer({ name: "demo", version: "1.0.0" });
-
-server.tool(
-  { name: "start-job", description: "Start a job and notify the caller." },
-  async (_args, ctx) => {
-    await ctx.sendNotification("custom/job-started", {
-      jobId: "j_42",
-      startedAt: Date.now(),
-    });
-    return text("Job started.");
-  }
-);
+await ctx.sendNotification("com.example/started", { status: "processing" });
+// ... work ...
+await ctx.reportProgress(50, 100, "halfway there");
+// ... more work ...
+const result = { /* ... */ };
+return result;  // connection closes after this
 ```
 
-## Naming convention
+Post-response pushes are impossible in a stateless HTTP model — v2 has no persistent connection to the client.
 
-`sendNotification` accepts any method string; mcp-use does not enforce a prefix. Use `custom/<domain>/<action>` for your application events, and use client-specific prefixes such as `ui/notifications/*` only when that client protocol expects them. Reserve `notifications/*` for MCP protocol methods.
+## Cross-request (server methods)
 
-| Pattern | Example | Notes |
-|---|---|---|
-| `custom/<domain>/<action>` | `custom/billing/invoice-created` | Easy to filter by prefix |
-| `custom/<domain>/v2` | `custom/analytics/v2` | Bump suffix when payload shape changes |
-| `ui/notifications/<event>` | `ui/notifications/size-changed` | MCP Apps UI bridge convention; do not use for unrelated app events |
+Use `server.notifyToolsChanged()`, `server.notifyPromptsChanged()`, `server.notifyResourcesChanged()`, or `server.notifyResourceUpdated(uri)` **between** requests to signal that a capability changed. Only clients with an active `subscriptions/listen` request for that notification type receive the message.
 
-## Related
+This is not a durable delivery system. If no client is listening when the notification fires, it is lost. Clients read the updated resource on their next explicit `resources/read` call.
 
-- Sampling auto-progress: `../13-sampling/05-progress-during-sampling.md`
-- Per-tool logging: `../15-logging/02-ctx-log.md`
-- Resource subscriptions in detail: `../06-resources/`
+## Stateless limitations
 
-**Canonical doc:** https://manufact.com/docs/typescript/server/notifications
+- **No delivery queue:** If a client connects after a notification fires, it does not receive a backlog.
+- **No server-push after response:** Once a tool callback returns, the HTTP response ends. New notifications cannot be sent to that request.
+- **Subscription recovery:** Clients handle re-sync by re-reading resources after receiving a `resourceUpdated` notification.
+
+See `references/06-resources/06-subscriptions-listen.md` for stateless subscription workflow.

@@ -1,19 +1,15 @@
 # Docker
 
-Production Dockerfile patterns for self-hosted and platform-agnostic container deploys.
+*Read this when containerizing your mcp-use server for self-hosted or cloud container platforms.*
 
----
-
-## 1. Multi-stage Dockerfile
+## Multi-Stage Dockerfile (Production)
 
 ```dockerfile
 FROM node:22-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
-COPY tsconfig.json ./
-COPY src/ ./src/
-COPY resources/ ./resources/
+COPY . .
 RUN npm run build
 
 FROM node:22-slim
@@ -21,105 +17,49 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY --from=builder /app/dist/ ./dist/
+COPY --from=builder /app/.mcp-use/build/ ./.mcp-use/build/
 EXPOSE 3000
 USER node
-CMD ["node", "dist/server.js"]
+CMD ["npm", "start"]
 ```
 
-What this gives you:
-- **Multi-stage** — build artifacts stay in the builder; runtime image carries only `dist/` and prod deps.
-- **`USER node`** — never run as root. `node` is a built-in non-root user in `node:*` images.
-- **`npm cache clean --force`** — drops cache directory in the runtime layer.
-- **`--omit=dev`** — runtime layer skips dev dependencies.
+Key points:
+- **Multi-stage:** Build layer stays out of runtime image; only `.mcp-use/build/` and prod dependencies deployed.
+- **`USER node`:** Never run as root. `node:*` images include a built-in non-root user.
+- **`--omit=dev`:** Runtime layer skips dev dependencies.
+- **Views included:** `.mcp-use/build/` contains generated Views; server reads them from disk at runtime.
 
----
+## Signal Handling
 
-## 2. `docker-compose.yml` with Redis sessions
-
-```yaml
-services:
-  mcp-server:
-    build: .
-    ports: ["3000:3000"]
-    environment:
-      PORT: "3000"
-      REDIS_URL: "redis://redis:6379"
-      API_KEY: "${API_KEY}"
-    depends_on:
-      redis: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1))"]
-      interval: 30s
-  redis:
-    image: redis:7-alpine
-    volumes: [redis-data:/data]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-volumes:
-  redis-data:
-```
-
-The healthcheck depends on an explicit `/health` route — register it before `server.listen()` (see `02-pre-deploy-checklist.md` §3).
-
----
-
-## 3. Init for signal handling
-
-PID 1 in a container is your Node process. It does not reap zombies and does not forward signals to children by default. If your server spawns subprocesses or uses a wrapper, use `tini`:
+Node in PID 1 does not forward signals to child processes. Use `tini` for proper SIGTERM handling:
 
 ```dockerfile
 FROM node:22-slim
 RUN apt-get update && apt-get install -y tini && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "dist/server.js"]
+CMD ["npm", "start"]
 ```
 
-Or pass `--init` to `docker run`:
+Or when running: `docker run --init -p 3000:3000 <image>`.
 
-```bash
-docker run --init -p 3000:3000 my-mcp-server
-```
-
-Without an init, `SIGTERM` from `docker stop` may not reach Node, and the container only dies after the 10-second kill timeout.
-
----
-
-## 4. `.dockerignore`
-
-Ship only what you need. Bloated images slow deploys and broaden attack surface:
+## `.dockerignore`
 
 ```
 node_modules
 .git
-.gitignore
+dist
 *.md
-.env
-.env.local
-.mcp-use/sessions/
-dist/
+.env*
+.mcp-use/sessions
 ```
 
-(`dist/` is in `.dockerignore` because the multi-stage build regenerates it inside the builder stage. If your CI pre-builds, drop the `dist/` line and copy it directly.)
+## Verification
 
----
+After building:
+```bash
+docker build -t my-mcp-server .
+docker run --rm -p 3000:3000 my-mcp-server &
+curl http://localhost:3000/mcp/health
+```
 
-## 5. Anti-patterns
-
-- **`:latest` tag in production.** Pin to an immutable tag (digest or version): `image: ghcr.io/myorg/mcp-server:1.4.2`. `:latest` floats — a redeploy can silently change the image. See `26-anti-patterns/`.
-- **Running as root.** Always `USER node` (or another non-root user).
-- **Single-stage build with `npm install` in the runtime image.** Ships dev deps and source.
-- **No healthcheck.** Containers can be alive but dead. The orchestrator needs a probe.
-- **Forgetting `EXPOSE`.** Some platforms (Cloud Run, Fly) require it; documentation, network policy, and tooling key off it.
-
----
-
-## 6. Sizing
-
-- `node:22-slim` is ~50 MB base, well under `node:22` (~150 MB).
-- Distroless (`gcr.io/distroless/nodejs22-debian12`) trades shell access for a smaller, less-attackable image.
-- Alpine (`node:22-alpine`) has musl libc — beware of native modules that expect glibc.
-
----
-
-See `25-deploy/platforms/05-fly.md` and `platforms/03-google-cloud-run.md` for platform-specific Docker workflows.
+See `platforms/04-google-cloud-run.md` for `gcloud run deploy` with Docker.

@@ -1,41 +1,48 @@
-# Templates: Overview and Decision Matrix
+# Template Overview and Decision Matrix
 
-Six starter scaffolds. Pick by transport target, deployment model, and whether widgets are involved. Every template uses `mcp-use/server` and Zod v4.
+*Read this when choosing a template for a new MCP server or deciding whether to scaffold at all.*
 
-## Decision matrix
+Three templates ship with `create-mcp-use-app@2.0.0-beta.14`. Each generates a ready-to-dev project with package.json scripts, tsconfig, and a working MCP server.
 
-| If you need... | Use template | Transport | Stateful? | Widgets? |
-|---|---|---|---|---|
-| Local dev, single tool, fastest start | `02-minimal-stdio.md` | stdio (and HTTP via `mcp-use dev`) | No | No |
-| HTTP server with Docker, env config, modular tool registration | `03-production-http.md` | Streamable HTTP | Optional | No |
-| Tools that render React widgets in ChatGPT / MCP clients | `04-mcp-apps-widget.md` | Streamable HTTP | Yes (per session) | Yes |
-| Edge / serverless deployment (Supabase, Deno Deploy) | `05-serverless-deno.md` | Streamable HTTP (stateless) | No | Optional |
-| Add MCP to an existing Express/Fastify app | `06-side-car-existing-app.md` | Streamable HTTP on a separate port | Optional | No |
+## Decision Matrix
 
-## When to graduate
+| Template | Use when | Entry | Includes | Output |
+|----------|----------|-------|----------|--------|
+| **`mcp-server`** | Building tools and prompts (no views) | `index.ts` (MCPServer default export) | `mcp-use`, `zod@4.4.3` | Weather tool + code-review prompt demo |
+| **`mcp-apps`** | Building tools + interactive views/widgets | `index.ts` (MCPServer default export) | `mcp-use`, `react@19.2.7`, `react-dom@19.2.7`, `zod@4.4.3` | My-view tool with React component demo + Vite CSS |
+| **`blank`** | Starting from scratch (minimal) | `index.ts` (empty MCPServer) | `mcp-use` only | No tools, prompts, or views; you build everything |
 
-- Start with `02-minimal-stdio` when prototyping. The same `index.ts` runs under stdio (Claude Desktop) and HTTP (Inspector) without changes.
-- Move to `03-production-http` once you have more than one tool, env-driven config, or a CI/CD target.
-- Pick `04-mcp-apps-widget` when a tool's output is better as a UI than as text. Widgets are auto-discovered from `resources/`.
-- Pick `05-serverless-deno` for cold-start-friendly deploys. Deno + `npm:` specifiers, no `node_modules` to ship.
-- Pick `06-side-car-existing-app` when the host app must keep its current routes and you only want to add MCP.
+## Commands
 
-## Cross-cutting choices
+```bash
+# Scaffold with a template
+npx create-mcp-use-app@2.0.0-beta.14 my-project --template mcp-server
 
-| Concern | See |
-|---|---|
-| Transport details (stdio vs HTTP, stateful vs stateless) | `../09-transports/` |
-| Session and progress notifications | `../10-sessions/`, `../14-notifications/` |
-| OAuth provider selection (Auth0 / Supabase / WorkOS) | `../11-auth/` |
-| Adding REST routes alongside MCP | `../17-advanced/` (Hono passthrough) |
-| Production checklist | `../24-production/` |
+# List available templates
+npx create-mcp-use-app@2.0.0-beta.14 --list-templates
 
-## Multi-server gateway
+# With flags
+npx create-mcp-use-app@2.0.0-beta.14 my-project \
+  --template mcp-apps \
+  --npm \
+  --install \
+  --skills  # Install mcp-apps-builder skill
+```
 
-Composing multiple upstream MCP servers behind one endpoint is not a template — it is a workflow. See `../30-workflows/06-multi-server-proxy-gateway.md`.
+## Common Generated Files (All Templates)
 
-## Real-world skeletons
+Every template includes:
+- `index.ts` — MCP server entry point
+- `package.json` with scripts: `dev`, `build`, `typecheck`, `start`, `deploy`
+- `tsconfig.json` configured for ESM + MCP types
+- `mcp-env.d.ts` — Managed typing bridge (auto-generated)
+- `gitignore` — Standard Node + build artifacts
+- `public/icon.svg` — Server icon
+- `README.md` — Quick reference
 
-For richer references that go beyond scaffolds, route to `../31-canonical-examples/`. Those files point at the official `mcp-use/*` repos that every template here distills from.
+## Detailed Template Walkthrough
 
-**Canonical doc:** [manufact.com/docs/home/templates](https://manufact.com/docs/home/templates)
+See the following for complete file trees:
+- references/29-templates/02-template-mcp-server.md
+- references/29-templates/03-template-mcp-apps.md
+- references/29-templates/04-template-blank-and-manual.md

@@ -1,10 +1,12 @@
 # Binary and Image Resources
 
+*Read this when serving binary or image resource content (base64 blob results).*
+
 Use `image()`, `audio()`, or `binary()` for non-text content.
 
 ## Helper signatures
 
-In current `mcp-use/server`, binary-style helpers are string-based. Convert `Buffer` or `Uint8Array` before returning them.
+In current `mcp-use`, binary-style helpers are string-based. Convert `Buffer` or `Uint8Array` before returning them.
 
 | Helper | Signature | Use for |
 |---|---|---|
@@ -17,7 +19,7 @@ In current `mcp-use/server`, binary-style helpers are string-based. Convert `Buf
 ## Images
 
 ```typescript
-import { image } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 import { readFile } from "node:fs/promises";
 
 server.resource(
@@ -44,7 +46,7 @@ server.resourceTemplate(
 ## PDFs and other binary
 
 ```typescript
-import { binary } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 
 server.resourceTemplate(
   {
@@ -62,7 +64,7 @@ server.resourceTemplate(
 ## Audio
 
 ```typescript
-import { audio } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 import { readFile } from "node:fs/promises";
 
 server.resource(

@@ -79,6 +79,7 @@ export const searchTickets = server.tool(
 | `outputSchema` | `StandardSchemaWithJSON` | undefined | Output schema (required if tool has a `view`); SDK validates `structuredContent` at runtime |
 | `annotations` | `ToolAnnotations` | undefined | Hints: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` |
 | `_meta` | `MetaObject` | undefined | Opaque extension metadata on `tools/list` descriptor |
+| `visibility` | `"model" \| "app"` | undefined | Host-facing visibility metadata; `"app"` marks an app-private helper tool |
 | `view` | `ToolViewConfig` | undefined | Bind tool to MCP App view; requires `outputSchema`. Shape: `{ name, description?, csp?, permissions?, domain?, prefersBorder? }` |
 
 ## Return Type

@@ -22,7 +22,7 @@ const server = new MCPServer<TUser>(config: ServerConfig<TUser>)
 | `description` | `string \| undefined` | `undefined` | Implementation description reported in MCP metadata. |
 | `instructions` | `string \| undefined` | `undefined` | Server-wide workflow guidance; returned during init. |
 | `basePath` | `string` | `"/mcp"` | URL route where MCP endpoint is mounted. Must be absolute pathname (starts with `/`, no `?`, `#`, `//`, or trailing slash except `/`). |
-| `host` | `string \| undefined` | `"127.0.0.1"` | Bind host for `listen()` when no CLI/env override. Localhost-class (`127.0.0.1`, `localhost`, `::1`) get automatic Host/Origin validation. Set `"0.0.0.0"` for public access. |
+| `host` | `string \| undefined` | `"127.0.0.1"` | Bind host for `listen()` when no listener/env override. Localhost-class (`127.0.0.1`, `localhost`, `::1`) get automatic Host validation; Origin validation remains off unless `allowedOrigins` is set. Set `"0.0.0.0"` for public access. |
 | `port` | `number \| undefined` | `3000` | TCP port for `listen()` when no CLI/env override. Pass `0` for ephemeral. |
 | `favicon` | `string \| undefined` | (inferred from `icons[0]`) | Safe path relative to `public/`, HTTP(S) URL, or data URL; served at `/favicon.ico`. Empty string invalid. |
 | `icons` | `Icon[] \| undefined` | `undefined` | MCP icons reported to clients; uses SDK `Icon` shape (src, mimeType, sizes, theme). First icon also selects favicon if `favicon` not explicit. |
@@ -106,4 +106,4 @@ console.log(`Serving at ${url}`);
 | `port` | `number \| undefined` | getter; configured port before CLI/env overrides |
 | `branding` | `ServerBranding` | getter; immutable branding with resolved favicon |
 
-See `references/08-server-config/02-network-basepath-and-endpoints.md` for endpoint behavior and `references/09-transports/04-runtime-adapters-node-next-fetch.md` for runtime-specific mounting.
+See `02-network-basepath-and-endpoints.md` for endpoint behavior and `../09-transports/04-runtime-adapters-node-next-fetch.md` for runtime-specific mounting.

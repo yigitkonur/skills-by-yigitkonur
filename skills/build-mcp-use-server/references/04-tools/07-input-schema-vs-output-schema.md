@@ -2,7 +2,7 @@
 
 *Read this when deciding whether your tool needs an output schema.*
 
-`inputSchema` is mandatory for every tool (even if empty). `outputSchema` is required only when the tool has a View (MCP App) or when downstream clients need typed parsing.
+`inputSchema` is optional in the type contract but recommended for every tool; omit it only when the tool accepts an untyped argument record. `outputSchema` is required only when the tool has a View (MCP App) or when downstream clients need typed parsing.
 
 ## `inputSchema` — Required
 
@@ -62,7 +62,7 @@ If you return `object(...)` (or `mix(markdown(...), object(...))`), the helper e
 
 That means: if `structuredContent` only contains pagination/metadata while the actual answer lives in `content[].text`, structured-first hosts surface a successful-looking call with no answer body.
 
-The fix is the visibility contract — see `05-responses/08-content-vs-structured-content.md`. Both surfaces should carry the essential answer.
+The fix is the visibility contract: both surfaces should carry the essential answer.
 
 ## Decision table
 
@@ -97,12 +97,12 @@ server.tool(
   },
   async ({ query, status }) => {
     const tickets = await db.searchTickets(query, status);
-    return mix(
-      markdown(`Found ${tickets.length} tickets matching "${query}".`),
-      object({ tickets, total: tickets.length }),
-    );
+    return {
+      content: [{ type: "text", text: `Found ${tickets.length} tickets matching "${query}".` }],
+      structuredContent: { tickets, total: tickets.length },
+    };
   }
 );
 ```
 
-The `mix()` covers both surfaces: the markdown summary for content-first clients, the structured object for typed/structured-first clients. Both contain the essential answer. Add tests if `outputSchema` is a public contract; `mcp-use@1.26.0` will not enforce it at runtime.
+The example returns both `content` (a summary for content-first clients) and `structuredContent` (an object for typed/structured-first clients). Both contain the essential answer.

@@ -1,59 +1,65 @@
-# Deployment Platform Decision Matrix
+# Deployment Decision Matrix
 
-*Read this when choosing a deployment platform for your mcp-use v2 server.*
+*Read this when choosing a deployment target and View-asset topology.*
 
-Use this matrix to pick the right platform. All platforms support the stateless, Fetch-API-based mcp-use v2 server model; differences lie in build strategy, asset handling, and Node API availability.
+All documented targets use the stateless Web Fetch boundary. Choose by runtime and how the target publishes `.mcp-use/build/views/`.
 
-| Platform | Runtime | Build | Assets | Edge | Free | Best For |
-|----------|---------|-------|--------|------|------|----------|
-| **Manufact Cloud** | Node | Auto-detect; `--no-github` upload | Filesystem | No | Hobby | Quickest deploy; managed; preview URLs |
-| **Vercel (Next.js)** | Node | `withMcpUse()`; integrated | Filesystem | No | Yes | Existing Next.js; tightly integrated |
-| **Vercel (Functions)** | Node | Manual; catch-all + assets | Bundled | No | Yes | Non-Next on Vercel |
-| **Cloudflare Workers** | Edge (V8) | Build + static binding | Static binding | Yes | Yes | Global low-latency; existing Workers |
-| **Google Cloud Run** | Node | Docker build; gcloud deploy | Filesystem | No | Free quota | GCP ecosystem; auth via Cloud IAM |
-| **Supabase Edge Functions** | Edge (Deno) | Build + static_files config | Co-located | Yes | Yes | Existing Supabase; no Docker |
-| **Deno Deploy** | Edge (Deno) | Build + external CDN | External CDN | Yes | Free | Deno community; global edge |
-| **Hono** | Node or Edge | Mount `server.fetch` at route | Runtime-dependent | Optional | Varies | Framework flexibility |
-| **Bun** | Node | npm scripts; auto-detected | Filesystem | No | Free | Experimental speed; local dev |
-| **Railway** | Node | Auto-detect GitHub | Filesystem | No | Free trial | Minimal config; GitHub push-to-deploy |
+| Target | Runtime pattern | Handler or command | View assets | Choose it when |
+|---|---|---|---|---|
+| **Manufact Cloud** | Managed Node/filesystem | `mcp-use deploy` | Deployed with the server | You want managed builds, logs, GitHub or source upload, and branch previews |
+| **Vercel Function** | Node serverless | Export the `MCPServer` from `api/mcp.ts` | Function bundle; include nested asset paths | You want a non-Next Vercel Function |
+| **Vercel + Next.js** | Next.js App Router | `withMcpUse()` + `createNextHandler()` | Integrated into the Next.js build | The MCP server lives inside a Next.js app |
+| **Cloudflare Workers** | Edge + co-located static binding | Asset route, otherwise `server.fetch` | Workers static-assets binding | You can publish `.mcp-use/build` through a Worker binding |
+| **Google Cloud Run** | Node container/filesystem | `mcp-use start` in a container | Built into the container | You need a Cloud Run service, optionally protected by Cloud IAM |
+| **Supabase Edge Functions** | Edge + co-located static files | Asset route, otherwise `server.fetch` | Function `static_files` | You deploy through a current Supabase CLI without Docker or Storage |
+| **Deno Deploy** | Edge + external or co-located assets | Web Fetch handler | Publish at `MCP_ASSETS_URL` | You can deploy generated Views to the build-reported asset path |
+| **Bun** | Node-compatible filesystem | Expose `server.fetch` at the MCP route | Deployed with the server | Your host runs Bun and preserves the nested `_mcp-use` route |
+| **Hono** | Host-dependent | Mount `server.fetch` at `/mcp` and `/mcp/*` | Host-dependent | You already use Hono and can preserve the nested asset subtree |
+| **Railway** | Node/filesystem | Bind `0.0.0.0:$PORT`; deploy with `railway up` | Deployed with the server | You want the documented Railway filesystem pattern |
 
-## Quick Start
+Fly.io is intentionally absent: no v2 ground-truth deployment page exists.
 
-**Fastest first deploy?** → Manufact Cloud + `mcp-use deploy`.
+## Pick the Asset Topology
 
-**Next.js already deployed?** → Vercel with `withMcpUse()` wrapper.
+### Filesystem runtime
 
-**Global, edge-only?** → Cloudflare Workers or Supabase Edge.
-
-**GCP ecosystem?** → Google Cloud Run.
-
-**No framework vendor lock-in?** → Hono or Railway.
-
-## Build & Asset Patterns
-
-**Filesystem pattern** (Node: Manufact, Vercel, Railway, Bun, Cloud Run):
-- Deploy `.mcp-use/build/` alongside server
-- Server reads Views from disk; serves at same public origin
-- Build: `MCP_URL=https://api.example.com/mcp npm run build`
-
-**Co-located static pattern** (Workers, Supabase, Deno):
-- Platform static binding or config includes generated Views
-- Route `/mcp/_mcp-use/*` to assets; other requests to `server.fetch`
-- Build: `MCP_URL=... MCP_ASSETS_URL=... npm run build`
-
-**External CDN pattern** (any platform with external storage):
-- Views on separate CDN (e.g., S3, Cloudflare R2)
-- Build: `MCP_URL=... MCP_ASSETS_URL=https://cdn.example.com/assets mcp-use build`
-
-## After Deploy
-
-Verify rendered View with the screenshot command:
+Use for Manufact Cloud, Railway, Bun, Cloud Run, and Node Vercel Functions:
 
 ```bash
-npx --yes mcp-use@beta screenshot \
-  --mcp https://your-deployed-url/mcp \
-  --tool <tool-name> \
-  --output deployed-view.png
+MCP_URL=https://api.example.com/mcp mcp-use build
 ```
 
-This confirms Views render correctly and assets load from the live endpoint.
+Deploy `.mcp-use/build` with the server. Forward the MCP route and its `_mcp-use` subtree to the same handler.
+
+### Edge with co-located assets
+
+Use for Workers and Edge Functions:
+
+```bash
+MCP_URL=https://api.example.com/mcp \
+MCP_ASSETS_URL=https://api.example.com \
+mcp-use build
+```
+
+Route `<basePath>/_mcp-use/*` to the platform's static binding and all other requests to `server.fetch(request)`.
+
+### Edge with external assets
+
+```bash
+MCP_URL=https://api.example.com/mcp \
+MCP_ASSETS_URL=https://cdn.example.com/mcp-assets \
+mcp-use build
+```
+
+Publish `.mcp-use/build/views/` at the exact destination printed by the build. Configure the asset origin for the View iframe's CORS and CSP requirements.
+
+## Verify the Rendered View
+
+```bash
+mcp-use screenshot \
+  --mcp https://api.example.com/mcp \
+  --tool <tool-name> \
+  --output live-view.png
+```
+
+Do not treat an HTTP 200 alone as deployment proof; render the View from the public endpoint.

@@ -143,4 +143,4 @@ const server = new MCPServer({
 });
 ```
 
-See `references/08-server-config/04-dns-rebinding-and-host-validation.md` for Host-header validation complementing Origin validation.
+See `04-dns-rebinding-and-host-validation.md` for Host-header validation complementing Origin validation.

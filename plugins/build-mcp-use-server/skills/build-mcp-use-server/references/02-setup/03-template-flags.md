@@ -1,52 +1,51 @@
-# Template Flags for `create-mcp-use-app`
+# Template flags
 
-Pick the template that matches the surface you intend to ship — tools-only, MCP Apps widgets, or MCP-UI UIResources.
+*Read this to choose the right scaffold template.*
 
-## Templates
+Three templates exist; all are v2 beta.14. Pick one matching your surface intent.
 
-| Template | Flag | Includes | Pick when |
-|---|---|---|---|
-| `starter` | `--template starter` (default) | Tools, resources, prompts, one example widget | Building a general-purpose server; unsure which surface to use. |
-| `mcp-apps` | `--template mcp-apps` | React widgets pre-wired with `useWidget` / `useCallTool`, dual-protocol (MCP Apps + ChatGPT Apps SDK), Tailwind | Shipping interactive React widgets that render inside ChatGPT or MCP App hosts. |
-| `mcp-ui` | `--template mcp-ui` | Examples for all three MCP-UI `UIResource` types: iframe, raw HTML, Remote DOM | Targeting MCP-UI `ui://` resources rather than MCP Apps widgets. |
+## Template matrix
 
-## Other flags
+| Template | Includes | Use when |
+|----------|----------|----------|
+| **`mcp-server`** | Tools, resources, prompts (no UI) | Building a CLI-driven or tool-only server. Demo: weather tool, code-review prompt. |
+| **`mcp-apps`** | React views, `useToolContext`, `useCallTool`, CSP config | Shipping interactive React components bound to tools. Dual MCP Apps + ChatGPT protocol. |
+| **`blank`** | Empty `MCPServer` | Minimal starting point; add everything yourself. |
 
-| Flag | Effect | Default |
-|---|---|---|
-| `--template <name>` | Selects the template above | `starter` |
-| `--no-skills` | Skips installing AI agent skills into `.cursor/skills/`, `.claude/skills/`, `.agent/skills/` | `false` (skills install) |
-
-Use `--no-skills` while iterating on a brand-new project — it removes unrelated agent-skill installation noise from the first build.
-
-## Examples
+## Flag usage
 
 ```bash
-# Default — starter
-npx create-mcp-use-app@latest my-server
+# mcp-server (default)
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-server --install
 
-# MCP Apps (recommended for widget work)
-npx create-mcp-use-app@latest my-server --template mcp-apps --no-skills
+# mcp-apps (React views)
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --install
 
-# MCP-UI
-npx create-mcp-use-app@latest my-server --template mcp-ui --no-skills
+# blank (empty)
+npm create mcp-use-app@2.0.0-beta.14 my-server --template blank --install
+
+# Force package manager
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --pnpm --install
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --bun --install
 ```
 
-## How to choose
+## Optional flags
 
-| You intend to | Template |
-|---|---|
-| Expose tools and resources only, no UI | `starter` |
-| Ship React widgets that render in ChatGPT or MCP Apps hosts | `mcp-apps` |
-| Ship arbitrary HTML / iframe / Remote DOM UIResources | `mcp-ui` |
-| Migrate an existing app — see `06-add-to-existing-app.md`, no template applies | — |
+| Flag | Effect |
+|------|--------|
+| `--install` / `--no-install` | Run npm install after scaffold (default: `--no-install`) |
+| `--npm` / `--pnpm` / `--bun` | Force package manager (default: auto-detect) |
+| `--skills` / `--no-skills` | Install mcp-apps-builder skill (Claude Code / Cursor / Codex) |
+| `--dev` | Use `workspace:*` for mcp-use dependency (v2 development only) |
+| `--sdk-version <version>` | Pin a specific mcp-use version (default: `2.0.0-beta.66`) |
 
-For deep widget guidance after picking `mcp-apps`, route to `18-mcp-apps/` in this skill.
+## Choosing
 
-## Help
+- **No UI needed?** → `mcp-server`
+- **React views (ChatGPT, MCP Apps host)?** → `mcp-apps`
+- **Starting from scratch?** → `blank` or `mcp-server`
 
-```bash
-npx create-mcp-use-app@latest --help
-```
-
-Prints the live flag list at install time — authoritative when this doc lags behind a CLI release.
+For post-scaffold guidance, see:
+- `04-manual-http-server.md` — write a server without scaffold
+- `05-add-to-existing-app.md` — embed MCP in existing app
+- `references/18-mcp-apps/` — React view patterns

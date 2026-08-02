@@ -1,91 +1,129 @@
 # Host Capability Detection
 
-Different MCP clients support different feature sets. A tool that returns a widget against a CLI client returns nothing useful. Detect capability before deciding what to send.
+*Read this when your view needs to use optional platform features.*
 
-## `ctx.client.supportsApps()`
+Not all MCP Apps hosts support the same features (follow-up messages, file picker, display-mode requests). Query the host's capabilities before calling platform-specific APIs.
 
-The tool handler receives a `ctx` argument with a `client` introspection surface. `supportsApps()` returns `true` when the connected client advertises MCP Apps (or ChatGPT Apps) support during the initialize handshake.
+## UseHostContext
+
+Access host capabilities via the `useHostContext()` hook:
 
 ```typescript
-import { widget, text } from "mcp-use/server";
+import { useHostContext } from "mcp-use/react";
 
-server.tool(
-  {
-    name: "show-dashboard",
-    description: "Show the analytics dashboard",
-    schema: z.object({}),
-    widget: { name: "dashboard" },
-  },
-  async (_params, ctx) => {
-    if (!ctx.client.supportsApps()) {
-      return text(
-        "Your client does not support interactive widgets. " +
-        "Visitors today: 12,453. Page views: 45,231."
-      );
-    }
+export default function MyView() {
+  const hostContext = useHostContext();
+  
+  // Host environment info
+  console.log(hostContext.client.name);           // "ChatGPT", "Claude", etc. (if available)
+  console.log(hostContext.client.locale);         // User locale
+  console.log(hostContext.client.safeAreaInsets); // Notch/safe area info
+  
+  // Available features
+  console.log(hostContext.availableCapabilities); // string[]
+  
+  // Available display modes (intersection of viewConfig + host support)
+  console.log(hostContext.availableDisplayModes); // DisplayMode[]
+  
+  // View dimensions and theme
+  console.log(hostContext.dimensions);            // { width, height }
+  console.log(hostContext.theme);                 // "light" | "dark"
+}
+```
 
-    const data = await loadDashboard();
-    return widget({
-      props: data,
-      output: text(`Dashboard loaded — ${data.visitors} visitors today.`),
-    });
+## Capability Checks
+
+| Capability | Needed For | Hook | How to Check |
+|-|-|-|-|
+| `message` | `useSendFollowUp()` | Check before calling | `hostContext.availableCapabilities.includes("message")` |
+| `files` | `useFiles()` | Check before calling | `hostContext.availableCapabilities.includes("files")` |
+| Display modes | `useDisplayMode()` | Optional; defaults to `["inline", "fullscreen"]` | `hostContext.availableDisplayModes` |
+| Theme changes | `useViewTheme()` | Optional; default `"light"` | No capability check needed |
+
+## Guarding APIs by Capability
+
+```typescript
+import { useHostContext, useSendFollowUp } from "mcp-use/react";
+
+export default function ResultsView() {
+  const hostContext = useHostContext();
+  const sendFollowUp = useSendFollowUp();
+  
+  // Only show "Ask for more" button if host supports follow-up
+  if (!hostContext.availableCapabilities.includes("message")) {
+    return <div>Feature not available in this host</div>;
   }
-);
-```
-
-For the full client introspection API (other capabilities, host name/version, structured `client.info`), see `../16-client-introspection/04-supports-apps.md`.
-
-## Graceful fallback patterns
-
-### Pattern 1 — Branch at the top
-
-Cleanest. Good when the text version is meaningfully different (compressed, more verbose, etc.).
-
-```typescript
-async (params, ctx) => {
-  if (!ctx.client.supportsApps()) return text(buildPlainTextSummary(data));
-  return widget({ props: data, output: text(buildShortSummary(data)) });
+  
+  const handleAskMore = async () => {
+    await sendFollowUp({ prompt: "Show 20 more results" });
+  };
+  
+  return (
+    <div>
+      <Results />
+      <button onClick={handleAskMore}>Show More</button>
+    </div>
+  );
 }
 ```
 
-### Pattern 2 — Always send `widget()` with a meaningful `output`
+## Client Detection (Low Trust)
 
-Simpler. The `output` text is the fallback — text-only clients see only that field via `content`. Works because `widget()` always populates `content`.
+The `hostContext.client` object carries hints about the platform (name, locale, user agent, etc.), but is **not authoritative**:
 
 ```typescript
-async (params) => {
-  const data = await fetch(params.id);
-  return widget({
-    props: data,
-    output: text(formatPlainText(data)),  // ← non-widget clients see this
-  });
+const { client } = useHostContext();
+
+// Hints only — client can spoof these values
+if (client.name === "ChatGPT") {
+  // ChatGPT-specific hint, but don't trust it
 }
 ```
 
-This is the recommended default unless you have a strong reason to compute different data for text-only clients.
+Use capabilities checks for feature gates, not client name. Features are verified by the host.
 
-### Pattern 3 — Conditional widget config
+## Display Mode Negotiation
 
-Skip the widget entirely when unsupported. Useful when computing the props is expensive and useless without rendering.
+Views can declare supported display modes in `viewConfig`:
 
 ```typescript
-async (params, ctx) => {
-  if (!ctx.client.supportsApps()) {
-    return text("Use a widget-capable client to see the chart.");
+// views/my-view/view.tsx
+import type { ViewConfig } from "mcp-use/react";
+
+export const viewConfig: ViewConfig = {
+  displayModes: ["inline", "fullscreen", "pip"],
+  autoResize: true,
+};
+
+export default function MyView() {
+  const { availableDisplayModes, currentDisplayMode } = useHostContext();
+  // Intersection: only ["inline", "fullscreen", "pip"] that host also supports
+}
+```
+
+The host decides the final display mode; the view can request a change via `useDisplayMode()`:
+
+```typescript
+const { displayMode, requestDisplayMode } = useDisplayMode();
+
+// Request change; host may ignore
+await requestDisplayMode({ mode: "fullscreen" });
+```
+
+## Graceful Degradation
+
+Always provide fallback UI for missing capabilities:
+
+```typescript
+export default function AdvancedFeatureView() {
+  const hostContext = useHostContext();
+  
+  if (!hostContext.availableCapabilities.includes("files")) {
+    return <SimpleTextOnlyUI />;
   }
-  const expensiveData = await aggregate();
-  return widget({ props: expensiveData, output: text("Chart loaded.") });
+  
+  return <FilePickerUI />;
 }
 ```
 
-## When `uiResource` alone is enough vs. widget + tool
-
-| Goal | Use |
-|---|---|
-| Purely presentational widget, props from URL params | `server.uiResource({ exposeAsTool: true })` and stop |
-| Server fetches/computes data; widget renders it | Custom tool with `widget` config + `widget()` helper |
-| Same UI, multiple data sources / parameter shapes | One `uiResource`, many tools that link to it via `widget.name` |
-
-## Test the fallback
-
-Run your server in the MCP Inspector with widgets disabled, or hit it from a CLI client (`mcpc`, plain `curl` to `tools/call`). Confirm the `content` field is human-readable on its own. If the text fallback says "See widget for details", the fallback is broken.
+See `references/18-mcp-apps/view-react/07-host-context-files-and-size.md` for detailed file and size APIs.

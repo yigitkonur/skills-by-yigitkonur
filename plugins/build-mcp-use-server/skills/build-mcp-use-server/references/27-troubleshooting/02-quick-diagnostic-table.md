@@ -1,117 +1,33 @@
 # Quick Diagnostic Table
 
-"I'm seeing X" → "check Y". Topical decision shortcut. For full error → cause → fix rows, see `01-error-catalog.md`.
+*Read this when you know the visible symptom but not yet the failing v2 layer.*
 
----
+| Symptom | First check | Next step |
+|---|---|---|
+| Import or module error | `MCPServer` comes from `mcp-use`; source uses ESM; Node is supported. | `references/26-anti-patterns/01-sdk-misuse.md` |
+| Zod type or runtime validation error | `npm ls zod` shows Zod v4 without an old duplicate. | `references/26-anti-patterns/03-schemas.md` |
+| Process exits before listening | Read the first startup exception; verify required env and port. | `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md` |
+| `EADDRINUSE` | Identify the process that owns `PORT`. | Stop it or choose another port. |
+| Works on localhost, not in container | Check `HOST`; v2 defaults to `127.0.0.1`. | `references/08-server-config/02-network-basepath-and-endpoints.md` |
+| Client uses a command instead of a URL | Check whether it expects stdio. v2 serves HTTP only. | `references/09-transports/05-no-stdio-and-sse-history.md` |
+| 404 at `/sse` or `/stdio` | Wrong v1 endpoint. | Connect to `/mcp`. |
+| HTML returned to MCP client | Wrong endpoint, auth redirect, or proxy page. | Inspect status, `content-type`, and redirects with curl. |
+| Browser CORS error | `cors` config is missing or incomplete. | `references/08-server-config/03-cors-and-allowed-origins.md` |
+| Host validation 403 | Hostname is absent from `allowedHosts`. | `references/08-server-config/04-dns-rebinding-and-host-validation.md` |
+| No tools | Confirm registration occurs before serving and inspect `tools/list`. | `references/04-tools/02-registering-a-tool.md` |
+| Tool absent from View types | Static tool is not an exported const, or `mcp-use typecheck` has not run. | Export the `ToolRef` and run typecheck. |
+| Tool call rejected before callback | Input failed `inputSchema`. | `references/04-tools/06-validation-pipeline.md` |
+| Tool succeeds but output validation fails | `structuredContent` does not match `outputSchema`. | `references/04-tools/07-input-schema-vs-output-schema.md` |
+| `ctx.auth.user.userId` missing | v1 field path. | Use `ctx.auth.user.id`. |
+| `ctx.sample` missing | Removed feature. | `references/13-sampling/01-sampling-removed-in-v2.md` |
+| 401 before callback | Missing/invalid bearer token or provider resource mismatch. | `references/27-troubleshooting/03-oauth-issues.md` |
+| OAuth Proxy import missing | Removed in v2. | `references/11-auth/07-oauth-proxy-removed.md` |
+| View not discovered | `view.name` and `views/<name>/view.tsx` differ. | `references/27-troubleshooting/04-view-rendering-issues.md` |
+| View tool lacks types | Tool lacks `outputSchema` or exported `ToolRef`. | `references/18-mcp-apps/server-surface/01-tool-view-field.md` |
+| View blank | Open the iframe console; inspect CSP and runtime errors. | `references/27-troubleshooting/05-csp-violations.md` |
+| `useWidget` missing | v1 hook. | Use `useToolContext` from `mcp-use/react`. |
+| View works in Inspector only | Host capability or CSP differs. | `references/18-mcp-apps/05-host-capability-detection.md` |
+| CLI command not found | Command may be a removed v1 command such as `serve` or `generate-types`. | `references/03-cli/01-overview.md` |
+| Production serves stale output | Build/start uses `.mcp-use/build/`; source edits are not the artifact. | `references/03-cli/04-mcp-use-build-and-typecheck.md` |
 
-## Build / runtime
-
-| Symptom | First check |
-|---|---|
-| Import errors | `moduleResolution` in `tsconfig.json`. Importing from `mcp-use/server`? |
-| Tools not visible | Tools registered before `listen()`? |
-| Garbled responses | `console.log()` going to stdout on a stdio server? |
-| Connection drops | Proxy timeout settings. |
-| Memory growth | Unbounded caches or listeners. |
-| Auth failures | Token expiration and scopes; `mcp-use` ≥ v1.21.4? |
-| Port conflicts | `lsof -i :<port>`. |
-| Timeout | Progress reporting enabled? |
-
----
-
-## Sessions
-
-| Symptom | First check |
-|---|---|
-| 404 after restart | Session store persistent? `RedisSessionStore` configured? |
-| 400 after restart | Upgrade to v1.21.1+. |
-| Session lost between requests | Client echoing `Mcp-Session-Id`? |
-| `RedisSessionStore` connection failure | `redis-cli -u $REDIS_URL ping`. |
-
----
-
-## Context and elicitation
-
-| Symptom | First check |
-|---|---|
-| `ctx.auth` undefined | `mcp-use` ≥ v1.21.4? Null-guard the read? |
-| `ctx.client.user()` undefined | `mcp-use` ≥ v1.21.0? Client sending user metadata? |
-| `result.data` undefined after `elicit()` | Open bug pre-v1.22.0 — use `result.data ?? (result as any).content`. |
-| `ElicitationDeclinedError` | Catch in try/catch. User cancelled. |
-| `ElicitationTimeoutError` | Catch. Inspect `e.timeoutMs`. |
-| `ElicitationValidationError` | Catch. Inspect `e.cause` (Zod error). |
-
----
-
-## Networking
-
-| Symptom | First check |
-|---|---|
-| CORS errors in browser | `cors` config explicit? `mcp-session-id` in `allowHeaders` + `exposeHeaders`? |
-| DNS rebinding 403 | `Host` header. Add to `allowedOrigins`. |
-| SSE drops at 60s | Proxy idle timeout. Or migrate to Streamable HTTP. |
-| Payload too large (413) | nginx `client_max_body_size`. Switch to resources. |
-| Gateway timeout (504) | LB timeout. Async job pattern. |
-
----
-
-## Auth (OAuth and Supabase)
-
-| Symptom | First check |
-|---|---|
-| 401 on protected endpoint | Token, scopes, provider config. |
-| "Incompatible auth server: does not support DCR" | Supabase proxy mode missing `registration_endpoint`. See `03-oauth-and-supabase-issues.md`. |
-| "Unsupported provider" (Supabase) | Missing `provider=google` query param. Custom authorize handler. |
-| `bad_json` (Supabase token) | Supabase needs JSON + `apikey` header, not form-urlencoded. Custom token handler. |
-| `redirect_uri_mismatch` (Google via Supabase) | Add `http://localhost:*/**` to redirect URLs. Don't forward `client_id`. |
-
-Full OAuth + Supabase details: `03-oauth-and-supabase-issues.md`.
-
----
-
-## Widgets
-
-| Symptom | First check |
-|---|---|
-| Widget shows as plain HTML | Host doesn't speak MCP Apps protocol. See `04-widget-rendering-issues.md`. |
-| Widget loads but blank | CSP violation in browser console. See `05-csp-violations.md`. |
-| Hooks fire outside `McpUseProvider` | Provider missing in widget tree. |
-| Duplicate CSP meta tags | Upgrade to v1.20.1+. |
-| React Router broken in widget | `McpUseProvider` no longer wraps `BrowserRouter` (v1.20.1+); add manually. |
-
----
-
-## CLI and deploy
-
-| Symptom | First check |
-|---|---|
-| `mcp-use deploy` fails | Git initialized? GitHub App installed? `dist/mcp-use.json` exists? |
-| New subdomain every deploy | Track `.mcp-use/project.json` in git. |
-| Deployed server missing changes | `git push` before `mcp-use deploy`. |
-| `mcp-use build` hangs | Upgrade `@mcp-use/cli@latest`. |
-| `zod` not found after upgrade | Add `zod@^4.0.0` to your own `package.json`. |
-| Windows `ERR_UNSUPPORTED_ESM_URL_SCHEME` | Upgrade to v1.21.5+. |
-| OrbStack port conflict (macOS) | `lsof -i :<port>`; pick another port or stop OrbStack. |
-
----
-
-## Filesystem and process
-
-| Symptom | First check |
-|---|---|
-| `ENOSPC` watchers | `node_modules` excluded from watcher? |
-| Zombie processes in Docker | `tini` ENTRYPOINT or `docker run --init`. |
-| `EADDRINUSE` | `lsof -ti:<port> \| xargs kill`. |
-
----
-
-## Cosmetic / harmless
-
-| Symptom | First check |
-|---|---|
-| `resourceCallbacks undefined` warning | Harmless. Provide empty `callbacks.complete` to silence. |
-| `GET /health` returns HTML | Register explicit `server.get("/health", ...)` before `listen()`. |
-
----
-
-If a symptom matches none of these, jump to the decision tree at `06-decision-tree.md`.
+If the first check is inconclusive, follow `references/27-troubleshooting/06-decision-tree.md` in order rather than changing several layers at once.

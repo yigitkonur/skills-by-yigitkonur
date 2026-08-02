@@ -1,87 +1,117 @@
-# `create-mcp-use-app`
+# create-mcp-use-app
 
-Scaffolder. Separate npm package from `@mcp-use/cli`, but documented here because it's the canonical entry point for new projects.
+*Read this to scaffold a new MCP server project.*
+
+Scaffolds a new MCP server with TypeScript, package scripts, and optional views. This is the canonical entry point for new projects.
 
 ## Usage
 
 ```bash
-npx create-mcp-use-app@latest <project-name> [flags]
+npx create-mcp-use-app@2.0.0-beta.14 <project-name> [options]
 ```
 
-Always pin `@latest` — the scaffolder evolves quickly and stale npx caches produce outdated projects.
+Always use the `@beta` tag for v2; stable v1 (1.x) scaffolds v1 projects.
 
 ## Flags
 
-| Flag | Description | Default |
-|---|---|---|
-| `-t, --template <template>` | Template name or GitHub repo URL (`owner/repo`, URL, optional `#branch`) | prompt, then `starter` fallback |
-| `--list-templates` | Print templates packaged in the installed CLI | — |
-| `--install` / `--no-install` | Force or skip dependency install | prompt unless template was passed |
-| `--skills` / `--no-skills` | Install or skip agent skills | prompt unless template was passed |
-| `--no-git` | Skip git init | `false` |
-| `--dev` | Use workspace dependency versions | `false` |
-| `--canary` | Use canary package versions | `false` |
-| `--npm` / `--yarn` / `--pnpm` | Force package manager | auto-detect |
+| Flag | Type | Default | Effect |
+|------|------|---------|--------|
+| `-t, --template <name>` | string | `mcp-server` | Template: `mcp-server`, `mcp-apps`, or `blank` |
+| `--list-templates` | boolean | — | List available templates and exit |
+| `--install / --no-install` | boolean | auto-prompt | Run `npm install` after scaffold |
+| `--skills / --no-skills` | boolean | auto-prompt | Install mcp-apps-builder skill (Claude Code/Cursor/Codex) |
+| `--dev` | boolean | false | Use `workspace:*` for mcp-use dependency (monorepo) |
+| `--sdk-version <version>` | string | latest beta | Pin mcp-use to specific version |
+| `--npm / --pnpm / --bun` | boolean | auto-detect | Force package manager |
+| `-h, --help` | boolean | — | Show help and exit |
+| `-V, --version` | boolean | — | Show version and exit |
 
-`create-mcp-use-app@0.14.10` ships `blank`, `mcp-apps`, and `starter` directories. Its help text also mentions `mcp-ui`; treat `--list-templates` and the packaged `dist/templates/` directory as authoritative for the installed version.
+## Templates
 
-For full template descriptions, see `../02-setup/03-template-flags.md`.
+Three templates come packaged:
+
+| Template | Use case | Dependencies | Entry |
+|----------|----------|--------------|-------|
+| **`mcp-server`** | Tools + prompts (no UI) | `mcp-use`, `zod@4` | `index.ts` with sample weather tool |
+| **`mcp-apps`** | Tools + React views | `mcp-use`, `react@19`, `zod@4` | `index.ts` with sample tool + view |
+| **`blank`** | Minimal starter | `mcp-use` only | Empty `index.ts` (no samples) |
 
 ## Examples
 
+**Default (mcp-server template, auto-install):**
 ```bash
-npx create-mcp-use-app@latest my-server
-npx create-mcp-use-app@latest my-server --template mcp-apps --no-skills
-npx create-mcp-use-app@latest my-server --template owner/repo#branch-name
-npx create-mcp-use-app@latest --list-templates
+npx create-mcp-use-app@2.0.0-beta.14 my-server
 ```
 
-## What gets generated
+**With views:**
+```bash
+npx create-mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps
+```
 
-Default (`starter`) layout:
+**Minimal (blank template, skip install):**
+```bash
+npx create-mcp-use-app@2.0.0-beta.14 my-server --template blank --no-install
+```
+
+**For monorepo (workspace deps):**
+```bash
+npx create-mcp-use-app@2.0.0-beta.14 my-server --dev
+```
+
+**List templates:**
+```bash
+npx create-mcp-use-app@2.0.0-beta.14 --list-templates
+```
+
+## Generated structure
 
 ```
 my-server/
-├── resources/
-├── public/
-├── index.ts
-├── package.json
+├── index.ts                    # Server entry (ESM)
+├── package.json               # Scripts: dev, build, typecheck, start, deploy
 ├── tsconfig.json
+├── mcp-env.d.ts              # MCP type definitions (auto-generated)
+├── views/                     # (if mcp-apps template)
+│   ├── example/
+│   │   └── view.tsx
+│   └── ...
+├── .gitignore
 ├── README.md
-└── .mcp-use/
+└── node_modules/              # (if --install not skipped)
 ```
-
-Entry file is `index.ts` at the project root — not `src/server.ts`. `package.json` ships with the canonical script set (`dev`, `build`, `start`, `deploy`).
-
-For the full structure walkthrough and post-scaffold checks, route to `../02-setup/02-scaffold-with-create-mcp-use-app.md`.
 
 ## Post-scaffold steps
 
 ```bash
 cd my-server
-npm install         # run if scaffolder skipped install
-npm run dev         # boot dev server + Inspector
-```
 
-Verify the build path before adding custom code:
+# If --no-install was used
+npm install
 
-```bash
+# Start development
+npm run dev
+# → Opens Inspector at http://localhost:3000/mcp/inspector
+
+# Test build
 npm run build
-npx mcp-use generate-types
+
+# Verify types
+npm run typecheck
 ```
 
-## When not to use the scaffolder
+## Skills installation
 
-| Situation | Use instead |
-|---|---|
-| Adding MCP to an existing app | `../02-setup/06-add-to-existing-app.md` |
-| You want full control over `tsconfig` and dependencies | `../02-setup/05-manual-http-server.md` |
-| Targeting raw stdio without `mcp-use` HTTP | `../02-setup/04-manual-stdio-server.md` |
+With `--skills` (default, prompts), the scaffolder installs the `mcp-apps-builder` skill if your environment supports it (Claude Code, Cursor, or Codex). This enables AI-powered view generation and skill building.
 
-## Help
+Telemetry is sent silently (errors swallowed); no opt-out flag exists currently.
 
-```bash
-npx create-mcp-use-app@latest --help
-```
+## Package managers
 
-Lists all live flags. Trust the binary over docs when in doubt.
+Auto-detects from `npm_config_user_agent`; override with `--npm`, `--pnpm`, or `--bun`.
+
+## Next steps
+
+- Read the generated `README.md` for project-specific guidance
+- Start with `npm run dev` and open the Inspector
+- For views, see `references/18-mcp-apps/`
+- For deployment, see `06-mcp-use-deploy-and-cloud.md`

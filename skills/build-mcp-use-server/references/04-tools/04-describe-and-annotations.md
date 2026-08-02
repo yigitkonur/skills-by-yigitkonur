@@ -1,5 +1,7 @@
 # `.describe()` and Annotations
 
+*Read this when writing descriptions, `.describe()` annotations, or tool behavior hints the model will consume.*
+
 Two separate signals to the client and the model: `.describe()` on each schema field tells the model what to put there; `annotations` on the tool definition tell the client how to treat the tool.
 
 ## `.describe()` discipline
@@ -107,7 +109,7 @@ server.tool(
   },
   async ({ ticketId }) => {
     await db.deleteTicket(ticketId);
-    return text(`Deleted ${ticketId}`);
+    return { content: [{ type: "text", text: `Deleted ${ticketId}` }] };
   }
 );
 ```

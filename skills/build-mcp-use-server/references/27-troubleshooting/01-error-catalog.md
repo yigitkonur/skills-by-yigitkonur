@@ -1,139 +1,63 @@
 # Error Catalog
 
-The greppable error → cause → fix matrix. One row per known error message. Other clusters link to specific rows here.
+*Read this when you have an exact symptom and need its grounded v2 cause, fix, and next reference.*
 
----
+Use the exact error text when available. Do not apply v1 fixes such as restoring stdio, session stores, helper-based results, OAuth Proxy, or widget APIs.
 
-## 1. Build, types, imports
+## Startup and imports
 
-| Error | Cause | Fix |
-|---|---|---|
-| `Cannot find module 'mcp-use/server'` | `tsconfig.json` missing `"moduleResolution": "node16"` (or `"bundler"`). | Set `module` and `moduleResolution` to `node16`; rebuild with `npx tsc --build`. |
-| TypeScript errors on `mcp-use` import paths | Wrong `moduleResolution`, mismatched `@types/node`, importing from raw SDK. | Import from `mcp-use/server`. Set `module: node16`, `moduleResolution: node16`, `target: ES2022`. Match `@types/node` to your Node major. |
-| `Unexpected token` parsing server output | `package.json` has `"type": "module"` but entry uses `require()`, or vice versa. | Pick one. ESM: `import`/`export`, `.js` extensions. CJS: drop `"type": "module"`. |
-| `Maximum call stack size exceeded` from `JSON.stringify()` | Circular references in ORM models. | Map to plain DTOs. Use `safe-stable-stringify`. |
-| Duplicate Zod type errors / OOM during `mcp-use build` (v1.21.5+) | Two Zod copies in tree. | `npm install zod@^4.0.0` explicitly; `rm -rf node_modules && npm install`. Zod is a `peerDependency` since v1.21.5. |
-| `e.custom is not a function` (TypeError) | Zod v3/v4 conflict from esm.sh imports on Deno. | Switch `deno.json` to `npm:` specifiers. See `25-deploy/platforms/02-supabase.md`. |
-| `ERR_UNSUPPORTED_ESM_URL_SCHEME` on Windows | Pre-v1.21.5 CLI passed raw OS paths to `tsImport`. | Upgrade `mcp-use@latest`. |
-| Missing `zod` peer dependency after upgrading to v1.21.5 | Zod moved from dep to peerDep. | `npm install zod@^4.0.0`. |
-| `mcp-use build` hangs after "Build complete" | Pre-v1.21.4 CLI missing `process.exit(0)`. | Upgrade `@mcp-use/cli@latest`. |
+| Symptom | Actual cause | Fix | Reference |
+|---|---|---|---|
+| `Cannot find module 'mcp-use/server'` | v2 removed the server subpath. | Import `MCPServer` from `mcp-use`. | `references/28-migration/03-v1-to-v2-imports-server-and-tools.md` |
+| `ReferenceError: require is not defined` | v2 is ESM-only, but the entry file uses CommonJS. | Replace `require`/`module.exports` with `import`/`export`; set `"type": "module"`. | `references/02-setup/01-prerequisites.md` |
+| Syntax or export errors while loading `mcp-use` | The process is running on an unsupported Node version or loading the ESM package as CommonJS. | Use Node 22 or newer and ESM configuration. | `references/02-setup/01-prerequisites.md` |
+| Zod schema/type failures immediately after migration | The project still resolves Zod v3 or mixed Zod majors. | Install Zod v4 and remove duplicate v3 copies. | `references/04-tools/03-schemas-standard-schema-and-zod-v4.md` |
+| `EADDRINUSE` | Another process owns the requested port. | Stop that process or select another `PORT`/`--port`. | `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md` |
+| Server starts locally but is unreachable from a container or platform | v2 defaults to `127.0.0.1`; the process is not bound to the platform interface, or the wrong port was selected. | Bind to `0.0.0.0` and honor `PORT`; verify host/port precedence. | `references/08-server-config/02-network-basepath-and-endpoints.md` |
 
----
+## Connection and transport
 
-## 2. Server lifecycle
+| Symptom | Actual cause | Fix | Reference |
+|---|---|---|---|
+| Client cannot connect to a stdio command | v2 does not serve stdio. | Connect to the Streamable HTTP `/mcp` endpoint or add an external client-side bridge. | `references/09-transports/05-no-stdio-and-sse-history.md` |
+| `404 Not Found` at `/sse` or `/stdio` | Those v1 transport routes are not v2 endpoints. | Use the configured `basePath`, `/mcp` by default. | `references/09-transports/02-streamable-http.md` |
+| Client receives HTML instead of an MCP response | It reached `/`, a landing page, a proxy error page, or an auth redirect instead of the MCP endpoint. | Inspect status, `content-type`, and final URL; target `/mcp`. | `references/23-debug/02-transport-debugging.md` |
+| Browser preflight fails | `cors` is absent or lacks the requesting origin, method, or headers. `allowedOrigins` alone does not emit CORS headers. | Configure v2 `cors.origin`, `cors.methods`, and `cors.allowedHeaders`. | `references/08-server-config/03-cors-and-allowed-origins.md` |
+| Host validation rejects a local hostname | The `Host` value is outside the localhost defaults and `allowedHosts`. | Add the intended hostname to `allowedHosts`; do not put it in `allowedOrigins`. | `references/08-server-config/04-dns-rebinding-and-host-validation.md` |
 
-| Error | Cause | Fix |
-|---|---|---|
-| Tool not found when calling registered tool | Tool registered after `server.listen()`, typo, or two `MCPServer` instances. | Register tools before `listen()`. Verify name with `client.listTools()`. |
-| Server starts but no tools appear | Same as above. | Register before `listen()`. Don't construct multiple `MCPServer`. |
-| Client receives notifications but tool responses are empty | Handler doesn't return. | Return via `text()` / `error()` / response helper on every code path. Enable `noImplicitReturns`. |
-| Connection refused | Server not running, wrong port, firewall, silent crash. | `ps aux \| grep node`; `lsof -i :3000`; verify `/mcp` URL. |
-| `EADDRINUSE: address already in use :::3000` | Another process owns the port. | `lsof -ti:3000 \| xargs kill`. Or `PORT=3001 node dist/index.js`. |
-| Broken local connection after restart | Stale client session against dead HTTP connection. | Restart client. Re-run `tools/list` or reconnect Inspector. |
-| `ENOSPC: System limit for number of file watchers reached` | File watcher recursing into `node_modules`. | Ignore `node_modules` and `dist` in watcher config. Linux: `fs.inotify.max_user_watches=524288`. |
-| Memory grows steadily over hours | Unbounded caches, leaked listeners, accumulated session state. | Profile with `node --inspect`. Add TTL/size limits. Clean up on `close`. |
-| `Invalid character in header content` | Unsanitized user input passed into HTTP headers. | `val.replace(/[\r\n]/g, '')` before set. |
-| Zombie processes in Docker | PID 1 not an init system. | `tini` in Dockerfile or `docker run --init`. |
+## Tools and results
 
----
+| Symptom | Actual cause | Fix | Reference |
+|---|---|---|---|
+| Tool appears in source but not in generated View typing | A static tool was not assigned to an exported module-level `ToolRef`. | Use `export const toolName = server.tool(...)`, then run `mcp-use typecheck`. | `references/04-tools/02-registering-a-tool.md` |
+| Input validation fails before the callback runs | `inputSchema` rejected the arguments; the SDK validates before invocation. | Read the schema error, correct the caller or schema, and add field descriptions. | `references/04-tools/06-validation-pipeline.md` |
+| Output validation fails after the callback | `structuredContent` does not match `outputSchema`, or a schema-backed success omitted it. | Return matching `structuredContent` or an `isError: true` envelope. | `references/04-tools/07-input-schema-vs-output-schema.md` |
+| Client treats `"Error: ..."` as a normal response | The handler returned a text success instead of an MCP error result. | Return `{ isError: true, content: [...] }`. | `references/05-responses/05-error-handling.md` |
+| Helper imports or helper-shaped code survive migration | `text()`, `object()`, `mix()`, `error()`, and `widget()` are deprecated compatibility helpers. | Return raw MCP envelopes. | `references/05-responses/07-deprecated-v1-helpers.md` |
+| `ctx.auth.user.userId` is undefined | `userId` is the v1 path; built-in v2 provider users expose `id`. | Read `ctx.auth.user.id`. | `references/11-auth/03-ctx-auth-and-user-context.md` |
+| `ctx.sample is not a function` | Server-side sampling was removed in v2. | Move generation to the model/client and keep the server tool deterministic. | `references/13-sampling/01-sampling-removed-in-v2.md` |
 
-## 3. Schemas and validation
+## OAuth
 
-| Error | Cause | Fix |
-|---|---|---|
-| Zod validation failures from client args | Schema mismatch with what LLM generates. | Add `.describe()` everywhere. Use `z.coerce` for numbers/booleans. `.default()` on optional fields. Test with Inspector. |
-| Invalid JSON-RPC response | Client hit wrong endpoint, proxy returned HTML, middleware mutated response. | Confirm client uses `/mcp`. Check raw body with `curl -i`. Disable proxy rewrites until clean. |
+| Symptom | Actual cause | Fix | Reference |
+|---|---|---|---|
+| `401 Unauthorized` before the tool callback | The bearer token is missing, expired, has the wrong issuer/audience, or lacks required scopes. | Verify the Authorization header and provider resource, issuer, expiry, and scope settings. | `references/11-auth/06-debugging-checklist.md` |
+| OAuth provider import cannot be resolved | Provider factories moved to `mcp-use/oauth/<provider>`. | Import the exact provider subpath. | `references/11-auth/01-overview.md` |
+| Fixed-client OAuth flow cannot find `oauthProxy` | Native OAuth Proxy was removed in v2. | Use a DCR-capable provider or an external authorization server plus `oauthCustomProvider`. | `references/11-auth/07-oauth-proxy-removed.md` |
+| Custom provider constructs but token verification or user mapping fails | `createTokenVerifier`, `oauthMetadata`, or `mapAuthInfo` is missing or inconsistent. | Implement all three and make metadata match the token issuer. | `references/11-auth/05-custom-provider-oauthcustomprovider.md` |
+| Supabase tokens fail audience or signature validation | The configured project URL/ID, audience, or ES256-versus-HS256 mode does not match the token. | Use the correct project source; omit `jwtSecret` for JWKS/ES256 or provide it only for legacy HS256; verify audience. | `references/11-auth/providers/04-supabase.md` |
 
----
+## Views and CSP
 
-## 4. Sessions
+| Symptom | Actual cause | Fix | Reference |
+|---|---|---|---|
+| View tool type-checking requires `outputSchema` | v2 Views are schema-backed and consume `structuredContent`. | Add `outputSchema` and return a matching value. | `references/18-mcp-apps/server-surface/01-tool-view-field.md` |
+| A View resource is not discovered | The folder/name contract is wrong: `views/<name>/view.tsx` must match `view.name`. | Rename the folder/file or tool binding to match exactly. | `references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md` |
+| `Cannot find module '@mcp-use/react'` | There is no separate React package. | Import hooks and components from `mcp-use/react`. | `references/18-mcp-apps/view-react/01-setup-and-providers.md` |
+| `useWidget` or `useWidgetProps` is missing | Those are v1 widget hooks. | Use `useToolContext`; use `useViewState` for model-visible View state. | `references/28-migration/06-v1-to-v2-widgets-to-views.md` |
+| View renders a loading state forever or reads undefined output | The component reads `toolOutput` before `useToolContext().status` is `ready`. | Branch on `pending`, `error`, and `ready` before reading output. | `references/18-mcp-apps/view-react/02-usetoolcontext.md` |
+| Browser console reports `connect-src` violation | The external fetch/WebSocket origin is absent from `view.csp.connectDomains`. | Add the exact origin or `CSP_CONNECT_DOMAINS`. | `references/27-troubleshooting/05-csp-violations.md` |
+| Browser console reports script/style/image/font violation | The external asset origin is absent from `view.csp.resourceDomains`. | Add the exact origin or `CSP_RESOURCE_DOMAINS`. | `references/27-troubleshooting/05-csp-violations.md` |
+| View works in Inspector but not another host | The host does not advertise MCP Apps support or supports fewer capabilities/display modes. | Detect View support and degrade to the text fallback. | `references/18-mcp-apps/05-host-capability-detection.md` |
 
-| Error | Cause | Fix |
-|---|---|---|
-| Session lost between requests (Streamable HTTP) | Client doesn't echo `Mcp-Session-Id`. | Use SDK's `StreamableHTTPClientTransport`. Configure `sessionStore`. |
-| `404 Not Found` after server restart (v1.21.1+) | In-memory session store wiped on restart. | Use `RedisSessionStore`. Per spec, clients must send a new `InitializeRequest` on 404. |
-| `400 Bad Request` after restart (v1.21.0 only) | Session recovery sent 400 instead of spec-required 404. | Upgrade to v1.21.1+. |
-| `RedisSessionStore` connection failure | Bad `REDIS_URL`, Redis down, or fs permissions for file store. | `redis-cli -u $REDIS_URL ping`. Fall back to `InMemorySessionStore` in dev. Add retry. |
-
----
-
-## 5. Auth (OAuth and Supabase)
-
-The full auth troubleshooting set lives at `03-oauth-and-supabase-issues.md`. This catalog has one-row entries for grepping; the deep notes are next door.
-
-| Error | Cause | Fix |
-|---|---|---|
-| `401 Unauthorized` on protected endpoints | Missing/expired token, wrong provider, insufficient scopes. | Verify provider config and credentials. Check token expiry. Confirm scopes. |
-| `ctx.auth` is undefined in tool handler | Pre-v1.21.4 `mountMcp()` didn't wrap `handleRequest()` in `runWithContext()`. | Upgrade `mcp-use@^1.21.4`. Always guard `ctx.auth` with null check. |
-| `Incompatible auth server: does not support dynamic client registration` | `SupabaseOAuthProvider` proxy mode lacks `registration_endpoint`. | See `03-oauth-and-supabase-issues.md`. |
-| `Unsupported provider: Provider could not be found` (Supabase) | Missing `provider=google` query param to Supabase `/auth/v1/authorize`. | Custom authorize handler. See `03-oauth-and-supabase-issues.md`. |
-| `bad_json` from Supabase token exchange | mcp-use proxy uses form-urlencoded; Supabase requires JSON + `apikey` header. | Custom token handler. See `03-oauth-and-supabase-issues.md`. |
-| `redirect_uri_mismatch` from Google via Supabase | Dynamic localhost not allowed, or `client_id` forwarded to Google. | Add `http://localhost:*/**` to Supabase redirect URLs. Don't forward `client_id`. |
-| `ctx.client.user()` returns undefined | Added in v1.21.0; client not sending user metadata. | Upgrade. Guard with `?? "anonymous"`. |
-| DNS rebinding 403 | `Host` header doesn't match `allowedOrigins`. | Add domain to `allowedOrigins` on `MCPServer`. Test: `curl -H "Host: evil.com"` → 403. |
-
----
-
-## 6. CORS and CSP
-
-| Error | Cause | Fix |
-|---|---|---|
-| Browser CORS errors | Server didn't send `Access-Control-Allow-Origin`, or `cors` config too restrictive. | Pass `cors` to `MCPServer`. Include `mcp-session-id` in `allowHeaders` and `exposeHeaders`. |
-| CSP violations — widget content blocked | Wrong CSP headers, missing widget origins. | See `05-csp-violations.md`. Configure `widgetMetadata.metadata.csp.connectDomains`. |
-| Duplicate CSP meta tags (pre-v1.20.1) | Sandbox proxy injected without removing existing. | Upgrade `mcp-use@^1.20.1`. |
-
----
-
-## 7. Transports and proxies
-
-| Error | Cause | Fix |
-|---|---|---|
-| SSE connection drops after 60s | Proxy idle timeout (nginx, Cloudflare, ALB). | `proxy_read_timeout 86400s; proxy_send_timeout 86400s;`. Or migrate to Streamable HTTP — see `28-migration/03-sse-to-streamable-http.md`. |
-| Timeout for long-running tools | Tool exceeds client timeout. | Use `ctx.reportProgress`. Or return job ID + polling tool. Increase client timeout if appropriate. |
-| Payload too large (413) | Transport or proxy size limit. | Increase nginx `client_max_body_size`. Use blob/resource patterns instead of inline arguments. |
-| Rate limit exceeded (429) | Server or upstream API throttling. | Backoff/retry on client. Cache on server. Token bucket on server. Return `Retry-After`. |
-| Gateway timeout (504) | Tool exceeds LB `proxy_read_timeout`. | Increase LB timeout. Switch to async job pattern. Keep sync tools < 30s. |
-| Protocol version mismatch | Client speaks newer/older MCP protocol. | Upgrade `mcp-use`. Capability negotiation handles compatible mismatches automatically. |
-
----
-
-## 8. Elicitation
-
-| Error | Cause | Fix |
-|---|---|---|
-| `result.data` undefined after `ctx.elicit()` (open in v1.21.5, fixed in v1.22.0) | Spec puts data in `result.content`; older versions never mapped to `data`. | Upgrade to v1.22.0+. Workaround: `result.data ?? (result as any).content`. |
-| `ElicitationDeclinedError` | User cancelled the prompt. | Catch and return graceful response. |
-| `ElicitationTimeoutError` | No response inside `timeoutMs`. | Catch. Use `e.timeoutMs`. Provide default behavior. |
-| `ElicitationValidationError` | User input failed Zod schema. | Catch. Inspect `e.cause`. Use `.describe()` and `z.coerce` on schema. |
-
----
-
-## 9. Widgets (cross-link)
-
-Widget-specific issues live at `04-widget-rendering-issues.md`. Catalog entries for grep:
-
-| Error | Cause | Fix |
-|---|---|---|
-| Widget shows duplicate CSP meta tags (pre-v1.20.1) | Sandbox didn't strip existing tags. | Upgrade `mcp-use@^1.20.1`. |
-| React Router not working in widget (v1.20.1+) | `McpUseProvider` no longer wraps `BrowserRouter`. | Add `<BrowserRouter>` manually inside `<McpUseProvider>`. |
-| Widget renders as plain HTML / blank / hooks fire outside provider | See `04-widget-rendering-issues.md`. | — |
-
----
-
-## 10. CLI / deploy
-
-| Error | Cause | Fix |
-|---|---|---|
-| `mcp-use deploy` fails | Not a git repo, GitHub App not installed, missing `dist/mcp-use.json`. | `git init`. Install GitHub App on first prompt. Run `mcp-use build` first. |
-| New subdomain on every deploy / custom domain breaks | `.mcp-use/project.json` missing on the deploy machine. | Track `!.mcp-use/project.json` in `.gitignore`. Commit, push. |
-| Deployed server missing recent changes | `mcp-use deploy` builds from remote HEAD on GitHub. | `git add && commit && push` before `mcp-use deploy`. |
-| OrbStack port conflict (macOS, mcpc) | OrbStack claims ports that mcpc allocates. | `lsof -i :<port>`. Stop OrbStack or pick non-overlapping port. |
-
----
-
-## 11. Cosmetic warnings
-
-| Warning | Cause | Fix |
-|---|---|---|
-| `resourceCallbacks undefined` / `Cannot read properties of undefined (reading 'complete')` | mcp-use references `callbacks.complete` on resource templates even without callbacks. | Harmless. Silence by passing `callbacks: { complete: async () => ({ values: [] }) }` if it bothers you. |
-| `GET /health` returns Inspector HTML | mcp-use serves Inspector on all `GET` requests; no explicit `/health` route. | Register `server.get("/health", c => c.json({ status: "ok" }))` **before** `listen()`. |
+Use `references/27-troubleshooting/02-quick-diagnostic-table.md` for broad symptoms and `references/27-troubleshooting/06-decision-tree.md` when the failing layer is not yet known.

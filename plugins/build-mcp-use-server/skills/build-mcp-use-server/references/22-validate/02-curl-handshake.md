@@ -1,168 +1,167 @@
-# curl Handshake — initialize → list → call
+# curl Handshake: v2 Protocol Walkthrough
 
-The Inspector is the primary validation tool, but `curl` is faster for scripted smoke tests, CI, and reproducing client bugs in a known-good shell. Every JSON-RPC call after `initialize` MUST carry the session ID and protocol version headers.
+*Read this when you need to verify an MCP server responds correctly to v2 streamable HTTP protocol.*
 
----
+Copy-paste these exact curl commands against a local `mcp-use dev` server. Default URL: `http://localhost:3000/mcp`.
 
-## Required headers
-
-| Header | Required when | Value |
-|---|---|---|
-| `Content-Type` | Always | `application/json` |
-| `Accept` | Always | `application/json, text/event-stream` |
-| `Mcp-Session-Id` | After `initialize` | Captured from `initialize` response headers |
-| `MCP-Protocol-Version` | After `initialize` | `2025-11-25` (current) |
-
-Skip any of these and you'll get a 400 or a JSON-RPC error.
-
----
-
-## Step 1 — Initialize and capture the session ID
+## 1. Initialize (Handshake)
 
 ```bash
-BASE=http://localhost:3000/mcp
-
-curl -s -D - -X POST "$BASE" \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Protocol-Version: 2024-11-05" \
   -d '{
     "jsonrpc": "2.0",
+    "id": 1,
     "method": "initialize",
     "params": {
-      "protocolVersion": "2025-11-25",
-      "capabilities": {},
-      "clientInfo": { "name": "curl-test", "version": "1.0.0" }
-    },
-    "id": 1
+      "protocolVersion": "2024-11-05",
+      "capabilities": { },
+      "clientInfo": {
+        "name": "curl-test",
+        "version": "1.0"
+      }
+    }
   }'
 ```
 
-The `-D -` flag prints response headers; pluck `Mcp-Session-Id` from there.
-
-**One-liner to capture into a shell var:**
-
-```bash
-SESSION=$(curl -s -D - -X POST "$BASE" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1.0.0"}},"id":1}' \
-  | grep -i "mcp-session-id" | awk '{print $2}' | tr -d '\r')
-echo "SESSION=$SESSION"
+Expected response (HTTP 200):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "tools": { },
+      "resources": { },
+      "prompts": { }
+    },
+    "serverInfo": {
+      "name": "my-server",
+      "version": "1.0.0"
+    }
+  }
+}
 ```
 
----
-
-## Step 2 — List tools
+## 2. List Tools
 
 ```bash
-curl -s -X POST "$BASE" \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":2}' | jq
-```
-
----
-
-## Step 3 — Call a tool
-
-```bash
-curl -s -X POST "$BASE" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
   -d '{
     "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": { }
+  }'
+```
+
+Expected response (HTTP 200):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "get-weather",
+        "description": "Get weather for a location",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "City name"
+            }
+          },
+          "required": ["location"]
+        }
+      }
+    ]
+  }
+}
+```
+
+## 3. Call a Tool
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
     "method": "tools/call",
-    "params": { "name": "greet", "arguments": { "name": "World" } },
-    "id": 3
-  }' | jq
+    "params": {
+      "name": "get-weather",
+      "arguments": {
+        "location": "San Francisco"
+      }
+    }
+  }'
 ```
 
-For tools that declare `outputSchema` or return `structuredContent`, verify both surfaces. The text surface should be readable; the structured surface should mirror the essential body, not just metadata. Secrets belong in `_meta`, not `structuredContent`.
-
-```bash
-curl -s -X POST "$BASE" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"greet","arguments":{"name":"World"}},"id":4}' \
-  | jq '.result | {text: .content[0].text, structuredContent, metaKeys: (._meta // {} | keys)}'
+Expected response (HTTP 200):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Sunny, 72°F"
+      }
+    ]
+  }
+}
 ```
 
----
+## Key v2 Details
 
-## Resources and prompts
+- **HTTP Method**: POST only (no GET/DELETE for tool calls; see references/09-transports/02-streamable-http.md for other methods)
+- **Protocol version**: Set `Mcp-Protocol-Version: 2024-11-05` header (MCP spec v2)
+- **JSON-RPC 2.0**: All requests use standard JSON-RPC format (id, jsonrpc, method, params)
+- **Content-Type**: Always `application/json`
+- **Stateless**: Each curl call is independent; no session management
+- **Error response** (HTTP 200 with error envelope):
+  ```json
+  {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "error": {
+      "code": -32602,
+      "message": "Invalid params: missing 'location'"
+    }
+  }
+  ```
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| 404 or 405 | Verify server running at correct URL + `/mcp` suffix |
+| 400 Bad Request | Check JSON syntax; validate header `Content-Type: application/json` |
+| `"protocolVersion mismatch"` error | Ensure header `Mcp-Protocol-Version: 2024-11-05` matches server version |
+| Tool call returns error | Check tool `name` matches exactly; verify `arguments` match input schema |
+
+## With a Deployed Server
+
+Replace `http://localhost:3000` with your deployment URL:
 
 ```bash
-# Read a resource
-curl -s -X POST "$BASE" \
+curl -X POST https://my-server.deploy.mcp-use.com/mcp \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
-  -d '{"jsonrpc":"2.0","method":"resources/read","params":{"uri":"config://app"},"id":5}' | jq
-
-# Get a prompt
-curl -s -X POST "$BASE" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
-  -d '{"jsonrpc":"2.0","method":"prompts/get","params":{"name":"summarize","arguments":{"topic":"MCP"}},"id":6}' | jq
+  -H "Mcp-Protocol-Version: 2024-11-05" \
+  -d '{ ... }'
 ```
 
----
-
-## End-to-end smoke script
-
-Drop into `scripts/smoke.sh`. Exits non-zero on any curl failure thanks to `set -e`.
+For tunneled endpoints (via `mcp-use dev --tunnel`):
 
 ```bash
-#!/bin/bash
-set -e
-BASE="${BASE:-http://localhost:3000/mcp}"
-
-SESSION=$(curl -s -D - -X POST "$BASE" \
+curl -X POST https://happy-blue.local.mcp-use.run/mcp \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"1.0.0"}},"id":1}' \
-  | grep -i "mcp-session-id" | awk '{print $2}' | tr -d '\r')
-
-[ -z "$SESSION" ] && { echo "No session ID returned"; exit 1; }
-echo "Session: $SESSION"
-
-COUNT=$(curl -s -X POST "$BASE" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -H "MCP-Protocol-Version: 2025-11-25" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":2}' | jq '.result.tools | length')
-
-echo "Tools: $COUNT"
-[ "$COUNT" -gt 0 ] || { echo "No tools advertised"; exit 1; }
-```
-
----
-
-## Common curl failures
-
-| Symptom | Cause | Fix |
-|---|---|---|
-| 400 with `Missing session ID` | Forgot `Mcp-Session-Id` after init | Capture from initialize response and pass on every request |
-| 400 with `Unsupported protocol version` | Old `MCP-Protocol-Version` value | Use `2025-11-25` |
-| 406 Not Acceptable | Missing `Accept` header | Send `application/json, text/event-stream` |
-| Empty body, hangs | Server is streaming (SSE) but client used POST | Add `Accept: text/event-stream` |
-
----
-
-## Legacy `/sse` alias
-
-Older clients use the `/sse` endpoint. Modern clients should target `/mcp`.
-
-```bash
-curl -N -H "Accept: text/event-stream" http://localhost:3000/sse
+  -H "Mcp-Protocol-Version: 2024-11-05" \
+  -d '{ ... }'
 ```

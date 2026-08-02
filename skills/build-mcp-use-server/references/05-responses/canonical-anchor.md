@@ -59,7 +59,6 @@ export const generateChart = server.tool(
           {
             type: "text",
             text: `Generated chart: "${title}" with ${values.length} data points`,
-            mimeType: "text/markdown",
           },
           {
             type: "image",

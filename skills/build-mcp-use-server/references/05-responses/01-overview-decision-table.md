@@ -8,11 +8,11 @@ v2 requires **raw MCP envelopes**. Choose by your output:
 |---|---|---|---|
 | **Text (default fallback)** | `CallToolResult` | `{ content: [{ type: "text", text: "..." }] }` | `02-text-and-content-blocks.md` |
 | **Structured data (with schema)** | `CallToolResult` | `{ content: [...], structuredContent: data }` | `03-structured-content-and-output-schema.md` |
-| **Markdown / formatted text** | `CallToolResult` | `{ content: [{ type: "text", text: "# Title\n...", mimeType: "text/markdown" }] }` | `02-text-and-content-blocks.md` |
+| **Markdown / formatted text** | `CallToolResult` | `{ content: [{ type: "text", text: "# Title\n..." }] }` | `02-text-and-content-blocks.md` |
 | **Error (validation/runtime)** | `CallToolResult` | `{ isError: true, content: [{ type: "text", text: "..." }] }` | `05-error-handling.md` |
 | **Image (PNG/JPEG)** | `CallToolResult` | `{ content: [{ type: "image", data: "base64...", mimeType: "image/png" }] }` | `04-images-audio-binary-resources.md` |
-| **Audio (MP3/WAV)** | `CallToolResult` | `{ content: [{ type: "image", data: "base64...", mimeType: "audio/mpeg" }] }` | `04-images-audio-binary-resources.md` |
-| **Binary (PDF/ZIP/video)** | `CallToolResult` | `{ content: [{ type: "image", data: "base64...", mimeType: "application/pdf" }] }` | `04-images-audio-binary-resources.md` |
+| **Audio (MP3/WAV)** | `CallToolResult` | `{ content: [{ type: "audio", data: "base64...", mimeType: "audio/mpeg" }] }` | `04-images-audio-binary-resources.md` |
+| **Binary (PDF/ZIP/video)** | `CallToolResult` | `{ content: [{ type: "text", text: "base64..." }], _meta: { mimeType: "application/pdf", isBinary: true } }` | `04-images-audio-binary-resources.md` |
 | **HTML (MCP App view)** | `CallToolResult` | `{ content: [{ type: "text", text: "<html>...", mimeType: "text/html;profile=mcp-app" }], structuredContent: props }` | `03-structured-content-and-output-schema.md` |
 | **Multiple blocks (mixed)** | `CallToolResult` | `{ content: [{ type: "text", ... }, { type: "image", ... }], ... }` | `02-text-and-content-blocks.md` |
 | **Input required (re-run)** | `InputRequiredResult` | `{ type: "input_required", inputRequest: { ... } }` | (See 12-elicitation) |

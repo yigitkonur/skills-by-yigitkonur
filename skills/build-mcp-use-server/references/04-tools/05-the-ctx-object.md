@@ -34,6 +34,7 @@ async (input, ctx) => {
 |---|---|---|
 | `signal` | `AbortSignal` | Aborted when client cancels or connection drops |
 | `request` | `HonoRequest \| undefined` | Hono request; raw Web Request via `request.raw` |
+| `req` | `HonoRequest \| undefined` | Deprecated alias for `request` |
 | `client` | `RequestClientContext` | Capability queries (see methods above) |
 | `inputResponses` | `Record<string, unknown> \| undefined` | Client responses to `input_required` elicitation (on retry round) |
 | `requestState` | `RequestStateAccessor` | Opaque state codec (from `createRequestStateCodec`) for round-trip validation |
@@ -91,49 +92,13 @@ for (let i = 0; i < total; i++) {
   const sent = await ctx.reportProgress(i, total, `Item ${i}/${total}`);
   if (!sent) console.log("No progress token supplied");
 }
-
-For long-running tools, report progress against a total. Only effective when the client passed a progress token.
-
-```typescript
-for (let i = 0; i < files.length; i++) {
-  await ctx.reportProgress?.(i, files.length, `Processing ${files[i]}`);
-  await processFile(files[i]);
-}
-```
-
-## `ctx.elicit`
-
-Pause the handler and request additional input from the user. Check `ctx.client.can("elicitation")` first.
-
-```typescript
-if (!ctx.client.can("elicitation")) {
-  return error("This tool requires elicitation support.");
-}
-const { env } = await ctx.elicit("Which environment?", z.object({
-  env: z.enum(["staging", "prod"]),
-}));
-```
-
-## `ctx.sample`
-
-Request the client's LLM to generate a completion. Check `ctx.client.can("sampling")` first.
-
-```typescript
-if (!ctx.client.can("sampling")) {
-  return error("This tool requires sampling support.");
-}
-const summary = await ctx.sample({
-  messages: [{ role: "user", content: { type: "text", text: longDoc } }],
-  maxTokens: 500,
-});
 ```
 
 ## `ctx.auth`
 
-Present only when OAuth is configured on the server.
+Present and required only when OAuth is configured on the server. Without OAuth, its type is `never`.
 
 ```typescript
-if (!ctx.auth) return error("Authentication required.");
 const userId = ctx.auth.user.userId;
 const scopes = ctx.auth.permissions;
 ```
@@ -142,12 +107,8 @@ const scopes = ctx.auth.permissions;
 
 | Feature | Requires |
 |---|---|
-| `ctx.session?.sessionId` | Stateful/sessionful calls. May be absent in stateless/no-session paths. |
-| `ctx.client.info()` | Client `initialize` handshake — always present. |
+| `ctx.client.info()` | Request client metadata; legacy requests may return a partial object. |
 | `ctx.client.can(cap)` | Client declared capability. |
-| `ctx.log()` | Client logging capability — silently dropped otherwise. |
-| `ctx.auth` | OAuth configured — `undefined` without it. |
-| `ctx.elicit()` | `ctx.client.can("elicitation")`. |
-| `ctx.sample()` | `ctx.client.can("sampling")`. |
-| `ctx.reportProgress?.()` | Client sent a progress token in the request. |
-| `ctx.sendNotification()` | Current call is associated with a live session. Not available in stateless/no-session paths. |
+| `ctx.auth` | OAuth configured. |
+| `ctx.reportProgress()` | Client sent a progress token; returns `false` otherwise. |
+| `ctx.sendNotification()` | Must be called before the callback returns. |

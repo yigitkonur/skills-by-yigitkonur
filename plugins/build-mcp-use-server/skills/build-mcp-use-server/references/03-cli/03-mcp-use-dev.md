@@ -1,90 +1,87 @@
-# `mcp-use dev`
+# mcp-use dev
 
-Boots the dev server with HMR, type generation, and the Inspector. The default workflow for everything except production.
+*Read this to start local development with HMR, Inspector, and type refresh.*
 
-## Usage
+## Command
 
 ```bash
 mcp-use dev [options]
-npx @mcp-use/cli dev [options]
 ```
 
-Entry is not positional in `@mcp-use/cli@3.1.2`. Use `--entry <file>` to override the default server entry discovery.
+Starts a local development server at `http://127.0.0.1:3000/mcp` (default) with:
+
+- **Hot module reload (HMR)** — view changes reload without restarting
+- **Inspector automount** — UI at `/mcp/inspector` (disable with `--no-inspector`)
+- **Type generation** — `.mcp-use/mcp-env.d.ts` refreshed on every change
+- **Public tunnel** (optional) — expose via `--tunnel`
 
 ## Flags
 
-| Flag | Description | Default |
-|---|---|---|
-| `-p, --path <path>` | Project directory | `.` |
-| `--entry <file>` | MCP server entry file, relative to project | auto-detected |
-| `--widgets-dir <dir>` | Widgets/resources directory | `resources` |
-| `--mcp-dir <dir>` | Folder holding the MCP entry and resources, for drop-in layouts | — |
-| `--port <port>` | HTTP port | `3000` |
-| `--host <host>` | Host interface | `0.0.0.0` |
-| `--no-open` | Don't auto-open the Inspector | `false` |
-| `--no-hmr` | Disable HMR; fall back to `tsx watch` | `false` |
-| `--tunnel` | Expose dev server via tunnel | `false` |
-
-## What happens
-
-1. Sets `MCP_USE_CLI_DEV=1`, `PORT`, `HOST`, `NODE_ENV=development`, and `MCP_URL` when missing.
-2. Finds the server entry via `--entry`, `--mcp-dir`, or default discovery.
-3. Starts the server in HMR mode, or uses `tsx watch` when `--no-hmr` is passed.
-4. Opens `http://localhost:<port>/inspector` unless `--no-open` is set.
-5. Serves the MCP endpoint at `http://localhost:<port>/mcp`.
-
-## HMR signals
-
-`mcp-use dev` logs which subsystem reloaded. Use these to confirm HMR is working when behavior looks stale.
-
-| Log line | What it means | Client effect |
-|---|---|---|
-| `HMR enabled - changes will hot reload without dropping connections` | HMR path active | Server module will be re-imported on changes |
-| `[HMR] Watcher ready, watching ... paths` | Watcher is attached | Edits should trigger reloads |
-| `[HMR] File changed: ...` | A watched file changed | Reload cycle begins |
-| `[HMR] Reloaded: ...` | Registrations changed and synced | List-changed notifications may fire |
-| `[HMR] No changes detected (...)` | Module reloaded but registrations were unchanged | No client surface change |
-| `[HMR] Reload failed: ...` | Reload threw | Restart or use `--no-hmr` to isolate |
-
-## What HMR can and cannot do
-
-| Change | HMR? |
-|---|---|
-| Add / update / remove tools, resources, prompts, resource templates | Yes |
-| Change descriptions, schemas, handlers | Yes |
-| Edit a widget component | Yes |
-| Change `MCPServer` constructor (`name`, `version`, `port`, `oauth`, middleware) | No — restart |
-| Add new top-level middleware via `server.use(...)` | No — restart |
-
-## Diagnostics for HMR failures
-
-| Symptom | Likely cause | Action |
-|---|---|---|
-| Code edits not reflected | HMR reload failed | Watch for `[HMR] Reload failed`; restart with `--no-hmr` to confirm logic still builds |
-| Widget UI stuck on old props | Widget rebuilt but client cached | Reload the host pane / Inspector |
-| Types stale in widget hooks | `generate-types` failed silently | Run `mcp-use generate-types` manually; fix Zod errors it surfaces |
-| Inspector blank | Browser blocked auto-open or `--no-open` set | Open `http://localhost:<port>/inspector` manually |
-| Port already bound | Another process on `--port` | CLI picks an available port; use `--port` or `lsof -i :<port>` if you need a fixed port |
+| Flag | Type | Default | Effect |
+|------|------|---------|--------|
+| `-p, --port <n>` | number | `$PORT` or `3000` | Server port |
+| `--host <host>` | string | `$HOST` or `127.0.0.1` | Bind address (localhost-only by default) |
+| `--entry <path>` | string | `package.json#main` | Server entry module |
+| `--mcp-dir <dir>` | string | auto-detect | Directory containing entry + `views/` |
+| `--views-dir <dir>` | string | `views/` or `<mcp-dir>/views/` | React view components |
+| `--tunnel` | boolean | false | Expose via public HTTPS URL |
+| `--no-open` | boolean | false | Don't auto-open Inspector in browser |
+| `--no-inspector` | boolean | false | Skip Inspector module entirely |
+| `--path <directory>` | string | current dir | Project root |
 
 ## Examples
 
+**Basic dev (with Inspector):**
 ```bash
-mcp-use dev                            # uses index.ts on :3000
-mcp-use dev --entry src/server.ts      # explicit entry
-mcp-use dev --port 8080
-mcp-use dev --host 127.0.0.1
-mcp-use dev --no-open                  # CI / headless
-mcp-use dev --no-hmr                   # debug bundler issues
-mcp-use dev --tunnel                   # ChatGPT widget testing
-mcp-use dev -p ./packages/api          # monorepo
+mcp-use dev
+# → http://127.0.0.1:3000/mcp
+# → http://127.0.0.1:3000/mcp/inspector (auto-opens)
 ```
 
-## Anti-pattern
+**Public tunnel (for testing with remote clients):**
+```bash
+mcp-use dev --tunnel
+# Output:
+# mcp-use server running at http://127.0.0.1:3000/mcp
+# mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+```
 
-Disabling HMR by default. `--no-hmr` is a debugging escape hatch, not a production flag — without HMR, schema edits drop client connections.
+**Headless (no browser, no Inspector):**
+```bash
+mcp-use dev --no-inspector --no-open
+```
 
-## See also
+**Custom port:**
+```bash
+mcp-use dev --port 4000
+```
 
-- `04-mcp-use-build.md` — the production counterpart
-- `07-mcp-use-generate-types.md` — what auto-runs in dev
-- `../02-setup/09-env-vars.md` — `PORT`, `HOST`, `MCP_URL` precedence
+## Inspector at /mcp/inspector
+
+When `mcp-use dev` runs, Inspector is **automatically mounted** at `/mcp/inspector` unless `--no-inspector` is passed. You can:
+
+- Connect to local server immediately (no configuration needed)
+- Call tools, read resources, inspect prompts
+- Preview MCP Apps views
+- Enable protocol toggle to test ChatGPT Apps compatibility
+- Copy client setup commands for external clients
+
+Access it at `http://localhost:3000/mcp/inspector`.
+
+## Environment Variables
+
+- `$PORT` — Used if no `--port` flag
+- `$HOST` — Used if no `--host` flag
+- `$MCP_URL` — Set automatically to tunnel URL if `--tunnel` used; can be overridden for debugging
+
+## Exit Codes
+
+- `0` — Server started (never exits normally; press Ctrl+C to stop)
+- `2` — Invalid arguments
+- `1` — Startup failure
+
+## Next Steps
+
+- Test tools and views via Inspector
+- When ready to deploy, run `mcp-use build`
+- For deployment, see `06-mcp-use-deploy-and-cloud.md`

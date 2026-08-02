@@ -1,29 +1,34 @@
 # `inputSchema` vs `outputSchema`
 
-`schema` (the input schema) is almost always required. `outputSchema` is opt-in and, in `mcp-use@1.26.0`, should be treated as a TypeScript/codegen hint rather than a runtime wire contract.
+*Read this when deciding whether your tool needs an output schema.*
 
-**Version note:** `mcp-use@1.26.0` declares `outputSchema` in `dist/src/server/types/tool.d.ts`, but runtime `toolRegistration` in `dist/src/server/index.js` does not pass it to `registerTool`; package runtime behavior wins.
+`inputSchema` is optional in the type contract but recommended for every tool; omit it only when the tool accepts an untyped argument record. `outputSchema` is required only when the tool has a View (MCP App) or when downstream clients need typed parsing.
 
-## `schema` — input
+## `inputSchema` — Required
 
-The Zod schema for arguments the client sends. Converted to JSON Schema and published on `tools/list`. Validated before the handler runs. Almost every tool has one — the only exception is a no-argument tool (use `z.object({})`).
+The Standard Schema (Zod v4, ArkType, Valibot, …) for arguments the client sends. Converted to JSON Schema and published on `tools/list`. SDK validates input before the handler runs.
 
 ```typescript
-schema: z.object({
+inputSchema: z.object({
   query: z.string().min(1).describe("Search keyword"),
   limit: z.number().int().min(1).max(100).default(20).describe("Max results"),
 }).strict()
 ```
 
-See `03-zod-schemas.md` for the full pattern reference.
+Even a no-argument tool needs a schema:
 
-## `outputSchema` — output
+```typescript
+inputSchema: z.object({})  // Empty object = no arguments
+```
 
-The Zod schema for `structuredContent` in the response. Optional. In `mcp-use@1.26.0`:
+See `03-schemas-standard-schema-and-zod-v4.md` for the full reference.
 
-- TypeScript can infer the response type for typed helpers (`useCallTool()`, generated tool maps, Code Mode workflows).
-- The runtime does **not** publish it on `tools/list`.
-- The runtime does **not** validate `structuredContent` against it before sending.
+## `outputSchema` — Optional, Required for Views
+
+The Standard Schema for `structuredContent` in the response. Optional unless:
+
+1. **Tool has a View** — required by `view: { name, ... }` binding. View receives props via `structuredContent`.
+2. **Downstream type safety** — TypeScript clients, agents, or codegen need type inference.
 
 ```typescript
 outputSchema: z.object({
@@ -36,18 +41,20 @@ outputSchema: z.object({
 })
 ```
 
-## When to add `outputSchema`
+## When `outputSchema` is Validated
 
-Add it when **at least one** of these is true:
+SDK validates `structuredContent` against `outputSchema` **at runtime, after the handler returns**. Mismatch = error response. Tools without `outputSchema` skip output validation.
 
-- Generated React helpers or typed `useCallTool()` consumers need an output type.
-- A Code Mode workflow processes the JSON.
-- An agent bridge or downstream parser explicitly requires structured output.
-- The tool defines a long-lived public contract.
+## Typical Patterns
 
-Do **not** add `outputSchema` because JSON looks tidy, and do not assume it protects runtime responses in 1.26.0. For broad conversational compatibility, a concise `text()` or `markdown()` response is the safer default.
+| Scenario | inputSchema | outputSchema | Response |
+|----------|---|---|---|
+| Search tool (text result) | ✓ required | optional | `{ content: [{ type: "text", text: "..." }] }` |
+| Search tool (with View) | ✓ required | ✓ required | `{ content: [...], structuredContent: { results: [...] } }` |
+| Chart builder tool (View) | ✓ required | ✓ required | `{ content: [...], structuredContent: { svg: "..." } }` |
+| No-argument tool | ✓ `z.object({})` | optional | `{ content: [...], structuredContent?: {...} }` |
 
-## Interaction with `structuredContent`
+See `02-registering-a-tool.md` and `canonical-anchor.md` for complete examples.
 
 `outputSchema` describes a contract. `structuredContent` is the runtime value matching that contract. The relationship has a subtle trap:
 
@@ -55,7 +62,7 @@ If you return `object(...)` (or `mix(markdown(...), object(...))`), the helper e
 
 That means: if `structuredContent` only contains pagination/metadata while the actual answer lives in `content[].text`, structured-first hosts surface a successful-looking call with no answer body.
 
-The fix is the visibility contract — see `05-responses/08-content-vs-structured-content.md`. Both surfaces should carry the essential answer.
+The fix is the visibility contract: both surfaces should carry the essential answer.
 
 ## Decision table
 
@@ -90,12 +97,12 @@ server.tool(
   },
   async ({ query, status }) => {
     const tickets = await db.searchTickets(query, status);
-    return mix(
-      markdown(`Found ${tickets.length} tickets matching "${query}".`),
-      object({ tickets, total: tickets.length }),
-    );
+    return {
+      content: [{ type: "text", text: `Found ${tickets.length} tickets matching "${query}".` }],
+      structuredContent: { tickets, total: tickets.length },
+    };
   }
 );
 ```
 
-The `mix()` covers both surfaces: the markdown summary for content-first clients, the structured object for typed/structured-first clients. Both contain the essential answer. Add tests if `outputSchema` is a public contract; `mcp-use@1.26.0` will not enforce it at runtime.
+The example returns both `content` (a summary for content-first clients) and `structuredContent` (an object for typed/structured-first clients). Both contain the essential answer.

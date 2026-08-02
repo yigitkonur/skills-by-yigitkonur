@@ -1,5 +1,7 @@
 # Example Reference: `mcp-use/mcp-resource-watcher`
 
+*Read this for the one complete, runnable v2 resource example other files reference.*
+
 The `mcp-resource-watcher` repo is the official example repo for resources, subscriptions, roots, and a config widget. In the current `main` branch, the load-bearing server code is root-level `index.ts`.
 
 **Repo:** https://github.com/mcp-use/mcp-resource-watcher

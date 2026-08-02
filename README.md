@@ -102,7 +102,7 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
 - **[build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/)** — mcp server on `@modelcontextprotocol/sdk` v1.x: single-package, zod, `McpServer`.
 - **[build-mcp-server-sdk-v2](skills/build-mcp-server-sdk-v2/)** — mcp server on `@modelcontextprotocol/server` v2 alpha: split packages, `registerTool`, `ctx.mcpReq`.
-- **[build-mcp-use-server](skills/build-mcp-use-server/)** — mcp-use/server: `server.tool`, response helpers, `ctx.auth`, sessions, transports, widgets, inspector, deploy.
+- **[build-mcp-use-server](skills/build-mcp-use-server/)** — mcp-use v2: `MCPServer` tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, v1 migration.
 - **[build-mcp-use-client](skills/build-mcp-use-client/)** — mcp-use client: `MCPClient`, `MCPSession`, `useMcp`, `mcp-use/react`, browser transport.
 - **[build-mcp-use-agent](skills/build-mcp-use-agent/)** — mcp-use `MCPAgent`: an llm picks & orchestrates mcp tools via `run`, `stream`, `streamEvents`.
 - **[build-clean-mcp-architecture](skills/build-clean-mcp-architecture/)** — clean architecture layer boundaries for typescript mcp-use/server code, import direction, dependency-cruiser gates.

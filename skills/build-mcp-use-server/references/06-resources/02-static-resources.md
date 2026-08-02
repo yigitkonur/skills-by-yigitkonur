@@ -1,11 +1,13 @@
 # Static Resources
 
+*Read this when registering a fixed-URI resource with static or computed content.*
+
 A static resource has a **fixed URI** known at registration time. Use `server.resource()`. No template parameters.
 
 ## Registration
 
 ```typescript
-import { object, text } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 
 server.resource(
   {
@@ -26,7 +28,7 @@ server.resource(
 
 ## Response helpers
 
-Import from `"mcp-use/server"`. Helpers carry response content and, for most text/object/binary helpers, MIME metadata. Still set `mimeType` on the resource definition when client rendering matters.
+Import from `"mcp-use"`. Helpers carry response content and, for most text/object/binary helpers, MIME metadata. Still set `mimeType` on the resource definition when client rendering matters.
 
 | Helper | Use for |
 |---|---|
@@ -48,7 +50,7 @@ Import from `"mcp-use/server"`. Helpers carry response content and, for most tex
 A single resource can return multiple content items:
 
 ```typescript
-import { mix, text, object, image } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 
 server.resource(
   { name: "report-bundle", uri: "reports://latest", title: "Latest Reports" },

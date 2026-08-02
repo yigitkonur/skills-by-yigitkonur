@@ -1,41 +1,40 @@
 # What is mcp-use
 
-`mcp-use` is a TypeScript framework for building MCP (Model Context Protocol) servers, clients, and agents. It sits on top of `@modelcontextprotocol/sdk` and provides:
+*Read this when you need to understand what mcp-use v2 provides as a framework over the raw MCP SDK.*
 
-- A declarative server API (`MCPServer`, `server.tool`, `server.resource`, `server.prompt`, `server.uiResource`).
-- Built-in transports (stdio, Streamable HTTP, serverless handlers) with sensible defaults.
-- Session management with pluggable stores (memory, filesystem, Redis).
-- OAuth 2.1 with DCR-direct support for 7 providers plus a proxy escape hatch.
-- React hooks and components for MCP Apps widgets (`useWidget`, `useCallTool`, `McpUseProvider`).
-- A CLI (`@mcp-use/cli`) with HMR, type generation, deploy, and org management.
-- An Inspector for live testing, RPC logging, CSP debugging.
+`mcp-use` v2 is a TypeScript framework for building MCP (Model Context Protocol) servers. It wraps the official `@modelcontextprotocol/sdk` (v2.0.0) with a declarative API and production-ready integrations:
+
+- **Declarative server API** — `MCPServer` constructor, `server.tool()`, `server.resource()`, `server.prompt()` with definition-first signatures
+- **Transports** — Streamable HTTP only (Web-standard Fetch API), optimized for edge and Node.js runtimes
+- **OAuth 2.1** — Six providers (Clerk, Auth0, WorkOS, Supabase, Keycloak, Better Auth) + custom provider factory
+- **Stateless request model** — Fresh MCP context per request; request-state codec for multi-round elicitation
+- **MCP Apps** — React components and hooks in `mcp-use/react` for building tool views in ChatGPT and other hosts
+- **CLI** — `mcp-use@beta` v4.x with dev, build, deploy, type generation (generates `mcp-env.d.ts`)
+- **Inspector** — Live MCP testing, RPC logging, CSP debugging (automounts at `/mcp/inspector` during dev)
 
 ## What this skill covers
 
-The **server-side** half of mcp-use plus everything you need to ship MCP Apps widgets that render in ChatGPT and other MCP-compatible hosts:
+The **server-side** half of mcp-use: writing tools, resources, prompts, MCP Apps views, OAuth, handling requests, and deploying. It includes everything needed to ship an MCP server from local dev to production endpoints.
 
-- writing tools with Zod schemas
-- exposing resources and prompts
-- registering MCP Apps widgets
-- choosing transports
-- running OAuth
-- managing sessions
-- emitting notifications
-- debugging with the Inspector
-- deploying
-
-The client SDK and `MCPAgent` orchestration live in sibling skills (see `07-this-skill-vs-build-mcp-use-client.md`).
+The **client SDK** and agent orchestration live in `build-mcp-use-client` (sister skill).
 
 ## What mcp-use is not
 
-- It is **not** a fork of `@modelcontextprotocol/sdk` — it imports and extends the official SDK.
-- It is **not** an LLM provider — tools call out to your own logic, your own APIs, your own database.
-- It is **not** a UI framework — but it does ship a React widget runtime (MCP Apps) for hosts that render widgets in-conversation.
+- **Not a fork of the SDK** — it imports the official MCP SDK as a dependency
+- **Not an LLM** — tools call out to your own logic, APIs, databases
+- **Not a UI framework** — MCP Apps is a runtime for hosts that render views (ChatGPT, Claude Desktop)
+
+## Key v2 changes from v1
+
+- **No sessions by default** — stateless per-request; application manages state
+- **No stdio** — Streamable HTTP only
+- **No server-side sampling** — model generates; server provides deterministic tools
+- **OAuth Proxy removed** — use external authorization servers
+- **No response helpers (deprecated)** — return raw MCP envelopes
 
 ## Read next
 
-- `02-server-vs-client-vs-agent.md` — how the three sides relate.
-- `03-transports-overview.md` — how clients reach servers.
-- `06-mcp-apps-vs-widgets-terminology.md` — the vocabulary you'll need before reading `18-mcp-apps/`.
-
-**Canonical doc:** https://manufact.com/docs/typescript/getting-started/welcome
+- `02-server-vs-client-vs-agent.md` — boundaries and which skill covers what
+- `03-transports-overview.md` — HTTP endpoint structure
+- `04-stateless-model-and-request-state.md` — how requests flow without session affinity
+- `06-mcp-apps-and-views-terminology.md` — vocabulary for Views cluster

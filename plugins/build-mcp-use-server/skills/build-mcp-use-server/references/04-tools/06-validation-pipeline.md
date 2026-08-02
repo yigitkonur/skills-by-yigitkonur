@@ -1,22 +1,18 @@
 # Validation Pipeline
 
-What happens between the client sending `tools/call` and your handler running. Knowing the order tells you where each kind of failure surfaces.
+*Read this when you need to understand when errors happen and how they surface.*
+
+What happens between the client sending `tools/call` and your handler running.
 
 ## Pipeline
 
-1. **Receive request.** The transport (stdio, Streamable HTTP, SSE) parses the incoming JSON-RPC envelope. Malformed JSON or unknown methods are rejected here as protocol errors — your handler is never called.
-2. **Resolve tool by `name`.** The server looks up the registered `ToolDefinition`. An unknown tool name is a **parameter** problem, not a JSON-RPC method problem (the JSON-RPC method `tools/call` was found and dispatched). Per the MCP spec the server SHOULD return a `CallToolResult` with `isError: true` so the model can self-correct; some implementations instead surface JSON-RPC `-32602 Invalid params`. Either way, your handler is never called.
-3. **Validate arguments against `schema`.** The Zod schema parses `params.arguments`. Failures emit a structured validation error; the handler does not run. The client sees a message like:
-   ```
-   Validation Error:
-   - name: Required
-   - age: Expected number, received string
-   - email: Invalid email address
-   ```
-   This error is designed for the model to read and self-correct.
-4. **Build the `ctx` object.** Client info, auth (if configured), and per-call helpers (`log`, `elicit`, `sample`) are wired up. Session helpers and `reportProgress` are present only when the request/session provides the needed metadata.
-5. **Run the handler.** Your `async (args, ctx) => result` runs. `args` is fully typed and trusted at this point — defaults applied, optional fields normalized.
-6. **Format and emit.** Response helpers (`text`, `object`, `mix`, etc.) ensure the wire shape is correct: `content[]`, optional `structuredContent`, optional `_meta`, `isError` flag. The transport serializes and sends.
+1. **Receive request.** The transport (streamable HTTP) parses the incoming JSON-RPC envelope. Malformed JSON or unknown methods are rejected as protocol errors — your handler never runs.
+2. **Resolve tool by `name`.** The server looks up the registered `ToolDefinition`. Unknown tool name → error response (MCP spec allows either tool-not-found error or parameter error).
+3. **Validate input against `inputSchema`.** SDK uses Zod (or Standard Schema v1) to parse and validate `params.arguments`. Failures emit a structured validation error before the handler runs.
+4. **Build `ctx` object.** Client info, auth (if OAuth configured), and per-request helpers (`sendLog`, `reportProgress`, `sendNotification`) are wired.
+5. **Run handler.** Your `async (input, ctx) => result` runs. `input` is fully typed and trusted — defaults applied, optional fields normalized.
+6. **Validate output against `outputSchema` (if set).** SDK validates `structuredContent` against the schema. Mismatch → error response.
+7. **Format and emit.** Raw result shape gets serialized to wire format and sent via transport.
 
 ## What fails where
 
@@ -49,5 +45,5 @@ The model uses this to retry with corrected arguments. Custom `.describe()` text
 
 - **Never re-validate input inside the handler.** By step 5, `args` is already validated and typed.
 - **Use `.strict()` on every top-level schema.** Without it, hallucinated extra fields are accepted instead of becoming validation errors.
-- **Use `error()` for expected failures.** Step 5 throws become 500s; `error()` keeps the response shape intact (see `05-responses/07-error-handling.md`).
-- **Test structured output yourself.** `mcp-use@1.26.0` accepts `outputSchema` in `ToolDefinition`, but the runtime does not forward it into SDK tool registration or validate handler output.
+- **Use explicit error envelopes for expected failures.** Step 5 throws become transport/server errors; return `{ isError: true, content: [...] }` to report a graceful tool failure (see `../05-responses/05-error-handling.md`).
+- **Test structured output yourself.** `outputSchema` validates `structuredContent` at runtime in v2 when set on a tool definition.

@@ -1,71 +1,96 @@
 # Prerequisites
 
-Verify the toolchain before scaffolding or installing dependencies.
+*Read this to verify the development environment before scaffolding.*
 
-## Runtime and tools
+## Node.js and ESM
 
-| Requirement | Minimum | Recommended | Why |
-|---|---|---|---|
-| Node.js | 18.x | 22 LTS | ESM `mcp-use/server` exports require Node 18+; Node 22 LTS matches current examples and ships with the smoothest fetch/AbortSignal behavior. |
-| Package manager | npm 9 | npm 10 / pnpm 9 / yarn 4 | Any of the three work. Lockfiles persist across CI. |
-| TypeScript | 5.0 | 5.5+ | Required for `module: NodeNext` and `satisfies` patterns used in templates. |
+- **Node ≥ 22** (minimum 22.22.2). ESM required; CJS not supported.
+- **`"type": "module"` in `package.json`** — without it, imports fail with `SyntaxError: Unexpected token export`.
 
 Verify:
-
 ```bash
-node --version   # v18.x or higher (v22.x.x preferred)
-npm --version    # 9.x.x or higher
+node --version   # ≥22.22.2
 ```
 
-## Required dependency matrix
+## Package manager
 
-| Package | Required for | Where to install |
-|---|---|---|
-| `mcp-use` | Every server | `dependencies` |
-| `zod` (`^4.0.0`) | Tool / resource / prompt schemas | `dependencies` — peer dep, not auto-installed |
-| `@mcp-use/cli` | `dev` (HMR), `build`, `start`, `deploy`, `generate-types` | `devDependencies` |
-| `typescript` | Compilation | `devDependencies` |
-| `@types/node` | Node ambient types | `devDependencies` |
-| `tsx` | Optional ad-hoc `tsx src/server.ts` runs | `devDependencies` |
+Any of npm 9+, pnpm 9+, or Bun work. Reproducible builds via lockfile (git commit it).
 
-## Add-ons by feature
+## Zod v4 (Standard Schema)
 
-Install only when you need the feature.
-
-| Feature | Extra packages |
-|---|---|
-| React widgets (MCP Apps / ChatGPT Apps) | `@mcp-use/react`, `react`, `react-dom`, `@types/react`, `@types/react-dom` |
-| Redis session store / stream manager | `redis` |
-| dotenv-loaded config | `dotenv` |
-| Edge / serverless deploys | none — `mcp-use/server` ships an edge handler |
-
-## `package.json` non-negotiables
-
-```json
-{
-  "type": "module"
-}
-```
-
-Without `"type": "module"`, imports from `mcp-use/server` fail with `SyntaxError: Unexpected token export`.
-
-## Quick install
-
-Fresh manual project:
+`zod@4.x` is **required** (peer dependency, not auto-installed). The framework uses its `StandardSchemaWithJSON` interface for validation; v3 is incompatible.
 
 ```bash
+npm install zod@4
+```
+
+## Exact version pins (v2 stable)
+
+Pin these exact versions in new projects:
+
+```bash
+npm install mcp-use@2.0.0-beta.66 zod@4
+npm install -D @mcp-use/cli@4.0.0-beta.15 typescript @types/node
+```
+
+- **`mcp-use@2.0.0-beta.66`** — use npm dist-tag `@beta` for updates
+- **`@mcp-use/cli@4.0.0-beta.15`** — scaffolder `create-mcp-use-app@2.0.0-beta.14`
+- **`@mcp-use/inspector@20.0.0-beta.58`** — auto-included by CLI
+- **Node peer dependencies:** `@modelcontextprotocol/server@2.0.0`, `@modelcontextprotocol/client@2.0.0`, `@modelcontextprotocol/core@2.0.0` (shipped by `mcp-use`)
+
+## Quick scaffolded setup (recommended)
+
+```bash
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-server --install
+cd my-server
+npm run dev
+```
+
+See `02-scaffold-with-create-mcp-use-app.md` for template options.
+
+## Manual setup (from scratch)
+
+For a blank project without scaffolding:
+
+```bash
+mkdir my-server && cd my-server
 npm init -y
-npm install mcp-use zod
-npm install -D @mcp-use/cli typescript @types/node tsx
+npm install mcp-use@2.0.0-beta.66 zod@4
+npm install -D @mcp-use/cli@4.0.0-beta.15 typescript @types/node
 ```
 
-Add React widgets:
+Add `"type": "module"` to `package.json`, then create `index.ts`:
+
+```typescript
+import { MCPServer } from "mcp-use";
+
+const server = new MCPServer({
+  name: "my-server",
+  version: "1.0.0",
+});
+
+await server.listen(3000);
+```
 
 ```bash
-npm install @mcp-use/react react react-dom
+npm run dev  # or npx @mcp-use/cli@4.0.0-beta.15 dev
+```
+
+## For React views (MCP Apps)
+
+Add to manual setup:
+
+```bash
+npm install react@19 react-dom@19
 npm install -D @types/react @types/react-dom
 ```
 
-For scaffold-driven setup, skip the manual install and read `02-scaffold-with-create-mcp-use-app.md`.
+The scaffolder (`--template mcp-apps`) pre-configures these.
 
-**Canonical doc:** https://manufact.com/docs/typescript/server/quickstart
+## TypeScript 5.5+
+
+ESM `module: "NodeNext"` and `.satisfies` patterns require TS 5.0+; 5.5+ recommended.
+
+```bash
+npm install -D typescript@latest
+```

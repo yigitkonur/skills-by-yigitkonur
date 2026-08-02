@@ -1,72 +1,77 @@
-# When to Use a Widget vs Plain Tools
+# When to Use Views vs. Tools-Only
 
-A widget is not free. It adds an iframe, a CSP surface, a build pipeline, and a user-perceived latency between "tool returned" and "UI rendered". Use a widget only when text loses something the user actually needs.
+*Read this when deciding whether a tool needs an interactive view.*
 
-## Decision matrix
+Not every tool needs a view. Use this decision matrix to choose.
 
-| Signal | Plain `text()` / `object()` | Widget |
-|---|---|---|
-| Output is a sentence or short paragraph | Yes | No |
-| Output is a list of <10 items the user reads linearly | Yes | No |
-| Output is dense tabular data (>10 rows, multiple columns) | No | Yes |
-| Output is inherently visual (chart, map, timeline, image grid) | No | Yes |
-| User must select/filter/sort within the result | No | Yes |
-| Output drives multi-step interaction (wizard, picker, builder) | No | Yes |
-| Client likely doesn't render widgets (CLI, dumb chat) | Yes | No (or fallback) |
-| Output must be quotable in chat / appear in transcripts | Yes | No (or duplicate as `output`) |
-| User will ask the LLM to follow up on this result | Yes | Either, with `output:` text summary |
+## Decision Matrix
 
-## Quick test
+| Need | Tools-Only | View (MCP Apps) | Why |
+|-|-|-|-|
+| Return structured data (JSON, objects) | ✓ | ✓ | Both work; views add interactivity |
+| User selects from results | ✗ | ✓ | View can render clickable list; tools-only needs follow-up message |
+| Real-time updates / progress | ✗ | ✓ | View can poll or subscribe; tools-only tool runs once |
+| Complex layout (charts, galleries, tables) | ✗ | ✓ | HTML + CSS in views; tools-only limited to text |
+| Tool runs deterministically (no user input) | ✓ | — | Tools-only is simpler; no view needed |
+| Tool returns plain text (summaries, reports) | ✓ | — | View overhead unjustified |
+| Multi-step interaction (filter, sort, drill-down) | ✗ | ✓ | View calls other tools via `useCallTool()` |
+| Render in full-screen or iframe | ✗ | ✓ | Views support display modes |
 
-> *"If the user reads the model's text-only fallback, do they get the answer?"*
+## Quick Test: "Is This a View?"
 
-- **Yes** → tools-only is fine. Adding a widget gold-plates.
-- **No, they need to interact with it** → widget.
-- **They get a summary but lose detail** → widget, with a meaningful `output: text(...)` summary.
+Ask: *Does the output need interaction beyond reading a text response?*
 
-## When `uiResource` alone suffices
+- **Yes** → Use a view. Example: "display 100 search results; let user click to see details."
+- **No** → Tools-only is simpler. Example: "calculate and return a number; model decides next step."
 
-If your widget is **purely presentational** — no tool input, no server-computed props, just static HTML with URL params — register it with `exposeAsTool: true` and skip writing a custom tool. The widget becomes a callable tool whose arguments are the props.
+## Examples
 
-```typescript
-server.uiResource({
-  type: "mcpApps",
-  name: "greeting-card",
-  htmlTemplate: `...`,
-  metadata: { /* ... */ },
-  exposeAsTool: true,  // becomes a tool named "greeting-card"
-});
-```
-
-## When you need both a tool and a widget
-
-This is the common case. Server fetches data, computes props, returns them through `widget()`:
+### Tools-Only (No View Needed)
 
 ```typescript
-server.tool(
+// Calculate tax
+export const calculateTax = server.tool(
   {
-    name: "search-products",
-    schema: z.object({ query: z.string() }),
-    widget: { name: "product-list" },
+    name: "calculate-tax",
+    description: "Calculate sales tax",
+    inputSchema: z.object({ amount: z.number() }),
+    outputSchema: z.object({ tax: z.number(), total: z.number() }),
+    // No `view` field
   },
-  async ({ query }) => {
-    const results = await db.search(query);
-    return widget({
-      props: { query, results },
-      output: text(`Found ${results.length} products for "${query}"`),
-    });
-  }
+  async ({ amount }) => ({
+    content: [{ type: "text", text: `Tax: $${tax.toFixed(2)}, Total: $${total.toFixed(2)}` }],
+    structuredContent: { tax, total },
+  })
 );
 ```
 
-The widget renders `results`. The model sees the `output` summary so it can reason about what just happened on the next turn.
+### Needs a View
 
-## Always provide a text fallback
+```typescript
+// Search with results list and drill-down
+export const searchProducts = server.tool(
+  {
+    name: "search-products",
+    description: "Search products by keyword",
+    inputSchema: z.object({ query: z.string() }),
+    outputSchema: productResultsSchema,
+    view: { name: "product-list" },  // User clicks items to see details
+  },
+  async ({ query }) => ({
+    content: [{ type: "text", text: `Found ${results.length} products` }],
+    structuredContent: { query, results },
+  })
+);
+```
 
-Hosts vary. `ctx.client.supportsApps()` lets you branch (see `05-host-capability-detection.md`), but at minimum populate `output` or `message` so text-only clients still get a useful answer.
+In the view (`views/product-list/view.tsx`), user clicks a product to call a detail tool via `useCallTool()`.
 
-## Anti-pattern: "everything is a widget"
+## Performance Note
 
-Don't widget-ify a tool whose entire output is "Booked. Confirmation #ABC-123." That's a sentence — text wins on every axis: latency, transcript fidelity, client coverage, build complexity.
+Views have latency overhead (iframe setup, React hydration, asset download). For lightweight tools returning small results, tools-only is faster and more predictable. For tools where the model needs visual output to decide next steps, views are essential.
 
-Don't widget-ify a tool whose result the model is expected to **paraphrase** to the user. Widgets are end-state UI; the model can't "summarize" props it can't see in plain text reliably.
+## See Also
+
+- `references/18-mcp-apps/server-surface/01-tool-view-field.md` — how to bind a view to a tool
+- `references/18-mcp-apps/view-react/02-usetoolcontext.md` — how to read tool context in a view
+- `references/18-mcp-apps/view-react/03-usecalltool.md` — how to call other tools from a view

@@ -1,11 +1,13 @@
 # Resource Templates
 
+*Read this when exposing parameterized resources via URI templates and completion callbacks.*
+
 A **template** is a URI pattern with `{param}` placeholders. Use `server.resourceTemplate()` when the resource is one of many addressable items (per-user, per-id, per-path).
 
 ## Registration
 
 ```typescript
-import { object } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 
 server.resourceTemplate(
   {

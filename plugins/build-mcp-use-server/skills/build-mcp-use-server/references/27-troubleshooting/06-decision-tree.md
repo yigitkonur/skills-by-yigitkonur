@@ -1,122 +1,68 @@
 # Decision Tree
 
-A flowchart-as-prose. Walk down to the right cluster. For exhaustive symptom → fix rows, see `01-error-catalog.md`.
+*Read this when the failing layer is unknown and you need to route the problem without guessing.*
 
----
+Follow the branches in order: **can't start → can't connect → tools fail → auth fails → views fail**.
 
-## Start: which layer is broken?
+## 1. Can't start
 
-**Q1.** Does `curl -s {url}/health` return JSON?
+**Does the process reach a listening message or return from `server.listen()`?**
 
-- **No, HTTP error / connection refused** → server isn't running or unreachable. Go to **A. Connect / startup**.
-- **No, returns HTML** → the catch-all Inspector is serving `/health`. Register an explicit `server.get("/health", ...)` before `listen()`. (`01-error-catalog.md` row "GET /health returns Inspector HTML".)
-- **Yes** → server is up. Continue to Q2.
+- **No — import error mentions `mcp-use/server`:** replace it with the `mcp-use` root import. Go to `references/26-anti-patterns/01-sdk-misuse.md`.
+- **No — `require is not defined` or ESM syntax error:** migrate to ESM, set `"type": "module"`, and verify Node 22+. Go to `references/02-setup/01-prerequisites.md`.
+- **No — Zod/type error:** confirm Zod v4 and remove mixed-major installs. Go to `references/26-anti-patterns/03-schemas.md`.
+- **No — `EADDRINUSE`:** stop the port owner or choose another `PORT`/`--port`.
+- **No — required env/config error:** correct the missing boundary value; do not add a fake fallback secret. Go to `references/24-production/01-env-config.md`.
+- **Yes:** continue to **2. Can't connect**.
 
-**Q2.** Does the Inspector connect?
+## 2. Can't connect
 
-- **No, handshake error** → go to **B. Handshake**.
-- **Yes, but no tools listed** → go to **C. Tool registration**.
-- **Yes, tools listed** → continue to Q3.
+**Can an MCP client or Inspector reach the configured base path?**
 
-**Q3.** Does calling a tool succeed end-to-end?
+- **No — client launches a command or expects stdio:** v2 has no stdio serving. Use the Streamable HTTP URL. Go to `references/09-transports/05-no-stdio-and-sse-history.md`.
+- **No — 404 at `/sse`, `/stdio`, or `/`:** use the configured `basePath`, `/mcp` by default. Go to `references/09-transports/02-streamable-http.md`.
+- **No — connection refused locally:** verify process, host, and port.
+- **No — works on the host but not from container/network:** bind to `0.0.0.0`, honor `PORT`, and inspect firewall/proxy routing. Go to `references/08-server-config/02-network-basepath-and-endpoints.md`.
+- **No — browser preflight error:** configure `cors`; `allowedOrigins` alone is not CORS. Go to `references/08-server-config/03-cors-and-allowed-origins.md`.
+- **No — 401 or OAuth discovery flow begins:** the transport is reachable; continue to **4. Auth fails**.
+- **Yes:** continue to **3. Tools fail**.
 
-- **No, schema error / validation** → go to **D. Schemas**.
-- **No, auth error (401, 403)** → go to **E. Auth**.
-- **No, timeout / 504** → go to **F. Timeouts and transports**.
-- **No, response empty** → handler missing return. See `01-error-catalog.md` row "tool responses are empty".
-- **Yes, tool runs** → continue to Q4.
+## 3. Tools fail
 
-**Q4.** Does the widget render?
+**Does `tools/list` include the tool?**
 
-- **No, plain HTML / blank / missing provider** → go to **G. Widgets**.
-- **No, CSP violations** → go to `05-csp-violations.md`.
-- **Yes** → you're shipping.
+- **No:** verify the tool is registered on the served `MCPServer` instance before startup and inspect its exact name. If View typing is the only missing surface, export it as a module-level const and run `mcp-use typecheck`. Go to `references/04-tools/02-registering-a-tool.md`.
+- **Yes — call fails before callback:** input validation rejected the arguments. Read the schema error. Go to `references/04-tools/06-validation-pipeline.md`.
+- **Yes — callback runs but output validation fails:** return `structuredContent` matching `outputSchema`, or an `isError: true` result. Go to `references/04-tools/07-input-schema-vs-output-schema.md`.
+- **Yes — expected failure appears as success:** set `isError: true`. Go to `references/05-responses/05-error-handling.md`.
+- **Yes — `ctx.sample` missing:** sampling was removed. Go to `references/13-sampling/01-sampling-removed-in-v2.md`.
+- **Yes — `ctx.auth.user.userId` missing or request is 401:** continue to **4. Auth fails**.
+- **Tool succeeds:** continue to **5. Views fail** only if the UI is broken.
 
----
+## 4. Auth fails
 
-## A. Connect / startup
+**Does the request return 401 before callback execution?**
 
-1. Process running? `ps aux | grep node` or `gcloud run services describe ...`.
-2. Port? `lsof -i :3000` (local). Or platform's port logs.
-3. URL correct? Should be `/mcp`, not `/` or `/sse`.
-4. Server crashing on startup? Check logs for stack traces. Common: missing env var, bad import, port collision (`EADDRINUSE`).
-5. Firewall / network? `curl` from the same network as the client.
+- **Yes — no bearer header:** complete the client OAuth flow or send the bearer token.
+- **Yes — token present:** verify expiry, issuer, audience/resource, signature source, and required scopes. Go to `references/11-auth/06-debugging-checklist.md`.
+- **No — callback runs but user ID is undefined:** use `ctx.auth.user.id`, not `userId`. Go to `references/11-auth/03-ctx-auth-and-user-context.md`.
+- **Provider import fails:** use `mcp-use/oauth/<provider>`. Go to `references/11-auth/01-overview.md`.
+- **OAuth Proxy import or fixed-client flow fails:** native OAuth Proxy was removed. Use DCR or an external broker plus `oauthCustomProvider`. Go to `references/11-auth/07-oauth-proxy-removed.md`.
+- **Custom provider fails:** verify `createTokenVerifier`, `oauthMetadata`, and `mapAuthInfo` describe one consistent issuer/resource flow. Go to `references/11-auth/05-custom-provider-oauthcustomprovider.md`.
+- **Supabase-specific signature/audience failure:** verify project source, audience, and ES256-versus-HS256 mode. Go to `references/11-auth/providers/04-supabase.md`.
+- **Auth succeeds:** retry the tool, then continue to **5. Views fail** if needed.
 
-→ Specific symptoms: `01-error-catalog.md` § "Server lifecycle".
+## 5. Views fail
 
----
+**Does the tool succeed with both `content` and schema-valid `structuredContent`?**
 
-## B. Handshake
+- **No:** fix the tool result first. Go to `references/18-mcp-apps/server-surface/01-tool-view-field.md`.
+- **Yes — no View resource:** match `view.name` to `views/<name>/view.tsx`; remove v1 widget registration. Go to `references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md`.
+- **Yes — React import fails:** import from `mcp-use/react`, not `@mcp-use/react`.
+- **Yes — `useWidget` missing:** migrate to `useToolContext` and `useViewState`. Go to `references/28-migration/06-v1-to-v2-widgets-to-views.md`.
+- **Yes — loading forever or undefined output:** branch on `useToolContext().status` before reading `toolOutput`. Go to `references/18-mcp-apps/view-react/02-usetoolcontext.md`.
+- **Yes — blank with CSP console errors:** map the blocked directive to the narrow `view.csp` field. Go to `references/27-troubleshooting/05-csp-violations.md`.
+- **Yes — works in Inspector but not target host:** check MCP Apps support and host capabilities; retain a text fallback. Go to `references/18-mcp-apps/05-host-capability-detection.md`.
+- **Yes — works in dev but not deployment:** verify `.mcp-use/build/`, `MCP_URL`, `MCP_ASSETS_URL`, and production CSP. Go to `references/18-mcp-apps/server-surface/04-assets-mcp-url-and-serving.md`.
 
-1. Run `curl -i -X POST {url} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'`.
-2. Got HTML back? Wrong endpoint, proxy returning a redirect, or auth gate.
-3. Got 401 / 403? Auth not set up correctly — go to **E. Auth**.
-4. Got `protocol version mismatch`? Upgrade `mcp-use`. Capability negotiation handles compatible versions.
-5. Got CORS preflight failure? `cors` not configured. Add explicit `cors` to `MCPServer`.
-
-→ Specific symptoms: `01-error-catalog.md` §§ "Schemas" and "CORS and CSP".
-
----
-
-## C. Tool registration
-
-1. Tools registered **before** `server.listen()`?
-2. Two `MCPServer` instances? Search for `new MCPServer` — should be exactly one.
-3. Run `client.listTools()` — does it return `[]`? Then it's a registration order problem.
-4. Tool name typo? Names are case-sensitive.
-
-→ `01-error-catalog.md` §§ "Server lifecycle".
-
----
-
-## D. Schemas
-
-1. Read the Zod error — it names the failing field.
-2. Use `.describe()` on every schema field.
-3. Use `z.coerce.number()` / `.boolean()` for forgiving parsing.
-4. `.default()` on optional fields where it makes sense.
-5. Test in the Inspector — its tool form pre-validates.
-
-→ `01-error-catalog.md` § "Schemas and validation".
-
----
-
-## E. Auth
-
-**Q.** Is this OAuth + Supabase?
-
-- **Yes** → `03-oauth-and-supabase-issues.md`.
-- **No, generic OAuth 401** → token expired or scopes wrong. Decode the JWT, compare claims.
-- **`ctx.auth` undefined in handler** → upgrade to `mcp-use@^1.21.4`.
-- **DCR-related** (`Incompatible auth server`, `registration_endpoint`) → `03-oauth-and-supabase-issues.md` and `28-migration/05-dcr-vs-proxy-mode-shift.md`.
-- **DNS rebinding 403** → add domain to `allowedOrigins`.
-
----
-
-## F. Timeouts and transports
-
-1. **SSE drops at 60s** → proxy idle timeout. Or migrate to Streamable HTTP (`28-migration/03-sse-to-streamable-http.md`).
-2. **Long tool timeouts** → use `ctx.reportProgress`. Or async job pattern.
-3. **413 Payload Too Large** → switch to `resources` for large data. Adjust nginx `client_max_body_size`.
-4. **Session lost between requests** → client not echoing `Mcp-Session-Id`. Use SDK's `StreamableHTTPClientTransport`. Configure `sessionStore`.
-5. **404 after server restart** → in-memory session store. Use `RedisSessionStore`.
-
-→ `01-error-catalog.md` §§ "Sessions" and "Transports and proxies".
-
----
-
-## G. Widgets
-
-1. **Plain HTML / no React** → host doesn't speak MCP Apps. Check the host. See `04-widget-rendering-issues.md`.
-2. **Blank** → CSP violation. Open browser DevTools console. Map directive → `widgetMetadata.metadata.csp` field. See `05-csp-violations.md`.
-3. **`useWidget` outside provider** → wrap in `<McpUseProvider>`.
-4. **React Router broken** → wrap in `<BrowserRouter>` manually (v1.20.1+).
-5. **Vite cold-start 504 on first render** → upgrade to v1.25.2+.
-
-→ `04-widget-rendering-issues.md`.
-
----
-
-## When the tree doesn't help
-
-Open `01-error-catalog.md` and grep for the exact error string. Every known error in the catalog has a one-line cause and a one-line fix. If the error isn't there, the catalog isn't aware of it — search the mcp-use GitHub issues by the same string.
+If no branch matches, search `references/27-troubleshooting/01-error-catalog.md` for the exact error. Then reproduce with the Inspector, request logs, and a curl handshake in that order using `references/23-debug/01-debugging-workflow.md`.

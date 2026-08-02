@@ -10,7 +10,7 @@ import { MCPServer } from "mcp-use";
 const server = new MCPServer({
   name: "multi-api-gateway",
   version: "1.0.0",
-  baseUrl: process.env.MCP_URL || "http://localhost:3000",
+  basePath: "/mcp",
 });
 
 // Proxy two upstream servers with independent auth
@@ -40,7 +40,7 @@ server.tool(
   })
 );
 
-await server.listen(process.env.PORT || 3000);
+await server.listen();
 ```
 
 ## Environment

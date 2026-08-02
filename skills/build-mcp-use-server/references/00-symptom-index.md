@@ -1,28 +1,72 @@
 # Symptom Index
 
-Use this file when the user gives an error string, observable failure, or "it does not work" report. Match the symptom first, run the diagnostic command, then open the first reference. Do not start with the full reference inventory.
+*Entry point when the user brings an error or misbehavior rather than a feature request. Match the symptom family, open the entry file, then follow its pointers. For symptom-by-symptom first checks, `references/27-troubleshooting/02-quick-diagnostic-table.md` is the finer-grained companion.*
 
-| Symptom or error fragment | Likely cause | First reference | First diagnostic command |
-|---|---|---|---|
-| `Cannot find module 'mcp-use/server'`, `ERR_PACKAGE_PATH_NOT_EXPORTED`, `SyntaxError: Unexpected token export` | Missing `mcp-use`, CommonJS package mode, or non-Node16/NodeNext TypeScript resolution | `02-setup/01-prerequisites.md` | `node -p "require('./package.json').type" && npm ls mcp-use typescript` |
-| `Cannot find module 'zod'`, TypeScript cannot resolve Zod types | `zod` missing from the project's own dependencies | `02-setup/01-prerequisites.md` | `node -e "const p=require('./package.json'); console.log((p.dependencies||{}).zod || 'zod missing from dependencies')"` |
-| Inspector connects but no tools are listed | Tool registration order, wrong entry file, or multiple `MCPServer` instances | `27-troubleshooting/06-decision-tree.md` | `rg "new MCPServer|server\\.tool|mcp-use dev|generate-types" .` |
-| HTTP returns HTML, wrong endpoint, or handshake fails | Calling `/`, `/inspector`, a proxy redirect, or an auth gate instead of `/mcp` | `22-validate/02-curl-handshake.md` | `curl -i -X POST "$MCP_URL" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'` |
-| `ctx.auth` is undefined in a protected tool | OAuth not mounted, request missing bearer token, or old `mcp-use` auth-context regression | `11-auth/03-ctx-auth-object.md` | `npm ls mcp-use && rg "oauth|ctx\\.auth|Authorization" src index.ts` |
-| `Incompatible auth server`, missing `registration_endpoint`, DCR failure | Provider does not support DCR or `.well-known` metadata is wrong | `11-auth/02-dcr-vs-proxy-mode.md` | `curl -sS "$MCP_URL/.well-known/oauth-authorization-server" | jq '{issuer,registration_endpoint,authorization_endpoint,token_endpoint}'` |
-| Supabase OAuth redirect mismatch, PKCE failure, token exchange failure | Supabase DCR/proxy mismatch, localhost redirect allowlist, or custom token handler bug | `27-troubleshooting/03-oauth-and-supabase-issues.md` | `rg "oauthSupabaseProvider|oauthProxy|SUPABASE|redirect_uri|code_verifier" .` |
-| Session lost, 404 after restart, `Mcp-Session-Id` drift | Client not echoing session header, in-memory store after restart, or missing Redis store | `10-sessions/02-lifecycle.md` | `curl -i -X POST "$MCP_URL/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | rg -i "mcp-session-id|mcp-protocol-version"` |
-| Notification, progress, sampling, or resource update not delivered | Stateless mode, unsupported client capability, no progress token, or missing `RedisStreamManager` in multi-instance deploy | `14-notifications/06-when-notifications-fail.md` | `rg "stateless|sendNotification|reportProgress|ctx\\.sample|notifyResourceUpdated|RedisStreamManager" src index.ts` |
-| Widget blank, plain HTML, or CSP violation | Host lacks MCP Apps support, CSP blocked assets/fetches, or wrong widget MIME/protocol | `27-troubleshooting/04-widget-rendering-issues.md` | `rg "widgetMetadata|server\\.uiResource|type: .mcpApps.|connectDomains|resourceDomains|frameDomains" resources src index.ts` |
-| `useWidget` or `useCallTool` throws outside provider | Widget tree is not wrapped in `McpUseProvider` | `18-mcp-apps/widget-react/01-mcpuseprovider.md` | `rg "McpUseProvider|useWidget|useCallTool" resources src` |
-| Next.js drop-in alias failure, Tailwind mismatch, or `server-only` import error | `--mcp-dir` layout, path alias, or server-only shim mismatch | `19-nextjs-drop-in/01-overview.md` | `rg -- "--mcp-dir|server-only|paths|tailwind|@/" package.json tsconfig.json next.config.* mcp src app` |
-| `/health` or `/ready` returns HTML, 404, or blocks deploy | Health/readiness route missing or registered after Inspector catch-all | `24-production/05-health-routes.md` | `curl -i "$MCP_URL/health" && curl -i "$MCP_URL/ready"` |
+## Install, imports, startup
 
-## Escalation path
+| Symptom | Entry |
+|---|---|
+| `Cannot find module 'mcp-use/server'` or `MCPServer` import fails | `references/26-anti-patterns/01-sdk-misuse.md` — v2 imports from `mcp-use` root; a `/server` import means v1 code → `references/28-migration/02-v1-to-v2-overview.md` |
+| `require is not defined` / CJS build errors | `references/02-setup/01-prerequisites.md` — v2 is ESM-only, Node >= 22 |
+| Zod version conflicts, `_zod` type errors | `references/26-anti-patterns/03-schemas.md` — v2 requires zod v4 / Standard Schema |
+| Server exits before listening, port/env errors | `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md` |
+| Installed `mcp-use` but APIs in this skill are missing | `references/00-version-drift.md` — `latest` is v1; v2 is the `beta` tag |
 
-If the symptom is absent here:
+## Connection and transport
 
-1. Grep the troubleshooting cluster for the exact error string: `rg -n "<error fragment>" references/27-troubleshooting references/23-debug references/22-validate`.
-2. Run the curl handshake from `22-validate/02-curl-handshake.md` to separate transport failure from tool failure.
-3. Use Inspector RPC logging (`20-inspector/07-rpc-logging.md`) when the wire payload matters.
-4. Use `test-by-mcpc-cli` for a live named-session check after the server is running.
+| Symptom | Entry |
+|---|---|
+| Client expects a stdio command / 404 at `/sse` | `references/09-transports/05-no-stdio-and-sse-history.md` |
+| 404 / HTML at the MCP endpoint | `references/09-transports/02-streamable-http.md` — default route is `/mcp`; verify with the curl handshake in `references/22-validate/02-curl-handshake.md` |
+| Browser CORS errors | `references/08-server-config/03-cors-and-allowed-origins.md` |
+| 403 host validation | `references/08-server-config/04-dns-rebinding-and-host-validation.md` |
+| Works locally, dead in container/cloud | `references/08-server-config/02-network-basepath-and-endpoints.md` then `references/25-deploy/01-decision-matrix.md` |
+
+## Tools, schemas, results
+
+| Symptom | Entry |
+|---|---|
+| Tool missing from `tools/list` | `references/04-tools/02-registering-a-tool.md` |
+| Call rejected before the callback runs | `references/04-tools/06-validation-pipeline.md` |
+| Output/structuredContent validation failure | `references/04-tools/07-input-schema-vs-output-schema.md` |
+| v1 helpers (`text()`, `object()`, `widget()`) flagged deprecated | `references/05-responses/07-deprecated-v1-helpers.md` |
+| Client shows raw JSON instead of readable output | `references/05-responses/01-overview-decision-table.md` |
+
+## Auth
+
+| Symptom | Entry |
+|---|---|
+| 401 before the tool callback | `references/27-troubleshooting/03-oauth-issues.md` |
+| `ctx.auth.user.userId` undefined | `references/11-auth/03-ctx-auth-and-user-context.md` — v2 uses `user.id` |
+| `oauthProxy` import missing | `references/11-auth/07-oauth-proxy-removed.md` |
+| Provider setup fails (clerk/auth0/workos/supabase/keycloak/better-auth) | the matching file under `references/11-auth/providers/` + `references/11-auth/06-debugging-checklist.md` |
+
+## Views / MCP Apps / ChatGPT
+
+| Symptom | Entry |
+|---|---|
+| View not discovered or blank | `references/27-troubleshooting/04-view-rendering-issues.md` |
+| CSP violations in the iframe console | `references/27-troubleshooting/05-csp-violations.md` |
+| `useWidget` / `McpUseProvider` / `@mcp-use/react` not found | `references/28-migration/06-v1-to-v2-widgets-to-views.md` — v2 hooks live in `mcp-use/react` |
+| View renders in Inspector but not in the host | `references/18-mcp-apps/05-host-capability-detection.md` |
+| ChatGPT-specific rendering differences | `references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md` and `references/20-inspector/08-debugging-chatgpt-apps.md` |
+
+## Advanced protocol
+
+| Symptom | Entry |
+|---|---|
+| `ctx.sample is not a function` | `references/13-sampling/01-sampling-removed-in-v2.md` |
+| Elicitation never returns / handler re-runs unexpectedly | `references/12-elicitation/01-overview.md` — v2 re-entry model |
+| Notifications not reaching the client | `references/14-notifications/01-overview.md` — stateless delivery limits |
+| Session state disappears between calls | `references/10-sessions/01-overview-stateless-truth.md` |
+
+## CLI, build, deploy
+
+| Symptom | Entry |
+|---|---|
+| `mcp-use: command not found` or unknown command (`serve`, `generate-types`) | `references/03-cli/01-overview.md` |
+| Stale output in production | `references/03-cli/04-mcp-use-build-and-typecheck.md` — artifact is `.mcp-use/build/` |
+| Deploy fails or 80 MB limit | `references/03-cli/06-mcp-use-deploy-and-cloud.md` |
+| Platform-specific runtime errors | `references/25-deploy/platforms/10-runtime-patterns.md` then the platform file |
+
+Still ambiguous after the entry file? Walk `references/27-troubleshooting/06-decision-tree.md` top to bottom.

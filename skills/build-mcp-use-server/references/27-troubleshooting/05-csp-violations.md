@@ -1,120 +1,114 @@
 # CSP Violations
 
-Reading the browser console violation, mapping it to a `widgetMetadata.metadata.csp` field, and verifying with the Inspector's CSP mode.
+*Read this when a View iframe reports a blocked connection, asset, frame, or base URL.*
 
----
+View CSP is declared on the tool's `view` field. Do not configure it through v1 `widgetMetadata` or a manually registered UI resource.
 
-## 1. The shape of a CSP violation in the console
+## Read the browser error literally
 
-Browser DevTools (Chrome/Edge example):
+Extract the blocked URL and directive:
 
-```
+```text
 Refused to connect to 'https://api.example.com/data' because it violates
-the following Content Security Policy directive: "connect-src 'self' https://your-server.com".
+"connect-src 'self' https://mcp.example.com".
 ```
 
-Three things to extract:
+The blocked origin is `https://api.example.com`; the relevant category is `connectDomains`.
 
-1. **The action that was blocked** — `connect`, `script`, `style`, `img`, `frame`, `font`.
-2. **The directive that blocked it** — `connect-src`, `script-src`, etc.
-3. **The blocked origin** — `https://api.example.com` in this example.
+## Map directives to v2 fields
 
----
+| Browser directive or activity | v2 `view.csp` field |
+|---|---|
+| `fetch`, XHR, EventSource, WebSocket; `connect-src` | `connectDomains` |
+| scripts, styles, images, fonts; related resource directives | `resourceDomains` |
+| iframes and embeds; `frame-src` | `frameDomains` |
+| `<base href>`; `base-uri` | `baseUriDomains` |
 
-## 2. Map the directive to the widget metadata field
+Add origins, not full request paths, unless the host/spec explicitly permits a more specific source expression.
 
-mcp-use translates camelCase widget metadata fields into CSP directives in the iframe:
-
-| CSP directive       | `widgetMetadata.metadata.csp.*` field | Use for                                    |
-|---------------------|---------------------------------------|--------------------------------------------|
-| `connect-src`       | `connectDomains`                      | `fetch`, `XMLHttpRequest`, `WebSocket`, EventSource. |
-| `script-src`        | `resourceDomains`                     | External JS bundles, CDN scripts.          |
-| `style-src`         | `resourceDomains`                     | External CSS.                              |
-| `img-src`           | `resourceDomains`                     | Images served from external origins.       |
-| `font-src`          | `resourceDomains`                     | External fonts.                            |
-| `frame-src`         | `frameDomains`                        | Embedded iframes (YouTube, Stripe, etc.).  |
-| `base-uri`          | `baseUriDomains`                      | The widget's `<base href>`.                |
-
-If the violation says `connect-src`, you fix it in `connectDomains`. If it says `script-src`, you fix it in `resourceDomains`. The mapping is strict — `connectDomains` won't unblock a script load.
-
----
-
-## 3. Add the origin to the widget metadata
-
-When registering the widget resource:
+## Declare CSP on the tool
 
 ```typescript
-server.resource({
-  name: "my-widget",
-  uri: "ui://widget/my-widget.html",
-  metadata: {
-    csp: {
-      connectDomains: ["https://api.example.com"],
-      resourceDomains: ["https://cdn.example.com"],
-      frameDomains: ["https://www.youtube.com"],
-      baseUriDomains: ["https://app.example.com"],
+export const dashboard = server.tool(
+  {
+    name: "show-dashboard",
+    description: "Load and display the account dashboard.",
+    outputSchema: DashboardSchema,
+    view: {
+      name: "dashboard",
+      csp: {
+        connectDomains: ["https://api.example.com"],
+        resourceDomains: ["https://cdn.example.com"],
+        frameDomains: ["https://embed.example.com"],
+      },
     },
   },
-}, async () => readFile("./resources/my-widget.html"));
+  callback,
+);
 ```
 
-After redeploy, the iframe's CSP meta tag includes the new origin.
+See `references/18-mcp-apps/server-surface/05-csp-metadata.md`.
 
----
+## Use environment policy when appropriate
 
-## 4. Auto-injected origins (since v1.16.1)
+The runtime merges author policy with CSP environment variables and auto-appended MCP origins:
 
-mcp-use automatically adds:
+```bash
+CSP_CONNECT_DOMAINS=https://api.example.com
+CSP_RESOURCE_DOMAINS=https://cdn.example.com
+CSP_FRAME_DOMAINS=https://embed.example.com
+CSP_BASE_URI_DOMAINS=https://app.example.com
+```
 
-- The MCP server's own origin to `connectDomains` and `resourceDomains` (so the widget can call back to the server).
-- The request origin (from `X-Forwarded-Host` or `Host`) when behind a proxy (since v1.16.0).
+`CSP_URLS` adds listed origins to all four categories and is therefore broader. Prefer category-specific variables when the requirement is known.
 
-You don't need to declare your own server domain. You **do** need to declare every external origin the widget touches.
+## Understand the merge
 
----
+The effective policy combines:
 
-## 5. The Inspector's CSP mode
+1. author `view.csp`;
+2. `CSP_*_DOMAINS` or `CSP_URLS`; and
+3. automatically added MCP and asset origins.
 
-The Inspector has a "CSP mode" toggle that simulates the production iframe sandbox. Without it, the Inspector renders the widget in a permissive iframe and you won't see violations until production.
+`MCP_URL` contributes the MCP origin to `connectDomains`. The assets origin contributes to `resourceDomains`. An incorrect public `MCP_URL` or `MCP_ASSETS_URL` can therefore produce a production-only violation.
 
-- **Toggle on** → simulates the real CSP. Violations show in the browser console exactly as they will in production.
-- **Toggle off** → permissive — useful only for "is the widget even rendering?" checks.
+## Separate CSP from server CORS
 
-Always run with CSP mode on before declaring a widget ready. See `../20-inspector/11-protocol-toggle-and-csp-mode.md` for the toggle's location and behavior.
+A successful CSP check does not mean the external API will accept the request. The destination may still reject it with CORS. Conversely, permissive server CORS does not allow the View iframe to reach an origin absent from View CSP.
 
----
+Debug in order:
 
-## 6. Common patterns
+1. CSP must allow the browser to send the request.
+2. Destination CORS must allow the View origin to read the response.
+3. Authentication and application authorization must accept it.
 
-| Widget needs to ...                       | Add to                |
-|-------------------------------------------|-----------------------|
-| Call your own MCP server (`/mcp`)         | Auto-injected. Nothing. |
-| Call a public API (e.g. `api.openai.com`) | `connectDomains`      |
-| Load Tailwind from a CDN                  | `resourceDomains`     |
-| Embed a YouTube video                     | `frameDomains`        |
-| Use Google Fonts                          | `resourceDomains` (for `fonts.googleapis.com` and `fonts.gstatic.com`) |
-| Load Stripe Elements                      | `resourceDomains` and `frameDomains` |
-| Make WebSocket calls                      | `connectDomains` (with `wss://`) |
+## Development-only failures
 
----
+`mcp-use dev` uses Vite and HMR. The framework adds the serving origin and WebSocket variant needed for HMR. If development CSP still blocks HMR, verify that the View is served through the normal dev command and that the public/tunnel origin is correct; do not add arbitrary wildcard WebSocket origins.
 
-## 7. Inline scripts and styles
+## Production-only failures
 
-By default, the iframe sandbox forbids inline `<script>` and inline event handlers. If you've copy-pasted HTML with `<script>console.log(...)</script>` or `onclick="..."`, the browser will block it.
+Check:
 
-**Fix:** Move scripts to an external file in the widget's bundle, or use React event handlers (which compile down without inline attributes).
+- the deployed MCP origin in `MCP_URL`;
+- the CDN/assets origin in `MCP_ASSETS_URL`;
+- redirects to a different origin;
+- fonts, CSS, images, and scripts loaded by third-party packages; and
+- iframe providers that use more than one origin.
 
-`unsafe-inline` is **not** an option in production widgets — mcp-use does not expose a knob to enable it.
+Use `mcp-use screenshot` or the Inspector with production-like CSP enforcement after deployment. See `references/23-debug/03-view-debugging.md`.
 
----
+## Do not weaken policy to hide the error
 
-## 8. After every CSP fix
+Do not add every origin to `CSP_URLS`, declare broad wildcards, or attempt to enable `unsafe-inline` just to make a blank View render. Add the smallest exact origins required by the View's behavior.
 
-1. Rebuild: `npm run build`.
-2. Redeploy if testing live.
-3. Hard refresh in the Inspector (or any host) — iframes are cached aggressively.
-4. Re-check console — confirm zero violations before shipping.
+## Verification loop
 
----
+1. Reproduce the violation in the Inspector or target host.
+2. Record directive and blocked origin.
+3. Add it to the narrow matching category.
+4. Restart `mcp-use dev` or rebuild/redeploy.
+5. Hard-refresh the host iframe.
+6. Confirm the original console violation is gone and no new violation replaces it.
 
-For broader widget rendering troubleshooting (blank, plain HTML, missing provider), see `04-widget-rendering-issues.md`. For widget anti-patterns, see `18-mcp-apps/widget-anti-patterns/`.
+For non-CSP rendering failures, return to `references/27-troubleshooting/04-view-rendering-issues.md`.

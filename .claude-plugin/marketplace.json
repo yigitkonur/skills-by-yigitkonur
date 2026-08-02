@@ -501,7 +501,7 @@
     {
       "name": "build-mcp-use-server",
       "source": "./",
-      "description": "Use if building TypeScript MCP servers with mcp-use/server — server.tool, ctx.auth, transports.",
+      "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers.",
       "version": "1.0.42",
       "category": "mcp",
       "strict": false,

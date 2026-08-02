@@ -1,5 +1,7 @@
 # Resources Overview
 
+*Read this when deciding whether and how to expose resources from a v2 server.*
+
 A **resource** is read-only data the agent can fetch by URI — config files, database records, documents, logs, binary assets. Resources have no side effects. For mutating actions, use a tool.
 
 ## When to use a resource
@@ -15,7 +17,7 @@ If the data varies per request (per-user, per-id), use a **template**. Otherwise
 ## API
 
 ```typescript
-import { object, text } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 
 // Static — fixed URI
 server.resource(
