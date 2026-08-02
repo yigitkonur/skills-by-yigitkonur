@@ -2,7 +2,7 @@
 
 ## `Unknown command` after a URL target
 
-You are probably using `0.1.11` syntax such as:
+You are probably using pre-0.2.0 syntax such as:
 
 ```bash
 mcpc https://host/mcp tools-list
@@ -24,38 +24,54 @@ Use the command form instead:
 mcpc clean sessions
 ```
 
-## `Entry not found` or config target confusion
+## `Server "<name>" not found in config file`
 
 Check both of these:
 
 - the config root key is `mcpServers`
 - the connect target is `file:entry`, for example `mcpc connect .vscode/mcp.json:filesystem @fs`
 
+The error lists available server names from the file, so a typo'd entry is easy to spot. Relative `file:entry` paths (e.g. `docs/mcp-config.json:fs`) are correctly parsed as config references, not URLs — fixed since 0.3.0, which previously misinterpreted them as HTTP targets.
+
 ## Session created but calls fail immediately
 
 The MCP path is probably wrong.
 A host root is not always the MCP endpoint.
-For example, `https://research.yigitkonur.com/mcp` works, while `https://research.yigitkonur.com` does not.
+For example, `https://research-mcp.yigitkonur.com/mcp` works, while `https://research-mcp.yigitkonur.com` does not.
 
-## Tool call exits `0` but still failed
+## `tools-call --task`/`--detach` errors instead of running
 
-Inspect the JSON payload.
-You likely have `isError: true`.
-Common causes:
+Since 0.6.0, `--task`/`--detach` on a connection that can't back it **fails outright** — no more silent fallback to a synchronous call. Two distinct messages, both exit `2`:
+
+- no tasks at all on this protocol (2026-07-28 moved tasks to an unsupported extension): `Tasks are not available on this connection: MCP 2026-07-28 moved tasks to the io.modelcontextprotocol/tasks extension, which is not supported yet...`
+- server doesn't advertise the capability: `This server does not support task-augmented tool calls (no tasks.requests.tools.call capability), so --task/--detach cannot be used. Re-run the command without them to call the tool synchronously`
+
+Fix: drop `--task`/`--detach` for a plain sync call, or check `tools-list` for the tool's `[task:optional|required|forbidden]` annotation first.
+
+## Tool call exits non-zero
+
+For `tools-call` and `tasks-result`, exit `2` is a reliable signal since v0.5.0 — any `isError: true` result exits `2`. Still inspect the JSON payload for the reason. Common causes:
 
 - argument shape mismatch, such as `queries:=OpenAI` instead of a JSON array
-- sampling demo tools on Everything returning `Method not found`
 - a `task:required` tool called without `--task` or `--detach`
+- an unknown tool name, a schema-validation rejection, or a runtime failure inside the tool
 
-## `tasks-get` does not show the final result body
+Exit code alone is *not* sufficient for other command families (e.g. `resources-read` writing to a file, or any "found nothing" case not modeled as `isError`) — payload inspection is the richer signal there.
 
-That is current `0.2.4` behavior.
-Use `--task` when you need the final result in the CLI.
-Do not expect a standalone `tasks-result` command.
+`tasks-result <taskId>` (a real command, works cross-process) blocks until the task is terminal and returns the final `CallToolResult` — including when called from a different shell/process than the one that started the task with `--detach`. Fetching a cancelled task's result fails cleanly (exit `2`, "has no result stored"), not a crash.
 
-## Session stuck in `unauthorized` or `expired`
+## `mcpc restart @name` on a session that doesn't exist
 
-Inspect `mcpc --json` status, then either reconnect with the right auth mode or clean stale session records:
+```
+$ mcpc restart @nonexistent
+Error: Session not found: @nonexistent
+```
+
+Exits `1` (a CLI usage error, not an MCP round-trip) — the name was never created, so there is nothing to restart. Use `mcpc` (no args) to see the sessions that actually exist.
+
+## Session stuck in `unauthorized`, `expired`, or `disconnected`
+
+`mcpc` (bare) prints a recovery hint under each non-live session. `expired` needs `mcpc @session restart`. `unauthorized` needs `mcpc login <server>` then `mcpc @session restart` — a session using a static bearer/`-H` header stays `unauthorized` and does not auto-retry (fixed in 0.3.0, so it no longer flip-flops between `unauthorized` and `connecting` on every invocation); an OAuth-profile session does auto-retry in the background, since a sibling session sharing the profile may have refreshed the token. `disconnected` (bridge alive, server gone quiet >2min) usually self-recovers; `mcpc @session restart` forces a fresh connection if it stays stuck. Inspect `mcpc --json` for the exact status field, then clean stale records if needed:
 
 ```bash
 mcpc clean sessions
@@ -64,4 +80,16 @@ mcpc clean sessions
 ## HTTP server works in a browser, but `mcpc` fails
 
 Check whether the server is actually Streamable HTTP.
-If the bridge log shows `Cannot POST /sse` or `Cannot POST /`, you are probably pointing `mcpc` at an SSE endpoint.
+If the bridge log shows `Cannot POST /sse` or `Cannot POST /`, you are probably pointing `mcpc` at an SSE endpoint. For a stdio server, `mcpc connect` failures now include a tail of the child process's captured stderr (since 0.3.0) — check `mcpc @session logs` for the full picture (missing TLS trust, proxy vars, or credentials are common causes).
+
+## `server-discover` fails on an older connection
+
+```
+$ mcpc @session server-discover
+Error: server/discover is not available on this connection: it was introduced in
+MCP 2026-07-28, and this connection negotiated 2025-11-25, where the initialize
+handshake carries the same information. Run "mcpc @session" to see it, or
+"mcpc @session ping" to check liveness
+```
+
+Exits `2`. Not a bug — `server/discover` only exists on 2026-07-28 connections; `mcpc @session` and `mcpc @session ping` are the working alternatives on older negotiated versions.

@@ -107,7 +107,7 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 - **[build-mcp-use-agent](skills/build-mcp-use-agent/)** — mcp-use `MCPAgent`: an llm picks & orchestrates mcp tools via `run`, `stream`, `streamEvents`.
 - **[build-clean-mcp-architecture](skills/build-clean-mcp-architecture/)** — clean architecture layer boundaries for typescript mcp-use/server code, import direction, dependency-cruiser gates.
 - **[convert-mcp-sdk-v1-to-v2](skills/convert-mcp-sdk-v1-to-v2/)** — port a v1 mcp server to the v2 split-package sdk: package renames, `ServerContext`, zod v4.
-- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — drive the `mcpc` cli (0.2.x) to test/debug/smoke-check an mcp server over stdio or streamable http.
+- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — drive the `mcpc` cli (0.6.x) to test/debug/smoke-check an mcp server over stdio or streamable http.
 - **[audit-agentic-mcp](skills/audit-agentic-mcp/)** — audit an mcp server for agent-readiness, or design a new one before code: framework, security, context posture.
 - **[audit-agentic-cli](skills/audit-agentic-cli/)** — audit/design a cli for agent consumption: stable json, exit codes, non-interactive flags, repair loops.
 

@@ -1,13 +1,15 @@
 # Notification Handling
 
-`mcpc 0.2.x` has first-class task commands and still surfaces list-changed notification state through session metadata.
+Verified against `mcpc` 0.6.0. Sessions have first-class task commands and surface
+list-changed / resource-update notification state through **per-session** JSON.
 
 ## Where to inspect notification state
 
-Use top-level session JSON, not `mcpc --json @session`, when you want stored notification timestamps.
+Use **per-session** JSON (`mcpc --json @<session>`), not the top-level `mcpc --json`
+session list — the top-level entry omits `_mcpc.notifications` entirely.
 
 ```bash
-mcpc --json | jq '.sessions[] | select(.name == "@my-session") | .notifications'
+mcpc --json @my-session | jq '._mcpc.notifications'
 ```
 
 ## What to watch
@@ -16,30 +18,50 @@ mcpc --json | jq '.sessions[] | select(.name == "@my-session") | .notifications'
 - `prompts.listChangedAt`
 - `resources.listChangedAt`
 
-These timestamps tell you that discovery caches were invalidated and refreshed.
+Each key appears only after that notification type has fired at least once — a missing
+key means "not observed yet," not an error. `tools-list`/`prompts-list`/`resources-list`
+stay current either way; these timestamps are just the audit trail. On `2026-07-28`
+connections there are no unsolicited server notifications — the bridge instead opens a
+`subscriptions/listen` stream at connect and re-opens it automatically if it drops, so the
+observable behavior (fresh lists, updated timestamps) is unchanged from the CLI side.
 
 ## Resources and subscriptions
 
 ```bash
-mcpc @everything-http resources-subscribe demo://resource/dynamic/config
+mcpc @everything-http resources-subscribe demo://resource/dynamic/config ./config-sync.json
 mcpc @everything-http resources-unsubscribe demo://resource/dynamic/config
 ```
 
-Use bridge logs together with session JSON when you need to prove a subscription update happened.
+`<file>` is required (since v0.4.0): the bridge downloads the resource immediately, then
+rewrites `<file>` on every `notifications/resources/updated` event while connected. To
+prove an update notification actually fired (not just that the file happens to match),
+correlate the file's mtime with `mcpc @everything-http logs | rg
+'resources/updated|resource-sync'`. Sync mechanics and the `resourceSubscriptions` JSON
+field live in `references/guides/tool-resource-testing.md`; this file is about observing
+the notification itself.
 
-## Tasks are no longer “unsupported”
-
-Use the public task surface directly:
+## Tasks are first-class
 
 ```bash
 mcpc @everything-http tools-call simulate-research-query topic:='"notify"' --task
 mcpc @everything-http tools-call simulate-research-query topic:='"detach"' --detach
 mcpc @everything-http tasks-list
 mcpc @everything-http tasks-get <taskId>
+mcpc @everything-http tasks-result <taskId>
 mcpc @everything-http tasks-cancel <taskId>
 ```
 
-## Shell note
+`tasks-result <taskId>` recovers a detached task's final result body — including from a
+separate process invocation — not just its status.
 
-`shell` is session-only in `0.2.4`.
-Do not document direct-URL shell commands.
+## Deprecation warnings aren't failures
+
+`logging-set-level` still succeeds (exit `0`) on `2025-11-25` servers despite printing `⚠
+logging-set-level is deprecated ... will be removed in a future mcpc release` — that's
+advance notice about a **future** spec version dropping the underlying request, not a
+report that the current call failed. On an actual `2026-07-28` connection it errors
+outright instead of warning.
+
+`shell` — previously the only place server log messages (`notifications/message`) were
+visible live — was removed in v0.4.0; those messages now go straight to the bridge log,
+read them with `mcpc @<session> logs`.

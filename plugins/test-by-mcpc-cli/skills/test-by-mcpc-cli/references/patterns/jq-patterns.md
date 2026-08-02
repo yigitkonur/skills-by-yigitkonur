@@ -35,11 +35,15 @@ mcpc --json @research-test grep search | jq '.sessions[] | {name, toolCount: (.t
 ## Tasks
 
 ```bash
-mcpc --json @everything-http tasks-list | jq '.tasks[]? | {taskId, status, toolName}'
+mcpc --json @everything-http tasks-list | jq '.tasks[]? | {taskId, status, statusMessage}'
 mcpc --json @everything-http tasks-get <taskId> | jq '{taskId, status, statusMessage}'
 ```
 
+Task objects from `tasks-list`/`tasks-get` have no `toolName` field — don't
+project one. Use `tasks-result <taskId>` to get the real `CallToolResult`.
+
 ## Error handling reminder
 
-Successful MCP calls that still failed logically often return exit `0` with `isError: true`.
-That is why the payload check belongs in your pipeline.
+`isError: true` on a `tools-call`/`tasks-result` payload exits `2` (since
+v0.5.0) — but keep the payload check in your pipeline anyway; it's what
+tells you *why*.

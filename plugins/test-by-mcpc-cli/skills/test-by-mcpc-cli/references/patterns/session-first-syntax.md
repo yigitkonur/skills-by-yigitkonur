@@ -1,6 +1,7 @@
 # Session-First Syntax Migration
 
-Use this table when translating `0.1.11` examples to `0.2.x`.
+Use this table when translating pre-`0.2.0` (`0.1.11`) examples to current `0.6.0` syntax.
+Every "Current pattern" below is still correct at `0.6.0`.
 
 | Old pattern | Current pattern |
 |---|---|
@@ -9,10 +10,13 @@ Use this table when translating `0.1.11` examples to `0.2.x`.
 | `mcpc mcp.example.com tools-list` | `mcpc connect mcp.example.com @demo` then `mcpc @demo tools-list` |
 | `mcpc --clean=sessions` | `mcpc clean sessions` |
 | `mcpc x402 sign -r <base64>` | `mcpc x402 sign <payment-required>` |
+| `mcpc tools` / `mcpc resources` / `mcpc prompts` (shorthand, removed `0.3.0`) | `mcpc @session tools-list` / `resources-list` / `prompts-list` |
+| `mcpc @session tools/list` (raw MCP JSON-RPC method name) | Works since `0.6.0` — undocumented alias for `tools-list`; same session-first ordering, `mcpc help tools/list` does not resolve it |
 
 ## Migration rules
 
-- command-first for `connect`, `clean`, `login`, and `logout`
-- session-first for server operations after connect
+- command-first for `connect`, `login`, `logout`, `close`, `restart`, `clean`, `grep`, `x402`
+- session-first for every server operation after connect: `mcpc @session <command>` — `@session` always comes **before** the command, never after (`mcpc tools-list @session` fails with "Missing session target for command", confirmed live against `mcpc 0.6.0`)
 - `file:entry` instead of the old `--config file entry` surface
-- no direct one-shot server commands in the released `0.2.x` CLI
+- no direct one-shot server commands — `connect` first, always
+- the interactive `shell` command was removed in `0.4.0` — no replacement; run individual `mcpc @session <command>` calls instead

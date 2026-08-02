@@ -4,18 +4,19 @@ Separate advertised capability from usable CLI surface.
 
 ## Practical matrix
 
-| Area | What `mcpc 0.2.4` can do | Caveat |
+| Area | What `mcpc 0.6.0` can do | Caveat |
 |---|---|---|
-| tools | `tools-list`, `tools-get`, `tools-call` | inspect `isError` in JSON mode |
-| prompts | `prompts-list`, `prompts-get` | prompt schema validation is wired through `--schema` |
-| resources | `resources-list`, `resources-read`, `resources-subscribe`, `resources-unsubscribe`, `resources-templates-list` | subscriptions are easiest to observe through JSON or logs |
-| logging | `logging-set-level` | the server decides what messages exist |
-| tasks | `tools-call --task`, `--detach`, `tasks-list`, `tasks-get`, `tasks-cancel` | no standalone `tasks-result` command |
-| grep / discovery | `mcpc grep`, `mcpc @session grep`, `mcpc @session help` | default grep scope is tools plus instructions |
-| roots | some servers expose helper tools because the client advertises roots support | no dedicated roots configuration CLI |
-| completions | capability can appear in server info | no `mcpc completions` command |
-| sampling | some servers expose sampling demo tools | live calls can still return `isError: true` |
-| elicitation | not exposed as a first-class CLI workflow | Everything does not register the elicitation demo for `mcpc` |
+| tools | `tools-list`, `tools-get`, `tools-call` | `isError:true` sets exit code 2 (since v0.5.0); `--json` still carries the full payload |
+| prompts | `prompts-list`, `prompts-get` | no `--schema` on `prompts-get` — schema validation is `tools-get`/`tools-call` only (removed from prompts in v0.2.5) |
+| resources | `resources-list`, `resources-read`, `resources-subscribe <uri> <file>`, `resources-unsubscribe`, `resources-templates-list` | `resources-subscribe` does real file sync since v0.4.0 — downloads now, rewrites `<file>` on every server change notification, survives session restarts; `<file>` is a required positional arg |
+| skills | `skills-list`, `skills-get` | `[EXPERIMENTAL]` SEP-2640 server-published skills — unrelated to this pack's own SKILL.md; see `references/guides/skills-testing.md` |
+| tasks | `tools-call --task`, `--detach`, `tasks-list`, `tasks-get`, `tasks-cancel`, `tasks-result` | `tasks-result <taskId>` (since v0.2.6) blocks for the final result across process invocations; task commands aren't supported yet on 2026-07-28 connections |
+| discovery | `mcpc grep`, `mcpc @session grep`, `mcpc @session help`, `mcpc @session server-discover`, JSON-RPC method aliases (`tools/list`, `tools/call`, ...) | default grep scope is tools plus instructions; `server-discover` needs a 2026-07-28 connection — see `references/guides/protocol-versions.md` |
+| logging | `logging-set-level` | deprecated in v0.6.0; works only on 2025-11-25 (and older) servers, errors on 2026-07-28 |
+| roots | no dedicated roots configuration CLI | `mcpc` does not advertise the `roots` client capability (since v0.5.0); a server can still expose roots-aware demo tools as ordinary tool calls |
+| completions | capability can appear in server info | no `mcpc completions` command exists — confirmed live: `mcpc completions` exits 1, "Unknown command" |
+| sampling | some servers expose sampling demo tools | `mcpc` does not advertise the `sampling` client capability (since v0.5.0); demo tool calls can still return `isError: true` |
+| elicitation | not exposed as a first-class CLI workflow | still planned upstream, not shipped — no elicitation demo wired for `mcpc` |
 
 ## Rule of thumb
 
@@ -34,6 +35,8 @@ mcpc @session tools-list --full
 
 Then prove the edge with one real command:
 
-- `task:required` -> run one `tools-call --task` or `--detach`
+- `task:required` -> run one `tools-call --task` or `--detach`, then `tasks-result <taskId>` if detached
+- `skills` -> `mcpc @session skills-list`
+- `server-discover` -> only on a 2026-07-28 connection; older connections get an educational error (exit 2) — use `mcpc @session` there instead
 - `completions` -> treat as informational because there is no CLI command
-- sampling or roots-related helpers -> expect demo-grade behavior until the live result proves otherwise
+- sampling or roots -> the client advertises neither capability; a demo tool call is the only way to probe related behavior, and it can still return `isError: true`

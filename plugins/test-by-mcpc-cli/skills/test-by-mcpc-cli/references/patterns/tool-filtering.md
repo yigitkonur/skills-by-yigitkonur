@@ -22,4 +22,4 @@ mcpc --json @research-test tools-list | jq '.[] | select(.annotations.readOnlyHi
 
 - default grep scope is tools plus instructions
 - `--full` is mainly about richer human-mode output
-- filtering by `.execution.taskSupport` is useful in `0.2.x` because task support is now public CLI surface
+- filtering by `.execution.taskSupport` is useful in `0.6.0` because task support is now public CLI surface
