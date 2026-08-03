@@ -1,6 +1,6 @@
 {
   "name": "audit-agentic-cli",
-  "version": "1.0.47",
+  "version": "1.0.48",
   "description": "Use if auditing or designing a CLI for agent/LLM use — JSON output, exit codes, non-interactive.",
   "author": {
     "name": "Yigit Konur",
