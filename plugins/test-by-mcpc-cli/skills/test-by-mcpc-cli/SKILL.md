@@ -39,7 +39,7 @@ These rules apply across every workflow below. Each one is live-verified against
 | 1 | Always `connect` to a named `@session` before any MCP operation | mcpc is session-first; target-first one-shot commands do not exist |
 | 2 | Session reuse is name-keyed, not URL-keyed | `connect <url> @existing` reuses; `connect <url> @new` creates a second independent session; omitted `@name` auto-generates and reuses a per-server name |
 | 3 | Interpret exit codes together with output shape: `1` = CLI/session failure (and `grep` no-match); `2` = either an MCP `isError:true` result on stdout or a timeout/no-result `{error,code}` on stderr; `3`/`4` are documented network/auth codes but were not reproduced in this audit | Exit code identifies a broad class, not the exact cause; capture both streams and parse JSON |
-| 4 | A connection attempt to an unreachable target can exit `0` while creating a `reconnecting` session | `connect` success can mean “record created,” not “handshake live”; inspect exact-name status and run a real command |
+| 4 | A connection attempt to an unreachable target can exit `0` while creating a non-live `connecting` or `reconnecting` session | `connect` success can mean “record created,” not “handshake live”; inspect exact-name status and run a real command |
 | 5 | `mcpc clean` with no args removes stale data only; **named** targets (`clean sessions`, `clean logs`, `clean profiles`) delete ALL records of that kind, including live ones | `mcpc clean all` and named targets are destructive on shared machines |
 | 6 | Use only stdio or Streamable HTTP targets | mcpc 0.6.0 exposes no first-class HTTP+SSE test path |
 | 7 | Use `--no-profile` to force anonymous HTTP tests when saved OAuth would pollute the result | Profiles silently inject auth; anonymous reproduction needs explicit opt-out |
@@ -264,7 +264,7 @@ Read the smallest relevant set for the branch you are in.
 - Do not teach pre-0.2.0 target-first syntax, removed shorthand aliases, or the removed `shell` command unless explicitly documenting migration.
 - Do not tell users to test HTTP+SSE with `mcpc`; use Streamable HTTP or stdio instead.
 - Do not treat `tasks-get` status output as the task result — fetch detached bodies with `tasks-result`.
-- Do not treat `connect` exit `0` or a green banner as proof that the handshake is live; an unreachable target can leave a `reconnecting` session, so verify exact-name status and exercise the capability.
+- Do not treat `connect` exit `0` or a green banner as proof that the handshake is live; an unreachable target can remain `connecting` or move to `reconnecting`, so verify exact-name status and exercise the capability.
 - Do not assume advertised capabilities always mean polished CLI support, nor that missing demo tools mean a broken server — mcpc's non-advertised `sampling`/`roots`/`elicitation` capabilities suppress gated tools by design.
 - Do not run `mcpc clean all` — or any *named* `clean` target — casually on machines with saved profiles or live sessions; only no-args `clean` is stale-only.
 - Treat proxy `/health` as an unauthenticated liveness probe only — verify proxy auth with a real MCP request carrying (or omitting) the bearer token.

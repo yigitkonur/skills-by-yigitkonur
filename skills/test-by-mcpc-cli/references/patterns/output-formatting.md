@@ -36,7 +36,8 @@ Failures split across streams and payload shapes:
 - A timeout/no-result failure can also exit `2`, but emits
   `{"error":"...","code":2}` on `stderr` with no `content`/`isError` keys.
 - A pure CLI/session failure (bad flag, unknown session, a `--schema`/
-  `--schema-mode` mismatch, or a command against a `reconnecting` session)
+  `--schema-mode` mismatch, or a command against a non-live `connecting`/
+  `reconnecting` session)
   never reaches the server — it prints on `stderr`; `--json` uses the same
   `{error,code}` shape.
 
@@ -50,7 +51,7 @@ process ran:
 
 | Code | Meaning | Example |
 |---|---|---|
-| 0 | success | normal call; an unreachable `connect` can also create a `reconnecting` session with 0 |
+| 0 | success | normal call; an unreachable `connect` can also create a non-live `connecting`/`reconnecting` session with 0 |
 | 1 | CLI/session result | bad flag, unknown session, command against a broken connection; `grep` also uses 1 for no matches |
 | 2 | MCP result or no-result call failure | stdout `isError:true`, or stderr timeout `{error,code}` |
 | 3 / 4 | documented network / auth codes | upstream contract; not independently reproduced in this 0.6.0 audit |

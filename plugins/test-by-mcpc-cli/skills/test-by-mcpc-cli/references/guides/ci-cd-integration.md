@@ -36,6 +36,24 @@ RESULT=$(mcpc --json "$SESSION" tools-call web-search '{"queries":["OpenAI MCP"]
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 ```
 
+## Classify exact session state
+
+Use an exact-name classifier when a diagnostic must distinguish expected offline startup from release readiness:
+
+```bash
+STATUS=$(mcpc --json | jq -er --arg s "$SESSION" '
+  [.sessions[] | select(.name==$s) | .status]
+  | if length==1 then .[0] else error("expected exactly one named session") end
+')
+case "$STATUS" in
+  live) ;;                                      # release-ready
+  connecting|reconnecting) exit 1 ;;           # expected transient, not ready
+  *) echo "unexpected session status: $STATUS" >&2; exit 2 ;;
+esac
+```
+
+Keep the simple `status=="live"` assertion in ordinary smoke tests; use this classifier only when the runbook needs separate transient versus unexpected failure handling.
+
 ## Good CI assertions
 
 - session connected and appears as `live`
@@ -51,8 +69,8 @@ printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 - the exercised tool call returns `isError != true` in its `--json` payload
 - task-required tools still work with `--task` or `--detach`
 - documented exit `3` (network) / `4` (auth) are the README's stated contract, not
-  observed here — an unreachable-server connect exits 0 (session created,
-  `reconnecting`) and later commands against it exit 1, not 3
+  observed here — an unreachable-server connect exits 0 (session created in transient
+  `connecting` or `reconnecting` state) and later commands against it exit 1, not 3
 
 ## Cleanup guidance
 

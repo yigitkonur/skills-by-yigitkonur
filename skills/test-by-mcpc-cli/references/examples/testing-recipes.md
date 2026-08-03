@@ -51,14 +51,14 @@ array-vs-string mistake and confirm the exit code, not just the payload.
 ```bash
 mcpc connect http://127.0.0.1:19999/mcp @bad
 [ "$?" -eq 0 ]                        # this unreachable HTTP target still creates a session
-mcpc --json | jq -e '.sessions[] | select(.name=="@bad" and .status=="reconnecting")' >/dev/null
+mcpc --json | jq -e '.sessions[] | select(.name=="@bad" and (.status=="connecting" or .status=="reconnecting"))' >/dev/null
 mcpc @bad ping
 [ "$?" -eq 1 ]                        # the first live round-trip surfaces failure
 mcpc close @bad
 ```
 
-`connect` no longer fails on an unreachable target — it creates the session
-with a warning and lets it auto-recover if the server comes back. Assert the
+`connect` no longer fails on an unreachable target — it creates a non-live
+`connecting` or `reconnecting` session with a warning and lets it recover if the server comes back. Assert the
 failure on the first command that actually round-trips (`ping`, `tools-list`,
 ...); it exits `1` (a client-side connect failure, not the isError-driven `2`
 from a live tool call).

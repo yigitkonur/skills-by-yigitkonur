@@ -60,7 +60,7 @@ If you build higher-level wrappers, normalize Python-friendly names to the real 
 
 Documented exit `3` (network error) and `4` (auth error) are the upstream
 README contract, although the live paths audited here mapped an unreachable
-connect to **0** (`reconnecting`) and later commands to **1**, not 3. Preserve
+connect to **0** (transient `connecting` or `reconnecting`) and later commands to **1**, not 3. Preserve
 branches for 3/4 anyway, and fail closed on unknown future nonzero codes.
 
 ```python

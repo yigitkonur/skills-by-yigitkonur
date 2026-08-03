@@ -31,7 +31,7 @@ The error lists available server names from the file, so a typo'd entry is easy 
 
 ## Session created but calls fail immediately
 
-`mcpc connect` can exit `0` before transport establishment. An unreachable server creates a `reconnecting` session, and subsequent commands exit `1` until it connects; close it if the target is wrong. A host root is not always the MCP endpoint: `https://research-mcp.yigitkonur.com/mcp` works, while `https://research-mcp.yigitkonur.com` does not.
+`mcpc connect` can exit `0` before transport establishment. An unreachable server creates a non-live `connecting` or `reconnecting` session, and subsequent commands exit `1` until it connects; close it if the target is wrong. A host root is not always the MCP endpoint: `https://research-mcp.yigitkonur.com/mcp` works, while `https://research-mcp.yigitkonur.com` does not.
 
 ## `tools-call --task`/`--detach` errors instead of running
 

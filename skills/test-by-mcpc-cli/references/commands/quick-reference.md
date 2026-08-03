@@ -200,7 +200,7 @@ If a tool expects an array or object, send a JSON literal.
 
 | Code | Meaning |
 |---|---|
-| `0` | success; an unreachable `connect` can still return 0 while creating a `reconnecting` session |
+| `0` | success; an unreachable `connect` can still return 0 while creating a non-live `connecting`/`reconnecting` session |
 | `1` | CLI/session failure; `grep` also uses 1 for no matches |
 | `2` | MCP `isError:true` result on stdout, or timeout/no-result `{error,code}` on stderr |
 | `3` / `4` | documented network / auth failures — not independently reproduced live |
