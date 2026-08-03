@@ -1,15 +1,18 @@
 # Notification Handling
 
 Verified against `mcpc` 0.6.0. Sessions have first-class task commands and surface
-list-changed / resource-update notification state through **per-session** JSON.
+list-changed / resource-update notification state through JSON.
 
 ## Where to inspect notification state
 
-Use **per-session** JSON (`mcpc --json @<session>`), not the top-level `mcpc --json`
-session list — the top-level entry omits `_mcpc.notifications` entirely.
+Use the **top-level** `mcpc --json` session list, not per-session JSON — the flat
+`notifications` field lives on `.sessions[]` there. `mcpc --json @<session>` does **not**
+carry a `_mcpc.notifications` key in 0.6.0 despite what the README's prose implies; only
+the global list exposes it (confirmed by reading the shipped `sessions.js`/`connect.js`
+source and live-testing both JSON shapes).
 
 ```bash
-mcpc --json @my-session | jq '._mcpc.notifications'
+mcpc --json | jq '.sessions[] | select(.name=="@my-session") | .notifications'
 ```
 
 ## What to watch
@@ -18,18 +21,21 @@ mcpc --json @my-session | jq '._mcpc.notifications'
 - `prompts.listChangedAt`
 - `resources.listChangedAt`
 
-Each key appears only after that notification type has fired at least once — a missing
-key means "not observed yet," not an error. `tools-list`/`prompts-list`/`resources-list`
-stay current either way; these timestamps are just the audit trail. On `2026-07-28`
-connections there are no unsolicited server notifications — the bridge instead opens a
-`subscriptions/listen` stream at connect and re-opens it automatically if it drops, so the
-observable behavior (fresh lists, updated timestamps) is unchanged from the CLI side.
+The whole `notifications` field is absent (`null`) until the first list-changed event of
+any kind fires. After that, all three type keys (`tools`, `prompts`, `resources`) appear —
+possibly as empty objects — but `listChangedAt` itself only appears under the type that
+actually fired; a missing `listChangedAt` means "not observed yet," not an error.
+`tools-list`/`prompts-list`/`resources-list` stay current either way; these timestamps are
+just the audit trail. On `2026-07-28` connections there are no unsolicited server
+notifications — the bridge instead opens a `subscriptions/listen` stream at connect and
+re-opens it automatically if it drops, so the observable behavior (fresh lists, updated
+timestamps) is unchanged from the CLI side.
 
 ## Resources and subscriptions
 
 ```bash
-mcpc @everything-http resources-subscribe demo://resource/dynamic/config ./config-sync.json
-mcpc @everything-http resources-unsubscribe demo://resource/dynamic/config
+mcpc @everything-http resources-subscribe demo://resource/dynamic/text/1 ./text-sync.json
+mcpc @everything-http resources-unsubscribe demo://resource/dynamic/text/1
 ```
 
 `<file>` is required (since v0.4.0): the bridge downloads the resource immediately, then

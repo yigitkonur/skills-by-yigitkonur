@@ -60,7 +60,7 @@ cross-check there before assuming a server bug.
 
 | Check | Command | Expect |
 |---|---|---|
-| capability advertised when expected | `mcpc @session \| grep 'skills (experimental'` | line present |
+| capability advertised when expected | `mcpc --json @session \| jq '.capabilities.extensions,.capabilities.experimental'` | skills key present under either |
 | `skills-list` exits clean either way | `mcpc @session skills-list; echo $?` | exit `0` |
 | JSON shape is an array | `mcpc --json @session skills-list \| jq 'type=="array"'` | `true` |
 | known skill readable | `mcpc @session skills-get <name> --raw` | markdown body |

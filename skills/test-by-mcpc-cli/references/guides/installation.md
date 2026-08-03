@@ -15,7 +15,7 @@ Requires Node.js `>=22.12.0` (Node 20 support was dropped in `0.5.0`) unless ins
 This skill targets `0.6.x` and was verified against `0.6.0`.
 If your help output still shows target-first syntax like `mcpc <server> connect @session`, you are reading `0.1.11` material.
 
-Since `0.5.0` the npm install is ~70MB lighter and commands start ~5x faster (heavy deps like x402/OAuth/proxy are lazy-loaded) — don't expect old-version install weight or startup lag.
+Since `0.5.0` full install size dropped ~66% (64.73 MB to 21.72 MB) and commands start ~5x faster (heavy deps like x402/OAuth/proxy are lazy-loaded) — don't expect old-version install weight or startup lag.
 
 ## Config format that matters now
 

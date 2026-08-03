@@ -15,8 +15,8 @@ Every "Current pattern" below is still correct at `0.6.0`.
 
 ## Migration rules
 
-- command-first for `connect`, `login`, `logout`, `close`, `restart`, `clean`, `grep`, `x402`
-- session-first for every server operation after connect: `mcpc @session <command>` — `@session` always comes **before** the command, never after (`mcpc tools-list @session` fails with "Missing session target for command", confirmed live against `mcpc 0.6.0`)
+- command-first for `connect`, `login`, `logout`, `clean`, `x402`, unscoped `grep`, and canonical `close @session` / `restart @session` (`@session close` / `@session restart` also work)
+- session-first for server operations and scoped `grep`: `mcpc @session <command>` — for these commands, putting `@session` after the command (`mcpc tools-list @session`) fails with "Missing session target for command", confirmed live against `mcpc 0.6.0`
 - `file:entry` instead of the old `--config file entry` surface
 - no direct one-shot server commands — `connect` first, always
-- the interactive `shell` command was removed in `0.4.0` — no replacement; run individual `mcpc @session <command>` calls instead
+- the interactive `shell` command was deprecated in `0.3.1` and removed in `0.4.0` — no replacement; run individual `mcpc @session <command>` calls instead

@@ -1,6 +1,6 @@
 ---
 name: test-by-mcpc-cli
-description: "Use if driving the mcpc CLI (0.6.x) to test or smoke-check an MCP server over stdio or HTTP."
+description: "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP."
 ---
 
 # Test MCP Servers with mcpc
@@ -38,27 +38,29 @@ These rules apply across every workflow below. Each one is live-verified against
 |---|---|---|
 | 1 | Always `connect` to a named `@session` before any MCP operation | mcpc is session-first; target-first one-shot commands do not exist |
 | 2 | Session reuse is name-keyed, not URL-keyed | `connect <url> @existing` reuses; `connect <url> @new` creates a second independent session; omitted `@name` auto-generates and reuses a per-server name |
-| 3 | Exit codes are trustworthy since 0.5.0: `2` = MCP round-trip failed (`isError:true`, server-rejected args, unknown tool, timeout); `1` = CLI usage error that never reached the protocol (including client-side `--schema` failures); `0` = success | Assert on exit codes in scripts, but still parse `--json` payloads for the richer failure detail |
-| 4 | `mcpc clean` with no args removes stale data only; **named** targets (`clean sessions`, `clean logs`, `clean profiles`) delete ALL records of that kind, not just stale ones | `mcpc clean all` and named targets are destructive on shared machines |
-| 5 | Treat HTTP+SSE endpoints as unsupported; use Streamable HTTP or stdio | mcpc does not test HTTP+SSE as a first-class transport |
-| 6 | Use `--no-profile` to force anonymous HTTP tests when saved OAuth would pollute the result | Profiles silently inject auth; anonymous reproduction needs explicit opt-out |
-| 7 | If a tool is `task:required`, plain `tools-call` fails until you add `--task` or `--detach` — and 0.6.0 fails loudly instead of silently falling back on non-task tools/servers | The error is the contract; read it instead of retrying |
-| 8 | Recover detached results with `tasks-result <taskId>` — it works across process invocations; `tasks-get` is status only | Cancelled tasks correctly fail `tasks-result` with "has no result stored" (exit 2) |
-| 9 | If a session is `disconnected`, `reconnecting`, `expired`, or `crashed`, restart it or create a fresh one — and remember mcpc silently self-heals crashed stdio children (respawn + exit 0; only the `pid` in `--json` changes) | Exit codes cannot detect a crash the bridge already recovered from; watch pid churn or `logs` |
-| 10 | Reach for `--insecure` only when the endpoint truly uses an untrusted certificate | It hides legitimate TLS regressions |
-| 11 | Trust the `Input:` type annotations from `tools-get` over its printed "Call example" — the example can render array args as plain strings | `urls:='"x"'` for an `array<string>` field fails the tool's own schema |
+| 3 | Interpret exit codes together with output shape: `1` = CLI/session failure (and `grep` no-match); `2` = either an MCP `isError:true` result on stdout or a timeout/no-result `{error,code}` on stderr; `3`/`4` are documented network/auth codes but were not reproduced in this audit | Exit code identifies a broad class, not the exact cause; capture both streams and parse JSON |
+| 4 | A connection attempt to an unreachable target can exit `0` while creating a `reconnecting` session | `connect` success can mean “record created,” not “handshake live”; inspect exact-name status and run a real command |
+| 5 | `mcpc clean` with no args removes stale data only; **named** targets (`clean sessions`, `clean logs`, `clean profiles`) delete ALL records of that kind, including live ones | `mcpc clean all` and named targets are destructive on shared machines |
+| 6 | Use only stdio or Streamable HTTP targets | mcpc 0.6.0 exposes no first-class HTTP+SSE test path |
+| 7 | Use `--no-profile` to force anonymous HTTP tests when saved OAuth would pollute the result | Profiles silently inject auth; anonymous reproduction needs explicit opt-out |
+| 8 | If a tool is `task:required`, plain `tools-call` fails until you add `--task` or `--detach` — and 0.6.0 fails loudly instead of silently falling back on non-task tools/servers | The error is the contract; read it instead of retrying |
+| 9 | Recover detached results with `tasks-result <taskId>` — it works across process invocations; `tasks-get` is status only | Cancelled tasks correctly fail `tasks-result` with “has no result stored” (exit 2) |
+| 10 | Distinguish bridge failure from stdio-child failure: a dead bridge self-heals on the next command; a dead stdio child self-heals only through `ping`; other commands fail `Not connected` (exit 2) until `mcpc restart @session` | The JSON `pid` is the bridge, status can remain misleadingly `live`, and restart loses tasks/added tools while restoring subscriptions |
+| 11 | Reach for `--insecure` only when the endpoint truly uses an untrusted certificate | It hides legitimate TLS regressions |
+| 12 | Trust the `Input:` type annotations from `tools-get` over its printed “Call example” — the example can render array args as plain strings | `urls:='"x"'` for an `array<string>` field fails the tool's own schema |
+| 13 | Treat x402 wallet import/removal, signing, approval, and `--x402` calls as financial/credential actions: isolate state, prefer `x402 init` with a throwaway Base Sepolia wallet, and obtain explicit authorization before using real keys or funds | `upto` may approve `MAX_UINT256` and calls can spend funds/gas; 0.6.0 imports keys only through positional argv, so do not import real production keys for routine testing |
 
 Stale syntax to refuse outright:
 
 ```text
 mcpc mcp.example.com tools-list          # pre-0.2.0 target-first — drop
 mcpc mcp.example.com connect @demo       # pre-0.2.0 — drop
-mcpc --clean=sessions                    # legacy flag — use: mcpc clean sessions
+mcpc --clean=sessions                    # pre-0.2.0 flag — use: mcpc clean sessions
 mcpc @demo tools                         # shorthand aliases removed in 0.3.0 — use tools-list
 mcpc shell @demo                         # shell removed in 0.4.0 — no replacement
 ```
 
-Translate to current shape using `references/patterns/session-first-syntax.md`. Raw JSON-RPC method names (`tools/list`, `resources/read`) do work as silent command aliases in 0.6.0 if you already think in wire-protocol terms.
+Translate to current shape using `references/patterns/session-first-syntax.md`. Raw JSON-RPC method names can work as silent aliases in 0.6.0 (`tools/list` and `logging/setLevel` are the documented pairs; others are live-confirmed but no complete alias table is published), so teach the hyphenated CLI form first.
 
 ## Minimal read sets
 
@@ -66,11 +68,16 @@ Do not load the whole skill by default. Pick one bundle, then widen only if the 
 
 | Branch | Read first |
 |---|---|
-| Remote Streamable HTTP smoke test | `references/commands/quick-reference.md`, `references/guides/http-testing.md`, `references/guides/discovery-search.md`, `references/guides/tool-resource-testing.md`, `references/guides/cleanup-maintenance.md` |
-| Local stdio + task verification | `references/commands/quick-reference.md`, `references/guides/stdio-testing.md`, `references/guides/async-tasks.md`, `references/guides/everything-server.md`, `references/guides/discovery-search.md`, `references/guides/tool-resource-testing.md`, `references/guides/cleanup-maintenance.md` |
-| Auth, proxy, or x402 payment edge cases | `references/commands/quick-reference.md`, `references/guides/authentication.md`, `references/guides/proxy-testing.md`, `references/guides/x402-payments.md`, `references/guides/cleanup-maintenance.md` |
-| CI / scripted smoke tests | `references/commands/quick-reference.md`, `references/guides/ci-cd-integration.md`, `references/guides/scripting-automation.md`, `references/patterns/output-formatting.md`, `references/patterns/jq-patterns.md` |
-| Protocol-version or skills-extension probing | `references/commands/quick-reference.md`, `references/guides/protocol-versions.md`, `references/guides/skills-testing.md`, `references/guides/discovery-search.md` |
+| Remote Streamable HTTP | `references/commands/quick-reference.md`, `references/guides/http-testing.md` |
+| Local stdio | `references/commands/quick-reference.md`, `references/guides/stdio-testing.md` |
+| Tool, prompt, resource, template, or grep requirements | `references/guides/discovery-search.md`, `references/guides/tool-resource-testing.md` |
+| Async tasks or Everything-server behavior | `references/guides/async-tasks.md`, `references/guides/everything-server.md` |
+| OAuth or headers | `references/guides/authentication.md`, `references/patterns/auth-precedence.md` |
+| Local proxy | `references/guides/proxy-testing.md` |
+| x402 payments | `references/guides/x402-payments.md`, `references/patterns/auth-precedence.md` |
+| CI / scripted smoke tests | `references/guides/ci-cd-integration.md`, `references/guides/scripting-automation.md`, `references/patterns/output-formatting.md` |
+| Protocol version or skills extension | `references/guides/protocol-versions.md`, `references/guides/skills-testing.md` |
+| Failure diagnosis or destructive reset | `references/troubleshooting/common-errors.md`, then `references/patterns/logging-debugging.md` or `references/guides/cleanup-maintenance.md` only if the failure requires it |
 
 ## Standard workflow
 
@@ -95,7 +102,7 @@ mcpc connect 127.0.0.1:3011/mcp @everything-http
 mcpc connect /tmp/everything-mcp.json:everything @everything-stdio
 ```
 
-Use `--no-profile` when anonymous HTTP testing matters on a machine with saved OAuth profiles. Re-running `connect` with the same `@name` reuses the session; a new `@name` always creates a second one (rule 2).
+Use `--no-profile` when anonymous HTTP testing matters on a machine with saved OAuth profiles. Re-running `connect` with the same `@name` reuses the session; a new `@name` always creates a second one (rule 2). Because an unreachable target can still produce exit `0`, verify the exact-name session is `live` before treating the connection as ready (rule 4).
 
 To inspect an existing session, narrow the lookup to a single name instead of dumping the whole inventory:
 
@@ -140,7 +147,7 @@ mcpc --json @everything-http tools-list | jq '.[] | {name, taskSupport: (.execut
 ```
 
 - If `completions` appears in server info, treat it as informational — there is no `mcpc completions` command.
-- mcpc does **not** advertise `sampling` or `roots` (since 0.5.0), so servers that register demo tools conditionally (like Everything) will not expose them at all.
+- mcpc does **not** advertise `sampling`, `roots`, or `elicitation`, so servers that register demo tools conditionally (like Everything) will not expose them at all.
 - If tasks appear in capabilities, still inspect per-tool `execution.taskSupport`, and prove `task:required` with one `--task` or `--detach` call before writing automation around it.
 
 ### 6. Exercise the capability you care about
@@ -149,7 +156,7 @@ mcpc --json @everything-http tools-list | jq '.[] | {name, taskSupport: (.execut
 mcpc --json @research tools-call web-search 'queries:=["OpenAI MCP"]'
 mcpc @everything-http prompts-get args-prompt city:=Paris state:=Texas
 mcpc @everything-http resources-read demo://resource/static/document/features.md
-mcpc @everything-http resources-subscribe demo://resource/dynamic/config /tmp/config-sync.json
+mcpc @everything-http resources-subscribe demo://resource/dynamic/text/1 /tmp/text-sync.json
 mcpc @everything-http logging-set-level debug
 ```
 
@@ -162,7 +169,7 @@ RESULT=$(mcpc --json @research tools-call web-search 'queries:=["mcpc"]') || ech
 echo "$RESULT" | jq '.isError // false'
 ```
 
-Since 0.5.0 an `isError:true` result also exits `2`, so scripts may assert on exit codes — but the `--json` payload still carries the failure detail (and is a strict superset of the human view: active tasks, `resourceSubscriptions`, and experimental capability payloads appear only there).
+Since 0.5.0 an `isError:true` result also exits `2`, so scripts may assert on the exit code — but still inspect the payload for failure detail. JSON mode also exposes fields human rendering can omit (for example active tasks, subscription state, and experimental capability payloads); do not assume either mode is a strict structural superset of the other. A timeout can also exit `2`, but with `{error,code}` on stderr rather than an `isError` payload on stdout (rule 3).
 
 ### 8. Use task mode deliberately
 
@@ -181,10 +188,9 @@ Use `--task` when you need the final result inline. Use `--detach` when you want
 ```bash
 mcpc close @research
 mcpc clean
-mcpc clean sessions logs
 ```
 
-`mcpc clean` (no args) removes stale data only; `clean sessions logs` removes **all** sessions and logs (rule 4). Use `mcpc clean all` only for a real reset. Do not run `close` and `clean` for the same session in parallel.
+`mcpc clean` (no args) removes stale data only. Any named target — including `clean sessions logs` — removes **all** records of that kind and belongs only in an intentional reset inside an isolated `MCPC_HOME_DIR` (rule 5). Do not run `close` and `clean` for the same session in parallel; a repeated `close` returns exit `1`, not a no-op success.
 
 ## Capability boundary
 
@@ -213,7 +219,7 @@ Read the smallest relevant set for the branch you are in.
 | `references/guides/tool-resource-testing.md` | Running tools, prompts, resources, templates, file-synced subscriptions, and logging checks. |
 | `references/guides/async-tasks.md` | Using `--task`, `--detach`, and `tasks-*` including `tasks-result`, or debugging task-required tools. |
 | `references/guides/authentication.md` | OAuth (authorization-code, client-credentials, id-jag), bearer headers, profiles, callback flags, and anonymous mode. |
-| `references/guides/session-management.md` | Session lifecycle, name-keyed reuse, stateless servers, restart behavior, silent self-heal, and multi-session workflows. |
+| `references/guides/session-management.md` | Session lifecycle, name-keyed reuse, stateless servers, bridge-vs-child recovery, and multi-session workflows. |
 | `references/guides/cleanup-maintenance.md` | Safe cleanup, the stale-only vs delete-all distinction, hard resets, the `logs` command, and local mcpc hygiene. |
 | `references/guides/proxy-testing.md` | Exposing a session as a local MCP proxy: `/health`, bearer enforcement, DNS-rebinding protection, sandbox use. |
 | `references/guides/x402-payments.md` | Wallet inspection (`mcpc x402`), payment schemes (auto/upto/exact), `x402 sign`, and `--x402` session behavior. |
@@ -224,7 +230,7 @@ Read the smallest relevant set for the branch you are in.
 | `references/guides/skills-testing.md` | Testing the experimental MCP skills extension (SEP-2640): `skills-list`, `skills-get`, and the `skill://` convention. |
 | `references/guides/protocol-versions.md` | Protocol negotiation, `--protocol-version` pinning, `server-discover`, and JSON-RPC method aliases. |
 | `references/guides/architecture.md` | High-level `mcpc` design, session-first routing, and capability negotiation. |
-| `references/guides/bridge-internals.md` | Bridge process lifecycle, silent self-heal, reconnect caveats, and log locations. |
+| `references/guides/bridge-internals.md` | Bridge process lifecycle, bridge-vs-child recovery (including the `ping` exception), reconnect caveats, and log locations. |
 
 ### Commands, examples, and troubleshooting
 
@@ -258,8 +264,8 @@ Read the smallest relevant set for the branch you are in.
 - Do not teach pre-0.2.0 target-first syntax, removed shorthand aliases, or the removed `shell` command unless explicitly documenting migration.
 - Do not tell users to test HTTP+SSE with `mcpc`; use Streamable HTTP or stdio instead.
 - Do not treat `tasks-get` status output as the task result — fetch detached bodies with `tasks-result`.
-- Do not treat a green success banner as proof that the server call succeeded; parse the payload.
-- Do not assume advertised capabilities always mean polished CLI support, nor that missing demo tools mean a broken server — mcpc's non-advertised `sampling`/`roots` suppress capability-gated tools by design.
+- Do not treat `connect` exit `0` or a green banner as proof that the handshake is live; an unreachable target can leave a `reconnecting` session, so verify exact-name status and exercise the capability.
+- Do not assume advertised capabilities always mean polished CLI support, nor that missing demo tools mean a broken server — mcpc's non-advertised `sampling`/`roots`/`elicitation` capabilities suppress gated tools by design.
 - Do not run `mcpc clean all` — or any *named* `clean` target — casually on machines with saved profiles or live sessions; only no-args `clean` is stale-only.
 - Treat proxy `/health` as an unauthenticated liveness probe only — verify proxy auth with a real MCP request carrying (or omitting) the bearer token.
 - Do not read a `⚠` deprecation warning as a failed call; check the exit code and payload of the current invocation.

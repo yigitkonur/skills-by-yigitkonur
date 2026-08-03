@@ -11,7 +11,7 @@ mcpc @research-test tools-call web-search '{"queries":["OpenAI MCP"]}' --schema 
 
 `prompts-get` does **not** accept `--schema` — it was removed from `prompts-get` (schema validation there was confusing and rarely used). `mcpc @everything-http prompts-get args-prompt city:=Paris --schema ./prompt-schema.json` fails with `unknown option '--schema'`, exit 1.
 
-Save the expected schema once with `tools-get --json` (the raw `Tool` object: `name`, `description`, `inputSchema`, `outputSchema`), then validate later calls against it:
+Save the expected schema once with `tools-get --json` (the full `Tool` object — `name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution` — only `inputSchema`/`outputSchema` are diffed), then validate later calls against it:
 
 ```bash
 mcpc --json @research-test tools-get web-search > tool-schema.json
@@ -21,17 +21,16 @@ mcpc @research-test tools-call web-search --schema ./tool-schema.json '{"queries
 ## Modes
 
 - `strict` — full schema must match exactly (description, input, output).
-- `compatible` (default) — with `tools-call`, only validates arguments actually being passed; ignores changes to optional arguments not in use; still flags new required arguments as breaking.
-- `ignore` — skips validation entirely, even if `--schema` is set.
+- `compatible` (default) — scope differs by command: `tools-get` diffs the whole input/output schema shape and fails on any added, removed, or changed property, required or not; `tools-call` only validates the arguments actually being passed, tolerates unrelated optional-property drift, but still fails ("New required field ... added (breaking change)") when the live schema now requires a field your snapshot lacks and you don't supply it.
+- `ignore` — skips validation entirely, even if `--schema` is set. Confirmed live: `tools-get --schema <mismatched-file> --schema-mode ignore` prints the normal tool block, exit 0.
 
 ## On failure
 
-A schema mismatch is a **client error**: it throws before the tool ever runs, prints the mismatched fields, and exits **1** — not the `isError:true`/exit-2 path a runtime tool failure takes, because no MCP call happened. Confirmed live against `research-mcp.yigitkonur.com/mcp`: `tools-get web-search --schema <mismatched-file>` and `tools-call web-search --schema <mismatched-file> ...` both print `Error: Schema validation failed for tool "web-search": ...` and exit 1.
+A schema mismatch is a **client error**: it throws before the tool ever runs, prints the mismatched fields, and exits **1** — not the `isError:true`/exit-2 path a runtime tool failure takes, because no MCP call happened. Confirmed live against `research-mcp.yigitkonur.com/mcp` on 0.6.0: a type-mismatched schema file (`queries: string` vs the live `array`) makes both `tools-get web-search --schema <file>` and `tools-call web-search --schema <file> ...` print `Error: Schema validation failed for tool "web-search": ...` and exit 1, in both `compatible` (default) and `strict` mode.
 
 ## Important nuance
 
-`tools-get` is a CLI convenience backed by discovery metadata, not a native MCP `tools/get` method.
-That does not make schema validation less useful, but it changes what you are really validating.
+`tools-get` is a CLI convenience backed by discovery metadata, not a native MCP `tools/get` method — schema validation here checks metadata, not a live call.
 
 ## Good uses
 

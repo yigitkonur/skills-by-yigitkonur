@@ -30,6 +30,8 @@ Force a string when auto-parsing would otherwise coerce it: wrap it in quoted JS
 
 If the tool expects an array, `queries:=OpenAI` is wrong because it is still a string. Use `queries:='["OpenAI"]'` instead.
 
+A bare `=` (`queries=["x"]`, no colon) is not a valid form at all — mcpc rejects it client-side: `Error: Invalid argument format: "queries=[\"x\"]". Use key:=value pairs or inline JSON.`, exit 1. `:=` is the only assignment operator; there is no plain `key=value` string form.
+
 ### inline JSON
 
 Use a single inline JSON document when you want to send the full argument payload yourself.
@@ -41,8 +43,7 @@ mcpc @research tools-call web-search '{"queries":["OpenAI MCP"]}'
 
 ### stdin JSON
 
-Auto-detected when the input is piped and no positional args are given.
-Treat it the same way as an inline JSON payload.
+Auto-detected when the input is piped and no positional args are given. Treat it the same way as an inline JSON payload.
 In practice, most MCP tool and prompt inputs should still be JSON objects because their schemas are object-shaped.
 
 ## `tools-get`'s printed example can be wrong
@@ -51,5 +52,4 @@ In practice, most MCP tool and prompt inputs should still be JSON objects becaus
 
 ## Option parsing note
 
-Document public help output, not internal parser quirks.
-If an option is not shown in `mcpc --help` or command help, do not treat it as public contract.
+Document public help output, not internal parser quirks — if an option is not shown in `mcpc --help` or command help, do not treat it as public contract.

@@ -30,6 +30,7 @@ cleanup() {
 trap cleanup EXIT
 
 mcpc connect "$TARGET" "$SESSION" --no-profile
+mcpc --json | jq -e --arg s "$SESSION" '.sessions[] | select(.name==$s and .status=="live")' >/dev/null
 mcpc --json "$SESSION" tools-list | jq -e 'length > 0' >/dev/null
 RESULT=$(mcpc --json "$SESSION" tools-call web-search '{"queries":["OpenAI MCP"]}')
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
@@ -40,14 +41,25 @@ printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 - session connected and appears as `live`
 - at least one tool exists
 - key schema fields still exist
-- exit code `2` on `tools-call`/`tasks-result` means the MCP round-trip produced
-  `isError: true` (schema failure, unknown tool, runtime error, timeout) — a reliable
-  signal since 0.5.0. Exit `1` is a pure CLI usage error that never reached the server.
-  Prefer combining `$?` with a payload check (below) rather than either alone.
+- exit code `2` on `tools-call`/`tasks-result` covers two shapes: `isError: true`
+  (schema failure, unknown tool, runtime error — `{content, isError}` on stdout,
+  reliable since 0.5.0) and a client-side call failure like a request timeout
+  (`{error, code}` on stderr, no `isError` key). Exit `1` is a CLI usage error that
+  never reached the tool call (bad flag, unknown session, missing CLI argument — a
+  missing *tool input* field is server-validated and exits 2, not 1). Combine `$?`
+  with a payload check rather than trusting either alone.
 - the exercised tool call returns `isError != true` in its `--json` payload
 - task-required tools still work with `--task` or `--detach`
+- documented exit `3` (network) / `4` (auth) are the README's stated contract, not
+  observed here — an unreachable-server connect exits 0 (session created,
+  `reconnecting`) and later commands against it exit 1, not 3
 
 ## Cleanup guidance
 
-Use `mcpc clean` or `mcpc clean sessions logs` for normal CI cleanup.
-Reserve `mcpc clean all` for fully disposable environments.
+Bare `mcpc clean` (no args) is the only stale-only, safe form — crashed
+bridges and orphaned data, never live sessions. Any explicit target
+(`clean sessions`, `clean logs`, `clean all`) wipes unconditionally, live or
+not: `clean sessions` alone is exactly as destructive to a healthy session as
+`clean all`. Prefer the `trap`-based per-session `close` above for routine
+teardown; reserve explicit-target `clean` for isolated `MCPC_HOME_DIR`s as a
+last-resort sweep.

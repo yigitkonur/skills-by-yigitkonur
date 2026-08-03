@@ -20,6 +20,6 @@ mcpc --json @research-test tools-list | jq '.[] | select(.annotations.readOnlyHi
 
 ## Notes
 
-- default grep scope is tools plus instructions
-- `--full` is mainly about richer human-mode output
+- default grep scope is tools plus instructions; exit `1` means no matches (grep convention), not a CLI failure
+- `--full` is mainly about richer human-mode output; JSON already carries the schema detail
 - filtering by `.execution.taskSupport` is useful in `0.6.0` because task support is now public CLI surface

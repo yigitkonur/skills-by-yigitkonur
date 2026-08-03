@@ -47,27 +47,47 @@ If you build higher-level wrappers, normalize Python-friendly names to the real 
 
 ## Exit-code contract (v0.5.0+, still current at 0.6.0)
 
-- Exit `2`: the MCP round-trip completed but the result carries `isError: true`
-  (schema rejection, unknown tool, runtime tool failure, client-side timeout).
+- Exit `2`: either the MCP round-trip completed with `isError: true`
+  (schema rejection, unknown tool, runtime failure — `{content, isError}` on
+  stdout), or a client-side call failure with no result at all, e.g. a
+  request timeout (`{error, code}` on stderr, no `isError` key — no
+  `content`/`isError` fields to check).
 - Exit `1`: pure CLI usage error that never reached the protocol layer (bad
-  flag, missing session, missing required argument).
+  flag, missing/unknown session, a missing *CLI* argument like `tools-call`
+  with no tool name). A missing/invalid *tool input* field is not this case —
+  it fails server-side schema validation and is exit `2` instead.
 - Exit `0`: otherwise, including truncated output and empty-list states.
+
+Documented exit `3` (network error) and `4` (auth error) are the upstream
+README contract, although the live paths audited here mapped an unreachable
+connect to **0** (`reconnecting`) and later commands to **1**, not 3. Preserve
+branches for 3/4 anyway, and fail closed on unknown future nonzero codes.
 
 ```python
 code, payload, stderr = run_json("@research", "tools-call", "web-search", '{"queries":["mcp"]}')
-if code == 2:
-    is_tool_error = True   # payload["isError"] is also True — check both if you need certainty
+if code == 0:
+    pass
 elif code == 1:
-    raise RuntimeError(f"CLI usage error: {stderr}")
+    raise RuntimeError(f"CLI/session error: {stderr}")
+elif code == 2:
+    is_tool_error = isinstance(payload, dict) and "content" in payload
+    raise RuntimeError(f"MCP/timeout failure (tool_error={is_tool_error}): {payload}")
+elif code == 3:
+    raise ConnectionError(stderr or payload)
+elif code == 4:
+    raise PermissionError(stderr or payload)
+else:
+    raise RuntimeError(f"Unexpected mcpc exit {code}: {stderr or payload}")
 ```
 
 ## Error-handling rule
 
-`--json` puts the result payload on `stdout` in both the exit-0 and exit-2
-cases — a `tools-call` that fails with `isError: true` still prints its
-`CallToolResult` JSON to `stdout`, not `stderr`. Pure CLI usage errors (exit
-1) print their `{error, code}` JSON to `stderr` instead, since no MCP result
-ever existed. Parse `stdout` first; fall back to `stderr` only when `stdout`
-is empty (exit 1 case) — verified live against 0.6.0 with `@aud-python`
-(missing-arg tools-call: exit 2, payload on stdout; unknown session: exit 1,
-`{"error":...}` on stderr).
+An empty `stdout` is not exit-1-specific: it also happens on an exit-2
+client-side call failure (e.g. timeout). Fail on every nonzero code, then check
+for the `content` key to tell an `isError` result (stdout, has `content`)
+from a bare client-side failure (stderr, `{error, code}`, no `content`) or a
+CLI usage error (stderr, exit 1). Verified live against 0.6.0 with an
+isolated `MCPC_HOME_DIR`: missing tool-input field exits 2 with payload on
+stdout; unknown session exits 1 with `{"error":...}` on stderr; `--timeout 1`
+against a live session exits 2 with `{"error":...,"code":2}` on stderr,
+stdout empty.

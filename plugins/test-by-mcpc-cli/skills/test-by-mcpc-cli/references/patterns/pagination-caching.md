@@ -15,7 +15,7 @@ Caching differs by connection statefulness (see `references/patterns/data-model.
 - **Stateful connections** (protocol `2025-11-25` and older) — no fixed TTL. The tools cache is
   invalidated purely by `tools/list_changed` notifications from the server.
 - **Stateless connections** (protocol `2026-07-28`, no session handshake) — can't push
-  notifications, so mcpc falls back to a 60-second cache TTL (`STATELESS_TOOLS_CACHE_TTL_MS`,
+  notifications, so mcpc falls back to a 60-second cache TTL (`STATELESS_TOOLS_CACHE_TTL_MILLIS`,
   landed v0.3.1). If the server sends a `ttlMs` cache hint, that wins over the 60s fallback.
 
 `tools-list` always force-refetches from the server on every explicit invocation — a v0.6.0 fix:

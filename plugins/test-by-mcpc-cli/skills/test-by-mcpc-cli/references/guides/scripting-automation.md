@@ -16,18 +16,24 @@ printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 
 ## Exit-code contract (since 0.5.0)
 
-`tools-call` and `tasks-result` exit **2** whenever the MCP round-trip produced
-`isError: true` (schema rejection, unknown tool, runtime tool failure — all land
-here uniformly), so `$? -eq 2` is a reliable signal for those two commands
-specifically. Pure CLI usage errors that never reach the server (missing argument,
-`restart` on a nonexistent session) exit **1**; `0` otherwise, including truncated
-(`--max-chars`) output and empty-result states. Other command families don't model
-"found nothing" as `isError` — for those, keep checking the JSON payload, not the
-exit code.
+`tools-call` and `tasks-result` exit **2** for two distinct failure shapes:
+the MCP round-trip completed with `isError: true` (schema rejection, unknown
+tool, runtime tool failure — `{content, isError}` on stdout), or the call
+never completed at all, e.g. a client-side timeout (`{error, code}` on
+stderr, no `isError` key). Either way `$? -eq 2` reliably means "not a clean
+success" for those two commands. Pure CLI usage errors that never reach the
+tool call — a bad flag, `restart`/`close` on a nonexistent session, or a
+missing *CLI* argument like `tools-call` with no tool name — exit **1**; a
+missing *tool input* field is server-validated and exits 2, not 1. `0`
+otherwise, including truncated (`--max-chars`) output and empty-result
+states. Other command families don't model "found nothing" as `isError` —
+for those, keep checking the JSON payload, not the exit code.
 
 ## Rules
 
-- for `tools-call`/`tasks-result`, the exit code alone is sufficient (contract above)
+- for `tools-call`/`tasks-result`, exit 2 vs 1 vs 0 tells you success/failure
+  reliably, but distinguishing an `isError` tool failure from a client-side
+  call failure (e.g. timeout) needs the payload — check for the `content` key
 - for other commands, check `isError` inside the JSON payload, not just exit status
 - prefer `mcpc @session --help` or `mcpc grep <pattern>` before bespoke parsing logic
 - keep session names stable when you want cache or reconnect behavior

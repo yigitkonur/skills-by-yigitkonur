@@ -22,7 +22,7 @@ It documents raw `mcpc` behavior first.
 | restart a session | `mcpc restart @session` |
 | close a session | `mcpc close @session` |
 | safe cleanup | `mcpc clean` |
-| targeted cleanup | `mcpc clean sessions logs` |
+| destructive targeted reset | `mcpc clean sessions logs` |
 
 `shell` was removed in 0.4.0 — there is no interactive shell command anymore. Run
 individual `mcpc @session <command>` invocations instead.
@@ -145,7 +145,7 @@ mcpc auto-negotiates the newest MCP protocol version both sides support, from
 | `--callback-host <host>` / `--callback-port <port>` | OAuth loopback callback host (`127.0.0.1` default, or `localhost`) and port |
 
 `--grant client-credentials` is machine-to-machine auth for CI/CD and daemons.
-`--grant id-jag` (new in 0.6.0) is Enterprise-Managed Authorization via corporate SSO.
+`--grant id-jag` is Enterprise-Managed Authorization via corporate SSO.
 
 ## `clean` forms
 
@@ -158,10 +158,12 @@ mcpc clean sessions logs
 mcpc clean all
 ```
 
-Without arguments, `mcpc clean` removes stale data only.
+Without arguments, `mcpc clean` removes stale data only. Every named target removes **all** records of that kind, including live sessions; use named forms only for intentional resets inside an isolated `MCPC_HOME_DIR`.
 Do not parallelize `mcpc close @session` and `mcpc clean ...` for the same session.
 
 ## x402 commands
+
+These are financial/credential actions, not harmless smoke checks. Use isolated state and prefer `x402 init` with a throwaway Base Sepolia wallet; obtain explicit authorization before importing/removing wallets, signing, approving, or paying. `mcpc 0.6.0` imports keys only through the positional argv argument — there is no secret-safe stdin/file/env option — so do not import real production keys for routine testing.
 
 ```bash
 mcpc x402                    # bare: shows wallet info + funding QR (default since v0.5.0)
@@ -175,6 +177,7 @@ mcpc x402 remove
 `mcpc x402 info` is deprecated since v0.5.0 in favor of bare `mcpc x402` (no
 subcommand), which now shows wallet info + a funding QR code directly.
 `--scheme <auto|upto|exact>` on `sign` selects the payment scheme (default `auto`).
+`--no-approve` on `sign` skips the `upto` scheme's Permit2 allowance check and auto-approval.
 
 ## Argument shapes
 
@@ -191,12 +194,24 @@ If a tool expects an array or object, send a JSON literal.
 
 - runtime JSON commonly shows `live`, `connecting`, `reconnecting`, `disconnected`, `crashed`, `unauthorized`, or `expired`
 - persisted internal state uses a slightly different vocabulary; do not script against the on-disk file format unless you have to
+- a dead bridge self-heals on the next command; a dead stdio child self-heals only through `ping` — otherwise expect `Not connected` (exit 2) until `mcpc restart @session`
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | success; an unreachable `connect` can still return 0 while creating a `reconnecting` session |
+| `1` | CLI/session failure; `grep` also uses 1 for no matches |
+| `2` | MCP `isError:true` result on stdout, or timeout/no-result `{error,code}` on stderr |
+| `3` / `4` | documented network / auth failures — not independently reproduced live |
 
 ## Unsupported or partial areas
 
 - no `mcpc completions` command even if server capabilities show `completions`
-- no dedicated roots configuration CLI even though some servers may expose roots-aware demo tools
-- sampling demo tools may exist, but can still return `isError: true`
+- mcpc advertises no sampling/roots/elicitation client capabilities, so servers withhold
+  any tool gated on them — e.g. Everything's `trigger-sampling-request`,
+  `trigger-elicitation-request`, `get-roots-list` never appear in `tools-list` at all,
+  even though the server's own instructions text mentions them
 - on MCP 2026-07-28 connections: `logging-set-level` errors (protocol removed
   `logging/setLevel`), and every task command (`tasks-list`, `tasks-get`, `tasks-result`,
   `tasks-cancel`, `tools-call --task`/`--detach`) reports the tasks extension as not yet

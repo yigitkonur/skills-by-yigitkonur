@@ -74,11 +74,10 @@ A cancelled task's `tasks-result` fails cleanly: `Task <id> has no result stored
 
 ## Common outcomes
 
-- `task:required`: plain `tools-call` fails until you add `--task` or `--detach`
-- `task:forbidden`: `--task` or `--detach` fail because the server does not want task
-  execution for that tool
-- `--task`/`--detach` against a tool/server with no task support **fail with an error**
-  — since 0.6.0 they no longer silently fall back to a synchronous call
+- `task:required`: plain `tools-call` fails (exit 2) until you add `--task` or `--detach`
+- `task:forbidden`: adding `--task`/`--detach` fails (exit 2) — the server rejects the
+  task-augmented request outright. Since 0.6.0 neither direction (missing `--task` on a
+  required tool, or adding it to a forbidden one) silently falls back to a sync call.
 - completed detached tasks appear in `tasks-list`/`tasks-get` (status only); recover the
   original result body with `tasks-result`
 - on servers using MCP protocol 2026-07-28, task commands (`tasks-list`, `tasks-get`,

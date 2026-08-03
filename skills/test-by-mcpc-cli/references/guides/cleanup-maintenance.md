@@ -1,32 +1,43 @@
 # Cleanup and Maintenance
 
-`mcpc` (verified against 0.6.0) uses a `clean` command, not the old `--clean=...`
-flag family (removed in v0.2.0, when the CLI moved to command-first syntax).
+`mcpc clean [resources...]` (verified against 0.6.0) is the only cleanup
+command — there is no separate flag-based interface.
 
-## Safe forms
+## Two operations share one name
+
+Bare `mcpc clean` is **safe**: it removes only stale/crashed data (dead
+bridges, expired sessions, orphaned bridge logs) and never touches a live
+session. Naming a resource explicitly — `sessions`, `profiles`, `logs`, or
+`all` — is **unconditional**: it wipes every record of that kind, live or
+dead, and kills the bridge process behind any live session it removes.
+`mcpc clean sessions` reads like a narrower version of the default; it is
+not — the `--help` text's "Remove stale/crashed session records" wording
+describes only the no-args path.
 
 ```bash
-mcpc clean
-mcpc clean sessions
-mcpc clean profiles
-mcpc clean logs
-mcpc clean sessions logs
-mcpc clean all
+mcpc clean                # safe: stale/crashed data only
+mcpc clean sessions       # destructive: ALL sessions, live or not
+mcpc clean profiles       # destructive: ALL auth profiles
+mcpc clean logs           # destructive: ALL log files
+mcpc clean sessions logs  # destructive: targets combine in one call
+mcpc clean all            # destructive: sessions + profiles + logs
 ```
+
+Test destructive forms only inside an isolated `MCPC_HOME_DIR` — running
+`mcpc clean sessions`/`all` against the default home on a shared machine
+kills every other session on that box, not just yours.
 
 ## What each target does
 
-- `clean` with no arguments removes stale data only (crashed bridges, expired sessions, orphaned bridge logs) — non-destructive
-- `clean sessions` (named explicitly) removes **every** session record, not just stale ones, plus their per-session stored headers or proxy bearer tokens — the "stale/crashed" wording in `--help` describes the no-args path, not this targeted form
-- `clean profiles` removes **all** saved authentication profiles
-- `clean logs` removes **all** bridge log files, regardless of age or whether the owning session is still active
-- `clean all` removes all of the above unconditionally
+- `clean` (no args) — stale/crashed bridges, expired sessions, orphaned bridge logs. Non-destructive.
+- `clean sessions` — removes **every** session record, live or not, plus per-session stored headers/proxy bearer tokens; kills each session's bridge process.
+- `clean profiles` — removes **all** saved authentication profiles.
+- `clean logs` — removes **all** bridge log files, regardless of age or whether the owning session is still active.
+- `clean all` — sessions + profiles + logs, unconditionally.
 
-Multiple cleanup targets in one invocation are valid.
-`mcpc clean sessions logs --json` is fine — real run: `✓ Removed 1 session(s)` /
-`✓ Removed 21 log file(s)`.
 `--json` shape: `{ crashedBridges, expiredSessions, orphanedBridgeLogs, sessions, profiles, logs }`
 (no-args cleanup populates only the first three; targeted resources populate their own counters).
+Real combined run: `mcpc clean sessions logs --json` → `✓ Removed 1 session(s)` / `✓ Removed 21 log file(s)`.
 
 ## Inspect before you clean logs
 
@@ -44,15 +55,14 @@ mcpc @session logs --since 1h        # entries from the last hour
 
 ```bash
 mcpc close @research
-mcpc clean sessions
+mcpc clean
 ```
 
-Do not run `close` and `clean` for the same session in parallel.
-If `close` already says `Session not found`, skip straight to targeted cleanup.
-`clean sessions` here purges every session record in `sessions.json`, not only
-`@research` — fine in disposable CI state (a temporary `MCPC_HOME_DIR`) but
-destructive to other live sessions on a shared machine. `mcpc clean` with no
-arguments is the safe, targeted-nothing alternative when other sessions must survive.
+Do not run `close` and `clean` for the same session in parallel. If `close`
+already says `Session not found` (exit 1 — closing an already-closed session
+is a hard error, not a no-op), bare `clean` safely clears stale records. Reach
+for `clean sessions` only when you intend to purge every session in
+`sessions.json`, not only `@research`.
 
 ## What not to assume
 

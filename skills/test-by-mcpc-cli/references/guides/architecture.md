@@ -35,6 +35,6 @@ That distinction explains why you can see `completions`-related capability signa
 - `tools-get` is a CLI convenience built from tool metadata rather than a native MCP `tools/get` request
 - the bridge maintains cached discovery data and refreshes it when list-changed notifications arrive (stateless connections that can't push notifications instead fall back to a time-based cache, or honor a server-provided `ttlMs` hint)
 - task support is first-class at the CLI layer through `tools-call --task`, `tools-call --detach`, and `tasks-*` — but the tasks extension is not yet supported on `2026-07-28` connections, only on `2025-11-25` and older
-- a killed stdio child is transparently respawned on the next command against that session (self-healing bridge) — no visible error, only a slower response and a `pid` change in `mcpc --json`
+- recovery depends on both process and command (verified live on 0.6.0): a killed *bridge* respawns transparently; a killed *stdio server child* makes ordinary commands fail `Not connected` (exit 2), but `ping` triggers the network-error restart/retry path and can restore the chain. Otherwise use `mcpc restart @session`. See `references/guides/bridge-internals.md` for the process-tree detail.
 
 Use live behavior over README prose when they conflict.

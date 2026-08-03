@@ -13,16 +13,12 @@ Use this order when reasoning about what auth reaches the wire in `mcpc 0.6.0`.
 ## Modifiers that change the default path
 
 - `--no-profile` disables default-profile auto-selection entirely
-- `--x402 [scheme]` also skips default-profile auto-selection unless `--profile` is explicit — but
-  unlike `-H`, `--x402` CAN combine with `--profile` to use both (x402 payment + OAuth identity)
+- `--x402 [scheme]` skips default-profile auto-selection unless `--profile` is explicit; unlike `-H`, it CAN combine with `--profile` for x402 payment plus OAuth identity
 - `--header` cannot be combined with `--profile` on the same connect (they compete for the same slot)
 
 ## Grant type does not change precedence
 
-`--grant client-credentials` / `--grant id-jag` on `mcpc login` (see
-`references/guides/authentication.md`) only change how a profile is *acquired* — the resulting
-profile is stored and selected the same way as an `authorization-code` profile, at precedence
-rungs 2–3 above. There is no separate precedence rung for grant type.
+`--grant client-credentials` / `--grant id-jag` on `mcpc login` (see `references/guides/authentication.md`) change only how a profile is acquired. The stored profile still uses precedence rungs 2–3; grant type adds no new rung.
 
 ## Examples
 

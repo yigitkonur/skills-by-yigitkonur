@@ -67,7 +67,4 @@ Use JSON filtering after native discovery when you need:
 - batch assertions in CI
 - complex filters across annotations or task metadata
 
-Routes:
-
-- `references/patterns/jq-patterns.md`
-- `references/patterns/tool-filtering.md`
+For exact JSON extraction and filters, continue with `references/patterns/jq-patterns.md` and `references/patterns/tool-filtering.md`.

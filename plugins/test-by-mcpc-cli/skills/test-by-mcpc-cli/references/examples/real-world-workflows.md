@@ -60,25 +60,43 @@ The reference server's tool set changes across its own releases — verify with 
 Use this when you need to verify `task:required` tools and current `tasks-*` behavior.
 
 ```bash
-PORT=3011 npx -y @modelcontextprotocol/server-everything streamableHttp
-
+PORT=${PORT:-3011}
 SESSION=@everything-http
-mcpc connect http://127.0.0.1:3011/mcp "$SESSION"
-mcpc "$SESSION" tools-list --full | rg simulate-research-query
+LOG=/tmp/everything-$PORT.log
+ss -tln | grep -q ":$PORT " && { echo "port $PORT already in use" >&2; exit 1; }
+
+# Start a separate process group so cleanup targets only this server tree.
+setsid env PORT="$PORT" npx -y @modelcontextprotocol/server-everything streamableHttp >"$LOG" 2>&1 &
+SERVER_PGID=$!
+cleanup() {
+  mcpc close "$SESSION" >/dev/null 2>&1 || true
+  kill -- -"$SERVER_PGID" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+for _ in $(seq 1 100); do
+  kill -0 "$SERVER_PGID" 2>/dev/null || { cat "$LOG" >&2; exit 1; }
+  ss -tln | grep -q ":$PORT " && break
+  sleep 0.2
+done
+ss -tln | grep -q ":$PORT " || { echo "server did not open port $PORT" >&2; exit 1; }
+
+mcpc connect "http://127.0.0.1:$PORT/mcp" "$SESSION"
+mcpc --json "$SESSION" tools-list | jq -e '.[] | select(.name=="simulate-research-query")' >/dev/null
 mcpc "$SESSION" tools-call simulate-research-query topic:='"mcpc tasks"' --task
 DETACHED=$(mcpc --json "$SESSION" tools-call simulate-research-query topic:='"mcpc detach"' --detach)
 TASK_ID=$(printf '%s' "$DETACHED" | jq -r '.taskId')
 mcpc --json "$SESSION" tasks-get "$TASK_ID"
 mcpc --json "$SESSION" tasks-list
 mcpc --json "$SESSION" tasks-result "$TASK_ID"
-mcpc close "$SESSION"
+cleanup
+trap - EXIT
 ```
 
-Notes:
+Reject an occupied port before launch, wait for the process group you started to open it, and clean up that process group rather than killing every listener on the port.
 
 - `--task` waits for the final result and prints it directly
 - `--detach` returns a task ID immediately; `tasks-get`/`tasks-list` only report status (`working`/`completed`/`cancelled`), never the result body — run `tasks-result "$TASK_ID"` for the actual `CallToolResult` payload, even from a fresh process, once status is `completed`
-- Everything's `simulate-research-query` is useful for verifying `task:required`
 - `--task`/`--detach` against a tool or server without task support now fails outright instead of silently falling back to a synchronous call
 
 ## Workflow 4: Headless OAuth login then connect
@@ -133,12 +151,11 @@ Use this when another process can only speak to a local HTTP MCP endpoint.
 SESSION=@research-proxy
 mcpc connect https://research-mcp.yigitkonur.com/mcp "$SESSION" --proxy 127.0.0.1:8787 --proxy-bearer-token demo-token
 curl http://127.0.0.1:8787/health
-mcpc connect http://127.0.0.1:8787/mcp @research-proxy-check --no-profile -H "Authorization: Bearer demo-token"
+mcpc connect http://127.0.0.1:8787/ @research-proxy-check --no-profile -H "Authorization: Bearer demo-token"
 mcpc close @research-proxy-check
 mcpc close "$SESSION"
 ```
 
-The proxy is owned by the detached bridge for that session.
-Once `connect` succeeds, it does not need `nohup` or `tmux` to survive the original terminal.
-`/health` is unauthenticated (liveness check only, confirmed live). When `--proxy-bearer-token` is set, the `/mcp` endpoint itself does require it — a checking `connect` without `-H "Authorization: Bearer <token>"` fails with "Authentication required by server" (confirmed live); always pass the header, as shown above.
+The proxy is owned by the detached bridge for that session and does not need `nohup` or `tmux` to survive the original terminal once `connect` succeeds.
+`/health` is unauthenticated (liveness check only, confirmed live). When `--proxy-bearer-token` is set, the documented root `/` MCP endpoint requires it — a checking `connect` without `-H "Authorization: Bearer <token>"` fails with "Authentication required by server"; always pass the header, as shown above.
 Since v0.5.0 the proxy also validates `Host`/`Origin` headers against DNS-rebinding and correctly terminates sessions on HTTP DELETE.

@@ -1,7 +1,6 @@
 # Testing Recipes
 
-These are small copy-paste checks, verified against `mcpc 0.6.0`.
-Prefer `--json` plus `jq` assertions over human-mode output.
+These are small copy-paste checks verified against `mcpc 0.6.0`; prefer `--json` plus `jq` assertions over human-mode output.
 
 ## Recipe: assert a session connects
 
@@ -51,11 +50,10 @@ array-vs-string mistake and confirm the exit code, not just the payload.
 
 ```bash
 mcpc connect http://127.0.0.1:19999/mcp @bad
-[ "$?" -eq 0 ]                        # connect always exits 0 — the session is
-                                       # created anyway and auto-recovers later
+[ "$?" -eq 0 ]                        # this unreachable HTTP target still creates a session
+mcpc --json | jq -e '.sessions[] | select(.name=="@bad" and .status=="reconnecting")' >/dev/null
 mcpc @bad ping
-[ "$?" -eq 1 ]                        # first live round-trip against the dead
-                                       # server is where the failure surfaces
+[ "$?" -eq 1 ]                        # the first live round-trip surfaces failure
 mcpc close @bad
 ```
 
@@ -106,7 +104,7 @@ rg 'Schema file not found' /tmp/mcpc.err >/dev/null
 ```
 
 `--schema`/`--schema-mode` are scoped to `tools-get` and `tools-call` only.
-`prompts-get` never accepted `--schema` — do not use it for that command.
+They were removed from `prompts-get` in v0.2.5; do not use them there.
 
 ## Recipe: assert a proxy is live without over-claiming auth
 
@@ -116,7 +114,7 @@ CHECK=@proxy-check
 
 mcpc connect https://research-mcp.yigitkonur.com/mcp "$UPSTREAM" --proxy 127.0.0.1:8787
 curl -s http://127.0.0.1:8787/health | jq -e '.status == "ok"' >/dev/null
-mcpc connect http://127.0.0.1:8787/mcp "$CHECK" --no-profile
+mcpc connect http://127.0.0.1:8787/ "$CHECK" --no-profile
 mcpc close "$CHECK"
 mcpc close "$UPSTREAM"
 ```

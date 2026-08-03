@@ -26,10 +26,11 @@ mcpc @research-debug logs --since 1h          # entries newer than a duration or
 mcpc --json @research-debug logs -n 200       # `[{ time, level, context?, msg } | { raw }, ...]`
 ```
 
-For a **local stdio server** (`mcpc connect <command> @session`), the bridge captures the
-child process's stderr into the same log. If the child crashes on startup (missing env var,
-bad TLS trust, missing credentials), `mcpc connect` also appends a stderr tail to its own
-error output — `logs` has the full detail if that tail isn't enough.
+For a **local stdio server** — connected via a config-file entry,
+`mcpc connect path/to/mcp.json:entry-name @session`, never a raw command — the bridge
+captures the child process's stderr into the same log. If the child crashes on startup
+(missing env var, bad TLS trust, missing credentials), `mcpc connect` also appends a
+stderr tail to its own error output — `logs` has the full detail if that tail isn't enough.
 
 ## TLS and transport debugging
 
@@ -51,6 +52,4 @@ mcpc --json @everything-http tasks-result <taskId>
 ## State clues
 
 Full state set: `live`, `connecting`, `reconnecting`, `disconnected`, `crashed`, `unauthorized`, `expired`.
-`live` is healthy; the rest tell you whether you have a transport problem, an auth problem, or a
-recoverable reconnect loop — `crashed` and `disconnected` auto-recover on the next command, `unauthorized`
-needs `mcpc login` + `restart`, `expired` needs `restart`.
+The status alone is not enough: a dead stdio child can leave the bridge marked `live` while ordinary calls fail `Not connected` (exit 2). In that case `ping` triggers restart/retry, or use explicit `mcpc restart @session`; inspect the session log and bridge `pid` before classifying the failure. OAuth-profile `unauthorized` sessions can retry after token refresh, while static-header auth needs explicit correction.

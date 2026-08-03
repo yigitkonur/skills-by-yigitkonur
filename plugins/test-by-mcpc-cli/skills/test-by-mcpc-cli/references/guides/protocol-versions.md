@@ -54,14 +54,21 @@ that's a finding about the server, not a CLI failure.
 
 ## JSON-RPC method names as command aliases
 
-0.6.0 silently accepts raw JSON-RPC method names as aliases for hyphenated commands —
-`tools/list` → `tools-list`, `resources/list` → `resources-list`. Confirmed live,
-byte-identical output: `mcpc @s tools/list` == `mcpc @s tools-list`.
+0.6.0 silently accepts raw JSON-RPC method names as aliases for hyphenated commands. Only
+two pairs are documented — `tools/list` → `tools-list`, `logging/setLevel` →
+`logging-set-level` — don't assume a full alias table exists; confirmed live for those
+plus `resources/list`, `resources/read`, `prompts/list`, byte-identical to the hyphenated
+form.
 
 Undocumented by design — absent from `--help` and "Did you mean?" — and does not extend
 to `help`: `mcpc help tools/list` prints "Unknown command" in released 0.6.0 (confirmed
 live; only `mcpc help tools-list` resolves). Only the first positional command token is
 normalized; later `/`-containing args (URIs, tool names) are untouched.
+
+`logging-set-level` is separately protocol-gated: MCP `2026-07-28` removed
+`logging/setLevel`, so the command errors on connections that negotiated it and only
+works on `2025-11-25` or older, where it succeeds but prints a deprecation warning
+(suppressed under `--json`).
 
 ## Testing implications
 

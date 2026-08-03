@@ -66,8 +66,7 @@ overrides the SSO's OIDC scopes (default `"openid profile email offline_access"`
 
 ## Headless or remote login
 
-`mcpc login` prefers opening a browser, but it is not browser-only.
-If the browser cannot open, `mcpc` prints a URL you can open manually and then asks you to paste the callback URL back into the CLI.
+`mcpc login` prefers opening a browser, but falls back to printing a URL to open manually and prompting you to paste the callback URL back into the CLI.
 
 ## JSON inspection
 
@@ -78,8 +77,7 @@ Filter by server URL and profile name instead of assuming a host-keyed object.
 mcpc --json | jq '.profiles[] | select(.serverUrl == "https://mcp.example.com/mcp" and .name == "default")'
 ```
 
-Current profile metadata is flat and typically includes fields such as `name`, `serverUrl`, `authType`, `oauthGrant` (absent means `authorization_code`), `scopes`, and timestamps.
-Do not document the old nested `userInfo` shape.
+Profile metadata is flat: `name`, `serverUrl`, `authType`, `oauthGrant` (absent means `authorization_code`), `scopes`, and timestamps.
 
 ## Storage notes
 

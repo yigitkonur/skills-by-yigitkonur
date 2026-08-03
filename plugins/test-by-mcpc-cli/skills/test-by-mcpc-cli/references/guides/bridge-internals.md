@@ -39,14 +39,21 @@ Document the CLI JSON surface unless you are explicitly explaining internals.
 permanently dead — that is why `reconnecting` matters and why a stale session can recover
 without a fresh manual `connect`.
 
-This goes further than a queued retry: a crashed bridge self-heals transparently on the next
-command against that session. Killing the actual stdio child process underneath a bridge does
-not surface as a caller-visible error — the next command (even a bare `ping`) detects the dead
-connection, tears down the old bridge, respawns a brand-new bridge + child process chain,
-reconnects, and completes, all inside one invocation, exit code 0. The only externally visible
-tell is a slower response and a `pid` change in `sessions.json`/`mcpc --json` — to *detect* a
-crash (not just survive it), watch `pid` churn or grep the bridge log for
-`SIGTERM`/`Ping failed`, not exit codes.
+**Recovery differs by process and command — verified live and against the shipped 0.6.0 source.** Kill
+the *bridge* and the next session command detects the dead socket, spawns a fresh bridge, reconnects,
+and completes with exit 0; only the `pid` changes. Kill the *stdio server child* underneath a
+still-running bridge and ordinary read/list commands fail repeatedly with `Error: Failed to list
+tools: Not connected.` (exit 2), while status and bridge `pid` can remain misleadingly `live` and
+unchanged. `ping` is the exception: it classifies the dead pipe as a network error, triggers the
+bridge restart/retry path, and can recover the bridge+child chain inside that one invocation (exit
+0, slower response, new `pid`). Otherwise run `mcpc restart @session`; restart loses added tools and
+async tasks but re-establishes resource subscriptions. Detect the cases with `pid` churn, `ping`,
+and the session log — not status alone.
+
+For stdio configs like `npx -y <package>`, the real server sits three levels below the reported
+`pid`: bridge → `npm exec` → `sh -c` → the actual server process. `mcpc --json`'s `pid` is always
+the bridge, never the leaf — killing the leaf doesn't touch that pid, and the bridge can't see
+past its own `npm exec` child to notice the leaf died until it next tries to talk to it.
 
 Sessions resumed after a bridge restart also correctly restore their negotiated protocol
 version, capabilities, and instructions (v0.6.0 fix — these could previously be lost, showing
@@ -54,9 +61,7 @@ version, capabilities, and instructions (v0.6.0 fix — these could previously b
 
 ## Capability caveat
 
-The opposite is now true from what older versions did: since v0.5.0, `mcpc` deliberately does
-**not** advertise the `sampling` or `roots` MCP client capabilities, because it has no LLM to
-answer `sampling/createMessage` and registers no `roots/list` handler — declaring them would
-only invite server requests that can only fail. A server can still expose roots-aware or
-sampling-flavored demo tools (those are ordinary tool calls), but the bridge no longer
-over-advertises client-side capability it can't back.
+Since v0.5.0, `mcpc` deliberately does **not** advertise the `sampling` or `roots` MCP client
+capabilities — it has no LLM to answer `sampling/createMessage` and registers no `roots/list`
+handler. It also advertises no elicitation capability. Servers that gate demo tools on those
+client capabilities therefore omit them from `tools-list`; absence is expected, not a server bug.

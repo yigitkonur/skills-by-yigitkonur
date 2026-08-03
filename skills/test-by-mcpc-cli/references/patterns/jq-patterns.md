@@ -44,6 +44,4 @@ project one. Use `tasks-result <taskId>` to get the real `CallToolResult`.
 
 ## Error handling reminder
 
-`isError: true` on a `tools-call`/`tasks-result` payload exits `2` (since
-v0.5.0) — but keep the payload check in your pipeline anyway; it's what
-tells you *why*.
+`isError: true` on a `tools-call`/`tasks-result` payload exits `2` (since v0.5.0), but exit `2` can also be a timeout/no-result `{error,code}` object on stderr. Capture both streams; use the payload shape to determine why the call failed.

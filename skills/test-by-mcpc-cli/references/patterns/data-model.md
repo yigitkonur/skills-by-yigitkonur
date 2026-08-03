@@ -40,8 +40,10 @@ Current output is shaped like:
 2026-07-28 stateless servers, `false` for stateful (session-ID-bearing) connections, `null` while
 undetermined. `hasInstructions` reports only whether the server sent instructions text; the text
 itself is excluded here ("can be kilobytes per session") — fetch it with `mcpc --json @<session>`.
-`activeTasks` and `resourceSubscriptions` are real fields on the session object but only appear
-when non-empty.
+`notifications`, `activeTasks`, and `resourceSubscriptions` are real fields on the session
+object, absent until their feature is used once — then they persist for the session's life
+even as an empty `{}` (e.g. subscribe-then-unsubscribe-all leaves `resourceSubscriptions: {}`,
+not a removed key). `notifications` shape: `references/patterns/notification-handling.md`.
 
 ## Session JSON from `mcpc --json @session` / `connect --json`
 
@@ -57,7 +59,9 @@ Both return an extended MCP `InitializeResult` (2025-11-25 connections) or `Disc
     "transport": "streamable-http",
     "stateless": false,
     "logPath": "/root/.mcpc/logs/bridge-@research-test.log",
-    "resourceSubscriptions": []
+    "resourceSubscriptions": [
+      { "uri": "demo://resource/dynamic/text/1", "filePath": "/tmp/sub.txt", "subscribedAt": "..." }
+    ]
   },
   "protocolVersion": "2025-11-25",
   "supportedVersions": ["2026-07-28", "2025-11-25"],
@@ -73,6 +77,10 @@ Both return an extended MCP `InitializeResult` (2025-11-25 connections) or `Disc
 - `_mcpc.stateless` — same tri-state semantics as above.
 - `_mcpc.logPath` — bridge log file for this session (0.3.1). Log file size is deliberately not
   included; `stat` the path or run `mcpc @<session> logs` for a fresh read.
+- `_mcpc.resourceSubscriptions` here is an **array of `{uri, filePath, subscribedAt,
+  lastSyncedAt?, lastError?}` objects, omitted entirely when empty** — the opposite shape and
+  presence rule from the top-level list's URI-keyed object (which persists as `{}`). Plain
+  `mcpc @<session>` (no `--json`) shows the same data as a `Resource subscriptions:` block.
 - `supportedVersions` / `_meta` — only present on 2026-07-28 connections (from `server/discover`).
 - Schemas: `https://modelcontextprotocol.io/specification/2025-11-25/schema#initializeresult` and
   `https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult`.
@@ -107,14 +115,13 @@ in the result sets exit code 2 in both human and `--json` modes.
 
 ## Error JSON shape
 
-CLI errors in `--json` mode always include an exit `code` field alongside `error`/`message`:
+CLI/session failures in `--json` mode use a compact error object on `stderr`, commonly:
 
 ```json
-{ "error": "ClientError", "message": "...", "code": 1, "details": "..." }
+{ "error": "Failed to connect to MCP server: ...", "code": 1 }
 ```
 
-`code` matches the exit-code contract: `1` client error, `2` server/tool error, `3` network
-error, `4` auth error.
+Some paths also add `message` or `details`; script against `error` plus numeric `code`, not one universal full shape. Exit `2` has two forms: a server `isError:true` result on stdout, or a timeout/no-result `{error,code}` on stderr. Codes `3`/`4` are documented as network/auth in the upstream contract but were not reproduced in this 0.6.0 audit.
 
 ## Storage notes
 

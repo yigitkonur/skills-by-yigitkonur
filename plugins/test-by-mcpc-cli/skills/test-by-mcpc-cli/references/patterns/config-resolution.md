@@ -18,8 +18,8 @@ one stdio (or HTTP) entry inside a config file.
 }
 ```
 
-VS Code's `"servers"` key is also accepted — normalized to `mcpServers` internally, so a
-file that uses `"servers"` instead of `"mcpServers"` still works without edits.
+VS Code's `"servers"` key is also accepted as an alias for `"mcpServers"` — a file that uses
+`"servers"` instead still works without edits.
 
 ## Connect forms
 
@@ -83,7 +83,6 @@ Also settable as a `protocolVersion` field on an individual `mcp.json` config en
 - forgetting stdio entries are skipped by default on bulk connects — pass `--stdio` to
   include them
 - omitting the `:entry` suffix when only one server should be connected
-- assuming root host URLs are enough when the server is mounted under a subpath like `/mcp`
 
 ## Stdio security note
 
