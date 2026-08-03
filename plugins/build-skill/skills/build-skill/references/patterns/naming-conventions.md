@@ -28,7 +28,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Initializer | `init-{thing}` or `setup-{thing}` | `init-agent-config` |
 | Converter | `convert-{source}-{target}` | `convert-url-to-nextjs` |
 | Research/exploration | `research-{topic}` or `run-research` | `run-research` |
-| Debugging | `debug-runtime` or `debug-{tool}` | `debug-runtime` |
+| Debugging | `debug-{tool}` | `debug-provider-routing` |
 
 ### Common naming mistakes
 

@@ -1,6 +1,6 @@
 # run-codex-review-loop
 
-Native multi-branch Codex review loops using `codex exec review`.
+Repeatable Codex review loops across lenses or branches, with an opt-in verified fix mode using isolated worktrees and exact-SHA CI.
 
 **Category:** orchestration
 

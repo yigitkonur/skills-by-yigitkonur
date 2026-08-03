@@ -17,7 +17,7 @@ Memory beats taxonomy. A small verb set is easier to recall than a precise one.
 | `audit-` | Read-only inspection; produce findings, no fixes | The skill also applies fixes (`update-`); the output is pass / fail (`test-`) | `audit-agentic-cli`, `audit-completion`, `audit-skill-by-derailment` |
 | `review-` | Historical verb for code-review skills | New review workflows use `run-review`; do not add new `review-*` skills | _(retired into `run-review`)_ |
 | `test-` | Verify functional behavior with binary pass / fail evidence | The output is qualitative findings (`audit-` or `review-`); chasing a bug (`debug-`) | `test-by-mcpc-cli` |
-| `debug-` | Chase a reproducible runtime bug or intermittent failure; methodology over inspection | Inspecting code statically (`audit-`); reviewing a diff (`review-`) | `debug-runtime` |
+| `debug-` | Chase a reproducible runtime bug or intermittent failure; methodology over inspection | Inspecting code statically (`audit-`); reviewing a diff (`review-`) | _(reserved — no current skill)_ |
 | `publish-` | Set up automated release / CI / packaging for a registry | Authoring the code being released (`build-`); single-shot ad-hoc deploy (`run-`) | `publish-npm-package` |
 | `plan-` | Frame a decision, compare options, or apply a named decision methodology; produce a recommendation, not code | The output is a runnable artifact (`build-` / `init-`) | _(retired)_ |
 
@@ -30,7 +30,6 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 - *"I want to **update** my AGENTS.md after the refactor"* → `update-agent-config` ✓
 - *"I want to **run** Railway commands"* → `run-railway` ✓
 - *"I want to **review** this PR"* → `run-review` ✓
-- *"I want to **debug** a runtime bug"* → `debug-runtime` ✓
 - *"I want to **plan** between three architectural options"* → _(retired)_ ✓
 
 ## Object Rules
@@ -52,7 +51,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 | `run-` vs `build-` | Run drives a live tool during the session. Build produces an artifact. `run-railway` (drive Railway CLI), `build-tinacms-nextjs` (write TinaCMS code). |
 | `init-` vs `build-` | Init outputs config for another tool. Build outputs runnable code. `init-makefiles` (configure Make), `build-mcp-use-server` (write a server). |
 | `convert-` vs `create-` | Convert produces a usable B from an existing A. Create produces documentation / structured data. `convert-url-to-nextjs` builds a project; `create-design-md` documents a design system. |
-| `plan-` vs `debug-` | Plan frames a decision without code. Debug chases a bug at runtime. _(retired)_ (architectural decisions), `debug-runtime` (active bug hunt). |
+| `plan-` vs `debug-` | Plan frames a decision without code. Debug chases a bug at runtime. Both verbs are currently reserved. |
 
 ## Canonical Rules
 
@@ -89,7 +88,7 @@ The verb registry was rewritten on 2026-05-17. Renames applied in the same commi
 | | `review-self` | `ask-` dropped; opening a self-review IS a review |
 | `check-completion` | `audit-completion` | `check-` dropped; read-only verification → `audit-` |
 | `convert-mcp-server-sdk-v1-to-v2` | `convert-mcp-sdk-v1-to-v2` | Shorten object |
-| | `debug-runtime` | `do-` dropped; `debug-` is the verb |
+| `debug-runtime` | _(retired)_ | Generic debugging guidance no longer ships in this pack |
 | | `review-pr` | `do-` dropped; `review-` is the verb |
 | | _(retired)_ | `do-` dropped; `plan-` is the verb |
 | | | `do-` dropped; `audit-` is the verb |

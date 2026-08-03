@@ -121,7 +121,6 @@ Anchor on this set of plain-English verbs:
 ### When two skills overlap, use distinct verbs to disambiguate
 
 - `run-review` Modes A and B replaced what used to be `do-review` (do a PR review) and `ask-review` (ask for a review on your branch).
-- `debug-runtime` is the systematic-debug entry point; its three-fails gate hands off to an inline structured-reframe pause (the standalone `plan-tradeoff` skill was retired).
 - `audit-agentic-cli` and `audit-agentic-mcp` live here (merged from the retired b-side pack) — they earn their context cost inside CLI/MCP projects, so prefer installing them per-project (`/plugin install audit-agentic-mcp@yigitkonur`).
 
 ### Anti-patterns

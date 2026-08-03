@@ -23,7 +23,7 @@ Do NOT use when:
 - evaluating reviewer comments, bot comments, or external review docs → `run-review` Mode C
 - planning *upcoming* work from GitHub issues → the `gh` CLI directly (the run-issue-tree skill was retired)
 - reviewing someone else's PR or branch diff → `run-review` Mode A
-- debugging a runtime failure → `debug-runtime`
+- debugging a runtime failure → use the repository's debugging workflow
 
 ## The 22-status taxonomy (load-bearing)
 

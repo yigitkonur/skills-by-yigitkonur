@@ -31,7 +31,7 @@ Do **not** use this skill for:
 
 - per-branch codex review fix loops over a list of branches → multi-branch codex review orchestration
 - repo-cleanup of dirty trees across multiple worktrees with no review handoff yet → `run-repo-cleanup`
-- chasing a runtime bug with no diff to judge → `debug-runtime`
+- chasing a runtime bug with no diff to judge → use the repository's debugging workflow
 - generic codex-CLI orchestration without a review intent → parallel `codex exec` orchestration or parallel `codex exec` orchestration
 
 ## Mode selection (load-bearing — do not skip)

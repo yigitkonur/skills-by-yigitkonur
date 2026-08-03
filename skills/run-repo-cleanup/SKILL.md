@@ -29,7 +29,7 @@ Do **NOT** use this skill for:
 - *Mid-feature work* — this finalizes; it assumes the work is done.
 - *Opening pull requests* — this skill deliberately does not. If you want fork-PRs, that is a different tool.
 - *Reviewing someone else's PR* — use `review-pr`.
-- *Runtime debugging* — use `debug-runtime`.
+- *Runtime debugging* — use the repository's debugging workflow.
 
 ## Pinned Defaults
 

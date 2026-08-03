@@ -41,7 +41,7 @@ CODEX_PLUGIN_NAME = "skills-by-yigitkonur"
 
 # Runtime-specific skills that ship through the root Codex plugin only. Keep
 # these out of Claude's per-skill plugins, themed bundles, and yk-everything.
-CODEX_ONLY_SKILLS = {"orchestrate-projects-by-jean"}
+CODEX_ONLY_SKILLS = set()
 
 
 def version():
@@ -57,8 +57,8 @@ def version():
 GROUPS = {
     "yk-review": (
         "review",
-        "Review & completion — code review, review-feedback triage, done-claim audits, runtime debugging.",
-        ["run-review", "run-codex-review-loop", "run-codex-adversarial-loop", "audit-completion", "debug-runtime"],
+        "Review & completion — code review, Codex review loops, feedback triage, and done-claim audits.",
+        ["run-review", "run-codex-review-loop", "audit-completion"],
     ),
     "yk-frontend": (
         "frontend",
@@ -88,8 +88,8 @@ GROUPS = {
     ),
     "yk-testing": (
         "testing",
-        "Frontend, backend, and CLI testing — release-gate TestSprite browser/API contracts and exhaustively verify martool CLI surfaces in source or Coolify.",
-        ["run-testsprite-backend", "run-testsprite-frontend", "test-martool-cli"],
+        "Frontend and backend testing — create, diagnose, and release-gate TestSprite browser journeys and API contracts against deployed services.",
+        ["run-testsprite-backend", "run-testsprite-frontend"],
     ),
     "yk-build": (
         "build",
@@ -108,13 +108,13 @@ GROUPS = {
     ),
     "yk-research": (
         "research",
-        "Research & discovery — single-question and wave-based corpus research, GitHub repo scouting, bulk Codex search. Bundles the internet-researcher subagents.",
-        ["run-research", "run-deep-research", "run-github-scout", "search-it-bulk-by-codex"],
+        "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting. Bundles the internet-researcher subagents.",
+        ["run-research", "run-deep-research", "run-github-scout"],
     ),
     "yk-automation": (
         "automation",
-        "Live automation — Herdr terminal/agent control, browser automation, iOS and Android testing, Tailscale Funnel public tunnels.",
-        ["herdr", "run-agent-browser", "run-agent-device", "mobilerun-control", "run-tailscale-funnel"],
+        "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing.",
+        ["herdr", "run-agent-browser", "run-agent-device", "mobilerun-control"],
     ),
     "yk-config": (
         "config",
@@ -141,11 +141,6 @@ GROUPS = {
         "productivity",
         "Writing & editing — multilingual natural-writing diagnosis, evidence-safe rewriting, and publication review for text, Markdown, MDX, and HTML.",
         ["convert-to-natural-writing"],
-    ),
-    "yk-delivery": (
-        "delivery",
-        "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",
-        ["run-aligned-delivery"],
     ),
 }
 

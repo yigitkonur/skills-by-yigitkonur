@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **54 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend/cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **47 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 54-skill pack; Claude Code gets 53 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex and Claude Code both get the complete 47-skill pack.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,20 +61,19 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 53 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 47 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
-| **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
+| **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-testing** | TestSprite frontend/browser, backend API, and exhaustive martool CLI verification | `/plugin install yk-testing@yigitkonur` |
+| **yk-testing** | TestSprite frontend/browser and backend API verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
-| **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
-| **yk-automation** | herdr terminal/agent control, browser automation, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
+| **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
+| **yk-automation** | herdr terminal/agent control, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 | **yk-writing** | multilingual natural-writing diagnosis, rewrite, and publication review | `/plugin install yk-writing@yigitkonur` |
-| **yk-delivery** | scored alignment, spec corpus, waved orchestration for big initiatives | `/plugin install yk-delivery@yigitkonur` |
 
 ---
 
@@ -115,13 +114,12 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
 ---
 
-## 🧪 frontend, backend, and cli testing
+## 🧪 frontend & backend testing
 
-author, run, diagnose, and release-gate deployed browser/API tests and exhaustive martool CLI matrices.
+author, run, diagnose, and release-gate deployed browser and API tests.
 
 - **[run-testsprite-backend](skills/run-testsprite-backend/)** — TestSprite backend API tests with secure, revision-pinned release proof.
 - **[run-testsprite-frontend](skills/run-testsprite-frontend/)** — TestSprite browser tests via public CLI or localhost MCP.
-- **[test-martool-cli](skills/test-martool-cli/)** — combine martool's generated and platform CLI matrices in a source checkout or pinned Coolify container, with exact coverage and zero-provider evidence.
 
 `/plugin install yk-testing@yigitkonur`
 
@@ -153,15 +151,13 @@ rebuild a live site, rip its design, or audit a running ui/ux.
 
 ---
 
-## 📝 review & debug
+## 📝 review & completion
 
-judge a change for merge-readiness, triage feedback, verify "done", and chase runtime bugs.
+judge a change for merge-readiness, triage feedback, and verify "done".
 
 - **[run-review](skills/run-review/)** — one entry point, four modes: (a) do a pr/branch review, (b) open your branch as a self-review pr, (c) triage received feedback, (d) delegate to `codex review`.
-- **[run-codex-review-loop](skills/run-codex-review-loop/)** — native `codex exec review` across multiple branches; compare findings; rescue a saved branch-review loop.
-- **[run-codex-adversarial-loop](skills/run-codex-adversarial-loop/)** — fan out parallel codex adversarial reviews across derived lenses, independently verify every finding, fix confirmed issues in grouped worktrees, loop until clean.
+- **[run-codex-review-loop](skills/run-codex-review-loop/)** — multi-lens or multi-branch codex review loops; independently verify findings and optionally fix confirmed issues in isolated worktrees until convergence.
 - **[audit-completion](skills/audit-completion/)** — audit task / session / plan / branch completion claims with evidence; remediate to terminal status.
-- **[debug-runtime](skills/debug-runtime/)** — language-agnostic systematic debugging: four phases + iron law, for reproducible bugs and repeated failed fixes.
 
 `/plugin install yk-review@yigitkonur`
 
@@ -174,7 +170,6 @@ answer questions and find things with real web evidence. ships the `internet-res
 - **[run-research](skills/run-research/)** — one technical question, current web + reddit practitioner evidence, source-backed synthesis, optionally fanned across subagents.
 - **[run-deep-research](skills/run-deep-research/)** — wave-based corpus research over 5+ entities or a market/category; evidence persisted to disk; claude subagents or `codex exec` executors.
 - **[run-github-scout](skills/run-github-scout/)** — adaptive github repo discovery, shortlisting for a concrete need, oss comparison with repo evidence.
-- **[search-it-bulk-by-codex](skills/search-it-bulk-by-codex/)** — many small codex-native web searches through `codex exec` with per-question, parseable answer files.
 
 `/plugin install yk-research@yigitkonur` · agents only: `/plugin install yk-researchers@yigitkonur`
 
@@ -182,25 +177,14 @@ answer questions and find things with real web evidence. ships the `internet-res
 
 ## 🤖 live automation
 
-drive a browser, a phone, a terminal workspace, or a public tunnel mid-session.
+drive a browser, a phone, or a terminal workspace mid-session.
 
 - **[herdr](skills/herdr/)** — control herdr panes, tabs, workspaces, worktrees, commands, and coding agents without stealing focus.
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
 - **[run-agent-device](skills/run-agent-device/)** — agent-device cli for ios app testing: settle-first snapshot/press/fill loop, evidence capture, cross-layer bug triage, runtime-freshness + fresh-state discipline, fix-and-retest.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
-- **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — expose a local http server at a public `.ts.net` url via tailscale funnel for browser nav, mobile testing, webhooks, demos.
 
 `/plugin install yk-automation@yigitkonur`
-
----
-
-## 🧠 codex-only
-
-skills that depend on Codex desktop/runtime capabilities. these are included in the Codex all-pack plugin and intentionally excluded from every Claude Code plugin and bundle.
-
-- **[orchestrate-projects-by-jean](skills/orchestrate-projects-by-jean/)** — supervise existing jean coding agents through mcp + computer use, bounded watchers, exact-state recovery, and completion gates.
-
-install `skills-by-yigitkonur@yigitkonur` from `/plugins` in Codex.
 
 ---
 
@@ -236,16 +220,6 @@ build and harden skills themselves.
 - **[audit-skill-by-derailment](skills/audit-skill-by-derailment/)** — stress-test an existing skill.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.
 
 `/plugin install yk-skills@yigitkonur`
-
----
-
-## 🧭 aligned delivery
-
-drive a large, ambiguous initiative front-to-back: scored question alignment, then a spec corpus, then waved subagent orchestration.
-
-- **[run-aligned-delivery](skills/run-aligned-delivery/)** — scored multi-round question alignment, then a filename-state spec corpus, then waved subagent orchestration — for a large or ambiguous initiative.
-
-`/plugin install yk-delivery@yigitkonur`
 
 ---
 

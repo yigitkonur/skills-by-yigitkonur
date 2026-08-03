@@ -43,7 +43,7 @@ Do NOT use when:
 | One technical question, single answer | `run-research` |
 | 1-4 entities, one polished single-page summary, no folder structure | `run-research` |
 | Finding or shortlisting GitHub repos as the deliverable | `run-github-scout` |
-| Many small factual web questions, one parseable answer file each | `search-it-bulk-by-codex` |
+| Many small factual web questions, one parseable answer file each | use the compact Codex executor mode here, or `run-research` when no corpus is needed |
 | Codebase analysis, code review, or implementation work | not this skill |
 | Polished single deliverable (HTML battlecard, slide deck) | downstream skills polish |
 

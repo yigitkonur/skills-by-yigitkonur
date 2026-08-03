@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 53 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 47 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.49",
       "category": "bundle",
       "strict": false,
@@ -44,7 +44,6 @@
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
-        "./skills/debug-runtime",
         "./skills/deploy-coolify-cloud",
         "./skills/herdr",
         "./skills/init-agent-config",
@@ -54,8 +53,6 @@
         "./skills/publish-npm-package",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
-        "./skills/run-aligned-delivery",
-        "./skills/run-codex-adversarial-loop",
         "./skills/run-codex-review-loop",
         "./skills/run-deep-research",
         "./skills/run-github-scout",
@@ -63,12 +60,9 @@
         "./skills/run-repo-cleanup",
         "./skills/run-research",
         "./skills/run-review",
-        "./skills/run-tailscale-funnel",
         "./skills/run-testsprite-backend",
         "./skills/run-testsprite-frontend",
-        "./skills/search-it-bulk-by-codex",
         "./skills/test-by-mcpc-cli",
-        "./skills/test-martool-cli",
         "./skills/update-agent-config"
       ],
       "agents": [
@@ -93,7 +87,7 @@
     {
       "name": "yk-review",
       "source": "./",
-      "description": "Review & completion — code review, review-feedback triage, done-claim audits, runtime debugging.",
+      "description": "Review & completion — code review, Codex review loops, feedback triage, and done-claim audits.",
       "version": "1.0.49",
       "category": "bundle",
       "tags": [
@@ -103,9 +97,7 @@
       "skills": [
         "./skills/run-review",
         "./skills/run-codex-review-loop",
-        "./skills/run-codex-adversarial-loop",
-        "./skills/audit-completion",
-        "./skills/debug-runtime"
+        "./skills/audit-completion"
       ]
     },
     {
@@ -151,7 +143,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Frontend, backend, and CLI testing — release-gate TestSprite browser/API contracts and exhaustively verify martool CLI surfaces in source or Coolify.",
+      "description": "Frontend and backend testing — create, diagnose, and release-gate TestSprite browser journeys and API contracts against deployed services.",
       "version": "1.0.49",
       "category": "bundle",
       "tags": [
@@ -160,8 +152,7 @@
       "strict": false,
       "skills": [
         "./skills/run-testsprite-backend",
-        "./skills/run-testsprite-frontend",
-        "./skills/test-martool-cli"
+        "./skills/run-testsprite-frontend"
       ]
     },
     {
@@ -189,7 +180,7 @@
     {
       "name": "yk-research",
       "source": "./",
-      "description": "Research & discovery — single-question and wave-based corpus research, GitHub repo scouting, bulk Codex search. Bundles the internet-researcher subagents.",
+      "description": "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting. Bundles the internet-researcher subagents.",
       "version": "1.0.49",
       "category": "bundle",
       "tags": [
@@ -199,8 +190,7 @@
       "skills": [
         "./skills/run-research",
         "./skills/run-deep-research",
-        "./skills/run-github-scout",
-        "./skills/search-it-bulk-by-codex"
+        "./skills/run-github-scout"
       ],
       "agents": [
         "./subagents/claude/"
@@ -209,7 +199,7 @@
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — Herdr terminal/agent control, browser automation, iOS and Android testing, Tailscale Funnel public tunnels.",
+      "description": "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing.",
       "version": "1.0.49",
       "category": "bundle",
       "tags": [
@@ -220,8 +210,7 @@
         "./skills/herdr",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
-        "./skills/mobilerun-control",
-        "./skills/run-tailscale-funnel"
+        "./skills/mobilerun-control"
       ]
     },
     {
@@ -286,20 +275,6 @@
       "strict": false,
       "skills": [
         "./skills/convert-to-natural-writing"
-      ]
-    },
-    {
-      "name": "yk-delivery",
-      "source": "./",
-      "description": "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",
-      "version": "1.0.49",
-      "category": "bundle",
-      "tags": [
-        "delivery"
-      ],
-      "strict": false,
-      "skills": [
-        "./skills/run-aligned-delivery"
       ]
     },
     {
@@ -600,17 +575,6 @@
       ]
     },
     {
-      "name": "debug-runtime",
-      "source": "./",
-      "description": "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass.",
-      "version": "1.0.49",
-      "category": "review",
-      "strict": false,
-      "skills": [
-        "./skills/debug-runtime"
-      ]
-    },
-    {
       "name": "deploy-coolify-cloud",
       "source": "./",
       "description": "Use if deploying/updating a docker-compose service on Coolify Cloud via its API — domains, env.",
@@ -710,31 +674,9 @@
       ]
     },
     {
-      "name": "run-aligned-delivery",
-      "source": "./",
-      "description": "Use if driving a large ambiguous initiative with scored question alignment before parallel exec.",
-      "version": "1.0.49",
-      "category": "delivery",
-      "strict": false,
-      "skills": [
-        "./skills/run-aligned-delivery"
-      ]
-    },
-    {
-      "name": "run-codex-adversarial-loop",
-      "source": "./",
-      "description": "Use if fanning out parallel Codex adversarial reviews, verifying findings, fixing in worktrees.",
-      "version": "1.0.49",
-      "category": "review",
-      "strict": false,
-      "skills": [
-        "./skills/run-codex-adversarial-loop"
-      ]
-    },
-    {
       "name": "run-codex-review-loop",
       "source": "./",
-      "description": "Use if running Codex review loops across branches, lenses, comparisons, or convergence rounds.",
+      "description": "Use skill if you are running repeatable Codex reviews across lenses or branches, optionally verifying and fixing confirmed findings in isolated worktrees.",
       "version": "1.0.49",
       "category": "review",
       "strict": false,
@@ -809,17 +751,6 @@
       ]
     },
     {
-      "name": "run-tailscale-funnel",
-      "source": "./",
-      "description": "Use if exposing a local HTTP server at a public .ts.net URL via Tailscale Funnel.",
-      "version": "1.0.49",
-      "category": "automation",
-      "strict": false,
-      "skills": [
-        "./skills/run-tailscale-funnel"
-      ]
-    },
-    {
       "name": "run-testsprite-backend",
       "source": "./",
       "description": "Use skill if you are creating, debugging, running, or managing credentials for TestSprite backend API tests against deployed services; not frontend, load, fuzz, security scanning, or native-only testing.",
@@ -842,17 +773,6 @@
       ]
     },
     {
-      "name": "search-it-bulk-by-codex",
-      "source": "./",
-      "description": "Use if running many small Codex-native web searches via codex exec with parseable answers.",
-      "version": "1.0.49",
-      "category": "research",
-      "strict": false,
-      "skills": [
-        "./skills/search-it-bulk-by-codex"
-      ]
-    },
-    {
       "name": "test-by-mcpc-cli",
       "source": "./",
       "description": "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
@@ -861,17 +781,6 @@
       "strict": false,
       "skills": [
         "./skills/test-by-mcpc-cli"
-      ]
-    },
-    {
-      "name": "test-martool-cli",
-      "source": "./",
-      "description": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
-      "version": "1.0.49",
-      "category": "testing",
-      "strict": false,
-      "skills": [
-        "./skills/test-martool-cli"
       ]
     },
     {
