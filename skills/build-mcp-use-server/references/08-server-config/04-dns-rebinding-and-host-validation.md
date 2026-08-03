@@ -16,7 +16,7 @@ When you bind to `127.0.0.1`, `localhost`, or `::1`, **Host validation is automa
 // Local development with automatic protection
 await server.listen(3000);  // binds 127.0.0.1
 // Valid Host headers: 127.0.0.1:3000, localhost:3000, [::1]:3000
-// Invalid: attacker.com:3000, 192.168.1.100:3000 → 400 Bad Request
+// Invalid: attacker.com:3000, 192.168.1.100:3000 → 403 Forbidden
 ```
 
 This automatic protection applies to `listen()` when it binds a localhost-class host. `server.fetch()` has no bind host, so Host validation is off unless `allowedHosts` is configured.
@@ -31,6 +31,8 @@ await server.listen(3000, { host: "0.0.0.0" });
 // Edge routes only traffic for api.example.com → Host: api.example.com
 // Host validation OFF; trust the edge
 ```
+
+`listen()` on a non-localhost host without `allowedHosts` logs a `console.warn`: `"[mcp-use] listen() is serving on <host> without Host validation. Behind a platform edge that only routes your own domains this is expected; if this process is reachable directly, set allowedHosts to restrict it."` This is a warning, not a startup failure — the server still binds and serves.
 
 ## allowedHosts: Extra Allowed Hostnames
 
@@ -58,16 +60,40 @@ new MCPServer({
 
 ## hostValidationMiddleware
 
-Use the exported middleware utility to add Host validation to a custom Hono app or route:
+`hostValidationMiddleware()` is Fetch middleware, not Hono middleware. Do not pass it to `app.use()` or `server.use()`. For an `MCPServer`, prefer constructor configuration so every mounted route uses the same policy:
 
 ```typescript
-import { hostValidationMiddleware } from "mcp-use";
+import { MCPServer } from "mcp-use";
 
-const app = new Hono();
-app.use(hostValidationMiddleware(["api.example.com", "localhost"]));
+const server = new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedHosts: ["api.example.com", "localhost"],
+});
 
-// Custom route protected by Host validation
-app.get("/health", (c) => c.json({ ok: true }));
+server.get("/health", (c) => c.json({ ok: true }));
+```
+
+When you own a Fetch boundary rather than an `MCPServer` configuration, wrap its terminal handler with `composeFetch`:
+
+```typescript
+import {
+  composeFetch,
+  hostValidationMiddleware,
+  MCPServer,
+} from "mcp-use";
+
+const server = new MCPServer({
+  name: "api",
+  version: "1.0.0",
+});
+
+const validatedFetch = composeFetch(
+  server.fetch,
+  hostValidationMiddleware(["api.example.com", "localhost"]),
+);
+
+export default validatedFetch;
 ```
 
 See `05-middleware.md` for middleware patterns.
@@ -94,8 +120,8 @@ const server = new MCPServer({
 });
 
 await server.listen(3000);
-// From mydev.local machine: http://mydev.local:3000/mcp → allowed
-// From attacker.com: Host: mydev.local (DNS rebinding attempt) → rejected
+// Request with Host: mydev.local:3000 → allowed (in allowedHosts)
+// Request with Host: attacker.com (DNS-rebound to this machine's IP) → rejected (403, not in allowedHosts)
 ```
 
 ## Host vs Origin Validation

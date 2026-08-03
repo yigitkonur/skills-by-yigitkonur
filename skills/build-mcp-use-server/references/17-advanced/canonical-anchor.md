@@ -65,15 +65,15 @@ Clients connect to `http://localhost:3000/mcp` and see:
 - `billing_getInvoices`, `billing_createInvoice` (from upstream `billing` server)
 - `gateway_health` (local tool)
 
-Each upstream tool is namespaced with its config key. Static resources use `mcp-use-proxy://users/...` URIs.
+Each upstream tool is namespaced with its config key. Static resources are re-exposed as `mcp-use-proxy:///users/...` URIs (`mcp-use-proxy:///<namespace>/<upstream-uri>`, both segments `encodeURIComponent`-escaped).
 
 ## Features demonstrated
 
-1. **Multi-upstream proxy** — two independent upstreams (lines 12–25)
-2. **Bearer auth passthrough** — tokens read from env (lines 15, 20)
-3. **Timeout config** — 5-second connection timeout (lines 16, 21)
-4. **Local tools** — gateway-specific tools alongside proxied (lines 28–37)
-5. **Port + base URL** — environment-driven config (lines 39)
+1. **Multi-upstream proxy** — two independent upstreams (`users`, `billing`)
+2. **Bearer auth passthrough** — each upstream's `authToken` read from its own env var
+3. **Timeout config** — 5-second connection timeout per upstream
+4. **Local tools** — a gateway-specific tool (`gateway_health`) registered alongside the proxied ones
+5. **basePath config** — `basePath: "/mcp"` passed to `new MCPServer(...)`
 
 ## Testing with inspector
 
@@ -87,8 +87,11 @@ npm run dev
 
 ```bash
 # Call a proxied tool via gateway
+# Accept: application/json, text/event-stream is required on every POST —
+# the bundled transport returns 406 Not Acceptable without it.
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
@@ -96,6 +99,8 @@ curl -X POST http://localhost:3000/mcp \
     "params": { "name": "users_listUsers", "arguments": {} }
   }'
 ```
+
+See `references/22-validate/02-curl-handshake.md` for the full initialize → tools/list → tools/call sequence, including the `Mcp-Protocol-Version` header.
 
 ## Key constraints
 

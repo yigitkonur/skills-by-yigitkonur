@@ -41,7 +41,7 @@ Within a tool callback, send structured log messages to the client:
 ctx.sendLog(level, data, logger?)
 ```
 
-Clients receive these as notifications during the request. Modern clients must explicitly opt in (request-level log level); old clients ignore them.
+Clients receive these as notifications during the request. `ctx.sendLog()` sends unconditionally — it does not filter by a client's `logging/setLevel` request, so throttle by severity in your own code if needed. Clients without log support simply ignore the notification.
 
 **Levels:** `"debug"` | `"info"` | `"notice"` | `"warning"` | `"error"` | `"critical"` | `"alert"` | `"emergency"`
 

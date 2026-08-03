@@ -9,13 +9,13 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 | Feature | v1.34.5 | v2.0.0-beta.66 | Migrate to |
 |---------|---------|---|---|
 | **Import** | `mcp-use/server` | `mcp-use` (root) | Root import; see 03 |
-| **Node.js** | >=20.19.0 \\|\\ >=22.12.0 | >=22.22.2 ESM only | Update `engines`; drop CommonJS |
+| **Node.js** | `^20.19.0 \|\| >=22.12.0` | `>=22.22.2`, ESM only | Update `engines`; drop CommonJS |
 | **Tool registration** | `schema` + `cb` | `inputSchema` + `outputSchema` + callback 2nd arg | See 03 |
 | **Tool exports** | Optional | **Required** for Views | Export all static tools as `ToolRef` |
 | **Response helpers** | `text()`, `object()`, etc. | Deprecated shims; prefer raw `CallToolResult` | Return `{ content, structuredContent }` |
-| **Resource callback** | `(uri)` | `(uri, ctx)` | Add `ctx` parameter |
-| **Template callbacks** | Nested `callbacks` | Top-level `complete` + `(uri, params, ctx)` | Flatten and add params |
-| **Prompt schema** | `args: [{ name, schema }]` | Single `schema` field | Move to unified schema |
+| **Resource callback** | `()` or `(ctx)` (legacy v1 callback receives context, not requested URI) | `(uri, ctx)` | Add requested URI as first parameter; context moves to second |
+| **Template config/callbacks** | Legacy nested `resourceTemplate.callbacks.complete` or newer flat `uriTemplate` + `callbacks.complete`; callbacks could take `(uri, params, ctx?)` | Flat top-level `uriTemplate` + `complete`; canonical `(uri, params, ctx)` callback | Remove legacy nesting; move `callbacks.complete`; use canonical signature |
+| **Prompt schema** | `args: [{ name, type, required? }]` (deprecated even in v1; `schema` preferred there too) | Single `schema` field only — `args` removed | Move to unified `schema` |
 | **Context lifecycle** | Session-affine, stateful | Request-scoped, stateless | No sessions in beta.66; see 07 |
 | **User ID** | `ctx.auth.user.userId` | `ctx.auth.user.id` (provider-specific) | Rename everywhere; see 05 |
 | **OAuth config** | In MCPServer constructor | Provider factories from `mcp-use/oauth/*` | Move to separate import; see 05 |
@@ -26,7 +26,7 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 | **Widget result** | `widget()` helper | Raw `{ content, structuredContent }` or deprecated helper | Prefer raw envelopes |
 | **View hook** | `useWidget()` | `useToolContext<"tool-name">()` | Rename and add type param |
 | **View state** | `useWidgetState()` + local state | `useViewState()` + React `useState()` + `<ModelContext>` | Split concerns; see 06 |
-| **View component** | `McpUseProvider` wrapper | `<ThemeProvider>` + `<ErrorBoundary>` | Unwrap and use explicit providers |
+| **View component** | `McpUseProvider` wrapper | Framework-owned bootstrap; optional `ThemeProvider`, `ViewControls`, nested `ErrorBoundary` | Remove aggregate provider |
 | **HTTP transport** | Implicit for web | Explicit `server.listen(port)` or `server.fetch` | See 07 |
 | **Stdio serving** | `server.listen({ stdio: true })` | **Removed** | Use HTTP adapters only |
 | **Express/Connect** | `server.listen({ express, router })` | **Removed** | Use Hono (`server.app`) or `server.fetch`; see 07 |
@@ -51,13 +51,13 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 
 | Feature | v1 | v2 | Note |
 |---------|----|----|---|
-| MCP protocol wire format | ✓ | ✓ | Same JSON-RPC; clients still don't assume sessions |
+| JSON-RPC/MCP result envelope concept | ✓ | ✓ | Still JSON-RPC with `content`/`structuredContent`/resource/prompt envelopes; protocol revisions and capabilities did change (v2 SDK targets date-string revisions such as `2026-07-28`) |
 | Tool concept | ✓ | ✓ | Registration still exists; syntax changes only |
 | Resource concept | ✓ | ✓ | Static and template variants both supported |
 | Prompt concept | ✓ | ✓ | Arguments schema supported; `completable()` works |
-| Zod schemas | ✓ | ✓ | v4 required (v3 no longer supported) |
+| Zod schemas | ✓ (v4 peer dependency in v1.34.5) | ✓ | Zod v4 requirement carries over unchanged, not new in v2 |
 | Completion helpers | ✓ | ✓ | Same signature and purpose |
-| Middleware API | ✓ | ✓ | MCP event patterns identical |
+| Middleware concept | ✓ | ✓ | `server.use(...)` remains, but imports, request context, and session assumptions must migrate |
 
 ## Migration sequence (8 steps)
 
@@ -80,7 +80,6 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 - Passing `sessionStore` to constructor (config option removed)
 - Using `server.listen({ stdio: true })` (transport removed)
 - Exporting helpers only, not tools (View typing breaks; export `ToolRef` instead)
-- Raw v3 Zod schemas (must upgrade to v4)
 
 ## New patterns you'll adopt
 
@@ -90,6 +89,30 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 4. **Hook composition**: View state split into model-visible (`useViewState`) and ephemeral (React `useState`).
 5. **Raw MCP envelopes**: Type-safe; helpers remain as deprecated upgrade path only.
 
+## Migration Exit Gate
+
+Do not stop after text substitutions. Prove the migrated server is in the v2 package/API world and exercises the original behavior:
+
+1. **Classify installed packages:** run the bundled `scripts/check-mcp-use-version.sh`; confirm `mcp-use` is 2.x/beta, has no `./server` export, and the CLI is 4.x/beta.
+2. **Scan for removed patterns:** search the migrated project for `mcp-use/server`, `ctx.sample`, `ctx.elicit`, `ctx.session`, `sessionStore`, stdio/SSE listener config, `widget:`, `useWidget`, and `resources/<name>/widget.tsx`. Every remaining hit must be an intentional comment/migration fixture, not live code.
+3. **Static proof:** run `mcp-use typecheck` separately from `mcp-use build`; build alone is transpile-only.
+4. **Protocol proof:** start the migrated server and complete either the native modern probe in `references/09-transports/02-streamable-http.md` or the verified legacy initialize/list/call sequence in `references/22-validate/02-curl-handshake.md`.
+5. **Auth proof when applicable:** public discovery metadata works, a valid unauthenticated MCP POST returns 401, and a real OAuth client calls a protected tool.
+6. **View proof when applicable:** text fallback is useful, the View renders, assets load, and CSP/browser console checks are clean in the target host.
+7. **Deployment proof when applicable:** identify the exact deployment/revision, wait for terminal success, then repeat the relevant live operation against the dashboard/platform URL.
+
+Claim only the highest rung actually observed; a clean search or typecheck does not prove runtime behavior.
+
+## Domain Follow-Ups
+
+After the core eight steps, route any specialized surface instead of extending migration prose:
+
+- Next.js: `references/19-nextjs-drop-in/01-overview-withmcpuse.md`
+- Middleware and custom routes: `references/08-server-config/05-middleware.md`, `references/08-server-config/06-custom-routes.md`
+- Proxy/gateway and OpenAPI: `references/17-advanced/01-proxy-and-gateway.md`, `references/17-advanced/03-openapi-fromopenapi.md`
+- Subscriptions and notifications: `references/06-resources/06-subscriptions-listen.md`, `references/14-notifications/01-overview.md`
+- Production and deploy: `references/24-production/04-security-hardening.md`, `references/25-deploy/02-pre-deploy-checklist.md`
+
 ---
 
-**Next**: Go to `03-v1-to-v2-imports-server-and-tools.md` to start the migration.
+**Next**: Go to `03-v1-to-v2-imports-server-and-tools.md` to start the migration, then return here for the exit gate.

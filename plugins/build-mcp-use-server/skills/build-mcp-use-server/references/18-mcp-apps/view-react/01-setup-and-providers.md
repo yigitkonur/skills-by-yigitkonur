@@ -7,7 +7,7 @@
 Place your view component at `views/<name>/view.tsx`. Export a default React component and optional `viewConfig`:
 
 ```typescript
-import { useToolContext, ThemeProvider } from "mcp-use/react";
+import { ThemeProvider } from "mcp-use/react";
 import type { ViewConfig } from "mcp-use/react";
 
 export const viewConfig: ViewConfig = {
@@ -20,7 +20,13 @@ export default function MyView() {
 }
 ```
 
-The framework calls `bootstrapView()` automatically during dev and production. Do not call it yourself in a view file.
+The framework calls `bootstrapView()` automatically during dev and production. Do not call it yourself in a normal `view.tsx` file.
+
+### Advanced lifecycle exports
+
+`bootstrapView`, `disposeView`, and the `ViewModule` type are public because generated modules, custom tooling, tests, and HMR integrations use them. They are **normally tooling-managed**, not the recommended authoring path.
+
+`disposeView(): Promise<void>` unmounts the document's React root, then closes the guest MCP App runtime and transport. It is a no-op when nothing is mounted. Use it only for manual embedding or deterministic test/HMR teardown; after it resolves, a custom integration may call `bootstrapView()` to create a fresh runtime.
 
 ## ThemeProvider
 
@@ -51,16 +57,30 @@ Do not nest `ThemeProvider` — use one at the root.
 
 ## ErrorBoundary
 
-Catches React errors and displays a fallback UI. Automatically activated by `bootstrapView()`.
+Catches React errors and displays a fallback UI. `bootstrapView()` always wraps the rendered `View` in its own top-level `<ErrorBoundary>` (with no `fallback`/`onError` props) — a view-authored `<ErrorBoundary>` nests inside that one and lets you customize the fallback for a specific subtree instead of the framework's generic error card.
 
-**When to wrap manually** (rare):
+**Signature:**
 ```typescript
-import { ErrorBoundary } from "mcp-use/react";
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  /** Custom fallback when an error is caught. Receives the error when it's a function. */
+  fallback?: React.ReactNode | ((error: Error) => React.ReactNode);
+  /** Called with the error and React's componentDidCatch errorInfo. */
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+}
+```
+
+**Wrap a subtree with a custom fallback:**
+```typescript
+import { ErrorBoundary, ThemeProvider } from "mcp-use/react";
 
 export default function View() {
   return (
     <ThemeProvider>
-      <ErrorBoundary>
+      <ErrorBoundary
+        fallback={(error) => <p>Chart failed to render: {error.message}</p>}
+        onError={(error, errorInfo) => reportToAnalytics(error, errorInfo)}
+      >
         <YourContent />
       </ErrorBoundary>
     </ThemeProvider>
@@ -68,7 +88,7 @@ export default function View() {
 }
 ```
 
-If a component throws, the boundary logs the error to the host and shows a recovery UI. Manual wrapping is optional; framework-injected boundary catches all unhandled errors.
+Without a `fallback`, a caught error renders a built-in red error card showing `error.message`. Every catch also logs `[mcp-use] View error:` to the console via `console.error`, in addition to any `onError` callback. Manual wrapping is optional — the framework-injected top-level boundary already catches all unhandled errors — but it lets a chart or widget fail without taking down the whole view.
 
 ## ModelContext
 
@@ -76,7 +96,7 @@ Describes the currently visible UI in natural language for the model. Reserved f
 
 **Minimal example:**
 ```typescript
-import { ModelContext } from "mcp-use/react";
+import { ModelContext, ThemeProvider } from "mcp-use/react";
 
 export default function Dashboard() {
   return (
@@ -91,9 +111,9 @@ export default function Dashboard() {
 
 See `references/18-mcp-apps/view-react/04-useviewstate-and-model-context.md` for full semantics.
 
-## ViewConfig immutability
+## ViewConfig mount semantics
 
-The `viewConfig` export is immutable at runtime. Set it once at module load; runtime changes are ignored.
+The framework normalizes and reads `viewConfig` when it creates the mounted runtime. It does not freeze the exported object, but changing `autoResize` or `displayModes` during HMR does not reconfigure the existing runtime; the framework warns and keeps the original normalized configuration. Reload the iframe, or in a custom tooling flow dispose and bootstrap again, for configuration changes to take effect.
 
 ```typescript
 export const viewConfig = {

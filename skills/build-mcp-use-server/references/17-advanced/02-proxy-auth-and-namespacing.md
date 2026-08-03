@@ -46,21 +46,24 @@ v2 proxy does NOT bridge browser OAuth flows or token refresh. Obtain credential
 For gateways fronting OAuth-protected upstreams, refresh tokens in your application:
 
 ```typescript
-let upstreamToken = process.env.UPSTREAM_TOKEN;
-
-// Refresh token when needed (outside proxy setup)
-async function refreshIfNeeded() {
-  if (isExpired(upstreamToken)) {
-    const response = await fetch("https://auth.example.com/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refresh_token: process.env.REFRESH_TOKEN }),
-    });
-    upstreamToken = (await response.json()).access_token;
-  }
+// Resolve a fresh, unexpired token BEFORE the first proxy() call.
+async function resolveUpstreamToken(): Promise<string> {
+  const response = await fetch("https://auth.example.com/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: process.env.REFRESH_TOKEN }),
+  });
+  const { access_token } = await response.json();
+  return access_token;
 }
 
-// Re-proxy periodically or on demand
-// Note: proxy() is idempotent; calling it again updates connections
+const upstreamToken = await resolveUpstreamToken();
+
+// proxy() must run before listen() / the first server.fetch() call — it
+// throws once the server has started. It is not idempotent: calling it a
+// second time opens a new upstream connection and does not update or
+// replace the first; identically-named capabilities are skipped as
+// collisions. Resolve long-lived or self-refreshing credentials up front
+// instead of trying to re-proxy on a timer.
 await server.proxy({
   api: {
     url: "https://api.example.com/mcp",
@@ -97,7 +100,7 @@ For true multi-tenant, use `@mcp-use/client` directly in custom routes to manage
 
 ## Resource URI mapping
 
-Proxied static resources are mapped to `mcp-use-proxy://<upstream>/<path>` internally. Client reads receive the original upstream URI when applicable; the gateway handles URI translation.
+Proxied static resources are exposed as `mcp-use-proxy:///<namespace>/<upstream-uri>`, where both `<namespace>` and the original `<upstream-uri>` are `encodeURIComponent`-escaped. The gateway resolves reads against the upstream connection it captured at mount time — clients never need to parse or reconstruct the upstream URI themselves.
 
 ## Best practices
 

@@ -21,6 +21,7 @@ Follow the branches in order: **can't start → can't connect → tools fail →
 
 - **No — client launches a command or expects stdio:** v2 has no stdio serving. Use the Streamable HTTP URL. Go to `references/09-transports/05-no-stdio-and-sse-history.md`.
 - **No — 404 at `/sse`, `/stdio`, or `/`:** use the configured `basePath`, `/mcp` by default. Go to `references/09-transports/02-streamable-http.md`.
+- **No — `406 Not Acceptable` requires JSON and event-stream:** the legacy POST is missing `Accept: application/json, text/event-stream`. Copy the verified request from `references/22-validate/02-curl-handshake.md`; do not change the body first.
 - **No — connection refused locally:** verify process, host, and port.
 - **No — works on the host but not from container/network:** bind to `0.0.0.0`, honor `PORT`, and inspect firewall/proxy routing. Go to `references/08-server-config/02-network-basepath-and-endpoints.md`.
 - **No — browser preflight error:** configure `cors`; `allowedOrigins` alone is not CORS. Go to `references/08-server-config/03-cors-and-allowed-origins.md`.

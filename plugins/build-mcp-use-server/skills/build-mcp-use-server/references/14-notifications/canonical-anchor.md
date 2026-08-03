@@ -104,23 +104,37 @@ server.post("/api/reset-import", async (c) => {
   return c.json({ ok: true, documentCount: 0 });
 });
 
-// Tool list changed (e.g., register new tool dynamically)
-server.post("/api/register-importer", async (c) => {
-  const { format } = await c.req.json();
+// Tool list changed (e.g., a tool becomes available/unavailable for this
+// deployment). Register the tool itself up front — `server.tool()` throws if
+// called after the server has started handling requests. Vary visibility by
+// filtering `mcp:tools/list` instead of registering/unregistering at runtime.
+const enabledImporters = new Set(["pdf"]);
 
-  server.tool(
-    {
-      name: `import_${format}`,
-      description: `Import ${format} documents`,
-      inputSchema: z.object({ url: z.string() }),
-    },
-    async ({ url }, ctx) => {
-      // ... implementation
-      return { content: [{ type: "text", text: "OK" }] };
-    }
+server.tool(
+  {
+    name: "import_csv",
+    description: "Import CSV documents",
+    inputSchema: z.object({ url: z.string() }),
+  },
+  async ({ url }, ctx) => {
+    // ... implementation
+    return { content: [{ type: "text", text: "OK" }] };
+  }
+);
+
+server.use("mcp:tools/list", async (_ctx, next) => {
+  const tools = await next();
+  return tools.filter(
+    (tool) => !tool.name.startsWith("import_") ||
+      enabledImporters.has(tool.name.replace("import_", ""))
   );
+});
 
-  // Notify clients that tool list changed
+server.post("/api/enable-importer", async (c) => {
+  const { format } = await c.req.json();
+  enabledImporters.add(format);
+
+  // Notify clients that the filtered tool list changed for them
   await server.notifyToolsChanged();
 
   return c.json({ ok: true });
@@ -133,5 +147,6 @@ await server.listen(3000);
 
 1. **Request-scoped within callback:** `ctx.sendNotification()`, `ctx.reportProgress()`, `ctx.sendLog()` — all must await before callback returns.
 2. **Cross-request outside callback:** `server.notifyToolsChanged()`, `server.notifyResourceUpdated()` — publish when state changes.
-3. **Client subscription required:** Cross-request notifications only reach clients actively listening (`subscriptions/listen`).
-4. **Stateless recovery:** After receiving a `resourceUpdated` notification, clients re-read the resource. No delivery queue or backlog.
+3. **Registration is up-front only:** `server.tool()`/`server.resource()`/`server.prompt()` throw once the server has started. Register everything at module scope; change what a client sees by filtering `mcp:tools/list` / `mcp:resources/list` / `mcp:prompts/list` middleware, and call `notify*Changed()` when the filtered result changes.
+4. **Client subscription required:** Cross-request notifications only reach clients actively listening (`subscriptions/listen`).
+5. **Stateless recovery:** After receiving a `resourceUpdated` notification, clients re-read the resource. No delivery queue or backlog.

@@ -2,7 +2,7 @@
 
 *Read this to understand the standard npm scripts scaffolded by create-mcp-use-app.*
 
-All templates include the same five scripts in `package.json`. They rely on `@mcp-use/cli@4.0.0-beta.15`.
+All templates include the same five scripts in `package.json`. Each invokes the `mcp-use` binary directly (the canonical CLI implementation, shipped with the `mcp-use` package itself) — not `@mcp-use/cli`, which is a separate compatibility-only bin shim for the historical install command.
 
 ## Scripts
 
@@ -50,8 +50,10 @@ Regenerates `mcp-env.d.ts` (the bridge between server tools and view typing) and
 
 ```bash
 npm run typecheck
-npm run typecheck -- --noEmit       # Only type-check, no emit
+npm run typecheck -- -- --noUnusedLocals  # Forward an extra flag to tsc
 ```
+
+The CLI always appends `--noEmit`. With npm scripts, forwarding an additional TypeScript flag needs two separators: npm consumes the first `--`, and `mcp-use typecheck` consumes the second before passing the remaining arguments to `tsc`.
 
 Run this after adding/removing tools or modifying schemas. CI should fail if types are stale.
 
@@ -69,22 +71,22 @@ Useful for testing production build locally.
 
 ### `npm run deploy`
 
-Deploys to Manufact Cloud. Requires:
-1. Git repository
-2. GitHub remote and pushed commits
-3. `mcp-use login` (one-time)
+Deploys to Manufact Cloud. The CLI does **not** initialize Git, create a repository, commit, push, install the GitHub App, or upload local source — configure those prerequisites yourself first:
+1. Commit the server to an existing Git repository.
+2. Configure `origin` as a supported GitHub repository and push the branch to deploy.
+3. Install the Manufact GitHub App with access to that repository.
+4. `mcp-use login` (one-time; supports `--api-key`/`--org` or `--device-code`/`--org` for non-interactive sign-in).
 
 ```bash
-npm run deploy
+npm run deploy -- --name my-server-name
 npm run deploy -- --env API_KEY=sk-xxx
 npm run deploy -- --env-file .env.production
-npm run deploy -- --name my-server-name
 npm run deploy -- --region us-west-2
 ```
 
-First deployment prompts for GitHub App install. Subsequent deploys are automatic.
+The first deploy resolves the repo from `origin`, confirms GitHub App access, creates a Git-backed cloud server, starts the deployment, and writes non-secret linkage to `.mcp-use/cloud/link.json`. It starts the deployment; it does not wait for the build to finish — follow it with `mcp-use deployments logs DEPLOYMENT_ID --build --follow`. A later `npm run deploy` with a link file present redeploys the same linked server; pass `--new` to create a separate server instead.
 
-Result: `https://<name>.run.mcp-use.com/mcp`
+**Result URL:** after the deployment is running, copy the exact generated MCP URL from the Manufact dashboard. Do not infer a hostname from the server slug — the dashboard is authoritative for generated and custom domains; no fixed URL pattern is guaranteed.
 
 ## Flags per script
 
@@ -98,9 +100,28 @@ Result: `https://<name>.run.mcp-use.com/mcp`
 | `--source-maps` | build | `npm run build -- --source-maps` |
 | `--inline` | build | `npm run build -- --inline` |
 | `--with-inspector` | start | `npm run start -- --with-inspector` |
-| `--env <K=V>` | deploy | `npm run deploy -- --env FOO=bar` |
-| `--env-file <path>` | deploy | `npm run deploy -- --env-file .env` |
-| `--name <name>` | deploy | `npm run deploy -- --name my-server` |
+
+### Deploy flags
+
+| Flag | Purpose |
+|------|---------|
+| `[path]` | Project directory; defaults to the current directory |
+| `--org <id-or-slug>` | Select the Manufact organization |
+| `--name <name>` | Set the server name on creation |
+| `--branch <name>` | Deploy a branch instead of the current branch |
+| `--root-dir <path>` | Repository-relative app root (must stay inside the repo) |
+| `--region <region>` | Select an API-supported region |
+| `--env <KEY=VALUE>` | Add an environment value; repeatable, overrides duplicates loaded from `--env-file` |
+| `--env-file <path>` | Load environment values from a file |
+| `--build-command <command>` | Override the detected build command |
+| `--start-command <command>` | Override the detected start command |
+| `--dockerfile <path>` | Use a repository-relative Dockerfile (must stay inside the repo) |
+| `--new` | Create a new server instead of reusing the `.mcp-use/cloud/link.json` link |
+| `--open` | Open the dashboard after deployment starts |
+| `--yes` | Accept confirmation prompts (non-interactive) |
+| `--json` | Emit machine-readable output |
+
+Full reference: `references/25-deploy/`.
 
 ## Environment variables
 
@@ -108,10 +129,12 @@ These override script defaults:
 
 | Variable | Scripts | Precedence | Default |
 |----------|---------|-----------|---------|
-| `PORT` | dev, start | flag > env > 3000 | 3000 |
-| `HOST` | dev, start | flag > env > 127.0.0.1 | 127.0.0.1 |
-| `NODE_ENV` | start | always `production` | — |
+| `PORT` | dev, start | flag > env > code (`ServerConfig.port`, `start` only) > 3000 | 3000 |
+| `HOST` | dev, start | flag > env > code (`ServerConfig.host`, `start` only) > 127.0.0.1 | 127.0.0.1 |
+| `NODE_ENV` | start | `process.env.NODE_ENV ??= "production"` — set only if unset, never clobbers an explicit value | — |
 | `MCP_URL` | (client targeting) | used by Inspector | http://127.0.0.1:PORT/mcp |
+
+`start` resolves port/host against the built entry's exported `MCPServer` instance (`candidate.port`/`candidate.host`, i.e. whatever was passed to the `ServerConfig` at construction) as an extra fallback tier between `env` and the hardcoded default; `dev` has no such code-level tier because there is no built entry to inspect.
 
 For secrets, use `--env-file` (not committed) or GitHub Actions secrets on deploy.
 

@@ -14,6 +14,46 @@ const server = new MCPServer({
   description: "Product catalog and search API",
 });
 
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  createdAt: number;
+};
+
+const products: Product[] = [
+  {
+    id: "8f14e45f-ea17-4b6a-8f61-0d5d6f0f6d62",
+    name: "Wireless Charger",
+    description: "Compact 15W charging pad",
+    price: 29.99,
+    stock: 12,
+    createdAt: Date.parse("2026-07-15T00:00:00Z"),
+  },
+  {
+    id: "45c48cce-2e2d-4b1d-9db0-51a0d7f35b71",
+    name: "Blue Running Shoes",
+    description: "Lightweight everyday running shoes",
+    price: 89.0,
+    stock: 0,
+    createdAt: Date.parse("2026-06-20T00:00:00Z"),
+  },
+];
+
+const catalog = {
+  async search(query: string): Promise<Product[]> {
+    const normalized = query.toLowerCase();
+    return products.filter((product) =>
+      `${product.name} ${product.description}`.toLowerCase().includes(normalized)
+    );
+  },
+  async findById(id: string): Promise<Product | undefined> {
+    return products.find((product) => product.id === id);
+  },
+};
+
 /**
  * Canonical tool: search products by keyword with pagination.
  * - Exported const for mcp-env.d.ts typing
@@ -71,8 +111,7 @@ export const searchProducts = server.tool(
     // Log the search
     await ctx.sendLog("info", `Searching products: query="${input.query}" limit=${input.limit}`);
 
-    // Simulate database call (replace with real query)
-    const allProducts = await db.products.search(input.query);
+    const allProducts = await catalog.search(input.query);
     const sorted = allProducts.sort((a, b) => {
       if (input.sort === "price_asc") return a.price - b.price;
       if (input.sort === "price_desc") return b.price - a.price;
@@ -120,7 +159,7 @@ export const getProduct = server.tool(
   },
   async (input, ctx) => {
     try {
-      const product = await db.products.findById(input.id);
+      const product = await catalog.findById(input.id);
       if (!product) {
         return {
           isError: true,
@@ -131,7 +170,12 @@ export const getProduct = server.tool(
       }
       return {
         content: [{ type: "text", text: `Product: ${product.name}` }],
-        structuredContent: product,
+        structuredContent: {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+        },
       };
     } catch (err) {
       return {
@@ -147,7 +191,7 @@ export const getProduct = server.tool(
   }
 );
 
-await server.listen(3000);
+export default server;
 ```
 
 ## Key Patterns Here
@@ -160,7 +204,8 @@ await server.listen(3000);
 6. **outputSchema required** — for Views and type safety
 7. **Structured output** — return `structuredContent` matching schema
 8. **Error handling** — return `{ isError: true, content: [...] }` instead of throwing
-9. **Context methods** — `ctx.sendLog()`, `ctx.client.can()`, `ctx.auth.user`
-10. **Raw MCP envelopes** — no helpers like `text()` or `object()`
+9. **Context methods** — `ctx.sendLog()` shown here; see `05-the-ctx-object.md` for the full surface (`ctx.client.can()`, `ctx.auth.user`, `ctx.reportProgress()`, etc.)
+10. **CLI ownership** — default-export the `MCPServer`; `mcp-use dev`/`start` owns the listener
+11. **Raw MCP envelopes** — no helpers like `text()` or `object()`
 
 Copy and adapt this shape for your server.

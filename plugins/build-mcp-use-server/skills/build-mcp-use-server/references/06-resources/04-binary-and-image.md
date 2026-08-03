@@ -2,51 +2,36 @@
 
 *Read this when serving binary or image resource content (base64 blob results).*
 
-Use `image()`, `audio()`, or `binary()` for non-text content.
+## Preferred shape: raw envelope with `blob`
 
-## Helper signatures
-
-In current `mcp-use`, binary-style helpers are string-based. Convert `Buffer` or `Uint8Array` before returning them.
-
-| Helper | Signature | Use for |
-|---|---|---|
-| `image(data, mimeType?)` | `(dataUrlOrBase64: string, mimeType?: string)` | PNG, JPEG, GIF, WebP, SVG |
-| `audio(dataOrPath, mimeType?)` | `(base64OrPath: string, mimeType?: string)` | MP3, WAV, OGG |
-| `binary(data, mimeType)` | `(base64: string, mimeType: string)` | PDF, ZIP, anything else |
-
-`image()` defaults `mimeType` to `image/png`. `binary()` requires it.
-
-## Images
+Return binary resource content as a native `ReadResourceResult`: a `contents` array whose entries contain a base64 `blob`. Do not use the deprecated `image()`, `audio()`, or `binary()` response helpers in new resource code.
 
 ```typescript
 import { MCPServer } from "mcp-use";
 import { readFile } from "node:fs/promises";
 
+const server = new MCPServer({
+  name: "media-resources",
+  version: "1.0.0",
+});
+
 server.resource(
   { name: "logo", uri: "assets://logo.png", mimeType: "image/png" },
-  async () => {
-    const buffer = await readFile("./public/logo.png");
-    return image(buffer.toString("base64"), "image/png");
+  async (uri) => {
+    const png = await readFile("./public/logo.png");
+    return {
+      contents: [{
+        uri: uri.href,
+        mimeType: "image/png",
+        blob: png.toString("base64"),
+      }],
+    };
   },
 );
-```
 
-For dynamically generated images:
-
-```typescript
-server.resourceTemplate(
-  { name: "chart", uriTemplate: "charts://{metric}.png", mimeType: "image/png" },
-  async (uri, { metric }) => {
-    const png = await renderChartPng(metric); // returns Buffer
-    return image(png.toString("base64"), "image/png");
-  },
-);
-```
-
-## PDFs and other binary
-
-```typescript
-import { MCPServer } from "mcp-use";
+const invoiceFiles = new Map([
+  ["sample", "./assets/invoice-sample.pdf"],
+]);
 
 server.resourceTemplate(
   {
@@ -55,17 +40,20 @@ server.resourceTemplate(
     mimeType: "application/pdf",
   },
   async (uri, { id }) => {
-    const pdf = await generateInvoicePdf(id);
-    return binary(pdf.toString("base64"), "application/pdf");
+    const invoiceId = Array.isArray(id) ? id[0] : id;
+    const path = invoiceFiles.get(invoiceId);
+    if (!path) throw new Error(`Invoice not found: ${invoiceId}`);
+
+    const pdf = await readFile(path);
+    return {
+      contents: [{
+        uri: uri.href,
+        mimeType: "application/pdf",
+        blob: pdf.toString("base64"),
+      }],
+    };
   },
 );
-```
-
-## Audio
-
-```typescript
-import { MCPServer } from "mcp-use";
-import { readFile } from "node:fs/promises";
 
 server.resource(
   {
@@ -73,14 +61,28 @@ server.resource(
     uri: "assets://notification.mp3",
     mimeType: "audio/mpeg",
   },
-  async () => {
-    const buffer = await readFile("./assets/notification.mp3");
-    return audio(buffer.toString("base64"), "audio/mpeg");
+  async (uri) => {
+    const mp3 = await readFile("./assets/notification.mp3");
+    return {
+      contents: [{
+        uri: uri.href,
+        mimeType: "audio/mpeg",
+        blob: mp3.toString("base64"),
+      }],
+    };
   },
 );
+
+await server.listen(3000);
 ```
 
-`audio()` also accepts a file path string and returns a Promise — convenient for static files.
+## Content rules
+
+- `blob` must be a base64 string, not a `Buffer`, `Uint8Array`, `ArrayBuffer`, or file path.
+- Set `mimeType` on both the resource definition and each returned content entry.
+- Set each content entry's `uri` to the URI passed to the callback (`uri.href`).
+- Return `text` for textual content or `blob` for binary content; do not put base64 binary data in `text`.
+- Template parameters are `string | string[]`; narrow them before lookup or file generation.
 
 ## MIME type matrix
 
@@ -101,12 +103,13 @@ server.resource(
 
 | Wrong | Right |
 |---|---|
-| `image(buffer, "image/png")` | `image(buffer.toString("base64"), "image/png")` |
-| `binary(arrayBuffer, "application/pdf")` | `binary(Buffer.from(arrayBuffer).toString("base64"), "application/pdf")` |
-| `binary(base64)` | `binary(base64, "application/pdf")` |
+| `blob: buffer` | `blob: buffer.toString("base64")` |
+| `text: pdfBase64` | `blob: pdfBase64` |
+| `uri: "assets://logo.png"` in every callback | `uri: uri.href` |
+| Returning a deprecated media helper | Returning `{ contents: [{ uri, mimeType, blob }] }` |
 
 ## Performance
 
-- Large binaries block the event loop while base64-encoding. For files >5 MB, consider serving via a separate URL and returning that URL in a `text()` response instead.
+- Base64 increases payload size and encoding cost. For files above roughly 5 MB, prefer a separately hosted file and return a tool `resource_link` rather than embedding it in a resource read.
 - Cache encoded payloads if the source rarely changes.
-- Use `notifyResourceUpdated()` to invalidate client caches when content changes — see `06-subscriptions.md`.
+- Use `server.notifyResourceUpdated(uri)` to invalidate client caches when content changes — see `06-subscriptions-listen.md`.

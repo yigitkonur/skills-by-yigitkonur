@@ -16,14 +16,15 @@ Mount `server.fetch` at the MCP route and all nested paths. Hono's context provi
 ```ts
 import { Hono } from "hono";
 import { MCPServer } from "mcp-use";
+import { z } from "zod";
 
 const app = new Hono();
 const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 
-server.tool({ name: "example", description: "...", inputSchema: { type: "object" } }, () => ({
-  type: "text",
-  text: "ok"
-}));
+server.tool(
+  { name: "example", description: "...", inputSchema: z.object({}) },
+  () => ({ content: [{ type: "text", text: "ok" }] }),
+);
 
 // Mount MCP server at /mcp and all nested paths (/mcp/*)
 app.all("/mcp", (c) => server.fetch(c.req.raw));
@@ -38,22 +39,18 @@ export default app;
 ## Build & deploy commands
 
 ```bash
-# Build assets with public MCP endpoint
-MCP_URL=https://api.example.com/mcp npm run build
-
-# Deploy Hono app for your target runtime (platform varies)
-# For Node: npm start
-# For Cloudflare: wrangler deploy
-# For Deno: deployctl deploy
-# For Vercel: automatically detected
+# Build assets with the public MCP endpoint
+MCP_URL=https://api.example.com npm run build
 ```
+
+Export/deploy the outer Hono app through the current adapter or platform integration for your target runtime (Node, Workers, Deno, Vercel, etc.). mcp-use does not choose or configure that Hono adapter for you.
 
 ## Env & assets
 
-- **MCP_URL (build-time):** Public endpoint where MCP server is mounted (e.g., `https://api.example.com/mcp`)
-- **MCP_ASSETS_URL (build-time, optional):** If using external CDN, specify asset origin
-- **.mcp-use/build/views/:** Served by same `server.fetch` handler (no separate asset routing needed)
-- **Runtime env:** PORT, HOST, NODE_ENV as per your selected Hono runtime
+- **MCP_URL (build-time):** Public origin where the MCP server is mounted (for example `https://api.example.com`; no path). The configured `basePath` is appended by the framework.
+- **MCP_ASSETS_URL (build-time, optional):** External CDN origin when the outer deployment cannot serve generated files locally
+- **.mcp-use/build/views/:** The mcp-use handler serves this filesystem tree when the chosen runtime has a deployed filesystem; edge targets need a static binding or external asset host
+- **Runtime env:** Configure through the selected Hono adapter/platform, not through mcp-use
 
 ## Gotchas
 

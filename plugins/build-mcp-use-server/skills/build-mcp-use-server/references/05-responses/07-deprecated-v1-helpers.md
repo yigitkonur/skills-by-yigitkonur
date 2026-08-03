@@ -14,15 +14,16 @@ v2 exports v1 helpers **for compatibility only**. They are marked `@deprecated`;
 | `xml(str)` | `xml("<root>...</root>")` | `{ content: [{ type: "text", text: "..." }], _meta: { mimeType: "text/xml" } }` | Deprecated | MIME metadata is result-level |
 | `css(str)` | `css("body { ... }")` | `{ content: [{ type: "text", text: "..." }], _meta: { mimeType: "text/css" } }` | Deprecated | MIME metadata is result-level |
 | `javascript(str)` | `javascript("console.log(...)")` | `{ content: [{ type: "text", text: "..." }], _meta: { mimeType: "text/javascript" } }` | Deprecated | MIME metadata is result-level |
-| `object(obj)` | `object({ a: 1 })` | `{ content: [{ type: "text", text: JSON.stringify(obj) }], structuredContent: obj }` | Deprecated | Structured data; populates both content and schema |
-| `array(arr)` | `array([1, 2])` | `{ content: [{ type: "text", text: JSON.stringify(arr) }], structuredContent: arr }` | Deprecated | Array wrapper; auto-appends JSON text block |
-| `image(base64, mime)` | `image("iVBORw0...", "image/png")` | `{ content: [{ type: "image", data: "iVBORw0...", mimeType: "image/png" }] }` | Deprecated | Base64 image data; MIME type signals encoding |
-| `audio(base64, mime)` | `audio("//NExAA...", "audio/mpeg")` | `{ content: [{ type: "audio", data: "//NExAA...", mimeType: "audio/mpeg" }], _meta: { mimeType: "audio/mpeg", isAudio: true } }` | Deprecated | Audio block uses the `audio` discriminator |
-| `binary(base64, mime)` | `binary("JVBERi0...", "application/pdf")` | `{ content: [{ type: "text", text: "JVBERi0..." }], _meta: { mimeType: "application/pdf", isBinary: true } }` | Deprecated | Base64 text content block plus result `_meta` |
-| `resource(obj)` | `resource(readResult)` | Return `ReadResourceResult` directly | Deprecated | Use `{ contents: [...] }` envelope for resources |
+| `object(obj)` | `object({ a: 1 })` | `{ content: [{ type: "text", text: JSON.stringify(obj, null, 2) }], structuredContent: obj, _meta: { mimeType: "application/json" } }` | Deprecated | Structured data; populates content, schema, and result `_meta`. If `obj` is actually an array, `object()` forwards to `array()` instead |
+| `array(arr)` | `array([1, 2])` | `{ content: [{ type: "text", text: JSON.stringify(arr, null, 2) }], structuredContent: arr }` | Deprecated | Manually adds its own text block (2026 any-JSON root — no `{ data }` wrap, unlike v1); does not rely on the SDK's auto-append |
+| `image(base64, mime = "image/png")` | `image("iVBORw0...", "image/png")` | `{ content: [{ type: "image", data: "iVBORw0...", mimeType: "image/png" }], _meta: { mimeType: "image/png", isImage: true } }` | Deprecated | Base64 image data; `mimeType` defaults to `"image/png"` if omitted |
+| `audio(base64, mime = "audio/wav")` | `audio("//NExAA...", "audio/wav")` | `{ content: [{ type: "audio", data: "//NExAA...", mimeType: "audio/wav" }], _meta: { mimeType: "audio/wav", isAudio: true } }` | Deprecated | Audio block uses the `audio` discriminator; `mimeType` defaults to `"audio/wav"` if omitted |
+| `binary(base64, mime)` | `binary("JVBERi0...", "application/pdf")` | `{ content: [{ type: "text", text: "JVBERi0..." }], _meta: { mimeType: "application/pdf", isBinary: true } }` | Deprecated | Base64 text content block plus result `_meta`; `mimeType` is **required**, no default (unlike `image`/`audio`) |
+| `resource(uri, mimeType?, text?)` | `resource("file://a.pdf", "application/pdf", "desc")` | `{ content: [{ type: "resource", resource: { uri, mimeType, text: text ?? "" } }] }` | Deprecated | Direct form; 2nd arg is `mimeType` (a string). `resource(uri, mimeType)` (2-arg) omits `text` (defaults to `""`); `resource(uri, mimeType, text)` (3-arg) sets both |
+| `resource(uri, callToolResult)` | `resource("file://a.pdf", someResult)` | Extracts `mimeType` from `someResult._meta.mimeType` and text from `someResult.content[0]`, wraps as `{ content: [{ type: "resource", resource: { uri, mimeType?, text } }] }` | Deprecated | 2-arg extraction form — pulls MIME/text out of another helper's or tool's `CallToolResult` |
 | `error(msg)` | `error("Not found")` | `{ isError: true, content: [{ type: "text", text: "Not found" }] }` | Deprecated | Error flag + message; no structuredContent |
-| `widget(obj)` | `widget({ props, metadata })` | (Documented in 18-mcp-apps; uses `structuredContent` + `_meta`) | Removed | Widget term deprecated; use Views (MCP Apps) |
-| `mix(...)` | `mix(text(...), image(...))` | Return single envelope with multiple `content` blocks | Deprecated | Manual composition of content array |
+| `widget(config)` | `widget({ props, metadata, message })` | `{ content: [...], structuredContent?: props, _meta?: metadata }` — see below | Deprecated | Not removed. `WidgetResponseConfig` has `props`, `data` (deprecated alias for `props`), `output` (a `CallToolResult` whose `content`/`structuredContent` take precedence), `metadata`, `message` |
+| `mix(...)` | `mix(text(...), image(...))` | Concatenates every `content` array; shallow-merges every `structuredContent` object; shallow-merges every `_meta` object | Deprecated | Manual composition — `structuredContent`/`_meta` are dropped from the merge unless present and non-empty |
 
 ## Migration strategy
 
@@ -61,16 +62,21 @@ Helpers are marked `@deprecated` in `mcp-use@2.0.0-beta.66`. Plan migration to r
 Helpers are thin wrappers returning raw envelopes. No logic depends on them; SDK accepts both forms equally.
 
 ```typescript
-// Example: how text() works (simplified)
-function text(content: string): CallToolResult {
-  return { content: [{ type: "text", text: content }] };
+// text() (actual source)
+function text(content: string): ToolContentResult {
+  return {
+    content: [{ type: "text", text: content }],
+    _meta: { mimeType: "text/plain" },
+  };
 }
 
-// Example: how object() works
-function object(data: any): CallToolResult {
+// object() (actual source; forwards arrays to array())
+function object<T extends Record<string, unknown>>(data: T): TypedCallToolResult<T> {
+  if (Array.isArray(data)) return array(data) as unknown as TypedCallToolResult<T>;
   return {
-    content: [{ type: "text", text: JSON.stringify(data) }],
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
     structuredContent: data,
+    _meta: { mimeType: "application/json" },
   };
 }
 ```

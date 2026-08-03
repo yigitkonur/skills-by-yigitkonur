@@ -76,19 +76,25 @@ my-mcp-server/
 ├── package.json      # Scripts: dev, build, typecheck, start, deploy
 ├── tsconfig.json     # ESM + strict types
 ├── mcp-env.d.ts      # Generated tool types (empty until first typecheck)
+├── public/
+│   └── icon.svg      # Default server icon
+├── README.md
 └── .gitignore
 ```
 
 ### mcp-apps template
 ```
 my-mcp-server/
-├── index.ts          # Server + my-view tool
+├── index.ts          # Server + show-app / say-hello demo tools
 ├── views/
 │   └── my-view/
 │       └── view.tsx  # React component for tool output
 ├── package.json      # Includes react@19, react-dom@19
 ├── tsconfig.json
 ├── mcp-env.d.ts
+├── public/
+│   └── icon.svg
+├── README.md
 └── .gitignore
 ```
 
@@ -99,6 +105,9 @@ my-mcp-server/
 ├── package.json      # mcp-use only
 ├── tsconfig.json
 ├── mcp-env.d.ts
+├── public/
+│   └── icon.svg
+├── README.md
 └── .gitignore
 ```
 
@@ -134,4 +143,4 @@ git push -u origin main
 npm run deploy
 ```
 
-Result: `https://{your-slug}.run.mcp-use.com/mcp`
+Result: a hosted MCP server, typically at `https://{your-slug}.run.mcp-use.com/mcp`. Do not infer the hostname from the slug in scripts or docs — the mcp-use dashboard is authoritative for the generated URL and for any custom domain.

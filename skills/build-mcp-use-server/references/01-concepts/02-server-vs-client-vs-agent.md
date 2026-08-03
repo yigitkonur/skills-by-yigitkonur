@@ -29,10 +29,10 @@
 
 ## Client (sister skill)
 
-**What:** Code that calls a remote MCP server: initializes a session, lists tools, calls tools, reads resources.
+**What:** Code that calls a remote MCP server: `MCPClient.connect()` opens an `MCPConnection`, then lists tools, calls tools, reads resources, gets prompts.
 
 **Scope:**
-- `@mcp-use/client` for connecting to servers
+- `@mcp-use/client` for connecting to servers (negotiates protocol automatically; same API across stateful and stateless servers)
 - Calling tools and handling responses
 - Subscriptions and notifications
 - Error handling and retry logic

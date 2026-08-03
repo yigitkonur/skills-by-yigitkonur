@@ -67,10 +67,10 @@ Connect clients to:
 https://<deployment>.vercel.app/api/mcp
 ```
 
-For Views, build with the public endpoint and follow the example's `includeFiles` and catch-all rewrite configuration so nested asset requests reach the function:
+For Views, build with the public origin and follow the example's `includeFiles` and catch-all rewrite configuration so nested asset requests reach the function:
 
 ```bash
-MCP_URL=https://<project>.vercel.app/api/mcp npm run build
+MCP_URL=https://<project>.vercel.app npm run build
 npx vercel deploy --prod
 ```
 

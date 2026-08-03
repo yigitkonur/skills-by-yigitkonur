@@ -1,151 +1,143 @@
-# CSP Differences: MCP Apps vs. ChatGPT
+# CSP: Standard Fields and the ChatGPT Redirect Extension
 
-*Read this when declaring CSP for a tool that targets both MCP Apps and ChatGPT.*
+*Read this when declaring CSP for a View that must render in standard MCP Apps hosts and ChatGPT.*
 
-CSP metadata is translated between MCP Apps and ChatGPT protocols, but the terminology and merge order differ slightly.
+Use standard MCP Apps CSP first. mcp-use emits one generated resource `_meta.ui.csp` object for every host; it does not rename categories or emit a second ChatGPT policy. One ChatGPT-only resource extension remains relevant for a narrower case: `openai/widgetCSP.redirect_domains` for trusted `window.openai.openExternal(...)` redirect targets.
 
-## Terminology Mapping
+## Standard CSP Emitted by mcp-use
 
-| MCP Apps | ChatGPT Apps SDK | Purpose |
-|-|-|-|
-| `connectDomains` | `connectSources` | Fetch, XHR, WebSocket |
-| `resourceDomains` | `scriptSources` + `styleSources` | CSS, JavaScript, images |
-| `frameDomains` | `frameSources` | iframes, embeds |
-| `baseUriDomains` | `baseUriSources` | `<base>` tag URIs |
-
-mcp-use automatically translates between these when emitting both protocols.
-
-## CSP Merge Order (Both Platforms)
-
-CSP metadata is merged in this priority order (highest first):
-
-1. **Author `view.csp`** on the tool definition (highest priority)
-2. **Environment variables** (`CSP_CONNECT_DOMAINS`, `CSP_RESOURCE_DOMAINS`, etc., or `CSP_URLS` shortcut)
-3. **MCP auto-append** — server origin added to `connectDomains`; assets origin added to `resourceDomains` (lowest priority)
-
-**Same merge order applies to both MCP Apps and ChatGPT.**
-
-## Example: Multi-Origin Tool
-
-Server tool with external API + CDN:
+The MCP Apps CSP type contains four categories:
 
 ```typescript
-export const getData = server.tool(
-  {
-    name: "get-data",
-    description: "Fetch data from multiple origins",
-    outputSchema: z.object({ /* ... */ }),
-    view: {
-      name: "data-view",
-      csp: {
-        // Author declares required domains (highest priority)
-        connectDomains: ["https://api.example.com"],
-        resourceDomains: ["https://cdn.example.com"],
-      },
-    },
+interface McpUiResourceCsp {
+  connectDomains?: string[];
+  resourceDomains?: string[];
+  frameDomains?: string[];
+  baseUriDomains?: string[];
+}
+```
+
+Set them through `view.csp`:
+
+```typescript
+view: {
+  name: "data-view",
+  csp: {
+    connectDomains: ["https://api.example.com"],
+    resourceDomains: ["https://cdn.example.com"],
+    frameDomains: ["https://embed.example.com"],
   },
-  async () => {
-    // Fetches are allowed by CSP
-    const data = await fetch("https://api.example.com/data");
-    return {
-      content: [{ type: "text", text: "Data loaded" }],
-      structuredContent: { /* uses cdn.example.com for images */ },
-    };
-  }
-);
-```
-
-**MCP Apps resource emitted:**
-
-```json
-{
-  "type": "text",
-  "uri": "ui://views/data-view.html",
-  "mimeType": "text/html;profile=mcp-app",
-  "_meta": {
-    "ui": {
-      "csp": {
-        "connectDomains": ["https://api.example.com", "https://myserver.com"],
-        "resourceDomains": ["https://cdn.example.com", "https://myserver.com"]
-      }
-    }
-  }
 }
 ```
 
-(Author domains first, then auto-appended server/assets origin.)
+Source boundaries:
 
-**ChatGPT metadata emitted simultaneously:**
+- the literal standard categories come from `@modelcontextprotocol/ext-apps` `McpUiResourceCsp`;
+- `packages/server/src/views/csp-env.ts` merges the policy;
+- `packages/server/src/views/wire.ts` emits it under resource `_meta.ui.csp`.
 
-```json
-{
-  "toolId": "get-data",
-  "appMetadata": {
-    "sandbox": {
-      "connectSources": ["https://api.example.com", "https://myserver.com"],
-      "scriptSources": ["https://cdn.example.com", "https://myserver.com"],
-      "styleSources": ["https://cdn.example.com", "https://myserver.com"]
-    }
-  }
-}
-```
+`resourceDomains` is one standard bucket for static assets; mcp-use does not split it into ChatGPT-specific script/style/font categories.
 
-(ChatGPT combines CSS and scripts into separate `scriptSources` / `styleSources`; mcp-use maps `resourceDomains` to both.)
+## Merge Behavior Is Host-Independent
 
-## Environment Variable Overrides
+For every generated View resource, mcp-use additively combines:
 
-You can override author CSP via environment variables:
+1. author `view.csp` entries;
+2. per-category environment values, or `CSP_URLS` as the category fallback;
+3. the server origin in `connectDomains` and the assets origin in `resourceDomains`.
+
+Entries are deduplicated while preserving first-seen order. “Priority” describes ordering, not replacement: lower segments are still included when they contain distinct origins.
 
 ```bash
-# Override all four categories uniformly
-CSP_URLS=https://api.example.com,https://cdn.example.com
-
-# Or specify each category
 CSP_CONNECT_DOMAINS=https://api.example.com
 CSP_RESOURCE_DOMAINS=https://cdn.example.com
 CSP_FRAME_DOMAINS=https://embed.example.com
-CSP_BASE_URI_DOMAINS=https://myserver.com
+CSP_BASE_URI_DOMAINS=https://components.example.com
 ```
 
-**Precedence:** Author `view.csp` > env vars > auto-append.
+The result is the same standard `_meta.ui.csp` object regardless of host.
 
-Example: If tool declares `connectDomains: ["https://api.example.com"]` and you set `CSP_CONNECT_DOMAINS=https://override.com`, the author value wins and `https://override.com` is ignored.
+## Keep the Browser/Server Boundary Clear
 
-## Detection in Views (ChatGPT-Specific)
-
-You can optionally detect the runtime and adjust fetch behavior (though usually unnecessary):
+View CSP constrains requests made by the sandboxed browser View. It does not authorize or block a Node/server tool callback's `fetch`.
 
 ```typescript
-import { useHostContext } from "mcp-use/react";
+// This browser request needs view.csp.connectDomains.
+const response = await fetch("https://api.example.com/data");
+```
 
-export default function DataView() {
-  const hostContext = useHostContext();
-  
-  // Optional: adjust behavior based on client
-  if (hostContext.client?.name === "ChatGPT") {
-    // ChatGPT-specific behavior (rarely needed)
-  }
-  
-  // But CSP always applies regardless of detection
+A server-side callback fetching the same URL does not need that origin in the View CSP unless the rendered View also contacts it.
+
+## ChatGPT's Remaining Redirect Extension
+
+The official OpenAI Plugin UI reference says:
+
+- standard `_meta.ui.csp` is preferred for `connectDomains`, `resourceDomains`, and `frameDomains`;
+- `_meta["openai/widgetCSP"]` is a legacy ChatGPT compatibility object using snake_case fields;
+- `redirect_domains` remains required when using trusted redirect targets with `window.openai.openExternal(...)`, because standard `_meta.ui.csp` has no equivalent redirect field.
+
+Literal resource key:
+
+```text
+_meta["openai/widgetCSP"].redirect_domains
+```
+
+This does **not** create a second general CSP model for mcp-use. It is a ChatGPT-only extension for that redirect behavior.
+
+## mcp-use Authoring Boundary
+
+For normal external links, use the shipped standard hook:
+
+```typescript
+import { useOpenExternal } from "mcp-use/react";
+
+const openExternal = useOpenExternal();
+await openExternal({ url: "https://example.com/docs" });
+```
+
+Shipped `useOpenExternal()` calls the standard MCP Apps `App.openLink()` path. It does not directly call `window.openai.openExternal`, does not expose ChatGPT's `redirectUrl` option, and does not require authors to detect ChatGPT.
+
+beta.66's generated View resource builder exposes standard `view.csp`, `view.domain`, `view.permissions`, and `view.prefersBorder`, but no public arbitrary resource `_meta` authoring surface. Therefore you cannot configure `openai/widgetCSP.redirect_domains` on a generated mcp-use View through a documented public API.
+
+If the product specifically requires ChatGPT's redirect-target feature rather than ordinary host-mediated link opening, treat it as a current framework limitation. Do not invent a `view` property, write direct `window.openai` code around an existing standard hook, or claim Inspector can validate unsupported resource metadata.
+
+## Dedicated Domain for ChatGPT Submission
+
+The standard resource field is `_meta.ui.domain`, configured through `view.domain`:
+
+```typescript
+view: {
+  name: "checkout",
+  domain: "https://components.example.com",
 }
 ```
 
-**Note:** `client.name` is a hint; CSP enforcement is the authoritative mechanism.
+The official OpenAI reference says a dedicated component origin is required when submitting a plugin with UI and must be unique per plugin. This is a ChatGPT submission requirement applied to the standard field, not a reason to use the `openai/widgetDomain` compatibility alias. Confirm the exact origin and submission acceptance in real ChatGPT.
 
-## CSP Violations
+## Verify Standard CSP in Inspector
 
-If your view tries to fetch from an origin not in CSP:
+Current Inspector source provides CSP diagnostics with two modes:
 
-**Browser console error:**
+- **Permissive** — records requests that the declared policy would block;
+- **Widget-Declared** — enforces the resource metadata policy.
 
-```
-Refused to connect to 'https://blocked.com' because it violates the following Content Security Policy directive: "connect-src 'self' https://api.example.com https://myserver.com"
-```
+Use Widget-Declared mode before shipping. Check the iframe console and CSP findings for browser fetches, assets, and frames.
 
-**Fix:** Add the origin to `view.csp.connectDomains` in the tool definition.
+Inspector validates standard resource CSP. It has no verified ChatGPT protocol toggle and does not prove `window.openai.openExternal` redirect handling or ChatGPT submission policy. Test those ChatGPT-specific concerns in real ChatGPT.
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Browser fetch blocked | Add only the required origin to `view.csp.connectDomains` |
+| Image, font, script, or stylesheet blocked | Add its origin to `view.csp.resourceDomains` |
+| Embedded iframe blocked | Add its origin to `view.csp.frameDomains`; expect stricter host review |
+| Works only in Inspector Permissive mode | Re-run in Widget-Declared mode and inspect recorded policy differences |
+| Ordinary external link fails | Use `useOpenExternal()` and verify host `openLinks` capability |
+| ChatGPT redirect-target flow fails | Check real ChatGPT requirements; `redirect_domains` is not publicly configurable on generated Views in beta.66 |
 
 ## See Also
 
-- `references/18-mcp-apps/server-surface/05-csp-metadata.md` — full CSP API and merge rules
-- `references/18-mcp-apps/anti-patterns.md` — "Missing or Wrong CSP" anti-pattern
-- `canonical-anchor.md` — end-to-end example with CSP
+- `references/18-mcp-apps/server-surface/05-csp-metadata.md` — complete standard CSP configuration and merge rules
+- `01-dual-protocol.md` — descriptor/resource metadata matrix and framework limits
+- `04-runtime-detection.md` — capability-first feature gating

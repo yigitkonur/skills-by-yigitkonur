@@ -37,7 +37,7 @@ This connects to the local MCP endpoint. You can test all tools, views, and reso
 
 Copy the public tunnel URL into your remote MCP client. If the remote client fails to connect or shows errors, first verify the server works with the local inspector. If local works but remote fails, check:
 - The tunnel URL includes `/mcp` suffix (non-negotiable).
-- The remote client supports the MCP protocol (HTTP streamable, MCP 2.0).
+- The remote client supports Streamable HTTP transport (mcp-use v2 does not serve stdio or SSE-transport).
 - If OAuth: the remote client's OAuth callback matches your server's configuration.
 - Network/firewall: the remote client can reach `https://<subdomain>.local.mcp-use.run`.
 

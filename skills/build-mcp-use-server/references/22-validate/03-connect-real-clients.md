@@ -13,30 +13,32 @@ npx mcp-use client connect my-local http://localhost:3000/mcp
 # List tools
 npx mcp-use client my-local tools list
 
-# Call a tool
-npx mcp-use client my-local tools call get-weather --arguments '{"location":"Paris"}'
-
-# Interactive REPL
-npx mcp-use client my-local interactive
+# Call a tool — arguments are key=value pairs, key:=<json> for typed/nested values, or one JSON object
+npx mcp-use client my-local tools call get-weather location=Paris
+npx mcp-use client my-local tools call get-weather '{"location":"Paris"}'
 ```
 
-The client keeps connections saved in `~/.mcp-use/` for reuse.
+There is no `interactive`/REPL subcommand — `client` scopes to `tools` (`list`, `describe <tool>`, `call <tool> [args...]`), `resources` (`list`, `read <uri>`), `prompts` (`list`, `get <prompt> [args...]`), and `auth` (`status`, `logout`).
+
+The client keeps saved server metadata under `~/.mcp-use/client/servers.json` and credentials under `~/.mcp-use/client/credentials/`.
 
 ## Tunnel for Remote Clients (ChatGPT, Claude.ai)
 
 When you want to test with hosted platforms, expose your local server via public HTTPS tunnel:
 
 ```bash
-npm run dev -- --tunnel
+mcp-use dev --tunnel
 ```
 
-Output shows:
+Successful output includes a tunnel endpoint:
 ```
 [mcp-use] starting tunnel for port 3000…
-mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+  ➜ MCP endpoint:  http://localhost:3000/mcp
+  ➜ Inspector:     http://localhost:3000/mcp/inspector
+  ➜ Tunnel:        https://happy-blue.local.mcp-use.run/mcp
 ```
 
-**Copy the full URL** (including `/mcp` suffix). Use this in ChatGPT or Claude App config.
+**Copy the value after `Tunnel:`** (including `/mcp` suffix — do not copy only the bare host). Use this in ChatGPT or Claude App config. Note that a public tunnel only exposes the MCP endpoint; `/mcp/inspector` returns 404 through the tunnel URL — Inspector stays local-only.
 
 To test the tunnel works:
 
@@ -45,7 +47,17 @@ npx mcp-use client connect tunnel-test https://happy-blue.local.mcp-use.run/mcp
 npx mcp-use client tunnel-test tools list
 ```
 
-Tunnel expires after **24 hours** or 1 hour of inactivity. Rate limit: 5 active tunnels per IP.
+Keep the terminal running the tunnel process open — the public URL stops working when it exits.
+
+Tunnel limits:
+
+| Limit | Value |
+| --- | --- |
+| Lifetime | Expires 24 hours after creation |
+| Inactive cleanup | 1 hour of no activity |
+| Creation rate limit | 10 tunnel creations per IP per hour |
+| Active tunnel limit | 5 active tunnels per IP |
+| Close behavior | Closes when the CLI process exits |
 
 ## Deploy for Stable Public URL
 
@@ -56,9 +68,15 @@ mcp-use login  # One-time OAuth
 mcp-use deploy
 ```
 
-Result: `https://<slug>.deploy.mcp-use.com/mcp` (available 24/7, no expiry)
+Copy the exact generated MCP URL from the Manufact Cloud dashboard after the deployment finishes — do not infer the hostname from the server slug; the dashboard is authoritative for both generated and custom domains.
 
-Use this URL in any MCP client settings.
+```bash
+export MCP_URL="PASTE_THE_GENERATED_MCP_URL"
+npx mcp-use client connect production "${MCP_URL}"
+npx mcp-use client production tools list
+```
+
+Use that same exact URL in any other MCP client configuration.
 
 ## ChatGPT Integration
 

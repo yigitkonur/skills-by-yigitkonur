@@ -107,4 +107,7 @@ async function handleApprove() {
 - **`sendFollowUp()` does not block on model response** → it resolves when the host queues the message, not when the model replies
 - **`openExternal()` is advisory** → the host may refuse to open the URL (e.g., browser restrictions)
 - **Unsupported calls reject** → if the host lacks `message` or `openLinks` capability, the returned Promise rejects
+- **Both returned callbacks are referentially stable** → safe to put in a `useEffect` dependency array or pass down without a `useCallback` wrapper
+
+Both hooks send messages outward (to the model, to the browser). To let the model or host call back *into* the mounted view, see `references/18-mcp-apps/view-react/09-useviewtool.md`.
 

@@ -95,7 +95,7 @@ server.tool(
   {
     name: "delete-ticket",
     description: "Permanently delete a support ticket by ID.",
-    schema: z.object({
+    inputSchema: z.object({
       ticketId: z.string()
         .regex(/^TKT-\d+$/)
         .describe("Ticket ID like TKT-12345. Hard delete — not recoverable."),

@@ -116,39 +116,57 @@ Check provider documentation (in `references/11-auth/providers/`) for your provi
 
 ### Migration path for fixed-client providers
 
-If your v1 server uses `oauthProxy()` for a provider without DCR:
+If your v1 server uses `oauthProxy()` for a provider without DCR, deploy an external authorization-server/broker layer:
 
-**Option 1: Deploy an external auth broker**
-- Build a standalone OAuth authorization server (e.g., using Keycloak, Auth0 custom integration, or a DIY broker)
-- Server accepts DCR and issues access tokens
-- MCP server verifies tokens via `oauthCustomProvider`
+- The external layer accepts MCP client registration (DCR), completes the fixed-client upstream flow, and issues/verifies resource-bound access tokens.
+- The MCP server verifies those tokens with `oauthCustomProvider` or a built-in provider.
+- Keycloak or another authorization server can fill this role; pointing `oauthCustomProvider` directly at a non-DCR provider does **not** add DCR and is not a replacement for the removed proxy.
 
-**Option 2: Use oauthCustomProvider for manual verification**
+### Custom verification for a DCR-capable provider
+
+Use `oauthCustomProvider` directly only when the upstream authorization server already supports Dynamic Client Registration but mcp-use has no built-in adapter. `createTokenVerifier(resource)` must return an `OAuthTokenVerifier` object (`{ verifyAccessToken }`), not a bare function:
+
 ```typescript
 import { oauthCustomProvider } from "mcp-use/oauth";
 import { jwtVerify } from "jose";
 
 const oauth = oauthCustomProvider({
-  createTokenVerifier: (resource) => async (token) => {
-    // Manually verify token (e.g., against provider's JWKS)
-    const { payload } = await jwtVerify(token, jwks, { issuer: "https://your-provider.com" });
-    return { payload };
-  },
+  createTokenVerifier: (resource) => ({
+    async verifyAccessToken(token) {
+      // Manually verify token (e.g., against provider's JWKS)
+      const { payload } = await jwtVerify(token, jwks, {
+        issuer: "https://your-provider.com",
+        audience: resource.href,
+      });
+      if (!payload.sub || !payload.exp) throw new Error("Token missing sub or exp");
+      return {
+        token,
+        clientId: typeof payload.client_id === "string" ? payload.client_id : "",
+        scopes: [],
+        expiresAt: payload.exp,
+        resource,
+        extra: { payload }, // your verified claims, read back via authInfo.extra in mapAuthInfo
+      };
+    },
+  }),
   oauthMetadata: {
     issuer: "https://your-provider.com",
     authorization_endpoint: "https://your-provider.com/oauth/authorize",
     token_endpoint: "https://your-provider.com/oauth/token",
-    registration_endpoint: "https://your-provider.com/oauth/register", // or omit if no DCR
+    registration_endpoint: "https://your-provider.com/oauth/register", // Required for direct MCP client registration
     jwks_uri: "https://your-provider.com/.well-known/jwks.json",
   },
-  mapAuthInfo: (authInfo) => ({
-    user: {
-      id: authInfo.clientId ?? authInfo.claims?.sub ?? "unknown",
-      email: authInfo.claims?.email as string | undefined,
-    },
-    payload: authInfo.claims ?? {},
-    permissions: [],
-  }),
+  mapAuthInfo: (authInfo) => {
+    const payload = authInfo.extra?.payload as Record<string, unknown> | undefined;
+    return {
+      user: {
+        id: (payload?.sub as string) ?? authInfo.clientId ?? "unknown",
+        email: payload?.email as string | undefined,
+      },
+      payload: payload ?? {},
+      permissions: [],
+    };
+  },
 });
 ```
 
@@ -166,13 +184,23 @@ If you had a custom provider in v1, the shape has changed:
 }
 ```
 
-**v2**:
+**v2**: `createTokenVerifier(resource)` returns an `OAuthTokenVerifier` object; `mapAuthInfo` reads `authInfo.extra` (populated by your own verifier), not `authInfo.claims` (no such field exists):
 ```typescript
 oauthCustomProvider({
-  createTokenVerifier: (resource) => async (token) => {
-    // Your verification logic; receives resource URL (MCP endpoint)
-    return { payload: { /* verified claims */ } };
-  },
+  createTokenVerifier: (resource) => ({
+    async verifyAccessToken(token) {
+      // Your verification logic; receives resource URL (MCP endpoint)
+      // Must return AuthInfo: { token, clientId, scopes, expiresAt, resource, extra? }
+      return {
+        token,
+        clientId: "client-123",
+        scopes: [],
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        resource,
+        extra: { claims: { sub: "user-123", email: "user@example.com" } },
+      };
+    },
+  }),
   oauthMetadata: {
     // RFC 8414 metadata object
     issuer: "https://auth.example.com",
@@ -180,11 +208,14 @@ oauthCustomProvider({
     token_endpoint: "...",
     jwks_uri: "...",
   },
-  mapAuthInfo: (authInfo) => ({
-    user: { id: authInfo.claims?.sub, email: authInfo.claims?.email },
-    payload: authInfo.claims ?? {},
-    permissions: [],
-  }),
+  mapAuthInfo: (authInfo) => {
+    const claims = authInfo.extra?.claims as { sub: string; email?: string };
+    return {
+      user: { id: claims.sub, email: claims.email },
+      payload: claims,
+      permissions: [],
+    };
+  },
 })
 ```
 

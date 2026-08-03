@@ -10,7 +10,7 @@ If you have a raw SDK server, adopting mcp-use v2 gives you declarative tools, b
 - You want to add Views (MCP Apps) without raw resource/HTML wiring.
 - You are starting a new server and want the mcp-use workflow (CLI, Inspector, HMR).
 
-Raw SDK stays relevant only for:
+Raw SDK remains the better fit for cases such as:
 - Non-HTTP transports (stdio, custom streams) with full control.
 - Embedding in specialized runtimes without mcp-use adapters.
 - Custom MCP protocol extensions beyond tools/resources/prompts.
@@ -19,7 +19,7 @@ Raw SDK stays relevant only for:
 
 | Aspect | Raw SDK | mcp-use v2 |
 |---|---|---|
-| Tool registration | Imperative handlers + schema | Declarative definition-first + callback |
+| Tool registration | `McpServer.registerTool(name, config, callback)` | `server.tool(definition, callback)`; returns an exportable `ToolRef` |
 | OAuth | None; app-owned verification | Built-in DCR providers (Clerk, Auth0, Supabase, WorkOS, Keycloak, Better Auth) |
 | Response helpers | None; return raw envelopes | Deprecated shims (`text()`, `object()`) + prefer raw `CallToolResult` |
 | Views/MCP Apps | Manual HTML + resource registration | Tool `view: { name }` config + generated `views/<name>/view.tsx` |
@@ -36,16 +36,31 @@ npm install mcp-use@2.0.0-beta.66 zod@4
 
 ## Minimal conversion: Raw SDK → mcp-use v2
 
-Raw SDK example:
+Raw SDK example (v2 split package `@modelcontextprotocol/server`, `McpServer.registerTool`):
 ```typescript
-import { Server } from "@modelcontextprotocol/server";
-const server = new Server({ name: "demo", version: "1.0.0" }, { capabilities: { tools: {} } });
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  if (req.params.name === "greet") {
-    return { content: [{ type: "text", text: `Hello ${req.params.arguments.name}` }] };
+import { McpServer } from "@modelcontextprotocol/server";
+import { z } from "zod";
+
+const server = new McpServer({ name: "demo", version: "1.0.0" });
+
+server.registerTool(
+  "greet",
+  {
+    description: "Greet someone",
+    inputSchema: z.object({ name: z.string() }),
+    outputSchema: z.object({ greeting: z.string() }),
+  },
+  async ({ name }) => {
+    const greeting = `Hello ${name}`;
+    return {
+      content: [{ type: "text", text: greeting }],
+      structuredContent: { greeting },
+    };
   }
-});
+);
 ```
+
+> The classic `@modelcontextprotocol/sdk` pattern (`new Server(...)` + `server.setRequestHandler(CallToolRequestSchema, ...)` with a schema object as the first argument) is v1-only. The v2 split package's low-level `Server` class takes a **string method name** (`server.setRequestHandler("tools/call", handler)`) for spec methods; `McpServer.registerTool()` (shown above) is the idiomatic v2 declarative equivalent and the closer comparison point for mcp-use's own `server.tool()`.
 
 mcp-use v2 equivalent:
 ```typescript
@@ -76,16 +91,20 @@ export default server;
 
 1. Install `mcp-use@2.0.0-beta.66` and `zod@4`.
 2. Create `package.json` with `"type": "module"` and `"engines": { "node": ">=22.22.2" }`.
-3. Create `tsconfig.json`:
+3. Use the current scaffold's TypeScript baseline (or keep equivalent stricter settings):
    ```json
    {
      "compilerOptions": {
-       "target": "ES2022",
-       "module": "ESNext",
-       "moduleResolution": "bundler",
-       "lib": ["ES2022"],
-       "jsx": "react-jsx"
-     }
+       "target": "ES2024",
+       "module": "NodeNext",
+       "moduleResolution": "NodeNext",
+       "lib": ["ES2024", "DOM", "DOM.Iterable"],
+       "jsx": "react-jsx",
+       "strict": true,
+       "noEmit": true,
+       "skipLibCheck": true
+     },
+     "include": ["index.ts", "server.ts", "mcp-env.d.ts", "src/**/*", "views/**/*", ".mcp-use/**/*.d.ts"]
    }
    ```
 4. Scaffold with: `npx create-mcp-use-app@beta --template blank`.
@@ -97,7 +116,8 @@ export default server;
 
 **mcp-use v2**: Use a built-in provider:
 ```typescript
-import { MCPServer, oauthClerkProvider } from "mcp-use/oauth/clerk";
+import { MCPServer } from "mcp-use";
+import { oauthClerkProvider } from "mcp-use/oauth/clerk";
 
 const server = new MCPServer({
   name: "secure-server",
@@ -114,18 +134,28 @@ export const protected = server.tool(
 );
 ```
 
-For custom verification, use `oauthCustomProvider`:
+For custom verification, use `oauthCustomProvider`. `createTokenVerifier(resource)` must return an `OAuthTokenVerifier` object (`{ verifyAccessToken }`), and `mapAuthInfo` reads verified data from `authInfo.extra` (a field your verifier populates) — `authInfo` has no `.claims` property:
 ```typescript
 import { oauthCustomProvider } from "mcp-use/oauth";
+
 const oauth = oauthCustomProvider({
-  createTokenVerifier: (resource) => async (token) => {
-    // Your verification logic
-    return { payload: { sub: "user-123", ... } };
-  },
+  createTokenVerifier: (resource) => ({
+    async verifyAccessToken(token) {
+      // Your verification logic; must return AuthInfo (token, clientId, scopes, expiresAt, resource, extra)
+      return {
+        token,
+        clientId: "client-123",
+        scopes: [],
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        resource,
+        extra: { payload: { sub: "user-123" } }, // your verified claims, any shape you choose
+      };
+    },
+  }),
   oauthMetadata: { /* RFC 8414 metadata */ },
   mapAuthInfo: (authInfo) => ({
-    user: { id: authInfo.claims?.sub ?? "unknown" },
-    payload: authInfo.claims ?? {},
+    user: { id: (authInfo.extra?.payload as { sub: string })?.sub ?? "unknown" },
+    payload: (authInfo.extra?.payload as Record<string, unknown>) ?? {},
     permissions: [],
   }),
 });

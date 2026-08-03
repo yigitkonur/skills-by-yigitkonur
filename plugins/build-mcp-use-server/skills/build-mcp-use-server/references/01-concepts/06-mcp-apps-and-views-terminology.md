@@ -9,8 +9,8 @@
 | **MCP Apps** | Protocol standard for rendering React components in iframe sandboxes inside MCP-aware hosts (ChatGPT, Claude Desktop, etc.). MIME type `text/html;profile=mcp-app`. | Tool with view binding renders a React component in ChatGPT sidebar. |
 | **View** | React component file at `views/<name>/view.tsx` that renders a tool's structured result. Accessed via `useToolContext<"tool-name">()`. | User searches for "coffee shops", view renders map + list. |
 | **Tool view binding** | Config on tool definition that names a view: `view: { name: "search-results", description: "...", ...}`. Requires `outputSchema` on the tool. | `server.tool({ name: "search", outputSchema: z.object(...), view: { name: "results" } }, async ...)` |
-| **Structured content** | Result field matching tool's `outputSchema`; passed to view as `useToolContext().output`. | Tool returns `{ structuredContent: { count: 42, items: [...] } }`. |
-| **CSP** | Content Security Policy headers on view iframe; controls what domains the view can connect to (API calls, fonts, etc.). Defined on view binding. | `view: { csp: { connectDomains: ["api.example.com"] } }` |
+| **Structured content** | Result field matching tool's `outputSchema`; passed to the view as `useToolContext().toolOutput`. | Tool returns `{ structuredContent: { count: 42, items: [...] } }`. |
+| **CSP** | Content Security Policy headers on the view iframe; controls what domains the view can connect to (API calls, fonts, etc.). Configured via `view.csp` (`connectDomains`, `resourceDomains`, `frameDomains`, `baseUriDomains`) on the tool's view binding. | `view: { csp: { connectDomains: ["api.example.com"] } }` |
 
 ## No "widgets" in v2
 

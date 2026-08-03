@@ -42,13 +42,22 @@ Useful for debugging without code changes.
 For custom logging integration, import and use the `requestLogger` function:
 
 ```typescript
-import { requestLogger } from "mcp-use";
+import { composeFetch, MCPServer, requestLogger } from "mcp-use";
 
-const logger = requestLogger({ level: "debug" });
-server.use(logger);  // Apply as middleware
+const server = new MCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  // Disable the automatically registered logger so this custom chain logs once.
+  logging: { enabled: false },
+});
+
+export const handler = composeFetch(
+  server.fetch,
+  requestLogger({ level: "debug" })
+);
 ```
 
-This is primarily for integrating into custom logging ecosystems. Most servers use the built-in config.
+`requestLogger()` is Web Fetch middleware: it receives `(Request, next)`, so it cannot be passed to `server.use()`, whose overloads are MCP/Hono middleware. Serve or export the composed `handler` wherever you would otherwise mount `server.fetch`. Most servers should use the built-in `logging` constructor option instead.
 
 ## Key points
 

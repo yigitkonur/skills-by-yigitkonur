@@ -58,7 +58,7 @@ See `02-registering-a-tool.md` and `canonical-anchor.md` for complete examples.
 
 `outputSchema` describes a contract. `structuredContent` is the runtime value matching that contract. The relationship has a subtle trap:
 
-If you return `object(...)` (or `mix(markdown(...), object(...))`), the helper emits `structuredContent` automatically. Some hosts then prefer `structuredContent` over `content[].text` for the model's view of the result.
+If you set `structuredContent` in your raw return, some hosts prefer it over `content[].text` for the model's view of the result.
 
 That means: if `structuredContent` only contains pagination/metadata while the actual answer lives in `content[].text`, structured-first hosts surface a successful-looking call with no answer body.
 
@@ -66,13 +66,15 @@ The fix is the visibility contract: both surfaces should carry the essential ans
 
 ## Decision table
 
-| Situation | Use `outputSchema`? | Default response helper |
+Return raw MCP envelopes in every case — `text()`, `markdown()`, `widget()`, `object()`, and `mix()` are v1 helpers, exported from `mcp-use` for compatibility only and marked `@deprecated` (see `../05-responses/07-deprecated-v1-helpers.md`). New code should not call them.
+
+| Situation | Use `outputSchema`? | Raw envelope |
 |---|---|---|
-| Conversational answer, no programmatic consumer | No | `text()` or `markdown()` |
-| Widget rendering | Not for runtime validation | `widget()` |
-| Code Mode / agent bridge consumer | Yes | `object()` or `mix(markdown(...), object(...))` |
-| Public tool contract | Yes | `object()` or `mix(...)` |
-| Internal exploratory tool | No | `text()` or `object()` without schema |
+| Conversational answer, no programmatic consumer | No | `{ content: [{ type: "text", text }] }` |
+| Widget rendering (MCP App View) | Yes — required by `view` binding | `{ content: [...], structuredContent }` |
+| Code Mode / agent bridge consumer | Yes | `{ content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data }` |
+| Public tool contract | Yes | `{ content: [...], structuredContent }` |
+| Internal exploratory tool | No | `{ content: [{ type: "text", text }] }` |
 
 ## Example
 
@@ -81,7 +83,7 @@ server.tool(
   {
     name: "search-tickets",
     description: "Search tickets by status and keyword.",
-    schema: z.object({
+    inputSchema: z.object({
       query: z.string().min(1).describe("Search keyword"),
       status: z.enum(["open", "closed"]).describe("Status filter"),
     }).strict(),

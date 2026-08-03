@@ -23,7 +23,7 @@ npm install @mcp-use/client
 
 ### 3. Configure Proxy Targets
 
-Use the config-map form documented in `references/17-advanced/01-proxy-and-gateway.md`. Supply only URLs and credentials verified for your upstream servers.
+Use the config-map form documented in `../17-advanced/01-proxy-and-gateway.md`. Supply only URLs and credentials verified for your upstream servers.
 
 ```typescript
 import { MCPServer } from "mcp-use";
@@ -46,8 +46,9 @@ await server.proxy({
 });
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
 
 **Verify:** `npm run typecheck` passes after setting all referenced environment variables.
 
@@ -84,4 +85,4 @@ mcp-use deploy \
 
 ## Boundaries
 
-The proxy surface does not forward every protocol feature. Review unsupported forwarding and connection-form options before relying on notifications, subscriptions, or upstream auth flows. Read `references/17-advanced/01-proxy-and-gateway.md` and `references/17-advanced/02-proxy-auth-and-namespacing.md`.
+The proxy surface does not forward every protocol feature. Review unsupported forwarding and connection-form options before relying on notifications, subscriptions, or upstream auth flows. Read `../17-advanced/01-proxy-and-gateway.md` and `../17-advanced/02-proxy-auth-and-namespacing.md`.

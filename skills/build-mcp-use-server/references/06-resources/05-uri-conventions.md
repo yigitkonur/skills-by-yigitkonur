@@ -41,17 +41,17 @@ Use a **standard** scheme when:
 | `file://` | Local files (when the resource genuinely *is* a file) |
 | `https://` | Public web URLs (rare — usually wrap them) |
 
-## Simple placeholders only
+## Prefer simple placeholders; RFC 6570 operators are available when you need them
 
-`mcp-use@1.26.0` documents simple `{var}` placeholders and extracts one non-slash segment per placeholder.
+`uriTemplate` is matched with the official SDK's full RFC 6570 `UriTemplate` engine (see `03-resource-templates.md` for the operator table), so `{?id}`, `{+path}`, and comma-separated `{date,level}` all parse and match correctly in v2. That does not make them the default choice — plain `{var}` segments stay the house style because they read like a REST path, keep completion simple, and match what most clients expect from an MCP resource picker.
 
-| Allowed | Not allowed |
+| Prefer | Reach for only when needed |
 |---|---|
-| `users://{id}` | `users://{?id}` |
-| `docs://{category}/{slug}` | `docs://{+path}` |
-| `logs://{date}/{level}` | `logs://{date,level}` |
+| `users://{id}` | `users://{?id}` — genuinely optional/query-style lookup |
+| `docs://{category}/{slug}` | `docs://{+path}` — the value must itself contain `/` |
+| `logs://{date}/{level}` | `logs://{date,level}` — one expression, two extracted names |
 
-If a value can contain `/`, encode it before building the URI and decode it in your handler:
+If a value can contain `/` and you don't want to reach for the `+` operator, encode it before building the URI and decode it in your handler:
 
 ```text
 Template:  users://{id}
@@ -74,9 +74,9 @@ Do not use query params for versioning; they make template matching and completi
 
 ## Discoverability
 
-For a small dynamic set (open files, active sessions), register a template and call `sendResourcesListChanged()` when the exposed resource set changes. For a large set (10,000 users), don't enumerate everything — let the client request specific URIs and rely on autocomplete completions.
+For a small dynamic set (open files, active sessions), register a template and call `server.notifyResourcesChanged()` when the exposed resource set changes. For a large set (10,000 users), don't enumerate everything — let the client request specific URIs and rely on autocomplete completions.
 
-See `03-resource-templates.md` for completion callbacks and `06-subscriptions.md` for change notifications.
+See `03-resource-templates.md` for completion callbacks and `06-subscriptions-listen.md` for change notifications.
 
 ## Anti-patterns
 

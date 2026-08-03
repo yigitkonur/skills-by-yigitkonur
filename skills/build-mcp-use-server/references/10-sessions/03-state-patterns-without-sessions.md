@@ -47,7 +47,7 @@ export const selectSeats = server.tool(
 );
 ```
 
-The codec's `mint()` produces the opaque state string and `requestState.verify` checks it before handler re-entry. Read decoded state with `ctx.requestState<T>()` when the handler needs it. Use when state is small and round-trip is synchronous.
+The codec's `mint()` produces the opaque state string and `ServerConfig.requestState.verify` (wired from `stateCodec.verify`) checks it before handler re-entry. Read decoded state with `ctx.requestState<T>()` (the generic is a type assertion only, not runtime validation) when the handler needs it on the retry round. Use when state is small and round-trip is synchronous.
 
 ## Pattern 2: External database (cross-request state)
 
@@ -55,6 +55,7 @@ For workflow state that spans multiple independent HTTP requests, store in Redis
 
 ```typescript
 import { MCPServer } from "mcp-use";
+import { oauthClerkProvider } from "mcp-use/oauth/clerk";
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({ url: process.env.REDIS_URL });
@@ -62,7 +63,7 @@ const redis = new Redis({ url: process.env.REDIS_URL });
 const server = new MCPServer({
   name: "form-builder",
   version: "1.0.0",
-  oauth: clerckProvider, // Enable ctx.auth.user.id
+  oauth: oauthClerkProvider({ frontendApiUrl: process.env.CLERK_FRONTEND_API_URL! }), // Enable ctx.auth.user.id
 });
 
 export const saveFormStep = server.tool(
@@ -93,46 +94,46 @@ export const saveFormStep = server.tool(
 
 Use when state is large, long-lived, or shared across multiple requests. External store is the source of truth; each request fetches fresh data.
 
-## Pattern 3: Client-held state with elicitation
+## Pattern 3: Batch client-held input with elicitation
 
-For ephemeral multi-round flows, use `inputRequired.elicit()` + `ctx.inputResponses`:
+`ctx.inputResponses` contains responses for the current retried `input_required` round; it does not accumulate accepted values from earlier rounds. When the fields can be collected together, request them in one batch:
 
 ```typescript
+const collectedSchema = z.object({
+  firstAnswer: schema1,
+  secondAnswer: schema2,
+});
+
 export const collectData = server.tool(
   { name: "collect_data", /* ... */ },
   async (params, ctx) => {
-    const step1 = acceptedContent(ctx.inputResponses, "step1", schema1);
-    if (step1 === undefined) {
+    const collected = acceptedContent(
+      ctx.inputResponses,
+      "answers",
+      collectedSchema,
+    );
+
+    if (collected === undefined) {
       return inputRequired({
         inputRequests: {
-          step1: inputRequired.elicit({
-            message: "First question?",
-            requestedSchema: schema1,
+          answers: inputRequired.elicit({
+            message: "Complete both questions",
+            requestedSchema: collectedSchema,
           }),
         },
       });
     }
 
-    const step2 = acceptedContent(ctx.inputResponses, "step2", schema2);
-    if (step2 === undefined) {
-      return inputRequired({
-        inputRequests: {
-          step2: inputRequired.elicit({
-            message: "Second question?",
-            requestedSchema: schema2,
-          }),
-        },
-      });
-    }
-
-    // All steps collected; process
-    const result = await processResponses({ step1, step2 });
-    return { content: [{ type: "text", text: "Completed" }], structuredContent: result };
+    const result = await processResponses(collected);
+    return {
+      content: [{ type: "text", text: "Completed" }],
+      structuredContent: result,
+    };
   }
 );
 ```
 
-Client (via MCP SDK) aggregates input across elicitation rounds and sends all together on the final retry. Server never holds state; client does. Use for short, linear workflows.
+For truly sequential rounds, carry a phase and accepted values in verified request state, then branch on `ctx.requestState<T>()` before reading the current round's responses. Do not expect the client to resend earlier elicitation responses automatically.
 
 ## Pattern 4: Tenant/multi-user scoping
 

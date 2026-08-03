@@ -65,7 +65,8 @@ export const queryDatabase = server.tool(
 ## Key points
 
 - **Must await before return.** Logs are sent on the request's response stream; once your callback returns, the HTTP response ends.
-- **Client opt-in.** Modern clients filter logs by request-level preference; they may suppress debug-level logs. Clients without log support ignore `ctx.sendLog()` calls.
+- **Not filtered by `logging/setLevel`.** A client may call `logging/setLevel` to request a minimum severity threshold, and the request succeeds (mcp-use always declares the `logging` capability). But `ctx.sendLog()` sends every call over the wire unconditionally — it does not check that threshold before sending. If you need to throttle by severity, compare against your own level before calling `ctx.sendLog()`; do not rely on the client's requested level being honored server-side.
+- **Client-side display is up to the client.** Once delivered, a client UI may still choose to hide low-severity messages locally. Clients without log support simply ignore `notifications/message`.
 - **No guaranteed delivery.** Logs are one-way notifications; if the connection drops, logs are lost.
 - **Namespaced context.** Use the `logger` parameter to group related logs (e.g., all database logs under `"database"`).
 

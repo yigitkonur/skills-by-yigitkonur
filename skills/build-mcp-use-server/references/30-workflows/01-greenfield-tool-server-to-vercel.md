@@ -31,6 +31,7 @@ import { z } from "zod";
 const server = new MCPServer({
   name: "weather-server",
   version: "1.0.0",
+  basePath: "/api/mcp", // matches the Vercel Function path used in step 5
 });
 
 export const getWeather = server.tool(
@@ -58,8 +59,9 @@ export const getWeather = server.tool(
 );
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` in this file — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener locally, and the Vercel Function adapter in step 5 owns it in production.
 
 **Verify:** No TypeScript errors: `npm run typecheck`.
 
@@ -67,8 +69,8 @@ server.listen();
 
 ```bash
 npm run dev
-# Output: "MCP server listening on http://127.0.0.1:3000/mcp"
-# Inspector opens at http://127.0.0.1:3000/mcp/inspector
+# Output: "MCP server listening on http://127.0.0.1:3000/api/mcp"
+# Inspector opens at http://127.0.0.1:3000/api/mcp/inspector
 ```
 
 In Inspector:
@@ -79,7 +81,19 @@ In Inspector:
 
 **Verify:** Response shows `{ city: "Paris", temperature: 22, condition: "Partly cloudy" }`.
 
-### 4. Push to GitHub
+### 4. Create the Vercel Function Entry Point
+
+Vercel Functions are stateless. Create `api/mcp.ts` re-exporting the configured server (`MCPServer` exposes a Web-standard Fetch handler, so Vercel accepts it directly):
+
+```typescript
+import server from "../index.ts";
+
+export default server;
+```
+
+Match Vercel's function path (`/api/mcp`) to `basePath` — that's why step 2 set `basePath: "/api/mcp"`. A mismatch here means Hono has no matching route and every request returns 404.
+
+### 5. Push to GitHub and Deploy to Vercel
 
 ```bash
 git init
@@ -87,34 +101,30 @@ git add .
 git commit -m "feat: initial weather server"
 git remote add origin https://github.com/YOUR_USERNAME/my-weather-server.git
 git push -u origin main
+
+npx vercel deploy
+# Output: https://my-weather-server.vercel.app/api/mcp
 ```
 
-**Verify:** Repo appears on GitHub.
+`npx vercel deploy` is the standard Vercel CLI — this workflow never calls `mcp-use login` or `mcp-use deploy`. Those commands target Manufact Cloud, a separate deployment platform (see `../25-deploy/platforms/01-mcp-use-cloud.md`); do not mix the two.
 
-### 5. Deploy to Vercel
+**Verify:** Point the standalone Inspector at the deployed URL:
 
 ```bash
-mcp-use login
-# Opens browser for device-code OAuth (Manufact Cloud login)
-
-npm run deploy
-# Prompts: create Vercel project? (yes) → GitHub App install → deploying...
-# Output: https://my-weather-server.vercel.app/mcp
+npx @mcp-use/inspector --url https://my-weather-server.vercel.app/api/mcp
 ```
-
-**Verify:** Visit the URL in inspector by setting MCP URL to `https://my-weather-server.vercel.app/mcp` + re-connecting.
 
 ## Common Issues
 
 | Issue | Solution |
 |-------|----------|
-| `login` returns 401 | Run `mcp-use login --no-open` and paste the device code manually |
-| Vercel deploy hangs on "Waiting for GitHub App" | Approve the Manufact Cloud GitHub App in your account settings |
-| 502 from deployed server | Check `mcp-use deployments list` + `mcp-use deployments logs <id>` for errors |
+| 404 on `/api/mcp` | `basePath` in `index.ts` must match the Vercel function path exactly |
+| Views/assets missing at runtime | Build with `MCP_URL=https://<project>.vercel.app npm run build` before `vercel deploy --prod`; the framework appends `/api/mcp` from `basePath` — see `../25-deploy/platforms/02-vercel.md` |
+| 500 from deployed function | Run `npx vercel logs <deployment-url>` |
 
 ## Next
 
 - Add more tools to `index.ts`.
 - Add resources (read `../06-resources/01-overview.md`).
 - Add OAuth to protect endpoints (read `../11-auth/01-overview.md`).
-- Deploy on other platforms (read `../25-deploy/01-decision-matrix.md`).
+- Deploy on other platforms, including Manufact Cloud (read `../25-deploy/01-decision-matrix.md`).

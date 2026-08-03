@@ -54,7 +54,7 @@ mcp-use start --tunnel
 
 ## Environment Variables
 
-- `$NODE_ENV` — Forced to `production` by start command
+- `$NODE_ENV` — Set to `production` by start command only if not already set (`process.env.NODE_ENV ??= "production"`); an explicit `NODE_ENV` is never overridden
 - `$PORT` — Used if no `--port` flag
 - `$HOST` — Used if no `--host` flag
 

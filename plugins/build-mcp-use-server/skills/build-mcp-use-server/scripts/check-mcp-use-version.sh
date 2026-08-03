@@ -7,12 +7,15 @@ set -euo pipefail
 echo "=== mcp-use Version Check ==="
 echo ""
 
-# Check for mcp-use installed locally or globally
-if command -v mcp-use &>/dev/null; then
+# Prefer the project-local CLI so the report reflects this checkout's installed version.
+if [ -x "./node_modules/.bin/mcp-use" ]; then
+    MCP_USE_PATH="./node_modules/.bin/mcp-use"
+    echo "✓ mcp-use found at: $MCP_USE_PATH"
+elif command -v mcp-use &>/dev/null; then
     MCP_USE_PATH="$(command -v mcp-use)"
     echo "✓ mcp-use found at: $MCP_USE_PATH"
 else
-    echo "✗ mcp-use not found in PATH"
+    echo "✗ mcp-use not found locally or in PATH"
     exit 1
 fi
 
@@ -36,14 +39,17 @@ if [ -f "package.json" ]; then
         LOCAL_MVER=$(grep '"mcp-use":' package.json | head -1 | sed 's/.*"mcp-use": *"\([^"]*\)".*/\1/')
         echo "Local package.json mcp-use: $LOCAL_MVER"
 
-        # Detect v1 vs v2 by checking imports
+        # Detect v1 vs v2 by checking the package's own exports map.
+        # v1 declares a "./server" subpath export (dist/src/server/index.{js,cjs,d.ts});
+        # the literal string "mcp-use/server" never appears in package.json, so grepping
+        # for it can never match — check the "./server" export key instead.
         if [ -d "node_modules/mcp-use" ]; then
-            if grep -q 'mcp-use/server' node_modules/mcp-use/package.json 2>/dev/null; then
-                echo "  → Detected v1 imports (mcp-use/server export exists)"
+            if grep -q '"\./server"' node_modules/mcp-use/package.json 2>/dev/null; then
+                echo "  → Detected v1 package (\"./server\" export key present)"
             elif grep -q '"type": "module"' node_modules/mcp-use/package.json 2>/dev/null && \
                  [ -f "node_modules/mcp-use/dist/index.d.ts" ] && \
                  grep -q 'export.*MCPServer' node_modules/mcp-use/dist/index.d.ts 2>/dev/null; then
-                echo "  → Detected v2 imports (root MCPServer, ESM only)"
+                echo "  → Detected v2 package (root MCPServer export, ESM only, no \"./server\")"
             fi
         fi
     else

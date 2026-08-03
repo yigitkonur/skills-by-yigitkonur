@@ -38,8 +38,8 @@ Vendor guardrails and patterns to avoid when designing and implementing tools.
 | Don't | Do | Why |
 |---|---|---|
 | Side-effects in `readOnlyHint: true` tools | Make read tools actually read-only | Annotation contract; clients trust it. |
-| `throw "Failed"` (string) | Return `{ isError: true, content: [...] }` | Strings aren't `Error` objects; loses stack traces and breaks client error handling. |
-| Throw on expected failures (not-found, validation) | Return `{ isError: true, content: [...] }` | Throws become transport/server errors; raw error envelopes report a graceful tool failure. |
+| `throw "Failed"` (string) | Return `{ isError: true, content: [...] }` | The SDK still catches it (`String(error)` becomes the message), but a thrown string has no stack trace, making the failure harder to debug server-side than a thrown `Error` or a hand-built error result. |
+| Throw on expected failures (not-found, validation) | Return `{ isError: true, content: [...] }` | The SDK catches handler throws and turns them into `isError: true` results anyway (`content[0].text` becomes `error.message`) — but a direct return gives you the exact message text and structured content instead of leaking an internal error string. |
 | Swallow errors silently | Log with `ctx.sendLog("error", …)` and return an error envelope | Hidden failures look like successful no-ops. |
 | Return raw API responses | Return curated `content` and, when schema'd, `structuredContent` | Bloats context; the model wades through irrelevant nesting. |
 

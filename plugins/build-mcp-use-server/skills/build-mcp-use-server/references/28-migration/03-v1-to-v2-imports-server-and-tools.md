@@ -78,6 +78,8 @@ export const weather = server.tool(
 - Callback is **2nd argument**, not `cb` field
 - Return raw `{ content, structuredContent }` instead of `text(...)` helper
 
+**Do not chain** `server.tool(...).tool(...)`. v1's `MCPServer.tool()` returned `this` for chaining; v2's `tool()` returns a `ToolRef` (the value you export for View typing), which has no `.tool()` method. Call `server.tool(...)` once per statement instead.
+
 ## Step 4: Export every static tool
 
 All tools declared at module level must be exported:
@@ -100,7 +102,88 @@ import { useDynamicTool } from "mcp-use/react";
 const lookup = useDynamicTool<InputType, OutputType>("tool-name");
 ```
 
-## Step 5: Response shape — raw MCP envelopes
+## Step 5: Resources and templates
+
+Static resources: v1's static callback received only request context (`(ctx)`) and examples often used no arguments. v2 adds the requested `URL` as the first parameter and moves context to the second: `(uri, ctx)`.
+
+**v1**:
+```typescript
+server.resource(
+  { name: "settings", uri: "app://settings", mimeType: "application/json" },
+  async () => text(JSON.stringify({ theme: "dark" })),
+);
+```
+
+**v2**:
+```typescript
+server.resource(
+  { name: "settings", uri: "app://settings", mimeType: "application/json" },
+  async (uri, ctx) => ({
+    contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ theme: "dark" }) }],
+  }),
+);
+```
+
+Resource templates: v1.34.5 accepted both a legacy nested `resourceTemplate: { uriTemplate, callbacks }` shape and a newer flat `uriTemplate` + `callbacks` overload. v2 keeps only the flat form, moves `callbacks.complete` to top-level `complete`, and standardizes the reader as `(uri, params, ctx)`. Inferred template values are `string | string[]` (RFC 6570 expressions can expand to one or many).
+
+**v1**:
+```typescript
+server.resourceTemplate(
+  {
+    name: "user",
+    resourceTemplate: {
+      uriTemplate: "users://{id}",
+      callbacks: {
+        complete: { id: async (value) => ["alice", "bob"].filter((id) => id.startsWith(value)) },
+      },
+    },
+  },
+  async (uri, { id }) => text(`User ${id}`),
+);
+```
+
+**v2**:
+```typescript
+server.resourceTemplate(
+  {
+    name: "user",
+    uriTemplate: "users://{id}",              // Flattened — no nested `resourceTemplate` field
+    complete: {                                 // Flattened — no nested `callbacks` field
+      id: async (value) => ["alice", "bob"].filter((id) => id.startsWith(value)),
+    },
+  },
+  async (uri, { id }, ctx) => ({                // Canonical v2 signature
+    contents: [{ uri: uri.href, text: `User ${String(id)}` }],
+  }),
+);
+```
+
+## Step 6: Prompts
+
+v1 already deprecated the array-style `args: [{ name, type, required? }]` in favor of a single `schema` field (both existed side by side in v1). v2 drops `args` entirely — `schema` is the only option — and moves the callback to the second argument like tools:
+
+**v1**:
+```typescript
+server.prompt({
+  name: "review",
+  schema: z.object({ code: z.string() }),
+  cb: async ({ code }) => text(`Review this code:\n${code}`),
+});
+```
+
+**v2**:
+```typescript
+server.prompt(
+  { name: "review", schema: z.object({ code: z.string() }) },
+  async ({ code }, ctx) => ({
+    messages: [{ role: "user", content: { type: "text", text: `Review this code:\n${code}` } }],
+  }),
+);
+```
+
+`completable()` still works the same way, with one ordering rule: apply Zod field refinements (`.min()`, `.regex()`, etc.) **before** wrapping with `completable()`, not after — `completable()` supplies autocomplete suggestions but does not itself constrain valid values.
+
+## Step 7: Response shape — raw MCP envelopes
 
 **v1** — Helpers:
 ```typescript
@@ -136,7 +219,7 @@ return {
 
 **Why**: Raw envelopes are type-safe and align with MCP spec. Helpers (`text()`, `object()`, etc.) remain as **deprecated upgrade shims only**; beta.66 does not specify a removal release.
 
-## Step 6: Deprecated helpers — if you must use them
+## Step 8: Deprecated helpers — if you must use them
 
 Helpers are exported for backward compatibility only:
 
@@ -150,7 +233,7 @@ return error("Failed"); // Alias for { content: [...], isError: true }
 
 Migrate away from them and prefer raw envelopes; beta.66 does not specify when the shims will be removed.
 
-## Step 7: Tool annotations (unchanged)
+## Step 9: Tool annotations (unchanged)
 
 Annotations remain, no syntax change:
 
@@ -171,7 +254,7 @@ export const destructive = server.tool(
 );
 ```
 
-## Step 8: What about `visibility`?
+## Step 10: What about `visibility`?
 
 **New in v2**: Tool `visibility` field (for MCP Apps):
 
@@ -187,7 +270,7 @@ export const hidden = server.tool(
 );
 ```
 
-Values: `"model"` (default, model-visible) | `"app"` (View-callable only).
+Values: omit the field for the host default (normally model-callable and app-visible); set `"model"` to declare model visibility explicitly; set `"app"` for an app-private helper callable from a View while the host hides it from the model.
 
 ---
 

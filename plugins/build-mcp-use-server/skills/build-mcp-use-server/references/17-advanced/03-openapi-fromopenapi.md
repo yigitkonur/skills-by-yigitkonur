@@ -43,14 +43,16 @@ MCPServer.fromOpenAPI({
   headers?: { "User-Agent": "my-app/1.0" },
   tags?: ["weather", "forecast"],       // include only these
   exclude?: [
-    { operationId: "deleteUser" },      // exclude by operationId
-    { path: "/admin/*" },               // or path glob
-    { method: "DELETE" },               // or HTTP method
-    { tag: "deprecated" },              // or OpenAPI tag
+    { operationId: "deleteUser" },      // exact match or RegExp
+    { path: "/admin/.*" },              // exact match or RegExp (not a glob)
+    { method: "DELETE" },               // HTTP method, case-insensitive
+    { tags: ["deprecated"] },           // matches if operation has any of these tags
   ],
   fetch?: customFetch,
 });
 ```
+
+Fields within one `exclude` rule are ANDed together; a rule with both `method` and `tags` only excludes operations matching both. `operationId` and `path` accept an exact string or a `RegExp` — there is no glob syntax, so `"/admin/*"` would not match `/admin/users` as a path prefix.
 
 ## Parameter mapping
 
@@ -68,7 +70,11 @@ Example: `GET /weather?city=Seattle&unit=celsius` generates schema with `city` (
 
 ## Response handling
 
-Successful (2xx) responses return `object()` helper for JSON or `text()` for plain text. Non-2xx responses return MCP error envelope.
+- Non-2xx upstream responses return `{ isError: true, content: [{ type: "text", text: <response body> }] }`.
+- 2xx responses with a JSON content type (`application/json` or `*+json`) return `{ content: [{ type: "text", text: <JSON.stringify(data)> }], structuredContent: data }`. If the body fails to parse as JSON, it falls back to a plain text block.
+- 2xx responses with any other content type return `{ content: [{ type: "text", text: <response body> }] }`.
+
+Generated tools build these results directly — they do not go through the deprecated `object()`/`text()` helpers from `mcp-use` (see the hand-write example below for the current recommended shape).
 
 ## Hard limitations
 
@@ -108,7 +114,11 @@ export const getUserProfile = server.tool(
   async ({ userId }) => {
     const user = await fetch(`/users/${userId}`).then(r => r.json());
     const orgs = await fetch(`/users/${userId}/organizations`).then(r => r.json());
-    return object({ user, organizations: orgs });
+    const data = { user, organizations: orgs };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      structuredContent: data,
+    };
   }
 );
 ```
@@ -118,16 +128,9 @@ export const getUserProfile = server.tool(
 - Add clear, model-friendly descriptions
 - Handle auth, retries, and error scenarios
 
-## Vendor workflow: openapi-to-mcp skill
+## End-to-end workflow
 
-For structured OpenAPI-to-MCP generation with schema curation, see `build-mcp-use-server` sister skill `openapi-to-mcp` (in `/tmp/mcp-use-beta/skills/`). It provides:
-
-1. Step-by-step spec acquisition and dereferencing
-2. Zod schema mapping with descriptions
-3. Multi-step HTTP client wiring
-4. Deployment-ready structure
-
-Use `fromOpenAPI()` for quick prototypes; use the vendor skill for production servers from OpenAPI specs.
+For the full scaffold-load-inspect-verify sequence (including scaffolding with `create-mcp-use-app`, resolving `$ref`s before calling `fromOpenAPI()`, and inspecting generated tools), see `references/30-workflows/06-openapi-to-mcp.md`.
 
 ## Example: weather API
 

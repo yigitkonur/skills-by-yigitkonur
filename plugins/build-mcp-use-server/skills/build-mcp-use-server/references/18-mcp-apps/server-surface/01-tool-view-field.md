@@ -1,8 +1,8 @@
 # The Tool `view` Field
 
-*Read this when binding a UI view to a tool — the v2 replacement for v1's `server.uiResource()` + `widget` config.*
+*Read this when binding one server tool to one MCP Apps View.*
 
-In v2 a view is declared **on the tool definition**, not registered as a separate UI resource. The framework derives the view resource, its `ui://` URI, and the wire metadata from this one field.
+A v2 View is declared on the tool definition. From that binding, the framework derives the `ui://` resource, discovery metadata, successful-result link metadata, and resource security metadata.
 
 ## Shape
 
@@ -10,48 +10,127 @@ In v2 a view is declared **on the tool definition**, not registered as a separat
 import { MCPServer } from "mcp-use";
 import { z } from "zod";
 
+const server = new MCPServer({ name: "catalog", version: "1.0.0" });
+
+const productResultsSchema = z.object({
+  query: z.string(),
+  results: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+
 server.tool(
   {
     name: "search-products",
     description: "Search the product catalog.",
     inputSchema: z.object({ query: z.string().describe("Search text") }),
-    outputSchema: productResultsSchema, // REQUIRED when view is set
+    outputSchema: productResultsSchema,
     view: {
-      name: "product-search",   // must match views/product-search/view.tsx
-      description: "Product results grid",   // optional resource description
-      csp: { connectDomains: ["https://api.example.com"] }, // optional, see 05-csp-metadata.md
-      permissions: {},           // optional sandbox permissions (@modelcontextprotocol/ext-apps)
-      domain: "https://views.example.com",  // optional dedicated-origin hint
-      prefersBorder: true,       // optional: ask host to draw a border
+      name: "product-search",
+      description: "Product results grid",
+      csp: { connectDomains: ["https://api.example.com"] },
+      permissions: {},
+      domain: "views.example.com",
+      prefersBorder: true,
     },
   },
   async ({ query }) => {
     const results = await search(query);
     return {
       content: [{ type: "text", text: `Found ${results.length} products.` }],
-      structuredContent: { query, results }, // becomes the view's props; typed by outputSchema
+      structuredContent: { query, results },
     };
   }
 );
+
+export default server;
 ```
 
-## Rules
+## Field Semantics
 
-- **`outputSchema` is required for view binding.** The view's props are the tool result's `structuredContent`, and the schema is their type contract. Omitting it is a registration-time error, not a style choice.
-- **`view.name` must exactly match the folder name** under `views/` (`views/<name>/view.tsx`). Mismatch means the view resource resolves to nothing — see `references/27-troubleshooting/04-view-rendering-issues.md`.
-- **Always return model-visible `content` alongside `structuredContent`.** Hosts without view support (and the model itself) only see `content` — this is the text fallback.
-- `visibility: "app"` on the tool definition hides the tool from the model while keeping it callable from views (for view-internal refresh/pagination tools). Default is model-visible.
-- The deprecated v1 `widget({ props, output })` helper still works but raw envelopes are canonical — see `references/05-responses/07-deprecated-v1-helpers.md`.
+| Field | Meaning |
+|-|-|
+| `name` | View directory and manifest key; generates `ui://views/<name>.html` |
+| `description` | Resource description emitted for the generated View resource |
+| `csp` | Author domain allowlists merged into resource `_meta.ui.csp` |
+| `permissions` | Requested sandbox capabilities emitted as resource `_meta.ui.permissions` |
+| `domain` | Dedicated sandbox-origin hint emitted as resource `_meta.ui.domain`; format and validation are host-dependent |
+| `prefersBorder` | Host rendering preference emitted as resource `_meta.ui.prefersBorder` |
 
-## What the framework emits on the wire
+Do not assume `domain` is a URL or that one host's accepted format works in another host. Consult the target host's requirements. ChatGPT-specific submission rules belong in `../chatgpt-apps/01-dual-protocol.md`; keep this standard field host-neutral.
 
-- `tools/list` entries carry `_meta.ui` (including visibility) so hosts know the tool has a view.
-- The view resource is served at `ui://views/<name>.html` with MIME `text/html;profile=mcp-app`, carrying `_meta.ui` with `csp`, `permissions`, `domain`, and `prefersBorder`.
-- CSP is merged three ways (author `view.csp` > `CSP_*_DOMAINS` env > auto-append) — details in `references/18-mcp-apps/server-surface/05-csp-metadata.md`.
+## Binding Validation
+
+The framework validates the contract in two phases.
+
+**When the tool is registered:**
+
+- A View-bound tool without `outputSchema` throws. For a View with no meaningful structured payload, use `outputSchema: z.object({})` and return `structuredContent: {}`.
+- A second tool binding the same `view.name` throws. One View may have at most one owning tool.
+
+**When the server is mounted or the CLI validates a build:**
+
+- Any View-bound tool with no primed View registry throws.
+- A bound `view.name` absent from the primed manifest throws.
+- A built/primed View that no tool binds emits a warning: `[mcp-use] View "<name>" is registered but no tool binds it.`
+
+A folder-name mismatch is therefore a hard mount/build error, not a silent missing resource.
+
+## Visibility
+
+`visibility` is a top-level tool field, not part of `view`:
+
+```typescript
+server.tool(
+  {
+    name: "refresh-products",
+    inputSchema: z.object({ cursor: z.string().optional() }),
+    outputSchema: productResultsSchema,
+    visibility: "app",
+    view: { name: "product-refresh" },
+  },
+  handler
+);
+```
+
+- Omitted: host default; normally callable by the model and app.
+- `"model"`: narrows visibility to the model side.
+- `"app"`: app-private helper tool, callable by Views through a host that supports `serverTools`.
+
+The server still includes every registered tool in `tools/list`; the host interprets `_meta.ui.visibility`.
+
+## Literal Wire Metadata
+
+For `view.name: "product-search"`, `tools/list` contains both the standard nested key and a flat compatibility key:
+
+```json
+{
+  "_meta": {
+    "ui": {
+      "resourceUri": "ui://views/product-search.html"
+    },
+    "ui/resourceUri": "ui://views/product-search.html"
+  }
+}
+```
+
+If `visibility` is set, the nested object also contains `"visibility": ["model"]` or `"visibility": ["app"]`.
+
+A successful terminal tool result gets the same two resource URI keys. The framework does **not** stamp them onto `isError: true` or `input_required` results. Other handler-defined result `_meta` keys survive, but the framework-owned nested `ui` and flat `ui/resourceUri` values win on collision.
+
+The generated resource is advertised and read with:
+
+- URI `ui://views/product-search.html`
+- MIME `text/html;profile=mcp-app`
+- optional resource description
+- resource `_meta.ui.csp`, `.permissions`, `.domain`, and `.prefersBorder`
+
+## Required Text Fallback
+
+Return useful `content` alongside `structuredContent`. Hosts without MCP Apps support still receive the tool and may call it; capability negotiation does not remove tools from `tools/list`.
 
 ## Related
 
-- Folder conventions and registration mechanics: `references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md`
-- Per-view runtime config export: `references/18-mcp-apps/server-surface/03-viewconfig.md`
-- The complete worked example: `references/18-mcp-apps/canonical-anchor.md`
-- Migrating v1 `uiResource`/`widgetMetadata` code: `references/28-migration/06-v1-to-v2-widgets-to-views.md`
+- Discovery, tooling registration, and validation: `02-register-views-and-folder-conventions.md`
+- Runtime config: `03-viewconfig.md`
+- Build assets and synthesized HTML: `04-assets-mcp-url-and-serving.md`
+- CSP and permissions: `05-csp-metadata.md`
+- Worked example: `../canonical-anchor.md`

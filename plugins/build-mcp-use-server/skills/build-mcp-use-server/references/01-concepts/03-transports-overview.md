@@ -14,21 +14,20 @@ v2 uses **Web-standard Fetch API only** — no stdio, no SSE aliases.
 
 **Capabilities:**
 - GET, POST, DELETE, OPTIONS (CORS preflight)
-- View assets served at `/_mcp-use/views/` subtree
-- Inspector automounts at `/mcp/inspector` during `mcp-use dev`
+- Production View bundles served at `${basePath}/_mcp-use/views/<name>/...`; public files at `${basePath}/_mcp-use/public/...`
+- Inspector automounts at `/mcp/inspector` during `mcp-use dev` (production: `mcp-use start --with-inspector` mounts it at `${basePath}/inspector`)
 
 ## Binding to runtimes
 
 | Runtime | Adapter | How |
 |---------|---------|-----|
-| **Node.js** | `mcp-use/node` | `toNodeHandler(server)` wraps `server.fetch` for `http.createServer((req, res) => ...)` |
+| **Node.js** | `mcp-use/node` | `toNodeHandler(server)` wraps `server.fetch`; pass the result to `http.createServer(...)` |
 | **Next.js** | `mcp-use/next` | `createNextHandler(server)` exports `{ GET, POST, DELETE, OPTIONS }` for App Router |
-| **Cloudflare Workers** | `server.fetch` | Direct mount; views via static binding |
-| **Vercel Functions** | `server.fetch` | Catch-all function; views included in bundle |
-| **Deno Deploy** | `server.fetch` | Direct mount; external assets via CDN |
-| **Hono** | `server.fetch` | Mount at route: `app.all("/mcp", c => server.fetch(c.req.raw))` |
-| **Supabase Edge Fn** | `server.fetch` | Deployed with `static_files` config |
-| **Google Cloud Run** | `server.fetch` | Default export or `POST` export |
+| **Supabase Edge Functions** | `server.fetch` directly | Edge Function forwards requests to `server.fetch`; no `listen()` call. Set `basePath` to match the gateway prefix (e.g. `/functions/v1/mcp-server/mcp`) |
+| **Google Cloud Run** | CLI-built server, no direct adapter | `mcp-use start` binds `0.0.0.0` and Cloud Run's injected `PORT`; set `host: "0.0.0.0"` in `ServerConfig` |
+| **Cloudflare Workers, Vercel, Deno Deploy, Hono, Bun, Railway** | `server.fetch` | Plain Web-standard `server.fetch(request: Request): Promise<Response>` — mount under any router or platform accepting that signature. Per-platform View-asset topology differs (co-located static binding vs. `MCP_ASSETS_URL` CDN) |
+
+See `25-deploy/01-decision-matrix.md` for the full target/asset-topology matrix and `25-deploy/platforms/` for a file per platform (Manufact Cloud, Vercel, Cloudflare Workers, Google Cloud Run, Supabase, Deno, Bun, Hono, Railway).
 
 ## No stdio in v2
 

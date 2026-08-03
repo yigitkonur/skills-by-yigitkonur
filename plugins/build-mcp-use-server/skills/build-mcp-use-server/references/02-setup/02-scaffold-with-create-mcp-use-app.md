@@ -28,15 +28,19 @@ Select with `--template <name>` or `-t <name>`.
 
 ```
 my-project/
+├── public/
+│   └── icon.svg
 ├── index.ts                  # MCPServer instance + tool/prompt registration
 ├── mcp-env.d.ts              # Generated type bridge (refresh via `mcp-use typecheck`)
 ├── package.json              # Scripts: dev, build, typecheck, start, deploy
-├── tsconfig.json             # ESM + source maps, NodeNext module
+├── tsconfig.json             # ESM, NodeNext module, noEmit (see 07-tsconfig-and-types.md)
 ├── .gitignore
 └── README.md
 ```
 
-**With `mcp-apps` template:** Add `views/` folder with React component examples.
+Every template (including `mcp-server` and `blank`) includes `public/`, not just `mcp-apps`.
+
+**With `mcp-apps` template:** Add `public/logo-mcp-use.svg` and a `views/my-view/` folder with a full component example (`view.tsx`, `view.css`, `icons.tsx`, `Tooltip.tsx`, `MeshGradient.tsx`).
 
 ## Key script additions
 
@@ -90,13 +94,21 @@ npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --pnpm --inst
 
 ## Skills integration (Claude Code / Codex / Cursor)
 
-Scaffold with `--skills` to auto-install the mcp-apps-builder skill into `.claude/agents/skills/` (Claude Code), `.cursor/extensions/skills/` (Cursor), or `.codex/agents/skills/` (Codex):
+Scaffold with `--skills` to auto-install the `mcp-apps-builder` skill into **all three** agent directories unconditionally (not per-detected-agent) — `.claude/skills/mcp-apps-builder/`, `.cursor/skills/mcp-apps-builder/`, `.agent/skills/mcp-apps-builder/`:
 
 ```bash
 npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --skills --install
 ```
 
-Requires git. Telemetry (anonymous, silent) reports: event=install, source=mcp-use, skills=mcp-apps-builder, agents=<detected>.
+Requires git (used to shallow sparse-clone `github.com/mcp-use/mcp-use` at the `beta` branch, path `skills/mcp-apps-builder`). If git is missing or the clone/checkout fails, scaffolding continues and prints a warning plus the manual install command:
+
+```bash
+npx --yes skills add mcp-use/mcp-use#beta --yes --skill mcp-apps-builder -a cursor -a claude-code -a codex
+```
+
+Telemetry (anonymous, fire-and-forget GET, silent on failure) reports fixed values regardless of which agents are actually detected: `event=install`, `source=mcp-use/mcp-use`, `skills=mcp-apps-builder`, `agents=cursor,claude-code,codex`, `sourceType=github`.
+
+Skills-install default when `--skills`/`--no-skills` is omitted: `true` when `--template <name>` was passed explicitly; `false` for a non-interactive run with no template; otherwise (interactive, no template) the CLI prompts "Install AI coding skills for Cursor, Claude Code, and Codex?" (default yes). Pass `--no-skills` to opt out explicitly in any case.
 
 ## Lockfile & reproducibility
 

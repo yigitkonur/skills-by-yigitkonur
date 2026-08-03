@@ -16,8 +16,13 @@ When a tool returns an `input_required` elicitation result (`inputRequired.elici
 import { MCPServer, createRequestStateCodec, inputRequired, inputResponse, acceptedContent } from "mcp-use";
 import { z } from "zod";
 
+const requestStateSecret = process.env.REQUEST_STATE_SECRET;
+if (!requestStateSecret) {
+  throw new Error("REQUEST_STATE_SECRET is required");
+}
+
 const stateCodec = createRequestStateCodec<{ booking_id: string }>({
-  key: process.env.REQUEST_STATE_SECRET || "a-secret-key-that-is-at-least-32-bytes-long!",
+  key: requestStateSecret,
   ttlSeconds: 600,
 });
 
@@ -65,8 +70,16 @@ export const confirmBooking = server.tool(
       });
     }
 
+    const state = ctx.requestState<{ booking_id: string }>();
+    if (!state || state.booking_id !== booking_id) {
+      return {
+        content: [{ type: "text", text: "Booking state is missing or does not match" }],
+        isError: true,
+      };
+    }
+
     if (confirmed.confirmed) {
-      await bookingService.confirm(booking_id);
+      await bookingService.confirm(state.booking_id);
       return {
         content: [{ type: "text", text: "Booking confirmed" }],
         structuredContent: { status: "confirmed" },
@@ -81,10 +94,12 @@ export const confirmBooking = server.tool(
 );
 ```
 
-The codec automatically:
-1. Encodes state on the elicit response.
-2. Verifies state on the retry request (rejects if tampered).
-3. Exposes verified data via `ctx.requestState`.
+The codec:
+1. `stateCodec.mint(data)` encodes signed state into the `requestState` field of the `inputRequired(...)` result.
+2. `ServerConfig.requestState.verify` (wired from `stateCodec.verify`) validates that state on the client's retry request before the handler re-runs; a tampered or expired value fails verification.
+3. `ctx.requestState` (type `RequestStateAccessor`, called as `ctx.requestState<T>()`) exposes the verified data inside the handler on the retry round. Fail closed if it is absent or conflicts with retry arguments, and perform side effects with the verified value rather than the client-resubmitted value.
+
+Never ship a fallback signing key. Require `REQUEST_STATE_SECRET` at startup and keep it consistent across every instance that can receive a retry.
 
 ## External state patterns
 

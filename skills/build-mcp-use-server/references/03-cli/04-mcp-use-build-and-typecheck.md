@@ -27,13 +27,15 @@ mcp-use build [options]
 mcp-use build --source-maps
 ```
 
+**Build is transpile-only — it never runs the TypeScript type checker.** There is deliberately no typecheck step in `mcp-use build`; run `mcp-use typecheck` as a separate script (e.g. `npm run typecheck && npm run build`) when type checking is required.
+
 **Always runs:**
-- TypeScript compilation (no `--no-typecheck` flag)
+- TypeScript transpilation (types stripped, not checked)
 - View bundling (if `views/` exists)
 
 ## mcp-use typecheck
 
-Refreshes `.mcp-use/mcp-env.d.ts` and runs your project's TypeScript compiler:
+Refreshes the project-root `mcp-env.d.ts` and runs your project's TypeScript compiler:
 
 ```bash
 mcp-use typecheck [options] [-- <tsc options>]
@@ -48,7 +50,7 @@ mcp-use typecheck [options] [-- <tsc options>]
 
 ### Regenerated Files
 
-- `.mcp-use/mcp-env.d.ts` — Tool and prompt type definitions based on your server's schema
+- `mcp-env.d.ts` (project root, not under `.mcp-use/`) — Tool and prompt type definitions based on your server's schema
 
 ### Example
 
@@ -60,18 +62,20 @@ mcp-use typecheck -- --strict --noUnusedLocals
 
 ```
 .mcp-use/build/
-├── index.js          # Compiled server
-├── mcp-env.d.ts      # Type definitions
-└── views/            # (if views exist)
-    ├── chart/
-    │   ├── view.js
-    │   └── view.html
-    └── form/
-        ├── view.js
-        └── view.html
+├── index.js           # Compiled server entry (name from manifest.json#entryPoint)
+├── manifest.json       # { buildId, entryPoint: "index.js", createdAt, views: {} }
+└── views/              # (if views exist)
+    ├── public/          # Copied static assets
+    └── assets/
+        ├── chart-<hash>.js    # Hashed filenames — not plain view.js/view.html
+        └── form-<hash>.js
 ```
 
-Use `mcp-use start` to serve this build locally, or deploy it to Manufact Cloud or another runtime.
+`mcp-env.d.ts` is **never** written into `.mcp-use/build/` — it only ever exists at the project root, refreshed there by `dev`/`typecheck`/`build`. Use `mcp-use start` to serve this build locally (it reads `manifest.json` to find the entry), or deploy it to Manufact Cloud or another runtime.
+
+## Publishing view assets to a CDN
+
+When `--inline` is not used, view JS/CSS/public assets are written as separate files under `.mcp-use/build/views/`. Set `$MCP_ASSETS_URL` to have the build rewrite each view's asset manifest to point at a CDN/static-hosting prefix instead of the server's own origin — `mcp-use build` logs `[mcp-use] MCP_ASSETS_URL set — publish <views-dir>/ at <prefix>` when it applies the rewrite. This is a build-time (and server-runtime, for the same-origin fallback) environment variable, not a CLI flag.
 
 ## CI/CD
 
@@ -81,4 +85,4 @@ Always run typecheck before build in CI:
 npm run typecheck && npm run build
 ```
 
-This catches type errors early and avoids deploying broken builds.
+This catches type errors early and avoids deploying broken builds — `mcp-use build` alone does not check types.

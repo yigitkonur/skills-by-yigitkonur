@@ -32,6 +32,7 @@ async function testAdd() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream",
       "Mcp-Protocol-Version": "2024-11-05"
     },
     body: JSON.stringify({
@@ -63,6 +64,7 @@ async function testInitialize() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream",
       "Mcp-Protocol-Version": "2024-11-05"
     },
     body: JSON.stringify({
@@ -94,7 +96,8 @@ async function testListTools() {
   const request = new Request("http://localhost:3000/mcp", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream"
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -124,7 +127,8 @@ async function testToolError() {
   const request = new Request("http://localhost:3000/mcp", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream"
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -156,7 +160,10 @@ describe("MCP Server", () => {
   it("should add numbers", async () => {
     const request = new Request("http://localhost:3000/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream"
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -175,9 +182,10 @@ describe("MCP Server", () => {
 
 ## Key Points
 
-- **Request object**: Standard Web API `Request` constructor; set `method: "POST"` and `headers: { "Content-Type": "application/json" }`
+- **Request object**: Standard Web API `Request` constructor; set `method: "POST"` and headers including both `Content-Type: application/json` and `Accept: application/json, text/event-stream`
+- **Accept header required**: Missing `Accept: application/json, text/event-stream` returns `406 Not Acceptable` — this is a hard requirement of the bundled transport, not v2-specific etiquette
 - **No session state**: Each call is stateless; no session ID headers needed
-- **Protocol version header**: `Mcp-Protocol-Version: 2024-11-05` for v2
+- **Protocol version header is optional**: `Mcp-Protocol-Version` is only checked when present; the `initialize` call's `params.protocolVersion` is what actually negotiates the session
 - **JSON-RPC format**: Match the exact envelope structure (see references/22-validate/02-curl-handshake.md)
 - **Response parsing**: `.json()` returns the JSON-RPC response
 
