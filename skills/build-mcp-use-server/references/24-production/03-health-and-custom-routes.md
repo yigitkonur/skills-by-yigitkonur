@@ -125,7 +125,7 @@ process.on("SIGTERM", async () => {
 });
 ```
 
-No session or stream state exists in v2.0.0-beta.66, so shutdown only needs to close the HTTP listener, not drain in-flight streams or replay queued notifications. Clients reconnect and re-initialize on the next request.
+No session or stream state exists in v2.0.0-beta.66, so shutdown only needs to close the HTTP listener, not drain in-flight streams or replay queued notifications. Clients simply issue their next independent request; modern-wire clients perform no `initialize` handshake, and any long-lived `subscriptions/listen` stream ends with the listener.
 
 ## Latency considerations
 
