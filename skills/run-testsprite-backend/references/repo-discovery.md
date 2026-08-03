@@ -128,11 +128,13 @@ Record enough identity to reproduce the same boundary later:
 | Saved test | test ID and `codeVersion` |
 | Runtime resources | credential mode, account/slot/proxy/provider availability |
 
-Probe the fingerprint immediately before and after a release-gating run. If it changes mid-run, the result may still diagnose one response but cannot prove a single revision.
+Probe the fingerprint immediately before and after a release-gating run. If it changes mid-run, the result may still diagnose one response but cannot prove a single revision. Equal pre/post values are necessary but insufficient on a mutable alias because A→B→A drift may occur; require an immutable release URL or request-correlated application/deployment evidence excluding that drift.
 
 ## 5. Verify public reachability and safety
 
-TestSprite cloud cannot call localhost, RFC1918/private addresses, or host-only tunnels. Confirm:
+The cloud CLI path cannot directly call localhost or RFC1918/private addresses. A public deployment can use the CLI without MCP. If the only faithful target is localhost, route to TestSprite's documented MCP workflow; native `testsprite agent install --target ...` only installs local guidance and is not MCP. Do not invent generic MCP tool names.
+
+For a public CLI target, confirm the repository's real health/version paths:
 
 ```bash
 curl --fail-with-body --silent --show-error "$API_BASE_URL/health"
@@ -141,14 +143,14 @@ curl --fail-with-body --silent --show-error "$API_BASE_URL/version"
 
 Use the repository's real health/version paths. A target without a version endpoint may require platform/API evidence instead.
 
-Before live writes, determine:
+Before any live write, billable run, credential operation, cancellation, deployment, or application side effect, require one fail-closed authorization record. Read-only discovery remains the default. Record:
 
-- Is this staging, preview, canary, or production?
-- Are create/update/delete operations authorized?
-- Is there a dedicated tenant/account/namespace?
-- Is cleanup idempotent and guaranteed?
-- Can tests send notifications, charge money, consume scarce provider accounts, or trigger abuse controls?
-- What concurrency can the environment safely absorb?
+- TestSprite account/tenant, project ID, and exact test IDs;
+- exact target and application tenant/account;
+- intended effect and billable/provider side effects;
+- client polling plus server/application concurrency plan;
+- cleanup owner, operation, and assertion; and
+- rollback/recovery path.
 
 Also distinguish resource prerequisites from product behavior. A test that requires a scarce account, warm browser slot, healthy proxy, or third-party provider needs a preflight and a declared `runtime gate` outcome. CAPTCHA, SMS, payment, and other human challenges cannot be converted into a code pass.
 
@@ -164,7 +166,7 @@ testsprite --output json auth status
 testsprite --output json project list --max-items 100
 ```
 
-Resolve project ID from explicit task context, `TESTSPRITE_PROJECT_ID`, repository `.testsprite/config.json`, or an unambiguous project match. Then inspect:
+Use an explicit task-supplied project ID first. `TESTSPRITE_PROJECT_ID` and repository `.testsprite/config.json` may be local skill/repository conventions, but they are not general CLI defaults; use them only when this repository documents them. Otherwise resolve an unambiguous project from the API. Then inspect:
 
 ```bash
 testsprite --output json project get "$PROJECT_ID"
@@ -178,12 +180,12 @@ For each existing test, record:
 - test ID and name;
 - latest status and run ID;
 - saved-code version;
-- target observed in Data Flow/artifacts;
+- target observed in correlated result/failure evidence or application logs;
 - whether it uses managed credentials;
 - whether assertions still match the public contract; and
 - whether it is independent, a producer, a consumer, or teardown.
 
-Inspect the completed run's Data Flow as well as saved code. It reveals the actual host, request/response, producer/consumer wiring, cleanup calls, and “other observed” traffic; the test name and plan are only intent.
+When the Portal Data Flow or backend result/failure output is available, correlate it to the pinned run before using it. It can show host, request/response, producer/consumer wiring, cleanup calls, and other traffic; the test name and plan remain intent, and latest-test evidence may have advanced.
 
 Do not create duplicates just because a test name is unfamiliar. Read its saved code first.
 
@@ -201,7 +203,7 @@ Example:
 
 For each row, add the expected non-product outcomes (`deployment drift`, `resource gate`, `runner failure`) and how they will be recognized. This prevents a later environment failure from being mislabeled as a regression or silently accepted as a pass.
 
-Every planned assertion must point to a source. Every planned mutation must name cleanup. Every external gate must remain visible in the final report.
+Every planned assertion must point to a source and exact saved-code `assert`. Every planned mutation must name cleanup and its exact assertion. Freeze the expected IDs, producer/consumer/teardown closure, assertion ledger, and cleanup obligations before any run; do not reclassify scope after a failure. Every external gate must remain visible in the final report.
 
 ## Troubleshooting discovery
 
@@ -210,7 +212,7 @@ Every planned assertion must point to a source. Every planned mutation must name
 | Multiple TestSprite projects match | Compare project type, test names, recent targets, and repo docs; do not guess |
 | OpenAPI and code disagree | Run the intended deployment, classify drift, then fix the authoritative layer |
 | Code fix exists but the target still fails identically | Compare revisions; an old deployment is expected to retain the old bug |
-| No public URL | Use the repository's approved tunnel/preview path or stop at native tests; TestSprite cannot prove runtime |
+| No public URL | Use TestSprite's documented MCP route for localhost-only targets, or an approved public preview/tunnel; do not claim CLI cloud proof against a private host |
 | No revision endpoint | Use platform image/deployment provenance and record that proof explicitly |
 | Production is the only target | Restrict to safe operations and obtain explicit scope before mutations |
 | Existing tests have opaque names | Export saved code and history before replacing or duplicating them |

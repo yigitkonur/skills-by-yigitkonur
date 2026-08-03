@@ -1,0 +1,35 @@
+{
+  "name": "run-testsprite-frontend",
+  "version": "1.0.43",
+  "description": "Use skill if you are creating, running, debugging, or release-gating TestSprite frontend browser tests, including public-target CLI or localhost MCP routing; not backend, load, security, or local-unit testing.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-testsprite-frontend"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-testsprite-frontend",
+    "shortDescription": "Use skill if you are creating, running, debugging, or release-gating TestSprite frontend browser tests, including public-target CLI or localhost MCP routing; not backend, load, security, or local-unit testing.",
+    "longDescription": "Install only the run-testsprite-frontend workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-testsprite-frontend skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

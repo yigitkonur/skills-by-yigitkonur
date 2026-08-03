@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 52 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 53 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.43",
       "category": "bundle",
       "strict": false,
@@ -65,6 +65,7 @@
         "./skills/run-review",
         "./skills/run-tailscale-funnel",
         "./skills/run-testsprite-backend",
+        "./skills/run-testsprite-frontend",
         "./skills/search-it-bulk-by-codex",
         "./skills/test-by-mcpc-cli",
         "./skills/test-martool-cli",
@@ -150,7 +151,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Backend and CLI testing — release-gate TestSprite APIs and exhaustively verify martool CLI surfaces in source or Coolify.",
+      "description": "Frontend, backend, and CLI testing — release-gate TestSprite browser/API contracts and exhaustively verify martool CLI surfaces in source or Coolify.",
       "version": "1.0.43",
       "category": "bundle",
       "tags": [
@@ -159,6 +160,7 @@
       "strict": false,
       "skills": [
         "./skills/run-testsprite-backend",
+        "./skills/run-testsprite-frontend",
         "./skills/test-martool-cli"
       ]
     },
@@ -820,12 +822,23 @@
     {
       "name": "run-testsprite-backend",
       "source": "./",
-      "description": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
+      "description": "Use skill if you are creating, debugging, running, or managing credentials for TestSprite backend API tests against deployed services; not frontend, load, fuzz, security scanning, or native-only testing.",
       "version": "1.0.43",
       "category": "testing",
       "strict": false,
       "skills": [
         "./skills/run-testsprite-backend"
+      ]
+    },
+    {
+      "name": "run-testsprite-frontend",
+      "source": "./",
+      "description": "Use skill if you are creating, running, debugging, or release-gating TestSprite frontend browser tests, including public-target CLI or localhost MCP routing; not backend, load, security, or local-unit testing.",
+      "version": "1.0.43",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/run-testsprite-frontend"
       ]
     },
     {

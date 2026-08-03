@@ -605,6 +605,18 @@
       "category": "Productivity"
     },
     {
+      "name": "run-testsprite-frontend",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-testsprite-frontend"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "search-it-bulk-by-codex",
       "source": {
         "source": "local",

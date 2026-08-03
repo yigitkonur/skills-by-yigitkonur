@@ -195,7 +195,7 @@ testsprite --output json test create --type backend --project "$PROJECT_ID" \
   --name "fixture cleanup" --code-file /tmp/delete.py --category teardown
 ```
 
-The flags order waves; they do not make an unsafe cleanup correct. Verify captured variable names in TestSprite Data Flow. Dependency metadata is create-only in CLI 0.3.0; maintain a local ledger because list/get do not round-trip it.
+The flags order waves; they do not make unsafe cleanup correct. Verify captured variable names in TestSprite Data Flow. CLI 0.4.0 can edit `--produces`, `--needs`, and `--category` through `test update`; review the current graph and confirm returned metadata after an in-place change rather than deleting/recreating tests.
 
 ## 8. Design for constrained external providers
 
@@ -207,7 +207,7 @@ Account-backed AI APIs, payment sandboxes, email providers, browser pools, and o
 | CAPTCHA/proxy/provider outage | Assert typed failure; classify environment separately from code |
 | Long-running request | Use explicit connect/read timeouts matched to supported edge limits |
 | Rate limit | Avoid retries inside the test unless contract requires one bounded retry |
-| Billable call | Put in a filtered P1/P2 group and check credits before full runs |
+| Billable call | Put in a filtered P1/P2 group and verify capacity in Portal Billing unless `usage` actually returns balance fields |
 | Non-deterministic model output | Assert structure, sources, routing, and non-empty semantics, not exact prose |
 
 Three retries in product code do not justify three retries in the test. The test should observe the product's final contract, not multiply side effects.
@@ -222,7 +222,19 @@ P2 browser - proxy-backed route returns typed metadata
 
 Only deterministic tests should become unconditional release gates unless the organization deliberately provisions and monitors the required external capacity.
 
-## 9. Define pass, block, and cleanup outcomes
+## 9. Freeze the proof set and assertion ledger
+
+Before any run, freeze:
+
+- exact expected test IDs;
+- exact producer/consumer/teardown closure and wave order;
+- every material contract mapped to its exact saved-code `assert`;
+- every cleanup obligation mapped to its exact saved-code `assert`; and
+- target, account/tenant, side effects, concurrency, cleanup owner, and rollback authorization.
+
+Never delete a failed member, reclassify graph scope, weaken/widen an assertion, add a skip, or swallow an exception after seeing results. After every saved-code update, export the final `codeVersion` and reconcile the ledger again. The static auditor can require a reachable assertion but cannot prove assertion strength or cleanup completeness.
+
+## 10. Define pass, block, and cleanup outcomes
 
 For each scenario, predeclare:
 
@@ -239,6 +251,10 @@ This prevents an LLM suggestion or convenient assertion edit from redefining suc
 
 Do not average unlike outcomes into one “mostly green” verdict. Report deterministic product failures, stale-deployment failures, dependency-blocked consumers, and runtime/provider gates separately; each has a different owner and remediation.
 
+For a planned batch, use the exact IDs and closure frozen before execution. Exit 0 is not sufficient: require no conflicts, deferred members, or skipped arrays; exact returned membership; and every accepted member terminal `passed`. For reruns, include every producer and teardown in the expected closure and reject any `closureFailures[]` entry. `--max-concurrency` limits client polling only, so explicitly serialize or wave-order server execution when state, traffic, or provider capacity is constrained.
+
+An individual fresh run is final proof only for a self-contained test with no dependency/teardown relationship. Graph-backed release proof requires one fresh wave-ordered batch containing the frozen exact producer/consumer/teardown closure with every member terminal passed.
+
 ## Suite review checklist
 
 - Every main capability has at least one real success assertion.
@@ -253,6 +269,8 @@ Do not average unlike outcomes into one “mostly green” verdict. Report deter
 - Every test has a product-contract source and a failure classification.
 - Every test adds a distinct deployed-boundary signal over native coverage.
 - Normal and streaming response paths are covered separately when their mappers differ.
+- Expected IDs and graph closure were frozen before execution and never reclassified after failure.
+- Assertion ledger covers every material contract and cleanup obligation in the final saved code version.
 - Resource-dependent cases declare prerequisites and are not unconditional gates by accident.
 
 ## Troubleshooting design

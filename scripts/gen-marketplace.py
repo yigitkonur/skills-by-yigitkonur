@@ -88,8 +88,8 @@ GROUPS = {
     ),
     "yk-testing": (
         "testing",
-        "Backend and CLI testing — release-gate TestSprite APIs and exhaustively verify martool CLI surfaces in source or Coolify.",
-        ["run-testsprite-backend", "test-martool-cli"],
+        "Frontend, backend, and CLI testing — release-gate TestSprite browser/API contracts and exhaustively verify martool CLI surfaces in source or Coolify.",
+        ["run-testsprite-backend", "run-testsprite-frontend", "test-martool-cli"],
     ),
     "yk-build": (
         "build",

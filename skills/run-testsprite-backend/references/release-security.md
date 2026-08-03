@@ -1,25 +1,44 @@
 # Security, CI, and Release Proof
 
-Use this reference for managed credentials, sensitive artifacts, production-safe execution, CI integration, exact-revision deployment evidence, and the final TestSprite release gate.
+Use this reference for TestSprite API-key handling, managed application credentials, sensitive backend evidence, production-safe execution, CI integration, exact-revision deployment proof, cancellation, and the final release gate.
 
 ## Two credential planes
 
 Do not confuse them:
 
-| Credential | Purpose | Storage |
+| Credential | Purpose | Safe source |
 |---|---|---|
-| TestSprite API key | Lets CLI/CI call TestSprite | `~/.testsprite/credentials` profile or `TESTSPRITE_API_KEY` CI secret |
+| TestSprite API key | Lets CLI/CI call TestSprite | Inherited `TESTSPRITE_API_KEY` secret, or explicitly authorized persisted profile |
 | Application credential | Lets TestSprite backend code call the tested API | TestSprite project credential or auto-auth |
 
-Neither belongs in saved Python, repository files, CI logs, command-line arguments, screenshots, or shared artifacts.
+Neither belongs in saved Python, repository files, CI logs, command arguments, screenshots, or shared evidence.
 
-Managed storage removes the secret from test source; it does not erase historical copies. If an older saved version, artifact, shell command, or CI log contained a real key, removal plus authorized rotation is the completion condition.
+Managed storage removes a secret from current test source; it does not erase historical copies. If an older saved version, result bundle, shell command, or CI log contained a real key, removal plus authorized rotation is the completion condition.
+
+## TestSprite API-key handling
+
+Before sending a key, reject inherited `TESTSPRITE_API_URL` or explicit `--endpoint-url` unless the authorization record names that exact TLS TestSprite endpoint and confirms the selected credential belongs to its environment. These are credential-routing controls; check presence without printing values.
+
+Prefer an inherited environment secret:
+
+```bash
+testsprite --output json auth status
+testsprite --output json doctor
+```
+
+Never automatically create `.env`/`.envrc`, run `setup`, or copy the key into a command. `setup --from-env` persists the environment key and is therefore not a safe preflight. If persistent setup is explicitly authorized, use the credential-only interactive path:
+
+```bash
+testsprite setup --no-agent
+```
+
+Released 0.4.0 wrappers ignore `TESTSPRITE_PROFILE`. `TESTSPRITE_API_KEY` overrides a stored profile even when `--profile NAME` is explicit. To use a profile key, unset the inherited key on every invocation, pass the profile, and verify `auth status` identity/scopes before any write or run.
 
 ## Managed application authentication
 
-### Static bearer/API/basic credential
+### Static credential
 
-Use an existing protected file created through the repository's secret manager or authorized local process:
+Use an existing protected file created through the repository's secret manager or an authorized local process:
 
 ```bash
 chmod 600 "$CREDENTIAL_FILE"
@@ -27,51 +46,47 @@ testsprite --output json project credential "$PROJECT_ID" \
   --type "Bearer token" --credential-file "$CREDENTIAL_FILE"
 ```
 
-Substitute `API key` or `basic token` only when that is the API's actual auth scheme. For a public API:
+Substitute the actual supported auth type only when it matches the application. For a public API:
 
 ```bash
 testsprite --output json project credential "$PROJECT_ID" --type public
 ```
 
-Delete temporary credential files after the command succeeds using the repository's approved secret-handling process. Do not print, `echo`, paste, or commit their contents.
+Delete temporary credential files through the repository's approved process after successful configuration. Do not print, `echo`, paste, or commit their contents.
 
 ### Recurring token
 
-TestSprite 0.3.0 Pro supports `password`, `refresh_token`, and `aws_cognito_refresh` methods. Inspect exact requirements:
+Inspect current requirements before configuration:
 
 ```bash
 testsprite project auto-auth --help
 ```
 
-Use secret file options:
+Use secret-file options rather than inline secret values. Configure token extraction, login URL/method/content type, scope, injection location, and key from the real auth contract. Verify one narrow non-mutating endpoint before broad execution.
 
-- `--password-file`;
-- `--client-secret-file`; and
-- `--refresh-token-file`.
+### Backend test code
 
-Avoid inline secret flags. Configure token JSONPath, login URL/method/content type, scope, injection location, and key from the real auth contract. Test auto-auth with one narrow non-mutating endpoint before a broad suite.
-
-### Test code
-
-Consume only managed headers:
+Vendor-shipped skill contracts name `__AUTH_HEADERS__`, `__AUTH_CREDENTIAL__`, and `__AUTH_TYPE__`. Bind managed credentials to one explicit allowed HTTPS origin. For every managed-header request, require exact scheme, canonical host, and effective port; reject URL userinfo/query targets; and set `allow_redirects=False` unless redirects were separately authorized in the operation gate. Consume an independent copy of managed headers:
 
 ```python
 response = requests.get(
     f"{BASE_URL}/v1/me",
     headers=dict(__AUTH_HEADERS__),
     timeout=(10, 60),
+    allow_redirects=False,
 )
 ```
 
-Do not print `__AUTH_HEADERS__`, `__AUTH_CREDENTIAL__`, cookies, or entire response headers.
+Never access, print, serialize, or expose `__AUTH_CREDENTIAL__`. Avoid exposing `__AUTH_TYPE__` unless a narrowly reviewed non-secret branch genuinely needs it. Do not print managed headers, cookies, or complete response headers.
 
 ## Audit historical tests for leaked credentials
 
-List and export each backend test into a restricted temporary location. The CLI returns IDs in `.items[].id`; fail rather than silently auditing an empty or truncated list:
+List and export each backend test into a restricted temporary location. Fail rather than silently auditing an empty or truncated list:
 
 ```bash
 set -euo pipefail
-audit_dir="$(mktemp -d)"
+umask 077
+audit_dir="$(mktemp -d "${TMPDIR:-/tmp}/testsprite-audit.XXXXXXXX")"
 chmod 700 "$audit_dir"
 trap 'rm -rf "$audit_dir"' EXIT
 
@@ -85,47 +100,57 @@ jq --exit-status '.nextToken == null' <<<"$test_list" >/dev/null
 while IFS= read -r test_id; do
   code_path="$audit_dir/$test_id.py"
   testsprite test code get "$test_id" --out "$code_path"
-  python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" "$code_path"
+  python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
+    --allowed-origin "$ALLOWED_ORIGIN" "$code_path"
 done < <(jq --raw-output '.items[].id' <<<"$test_list")
 ```
 
-Resolve `TESTSPRITE_SKILL_DIR` from the loaded skill location rather than the target repository.
+Set `ALLOWED_ORIGIN` to the exact approved HTTPS origin for the audited tests. Split the inventory if tests intentionally target different origins. The auditor requires this flag whenever managed headers appear and also requires `--auth-required` for authenticated-success contracts.
 
-The baseline pass audits every test for request execution, bounded timeouts, reachable targets, and embedded secrets. Repeat it with `--auth-required` only for the test IDs whose declared contract requires authenticated success. Do not apply that flag to public endpoints or intentional missing/invalid-auth tests.
+Resolve `TESTSPRITE_SKILL_DIR` from the loaded skill location. The auditor's request/timeouts/import/shape checks are conservative policy and do not claim to enumerate every Python shape the vendor runner accepts.
 
-The auditor reports a likely secret without printing it. Also inspect TestSprite-managed failure bundles, shell history, CI logs, and committed history when exposure is suspected.
+Repeat with `--auth-required --allowed-origin "$ALLOWED_ORIGIN"` for test IDs whose contract requires authenticated success. Do not use `--auth-required` for public endpoints or intentional missing/invalid-auth tests. The auditor proves only conservative shape: it cannot prove assertion strength or cleanup coverage, so retain the assertion ledger.
 
-If a real key appeared in a saved test or artifact:
+If a real key appeared in a saved test or evidence surface:
 
-1. treat the old test versions/artifacts as sensitive;
-2. identify the provider/system that issued the key;
-3. obtain authorization for credential rotation;
+1. restrict old versions and bundles;
+2. identify the issuing system;
+3. obtain authorization for rotation;
 4. create a replacement through the provider's supported path;
-5. update TestSprite with the replacement through a file;
+5. update the TestSprite project through a protected file;
 6. verify one authenticated test;
 7. revoke the old key; and
 8. re-audit saved code and logs.
 
-Removing the literal from current code is necessary but does not invalidate copies already stored elsewhere.
+## Backend evidence handling
 
-## Artifact handling
+The backend evidence surface is officially contradictory:
 
-Add TestSprite local outputs to repository ignore rules when they are not already covered:
+- shipped implementation directs failures to latest `test failure get TEST_ID`;
+- public documentation advertises run-oriented `test artifact get RUN_ID`.
+
+Do not label backend bundles immutable by default. Set `umask 077`, create an unpredictable restricted directory with `mktemp -d`, and capture result/step/code/trace/failure/artifact output there rather than printing raw application payloads into transcripts. Correlate each item to the pinned run using run ID, saved code version, explicit/observed target, request IDs, and timestamps. If backend wait uses legacy/test-level fallback, final proof requires parseable equality `runIdIfAvailable == RUN_ID`; absent, null, mismatched, or unparseable correlation is diagnostic-only unresolved `TestSprite execution failure`. Include `apiOutput` and `trace` only inside the restricted evidence set and treat them as sensitive.
+
+Suggested ignore entries:
 
 ```gitignore
 .testsprite/runs/
 testsprite-junit.xml
 ```
 
-Before sharing an artifact:
+Before sharing evidence:
 
 - remove Authorization/Cookie values;
-- remove tokens, passwords, proxy credentials, and TOTP/session material;
+- remove tokens, passwords, proxy credentials, and session material;
 - minimize personal/request data;
-- preserve run ID, request ID, status, timestamps, schema shape, and relevant error type; and
-- say what was redacted.
+- preserve correlation fields, status, timestamps, schema shape, and relevant error type; and
+- state what was redacted and whether run scope was proven.
 
-Do not commit raw production artifacts as regression fixtures. Build a minimal sanitized fixture that preserves the parser shape.
+Do not commit raw production output as a regression fixture. Build a minimal sanitized fixture that preserves parser shape.
+
+## Fail-closed operation authorization
+
+Read-only discovery is the default. Before any TestSprite/application remote write, billable run, credential operation, test create/update/code/metadata/cancel, deployment, or application side effect, require one explicit record naming project/test IDs, exact target, TestSprite account/tenant, application account/tenant, effect, client polling and server concurrency plan, cleanup assertion/owner, and rollback/recovery. Fail closed on an omitted field or scope change; prior access or a generated plan is not authorization.
 
 ## Production-safety gate
 
@@ -135,83 +160,107 @@ Classify every test:
 |---|---|
 | Read-only, cheap, deterministic | Safe for ordinary fresh runs |
 | Invalid-input/auth negative | Safe when bounded to one request |
-| Creates reversible fixture | Only in isolated tenant with verified cleanup |
-| Sends email/webhook/notification | Use sink/fake recipient and explicit scope |
-| Charges money or consumes scarce quota | Manual/filter gate and credit check |
-| Deletes/changes real data | Do not run without explicit authorization and rollback |
-| High concurrency/load/fuzzing | Outside this skill; use authorized specialist workflow |
+| Creates reversible fixture | Isolated tenant with verified cleanup |
+| Sends email/webhook/notification | Sink/fake recipient and explicit scope |
+| Charges money or consumes scarce quota | Manual/filter gate and billing check |
+| Deletes/changes real data | Explicit authorization and rollback required |
+| High concurrency/load/fuzzing | Outside this skill |
 
-One user request to test an API does not silently authorize destructive production effects. Prefer staging/preview/canary. If production is the only faithful target, keep probes minimal and observable.
+One request to “test the API” does not authorize destructive production effects. Prefer staging, preview, or canary. If production is the only faithful target, keep probes minimal and observable.
 
 ## Exact-revision release proof
 
-TestSprite proves the deployment it contacted, not the source checkout on disk. Use this sequence:
+TestSprite proves the target it contacted, not the checkout on disk:
 
 ```text
-commit -> exact-SHA native CI -> deploy same artifact -> target version probe
-      -> TestSprite fresh run -> target version re-probe -> evidence ledger
+commit -> exact-revision native CI -> deploy same artifact -> target revision probe
+      -> fresh TestSprite test run -> target revision re-probe -> evidence ledger
 ```
 
 Acceptable revision evidence includes:
 
-- `/version` or response header containing full/unique commit SHA;
-- immutable image digest mapped to commit;
+- version endpoint or response header with a unique commit SHA;
+- immutable image digest mapped to a commit;
 - deployment API reporting source revision and artifact;
 - CI provenance for the exact uploaded artifact; or
 - platform release record plus live instance identity.
 
-An older green CI run, a queued deployment, or a branch name is not exact-SHA proof.
-
-Keep four proof planes separate:
+An older green CI run, queued deployment, branch name, or unverified URL is insufficient. Equal revision probes before and after a run are also insufficient on a mutable target because A→B→A drift can occur between probes. Require an immutable revision URL/release, or request-correlated application and deployment evidence proving the pinned TestSprite requests reached the intended revision and excluding mid-run drift.
 
 | Plane | Question | Evidence |
 |---|---|---|
-| Source/native | Did the repository fix pass its own checks? | Exact-SHA CI and native regression |
-| Deployment | Is that same artifact serving the target? | Live revision/image/release fingerprint |
-| External contract | Did an independent client observe the required behavior? | Fresh TestSprite run and immutable artifact |
-| Resource health | Were accounts, proxies, providers, and human gates available? | Runtime health/log/operations evidence |
+| Source/native | Did the repository fix pass its own checks? | Exact-revision CI and native regression |
+| Deployment | Is that artifact serving the target? | Live revision/image/release fingerprint |
+| External contract | Did an independent client observe the behavior? | Fresh TestSprite run with correlated target/evidence |
+| Resource health | Were accounts/proxies/providers/human gates available? | Runtime health/log/operations evidence |
 
-One plane cannot silently stand in for another. In particular, code-green plus old production is `awaiting deploy`, and a provider-gated run is not a product pass or a TestSprite failure.
+One plane cannot stand in for another.
 
-Before the TestSprite run:
+Before and after the TestSprite run, use the repository's real revision proof:
 
 ```bash
 curl --fail-with-body --silent --show-error "$API_BASE_URL/version"
 testsprite --output json auth status
-testsprite --output json usage
 ```
 
-After the run, probe version again to catch a mid-run deployment change.
+`usage` may be called for information, but Portal Billing remains authoritative unless balance fields are actually returned.
 
-## Fresh run vs rerun
+## Target proof
+
+Released 0.4.0 sources conflict over backend target semantics. Use explicit reviewed `BASE_URL` in saved Python. Do not rely on `--target-url` or teach `TARGET_URL` as guaranteed. Correlate the observed host from TestSprite output and application logs.
+
+For public targets, MCP is optional. For localhost-only targets, use TestSprite's documented MCP route. `testsprite agent install --target ...` installs local guidance and is not MCP.
+
+## Fresh run versus other activity
 
 | Operation | Use | Final release proof? |
 |---|---|---|
-| `test rerun TEST` | Fast feedback on saved code/dependency closure | No |
-| `test run TEST` | Strict fresh execution against URL saved in backend Python | Yes |
-| `test run --all --project` | Fresh wave-ordered safe batch | Yes, if saved targets/concurrency are correct |
-| `test flaky TEST` | Diagnose nondeterminism; may consume backend credits | No by itself |
-| `--dry-run` | Validate CLI shape only | Never |
+| `test rerun TEST` | Feedback on saved code and dependency closure | No |
+| `test run TEST` | Fresh execution against saved backend target | Only for a self-contained test with no dependency/teardown relationship |
+| `test run --all --project` | Fresh wave-ordered batch | Graph proof only with frozen exact producer/consumer/teardown closure and every member passed |
+| `test flaky TEST` | Diagnose nondeterminism | No |
+| `--dry-run` | Validate CLI shape | Never |
+| queued/deferred/auto-attached run | Incomplete execution state | Never |
 
-Do not rely on `--target-url` for any backend run; it has no effect in 0.3.0. Update saved Python with optimistic versioning or maintain environment-specific tests, then verify the run Data Flow.
+Final proof requires a fresh `test run` after deployment, an unchanged semantic contract, the final saved-code version reconciled to the assertion ledger, a revision-proven target, and correlated evidence. Individual final proof is limited to a self-contained test with no dependency/teardown relationship. Graph-backed proof requires one fresh wave-ordered batch containing the frozen exact producer/consumer/teardown closure with every member terminal `passed`.
+
+## Batch and closure proof
+
+Before any run, freeze exact expected test IDs, producer/consumer/teardown closure, assertions, and cleanup obligations. Do not remove a failed member or reclassify scope after execution. For a batch, exit 0 is not enough. Require:
+
+- exact returned membership;
+- no conflicts;
+- no deferred or skipped arrays;
+- no missing or unexpected IDs; and
+- every accepted member terminal `passed`.
+
+For backend reruns, inspect the complete producer/consumer/teardown closure and `closureFailures[]`. A selected test pass cannot hide a failed producer or teardown.
+
+## Cancellation
+
+Ctrl-C detaches local polling. To stop server execution when authorized:
+
+```bash
+testsprite --output json test cancel "$RUN_ID"
+```
+
+`test cancel` exits 0 for cancelled/already-cancelled, 4 for not found, 6 for already-terminal conflict, and may return 1 for multi-error. A later `test wait` on the cancelled run exits 1. Cancellation does not refund credits; query final server state before replacement. Exit 14 is `CLIENT_TOO_OLD`, never cancellation.
 
 ## CI integration pattern
 
-Use a separate least-privilege TestSprite API key in CI. Store the TestSprite key, project ID, target URL, and application credential in the CI secret/variable system; never commit them.
+Use a separate least-privilege TestSprite API key in CI. Inject it as `TESTSPRITE_API_KEY`; do not persist a profile. Treat the project ID and target URL as explicit workflow variables, not CLI defaults.
 
-Not every TestSprite test belongs in an unconditional CI gate:
+Not every test belongs in an unconditional gate:
 
 | Suite class | CI policy |
 |---|---|
-| Deterministic, read-only, controlled auth | Required release gate after deployment proof |
-| Reversible isolated-tenant mutation | Gate only with verified cleanup and bounded concurrency |
-| Scarce account/proxy/provider capacity | Separate operational canary or explicitly provisioned gate |
-| CAPTCHA/SMS/payment/human action | Manual gate; never fake green in CI |
-| Load/security/destructive behavior | Separate authorized workflow, not this suite |
+| Deterministic, read-only, controlled auth | Required after deployment proof |
+| Reversible isolated mutation | Gate with cleanup and bounded concurrency |
+| Scarce account/proxy/provider capacity | Operational canary or provisioned gate |
+| CAPTCHA/SMS/payment/human action | Manual gate; never fake green |
+| Load/security/destructive behavior | Separate authorized workflow |
 
-Choose the policy before a failure. Do not demote a test merely because it caught a real regression.
-
-Example GitHub Actions job (adapt runner, install policy, workflow triggers, and revision probe to the repository):
+Example GitHub Actions shape; adapt revision extraction and explicit test IDs to the repository:
 
 ```yaml
 jobs:
@@ -222,17 +271,18 @@ jobs:
     env:
       TESTSPRITE_API_KEY: ${{ secrets.TESTSPRITE_API_KEY }}
       TESTSPRITE_PROJECT_ID: ${{ vars.TESTSPRITE_PROJECT_ID }}
-      API_BASE_URL: ${{ vars.TESTSPRITE_TARGET_URL }}
+      TESTSPRITE_TEST_IDS: ${{ vars.TESTSPRITE_BACKEND_TEST_IDS }}
+      API_BASE_URL: ${{ vars.TESTSPRITE_IMMUTABLE_RELEASE_URL }}
       EXPECTED_REVISION: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.13.0"
 
       - name: Install pinned TestSprite CLI
-        run: npm install --global @testsprite/testsprite-cli@0.3.0
+        run: npm install --global @testsprite/testsprite-cli@0.4.0
 
       - name: Verify TestSprite identity
         run: testsprite --output json auth status
@@ -245,12 +295,17 @@ jobs:
           )"
           test "$actual_revision" = "$EXPECTED_REVISION"
 
-      - name: Run safe P0 backend tests
+      - name: Run explicit safe backend tests
         run: |
-          testsprite --output json test run --all \
-            --project "$TESTSPRITE_PROJECT_ID" --filter "P0" \
-            --wait --timeout 600 --max-concurrency 4 \
-            --report junit --report-file ./testsprite-junit.xml
+          set -euo pipefail
+          test -n "$TESTSPRITE_TEST_IDS"
+          for test_id in $TESTSPRITE_TEST_IDS; do
+            result="$(testsprite --output json test run "$test_id" --wait --timeout 600)"
+            jq --exit-status '
+              (.runId | type == "string" and length > 0) and
+              (.status == "passed")
+            ' <<<"$result" >/dev/null
+          done
 
       - name: Verify exact deployed revision after tests
         if: always()
@@ -260,84 +315,86 @@ jobs:
               jq --exit-status --raw-output '.rev | select(type == "string" and length > 0)'
           )"
           test "$actual_revision" = "$EXPECTED_REVISION"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: testsprite-junit
-          path: testsprite-junit.xml
-          if-no-files-found: ignore
 ```
+
+Before adopting the JSON parser, inspect a real 0.4.0 response and adapt field paths without weakening these invariants: real run ID, terminal passed status, one result for every exact configured ID, and run correlation. This loop is valid final proof only when every ID is self-contained. For graph-backed tests, replace it with one fresh wave-ordered batch over the frozen exact producer/consumer/teardown closure and add fail-closed parsing for exact membership, conflicts, deferred/skipped arrays, and each terminal status.
+
+The example deliberately uses an immutable release URL. If only a mutable alias exists, equal pre/post revision checks do not exclude A→B→A drift; add request-correlated application/deployment evidence for each pinned run before treating the gate as proof.
 
 Important adaptations:
 
-- The example assumes `/version` returns the full commit SHA in `.rev`. Adapt the extraction to the repository's revision surface, but keep exact equality against the expected SHA before and after TestSprite.
-- Before the batch, prove its saved backend code targets `API_BASE_URL`; a CLI target override cannot repair drift.
-- If endpoints share scarce state/capacity, serialize explicit IDs or split jobs; `--max-concurrency` is not service serialization.
-- Pin or deliberately update the CLI. Run `testsprite agent status` when repository guidance is generated by the CLI.
-- When updating the pin, compare installed help and dry-run shapes before changing automation; version drift is a documentation/config change, not a reason to guess flags.
-- Do not upload raw failure bundles unless the artifact store and retention policy are approved for their data.
-- Respect repository rules that prohibit schedules, production CI calls, or local builds.
-- Set a workflow timeout longer than TestSprite `--timeout`, but still bounded.
+- Prove saved backend `BASE_URL` values match `API_BASE_URL`; a generic override cannot repair drift.
+- If endpoints share state/capacity, serialize explicit IDs or split jobs.
+- Run capacity-heavy tests only when deliberately provisioned.
+- Do not upload raw failure bundles without approved storage and retention.
+- Set a bounded workflow timeout longer than TestSprite polling.
+- Use a fresh `test run`; do not substitute rerun, flaky, dry-run, queued, deferred, or auto-attached activity.
 
 ## CI exit handling
 
 | Exit | CI behavior |
 |---:|---|
-| 0 | Parse JSON summary; queued-without-wait is not pass |
-| 1 | Fail gate; fetch pinned artifacts in a controlled follow-up |
-| 3/5 | Configuration failure; do not retry |
-| 6 | Reattach to returned active run rather than duplicate |
-| 7 | Persist run ID and wait same run within remaining deadline |
-| 10 | One bounded transport retry using same idempotency for writes |
-| 11 | Honor `Retry-After`; do not busy-loop |
-| 12 | Fail with insufficient-credit classification |
+| 0 | Parse terminal status and any batch/closure partial-state fields |
+| 1 | Fail gate; collect correlated evidence in a controlled follow-up |
+| 2 | Fail as not implemented; select a supported documented operation |
+| 3 | Authentication/scope failure; do not retry unchanged |
+| 5 | Parse/unknown-command/missing-argument/validation failure; correct input |
+| 6 | Reattach only to a returned real active run ID; cancellation uses 6 for terminal conflict |
+| 7 | Wait only if output includes a real run ID; otherwise classify unsupported/deferred |
+| 10 | One bounded transport retry; preserve write idempotency |
+| 11 | Honor `Retry-After` |
+| 12 | Fail as insufficient credits; verify Portal Billing |
+| 14 | Fail as `CLIENT_TOO_OLD`; upgrade client, never classify as cancellation |
 
-CI should always drive triggered runs to a terminal state. A workflow that exits after queueing measures dispatch, not behavior.
+CI must drive every triggered run to a terminal state. Dispatch is not behavior proof.
 
 ## Release gate checklist
 
 Before claiming TestSprite completion:
 
-- Native tests/CI passed on the exact commit.
-- The exact artifact was deployed.
-- Public target was healthy and revision-proven before and after runs.
-- Managed credentials were used; saved code contains no secret literals.
+- CLI is pinned to `@testsprite/testsprite-cli@0.4.0` on a supported Node version.
+- API key came from inherited secret context; no automatic setup/env-file/profile persistence occurred; any profile use unset the env key and verified identity/scopes.
+- No inherited `TESTSPRITE_API_URL` or explicit `--endpoint-url` bypassed exact TLS credential-routing authorization.
+- The fail-closed operation record names account/tenant, project/test IDs, target, effects, concurrency, cleanup, and rollback.
+- Native CI passed on the exact revision and the same artifact was deployed.
+- Public target used an immutable release URL or request-correlated deployment/app evidence excluding A→B→A drift; localhost used the documented MCP route.
+- Saved Python uses reviewed explicit `BASE_URL`; observed target correlation agrees.
+- Managed application credentials were origin-bound; redirects were disabled unless separately authorized; no secret literal is present.
+- Assertion ledger maps every material contract and cleanup obligation to exact assertions in the final saved code version.
 - One narrow test passed before broad execution.
-- Every triggered run reached a terminal state.
-- Failures have run-scoped artifacts and a demonstrated classification.
-- Dependency-starved consumers are not mislabeled as product defects.
-- Capacity-heavy tests were safely serialized or filtered.
-- Final evidence is a fresh run, not dry-run or rerun alone.
-- Every unresolved account/proxy/provider/runtime gate remains explicit.
-- Code-ready, deployed, externally verified, and resource-healthy states are reported independently.
-- Local artifacts and temporary secret files are protected or removed.
+- Every triggered run reached terminal state or was explicitly cancelled.
+- Batch membership, conflicts, deferred/skipped arrays, and terminal states were checked.
+- Rerun closure members and `closureFailures[]` were checked.
+- Backend evidence was run-correlated; legacy fallback had `runIdIfAvailable == RUN_ID`, otherwise it is unresolved `TestSprite execution failure`.
+- Final evidence is an individual fresh run only for a self-contained test, or one fresh exact-closure wave batch for graph-backed proof.
+- Every remaining account/proxy/provider/runtime gate is explicit.
 
 ## Completion report template
 
 ```text
-Repository commit: <sha>
-Native CI: <run URL/status for same sha>
-Deployment: <target URL, artifact/revision evidence>
-TestSprite CLI: <version/profile>
-Project: <id/name/type>
-Fresh runs: <test id -> run id -> verdict>
-Assertions: <semantic contracts proven>
-Artifacts: <restricted local paths/dashboard URLs>
-Residual gates: <none, or each external/runtime failure separately>
-Credential audit: <managed mode; no literals found; rotation status if applicable>
-Resource health: <accounts/proxies/providers/human gates required and observed state>
+Repository revision: revision and exact CI evidence
+Deployment: target, artifact, revision proof before/after
+TestSprite CLI: 0.4.0 and explicit profile only if used
+Project/tests: project ID plus exact test IDs
+Target proof: saved BASE_URL and observed host correlation
+Fresh runs: test ID -> run ID -> terminal verdict
+Batch/closure: exact membership, no partial states, closureFailures checked
+Assertions: ledger mapped to exact final saved-code version; cleanup asserted
+Evidence: correlation basis; legacy runIdIfAvailable equality or unresolved execution failure
+Residual gates: each external/runtime failure separately
+Credential audit: inherited API key; managed app auth; rotation status if needed
 ```
 
 ## Troubleshooting release proof
 
 | Symptom | Response |
 |---|---|
-| CI green but TestSprite still sees old bug | Target serves old artifact; deploy/prove revision before rerun |
-| Secret is absent from current test but was historically stored | Rotate provider credential and treat old artifacts as sensitive |
-| Batch is green on wrong environment | Update saved Python or use environment-specific tests, then verify Data Flow |
-| JUnit exists but command timed out | JUnit is not terminal proof; resume run IDs |
-| Provider tests remain blocked after code fix | Report separate runtime gate; do not redefine code success as live success |
-| TestSprite LLM recommends a code change without a faithful response | Treat it as a hypothesis; require artifact/runtime/repository agreement first |
-| Historical key was removed but not rotated | Current source is cleaner, but exposure response is incomplete; rotate with authorization |
-| CLI upgrade changes command shape | Read installed `--help`, update pinned version/guidance, and dry-run before writes |
+| CI green but TestSprite sees old behavior | Prove live revision before another code patch or run |
+| Key vanished from source but existed historically | Rotate with authorization; restrict old output |
+| Batch exited 0 with missing/skipped IDs | Keep gate red; require exact membership |
+| Rerun selected test passed but producer failed | Keep gate red; inspect closure and producer evidence |
+| Ctrl-C left run active | Query and explicitly cancel if authorized; parse 0/4/6/1, then note wait on cancelled exits 1 |
+| Exit 14 appeared | Upgrade the client; `CLIENT_TOO_OLD` is not cancellation |
+| Failure bundle may be latest rather than pinned | Correlate run/code/target/time or report unresolved |
+| Usage has no balance | Portal Billing is authoritative |
+| CLI upgrade changes output | Pin 0.4.0 until the workflow and parser are deliberately updated |

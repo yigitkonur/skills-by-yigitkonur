@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **53 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **53 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend/cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -66,7 +66,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-testing** | TestSprite backend API and exhaustive martool CLI verification | `/plugin install yk-testing@yigitkonur` |
+| **yk-testing** | TestSprite frontend/browser, backend API, and exhaustive martool CLI verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, browser automation, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
@@ -115,11 +115,12 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
 ---
 
-## 🧪 backend and cli testing
+## 🧪 frontend, backend, and cli testing
 
-author, run, diagnose, and release-gate real deployed API tests and exhaustive martool CLI matrices.
+author, run, diagnose, and release-gate deployed browser/API tests and exhaustive martool CLI matrices.
 
-- **[run-testsprite-backend](skills/run-testsprite-backend/)** — repo-first TestSprite backend workflow: managed credentials, semantic Python assertions, streaming/data-flow coverage, immutable failure artifacts, fix loops, and exact-revision release proof.
+- **[run-testsprite-backend](skills/run-testsprite-backend/)** — TestSprite backend API tests with secure, revision-pinned release proof.
+- **[run-testsprite-frontend](skills/run-testsprite-frontend/)** — TestSprite browser tests via public CLI or localhost MCP.
 - **[test-martool-cli](skills/test-martool-cli/)** — combine martool's generated and platform CLI matrices in a source checkout or pinned Coolify container, with exact coverage and zero-provider evidence.
 
 `/plugin install yk-testing@yigitkonur`

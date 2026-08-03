@@ -6,7 +6,7 @@ Use this reference to write executable TestSprite backend tests that survive the
 
 TestSprite backend code is a Python script executed from top to bottom. It is not a normal repository test process and must not depend on pytest discovery.
 
-Current TestSprite 0.3.0 guidance documents:
+Vendor documentation for the TestSprite 0.4.0 backend runner names these available packages:
 
 - Python standard library;
 - `requests`;
@@ -15,7 +15,7 @@ Current TestSprite 0.3.0 guidance documents:
 - `scipy`; and
 - dependencies bundled with those packages.
 
-Do not import application modules or arbitrary packages. Test TypeScript, Python, Java, Go, or any other server through its public HTTP interface.
+The vendor does not document the backend Python runtime version. Do not depend on a guessed version. Do not import application modules or arbitrary packages; test TypeScript, Python, Java, Go, or any other server through its HTTP interface.
 
 The saved code limit is 350 KB. Prefer one focused behavior per file.
 
@@ -27,7 +27,7 @@ Whether TestSprite generated the Python in the Portal or an agent authored it th
 testsprite test scaffold --type backend --out /tmp/testsprite-health.py
 ```
 
-The 0.3.0 scaffold uses an explicit `BASE_URL`. A 0.3.0 command-shape probe confirms that `--target-url` has no effect for backend tests even though older bundled agent guidance suggested a runner-provided variable. Use an explicit public URL and verify it in the completed run's Data Flow:
+The released 0.4.0 scaffold and implementation use an explicit `BASE_URL`. Generic `--target-url` does not rewrite backend Python, while bundled vendor skill guidance also mentions `TARGET_URL`. Because the official surfaces conflict, use an explicit reviewed URL, do not teach `TARGET_URL` as guaranteed, and verify the observed host from correlated result/failure evidence and application logs:
 
 ```python
 BASE_URL = "https://replace-with-public-target.invalid"
@@ -54,7 +54,7 @@ def test_health_contract() -> None:
 test_health_contract()
 ```
 
-The final call is load-bearing. A defined-but-uncalled function can produce a vacuous pass because no assertion executed. Keep top-level test functions synchronous and zero-argument; TestSprite does not inject pytest fixtures into a direct call, and calling an `async def` without an event loop only creates an unexecuted coroutine.
+The final call is load-bearing for backend execution. TestSprite runs the script top-to-bottom rather than relying on pytest discovery. This skill and its auditor require synchronous zero-argument `test_*` functions so execution remains statically provable; that narrower subset is safety policy, not a claim that the platform rejects every other Python shape.
 
 Do not catch `AssertionError`, call `pytest.skip`, or convert exceptions into `print` output. A script that reaches module end after swallowing its only failure is a false pass.
 
@@ -70,7 +70,7 @@ Without explicit construction/calls, top-to-bottom execution does not run the me
 
 ## Managed authentication
 
-Configure auth on the TestSprite backend project. The runner prepends managed credential values, including `__AUTH_HEADERS__`. Consume the headers without logging or copying the underlying credential:
+Configure auth on the TestSprite backend project. Vendor-shipped backend skill contracts include `__AUTH_HEADERS__`, `__AUTH_CREDENTIAL__`, and `__AUTH_TYPE__`. Bind managed headers to one approved HTTPS origin. Every managed-header request must match the allowed scheme, canonical host, and effective port, reject URL userinfo/query targets, and set `allow_redirects=False` unless redirects were separately authorized. Consume a copy of `__AUTH_HEADERS__` without logging it. Never access, print, serialize, or expose `__AUTH_CREDENTIAL__`; avoid exposing `__AUTH_TYPE__` unless a narrowly reviewed non-secret branch requires it:
 
 ```python
 import requests
@@ -84,6 +84,7 @@ def test_current_user() -> None:
         f"{BASE_URL}/v1/me",
         headers=AUTH_HEADERS,
         timeout=(10, 60),
+        allow_redirects=False,
     )
     assert response.status_code == 200, f"expected 200, got {response.status_code}"
     body = response.json()
@@ -103,7 +104,7 @@ Never put user identifiers, live keys, or environment secrets in stable idempote
 
 ## Timeouts and bounded diagnostics
 
-Every request needs an explicit timeout. A tuple separates connection and response-read budgets:
+This skill requires an explicit timeout on every request so live verification stays bounded. That is a safety and audit policy, not a vendor platform requirement. A tuple separates connection and response-read budgets:
 
 ```python
 response = requests.post(
@@ -111,6 +112,7 @@ response = requests.post(
     headers=__AUTH_HEADERS__,
     json={"mode": "summary"},
     timeout=(10, 120),
+    allow_redirects=False,
 )
 ```
 
@@ -177,6 +179,7 @@ def test_missing_field_is_typed_400() -> None:
         headers={**__AUTH_HEADERS__, "Content-Type": "application/json"},
         json={},
         timeout=(10, 60),
+        allow_redirects=False,
     )
     assert response.status_code == 400, f"expected 400, got {response.status_code}"
     body = response.json()
@@ -252,6 +255,7 @@ def test_stream_contract() -> None:
         json={"query": "stable test query", "stream": True},
         stream=True,
         timeout=(10, 150),
+        allow_redirects=False,
     )
     assert response.status_code == 200, f"expected 200, got {response.status_code}"
     assert "text/event-stream" in response.headers.get("content-type", "")
@@ -306,6 +310,7 @@ def test_resource_lifecycle() -> None:
         headers=__AUTH_HEADERS__,
         json={"name": "testsprite-fixture"},
         timeout=(10, 60),
+        allow_redirects=False,
     )
     assert created.status_code == 201
     resource_id = created.json()["id"]
@@ -315,6 +320,7 @@ def test_resource_lifecycle() -> None:
             f"{BASE_URL}/v1/resources/{resource_id}",
             headers=__AUTH_HEADERS__,
             timeout=(10, 60),
+            allow_redirects=False,
         )
         assert fetched.status_code == 200
         assert fetched.json().get("id") == resource_id
@@ -323,6 +329,7 @@ def test_resource_lifecycle() -> None:
             f"{BASE_URL}/v1/resources/{resource_id}",
             headers=__AUTH_HEADERS__,
             timeout=(10, 60),
+            allow_redirects=False,
         )
         assert deleted.status_code in {200, 204, 404}
 
@@ -332,23 +339,35 @@ test_resource_lifecycle()
 
 Use a dedicated test tenant and a collision-resistant fixture name if parallel runs are possible. Cleanup must be idempotent.
 
+## Assertion ledger
+
+Before any run, freeze a ledger mapping each material contract and cleanup obligation to its exact saved-code `assert`, contract source, expected test ID, and graph role. Reject missing material assertions, unasserted cleanup, `pytest.skip`, swallowed assertions/exceptions, or assertions deleted, weakened, or widened after failure. After every `test code put`, export the final saved code and `codeVersion`, then reconcile the ledger against that exact version.
+
+The auditor requires at least one reachable non-static assertion per called `test_*` and rejects obvious skip/swallowing patterns. It cannot prove assertion strength, semantic completeness, or cleanup coverage; an auditor pass never replaces the ledger.
+
 ## Local static audit
 
 Resolve `TESTSPRITE_SKILL_DIR` to the directory containing the loaded `run-testsprite-backend/SKILL.md`. Run before every `test create` or `test code put`:
 
 ```bash
 python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
+  --allowed-origin "https://staging.service.example" \
   /tmp/testsprite-test.py
 ```
 
-Add `--auth-required` only when the test's contract requires a successful authenticated request. Omit it for public endpoints and negative authentication tests whose expected result is `401` or `403`.
+Use `--allowed-origin` whenever managed headers appear; it must be the exact approved HTTPS origin with no path/query/userinfo. Add `--auth-required` when the contract requires authenticated success. Omit `--auth-required` for public endpoints and negative authentication tests whose expected result is `401` or `403`.
 
-Use JSON in automation:
+Managed requests require explicit `allow_redirects=False`. The exceptional `--allow-managed-redirects` auditor flag is only for redirects separately named in the authorization gate; it does not itself grant authorization.
+
+Use JSON in automation, preserving the same auth/origin flags:
 
 ```bash
 python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
-  --json /tmp/testsprite-test.py
+  --json --allowed-origin "https://staging.service.example" \
+  /tmp/testsprite-test.py
 ```
+
+Maintainers and CI may run `audit_backend_test.py --self-test` as a deterministic built-in checker for the auditor itself. It is not part of the ordinary local authoring workflow.
 
 `--allow-module NAME` is an escape hatch only after current official runner documentation proves the module is installed and you inspect its definition-time behavior. It does not install anything in TestSprite, admit reflection/loader modules, or make a non-`requests` HTTP client auditable.
 
@@ -360,12 +379,13 @@ The execution proof intentionally accepts a constrained subset rather than prete
 - that request appears before branches, loops, `try`, returns, helper calls, mutation, or other dynamic control flow;
 - every request receiver and argument uses static data expressions, safe constructors, or previously bound values—not helper calls, mutators, process exits, or side-effecting Session constructor arguments;
 - request values carried by a loop use a simple loop target over a non-empty static list, tuple, or set; nested loop variants are all audited and are limited to 64 combinations;
+- each called `test_*` reaches at least one non-static `assert`; helper assertions count only when their call is on the audited unconditional path;
 - HTTP calls stay in `test_*` functions; helpers parse and assert on responses after the first request;
 - module scope contains only imports, static assignments, function definitions, and direct zero-argument `test_*()` calls;
 - imports name every dependency explicitly and stay inside the auditor's data/parsing-oriented standard-library subset (`from module import *` is rejected); and
 - nested definitions/classes, lambdas, generators, decorators, duplicate definitions, non-static defaults, runtime reflection/loaders, request monkey-patching, and unresolved or local/private target hosts are rejected.
 
-This boundary is deliberate. Put the first create/read request before a `try/finally`, as in the stateful example, then use dynamic cleanup or parsing afterward. Compute safe dynamic values in plain assignments; if their construction needs a helper call, simplify or inline the request fixture so the preflight can prove evaluation reaches HTTP. Keep helper functions at module scope and give defaults only resolved static literals or module constants. On Python 3.9, use `from __future__ import annotations` before PEP 604 unions such as `Response | None`; ordinary `requests.Response`, `list[str]`, and `dict` annotations are accepted directly. Request modules, imported methods, Session constructors/instances, and their methods are immutable: do not alias, rebind, monkey-patch, pass them to helpers, capture them in defaults or class bases, or mutate Session state; use per-request arguments and a `with requests.Session()` block. Runtime reflection and dynamic imports (`globals`, `locals`, `vars`, `sys`, `runpy`, `__loader__`, `__import__`, or import helpers) are rejected except for the exact managed-header lookup. Treat managed header dictionaries as immutable independent copies: use `dict(__AUTH_HEADERS__)` or `{**__AUTH_HEADERS__, "Accept": "application/json"}`, never a simple alias, function default, or mutation with `clear`, `pop`, `update`, or item assignment. Timeouts must be positive finite literals (or a bound static name) and targets must expose a statically verifiable public HTTP(S) hostname plus authority boundary even when their path is dynamic.
+This boundary is deliberate. Put the first create/read request before a `try/finally`, as in the stateful example, then use dynamic cleanup or parsing afterward. Compute safe dynamic values in plain assignments; if their construction needs a helper call, simplify or inline the request fixture so the preflight can prove evaluation reaches HTTP. Keep helper functions at module scope and give defaults only resolved static literals or module constants. Because the runner version is undocumented, use `from __future__ import annotations` before syntax whose runtime support you have not established; ordinary `requests.Response`, `list[str]`, and `dict` annotations are accepted by the auditor directly. Request modules, imported methods, Session constructors/instances, and their methods are immutable: do not alias, rebind, monkey-patch, pass them to helpers, capture them in defaults or class bases, or mutate Session state; use per-request arguments and a `with requests.Session()` block. Runtime reflection and dynamic imports (`globals`, `locals`, `vars`, `sys`, `runpy`, `__loader__`, `__import__`, or import helpers) are rejected except for the exact managed-header lookup. Treat managed header dictionaries as immutable independent copies: use `dict(__AUTH_HEADERS__)` or `{**__AUTH_HEADERS__, "Accept": "application/json"}`, never a simple alias, function default, or mutation with `clear`, `pop`, `update`, or item assignment. Timeouts must be positive finite literals (or a bound static name). Targets must expose a statically verifiable public HTTP(S) hostname plus authority boundary; managed-header targets must exactly match `--allowed-origin` by scheme/canonical host/effective port, contain no userinfo/query, and disable redirects unless separately authorized.
 
 ## Authoring checklist
 
@@ -374,7 +394,8 @@ This boundary is deliberate. Put the first create/read request before a `try/fin
 - Every execution path through a called test reaches at least one real HTTP request.
 - Every HTTP call has a timeout.
 - Imports fit the current sandbox.
-- Managed headers supply authentication.
+- Managed-header requests match `--allowed-origin` exactly and disable redirects unless separately authorized.
+- No credential-like literals appear in URL queries, `params`, `data`, or `json` mappings.
 - No response/token/header dumps.
 - Assertions cover status, shape, and semantics.
 - Dynamic values use invariants.

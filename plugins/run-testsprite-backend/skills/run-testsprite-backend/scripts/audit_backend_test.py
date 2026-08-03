@@ -17,7 +17,7 @@ import socket
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "request"}
@@ -89,6 +89,7 @@ class ScopeState:
     managed_auth: set[str] = field(default_factory=lambda: {"__AUTH_HEADERS__"})
     had_request: bool = False
     had_managed_request: bool = False
+    had_material_assert: bool = False
     active: bool = True
     request_modules: set[str] = field(default_factory=set)
     sessions: set[str] = field(default_factory=set)
@@ -101,6 +102,7 @@ class ScopeState:
             managed_auth=set(self.managed_auth),
             had_request=self.had_request,
             had_managed_request=self.had_managed_request,
+            had_material_assert=self.had_material_assert,
             active=self.active,
             request_modules=set(self.request_modules),
             sessions=set(self.sessions),
@@ -398,6 +400,53 @@ def imported_roots(tree: ast.Module) -> list[tuple[str, int]]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             roots.append((node.module.split(".", 1)[0], node.lineno))
     return roots
+
+
+def pytest_aliases(tree: ast.Module) -> tuple[set[str], set[str]]:
+    modules: set[str] = set()
+    skips: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "pytest":
+                    modules.add(alias.asname or "pytest")
+        elif isinstance(node, ast.ImportFrom) and node.module == "pytest":
+            for alias in node.names:
+                if alias.name == "skip":
+                    skips.add(alias.asname or alias.name)
+    return modules, skips
+
+
+def is_pytest_skip_call(node: ast.Call, modules: set[str], skips: set[str]) -> bool:
+    if isinstance(node.func, ast.Name):
+        return node.func.id in skips
+    return (
+        isinstance(node.func, ast.Attribute)
+        and node.func.attr == "skip"
+        and dotted_root(node.func) in modules
+    )
+
+
+def catches_assertion_failure(handler: ast.ExceptHandler) -> bool:
+    if handler.type is None:
+        return True
+    candidates = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    return any(
+        isinstance(candidate, ast.Name)
+        and candidate.id in {"AssertionError", "Exception", "BaseException"}
+        for candidate in candidates
+    )
+
+
+def handler_raises(handler: ast.ExceptHandler) -> bool:
+    def contains_raise(node: ast.AST) -> bool:
+        if isinstance(node, ast.Raise):
+            return True
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+            return False
+        return any(contains_raise(child) for child in ast.iter_child_nodes(node))
+
+    return any(contains_raise(statement) for statement in handler.body)
 
 
 def creates_session(value: ast.AST, modules: set[str], session_factories: set[str]) -> bool:
@@ -704,6 +753,7 @@ def assign_target(state: ScopeState, target: ast.AST, value: ast.AST | None) -> 
 def merge_states(state: ScopeState, branches: list[ScopeState]) -> None:
     state.had_request = all(branch.had_request for branch in branches)
     state.had_managed_request = all(branch.had_managed_request for branch in branches)
+    state.had_material_assert = all(branch.had_material_assert for branch in branches)
     state.active = all(branch.active for branch in branches)
     state.managed_auth = set.intersection(*(branch.managed_auth for branch in branches))
     state.request_modules = set.intersection(*(branch.request_modules for branch in branches))
@@ -760,7 +810,88 @@ def sensitive_headers_contain_literal(
     return False
 
 
+def secret_mapping_contains_literal(
+    node: ast.AST,
+    bindings: dict[str, ast.AST],
+    visiting: frozenset[str] = frozenset(),
+) -> bool:
+    if isinstance(node, ast.Name):
+        if node.id in visiting or node.id not in bindings:
+            return False
+        return secret_mapping_contains_literal(bindings[node.id], bindings, visiting | {node.id})
+    if isinstance(node, ast.Dict):
+        for key, value in zip(node.keys, node.values):
+            if key is None:
+                if secret_mapping_contains_literal(value, bindings, visiting):
+                    return True
+                continue
+            key_value = static_string_value(key, bindings, visiting)
+            if (
+                key_value is not None
+                and SECRET_NAMES.search(key_value)
+                and contains_literal_credential(value, bindings, visiting)
+            ):
+                return True
+            if secret_mapping_contains_literal(value, bindings, visiting):
+                return True
+        return False
+    if isinstance(node, (ast.List, ast.Tuple)):
+        for item in node.elts:
+            if isinstance(item, (ast.List, ast.Tuple)) and len(item.elts) == 2:
+                key_value = static_string_value(item.elts[0], bindings, visiting)
+                if (
+                    key_value is not None
+                    and SECRET_NAMES.search(key_value)
+                    and contains_literal_credential(item.elts[1], bindings, visiting)
+                ):
+                    return True
+            if secret_mapping_contains_literal(item, bindings, visiting):
+                return True
+        return False
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return secret_mapping_contains_literal(node.left, bindings, visiting) or secret_mapping_contains_literal(
+            node.right, bindings, visiting
+        )
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
+        return any(secret_mapping_contains_literal(argument, bindings, visiting) for argument in node.args) or any(
+            keyword.arg is not None
+            and SECRET_NAMES.search(keyword.arg)
+            and contains_literal_credential(keyword.value, bindings, visiting)
+            for keyword in node.keywords
+        )
+    encoded = static_string_value(node, bindings, visiting)
+    if encoded is not None:
+        return any(
+            SECRET_NAMES.search(key) and bool(value) and not is_placeholder(value)
+            for key, value in parse_qsl(encoded, keep_blank_values=True)
+        )
+    return False
+
+
+def request_url_contains_literal_secret(
+    node: ast.Call, bindings: dict[str, ast.AST]
+) -> bool:
+    target = request_url_node(node, bindings)
+    value = static_string_value(target, bindings) if target is not None else None
+    if value is None:
+        return False
+    try:
+        query = urlparse(value).query
+    except ValueError:
+        return False
+    return any(
+        SECRET_NAMES.search(key) and bool(secret) and not is_placeholder(secret)
+        for key, secret in parse_qsl(query, keep_blank_values=True)
+    )
+
+
 def inspect_request_credentials(node: ast.Call, state: ScopeState, report: Report) -> None:
+    if request_url_contains_literal_secret(node, state.bindings):
+        report.error(
+            "embedded-secret",
+            "Literal secret-like URL query value found; use managed credentials",
+            node.lineno,
+        )
     for keyword in node.keywords:
         if keyword.arg == "headers" and sensitive_headers_contain_literal(keyword.value, state.bindings):
             report.error(
@@ -774,6 +905,14 @@ def inspect_request_credentials(node: ast.Call, state: ScopeState, report: Repor
             report.error(
                 "embedded-secret",
                 f"Literal {keyword.arg} credential found; use managed credentials",
+                node.lineno,
+            )
+        if keyword.arg in {"params", "data", "json"} and secret_mapping_contains_literal(
+            keyword.value, state.bindings
+        ):
+            report.error(
+                "embedded-secret",
+                f"Literal secret-like value found in request {keyword.arg}; use managed credentials",
                 node.lineno,
             )
 
@@ -872,6 +1011,17 @@ def observe_calls(
             )
             state.had_request = state.had_request or helper.had_request
             state.had_managed_request = state.had_managed_request or helper.had_managed_request
+            state.had_material_assert = state.had_material_assert or helper.had_material_assert
+
+
+def assertion_is_material(node: ast.Assert, bindings: dict[str, ast.AST]) -> bool:
+    if static_truth(node.test, bindings) is not None:
+        return False
+    if isinstance(node.test, ast.Compare):
+        operands = [node.test.left, *node.test.comparators]
+        if all(static_literal_value(operand, bindings) is not None for operand in operands):
+            return False
+    return True
 
 
 def analyze_block(
@@ -973,6 +1123,12 @@ def analyze_block(
             clear_names(state, bound_names(statement.target))
             continue
 
+        if isinstance(statement, ast.Assert):
+            observe_calls(statement, state, module_state, functions, request_sets, report, visiting)
+            if assertion_is_material(statement, state.bindings):
+                state.had_material_assert = True
+            continue
+
         if isinstance(statement, (ast.Return, ast.Raise)):
             observe_calls(statement, state, module_state, functions, request_sets, report, visiting)
             state.active = False
@@ -999,6 +1155,7 @@ def analyze_function(
     state = module_state.clone()
     state.had_request = False
     state.had_managed_request = False
+    state.had_material_assert = False
     state.active = True
     clear_names(state, local_binding_names(function))
     analyze_block(
@@ -2095,6 +2252,104 @@ def canonical_hostname(value: str) -> str | None:
     return value or None
 
 
+def effective_origin(value: str) -> tuple[str, str, int] | None:
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None
+    host = canonical_hostname(hostname or "")
+    scheme = parsed.scheme.lower()
+    if host is None or scheme not in {"http", "https"}:
+        return None
+    return scheme, host, port or (443 if scheme == "https" else 80)
+
+
+def allowed_origin_value(value: str, report: Report) -> tuple[str, str, int] | None:
+    try:
+        parsed = urlparse(value)
+        parsed.port
+    except ValueError:
+        report.error("invalid-allowed-origin", "Allowed origin must be a valid HTTPS origin")
+        return None
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        report.error(
+            "invalid-allowed-origin",
+            "Allowed origin must be exactly https://host[:port] with no credentials, path, query, or fragment",
+        )
+        return None
+    origin = effective_origin(value)
+    if origin is None:
+        report.error("invalid-allowed-origin", "Allowed origin must contain a canonical public hostname")
+        return None
+    origin_report = Report()
+    inspect_url(value, 1, origin_report)
+    if origin_report.errors:
+        report.error("invalid-allowed-origin", "Allowed origin must be a public non-placeholder HTTPS origin")
+        return None
+    return origin
+
+
+def inspect_managed_request_policy(
+    node: ast.Call,
+    bindings: dict[str, ast.AST],
+    allowed_origin: tuple[str, str, int] | None,
+    allow_managed_redirects: bool,
+    report: Report,
+) -> None:
+    target = request_url_node(node, bindings)
+    complete = static_string_value(target, bindings) if target is not None else None
+    prefix = static_url_prefix(target, bindings) if target is not None else None
+    candidate = complete or prefix
+    if allowed_origin is None:
+        report.error(
+            "missing-allowed-origin",
+            "Managed-header requests require --allowed-origin with the exact HTTPS application origin",
+            node.lineno,
+        )
+    elif candidate is None or effective_origin(candidate) != allowed_origin:
+        report.error(
+            "managed-origin-mismatch",
+            "Managed-header request origin must exactly match --allowed-origin by scheme, canonical host, and effective port",
+            node.lineno,
+        )
+    if candidate is not None:
+        try:
+            parsed = urlparse(candidate)
+        except ValueError:
+            parsed = None
+        if parsed is not None and (
+            parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or "?" in candidate
+        ):
+            report.error(
+                "credential-bearing-target",
+                "Managed credentials cannot be sent to URL userinfo or query targets",
+                node.lineno,
+            )
+    if not allow_managed_redirects:
+        redirects = next(
+            (keyword.value for keyword in node.keywords if keyword.arg == "allow_redirects"),
+            None,
+        )
+        if redirects is None or static_truth(redirects, bindings) is not False:
+            report.error(
+                "managed-redirects",
+                "Managed-header requests require explicit allow_redirects=False unless redirects were separately authorized",
+                node.lineno,
+            )
+
+
 def hostname_ip_address(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     try:
         return ipaddress.ip_address(host)
@@ -2239,8 +2494,17 @@ def inspect_request_target(
     inspect_url(prefix, node.lineno, report)
 
 
-def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) -> Report:
+def audit_source(
+    source: str,
+    auth_required: bool,
+    allowed_modules: set[str],
+    allowed_origin: str | None = None,
+    allow_managed_redirects: bool = False,
+) -> Report:
     report = Report()
+    normalized_allowed_origin = (
+        allowed_origin_value(allowed_origin, report) if allowed_origin is not None else None
+    )
     try:
         tree = ast.parse(source)
     except SyntaxError as exc:
@@ -2252,7 +2516,24 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
         for parent in ast.walk(tree)
         for child in ast.iter_child_nodes(parent)
     }
+    pytest_modules, pytest_skips = pytest_aliases(tree)
     for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and is_pytest_skip_call(node, pytest_modules, pytest_skips):
+            report.error(
+                "skipped-test",
+                "pytest.skip is not allowed in uploaded backend contracts",
+                node.lineno,
+            )
+        if (
+            isinstance(node, ast.ExceptHandler)
+            and catches_assertion_failure(node)
+            and not handler_raises(node)
+        ):
+            report.error(
+                "assertion-swallowing",
+                "Exception handlers that can catch assertion failures must raise instead of swallowing them",
+                node.lineno,
+            )
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and not isinstance(
             parents.get(node), ast.Module
         ):
@@ -2399,6 +2680,12 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
                 f"{name}() has no statically unconditional requests HTTP call",
                 test.lineno,
             )
+        if any(not run.had_material_assert for run in runs):
+            report.error(
+                "missing-material-assert",
+                f"{name}() must reach at least one non-static assert on every audited execution path",
+                test.lineno,
+            )
         if auth_required and any(not run.had_managed_request for run in runs):
             report.error(
                 "missing-managed-auth",
@@ -2518,6 +2805,14 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
                 inspect_request_credentials(node, broad_state, report)
                 inspect_request_timeout(node, request_bindings, report)
                 inspect_request_target(node, request_bindings, report)
+                if request_uses_managed_auth(node, broad_state):
+                    inspect_managed_request_policy(
+                        node,
+                        request_bindings,
+                        normalized_allowed_origin,
+                        allow_managed_redirects,
+                        report,
+                    )
 
     return report
 
@@ -2530,11 +2825,17 @@ def run_self_test() -> None:
     good = source(
         "from pathlib import Path", "import requests", 'BASE_URL = "https://staging.acme.com"',
         'HEADERS = dict(globals().get("__AUTH_HEADERS__", {}))', "def test_health():",
-        '    response = requests.get(f"{BASE_URL}/health", headers=HEADERS, timeout=30)',
+        '    response = requests.get(f"{BASE_URL}/health", headers=HEADERS, timeout=30,',
+        '        allow_redirects=False)',
         '    assert Path("/").is_absolute()',
         "    assert response.status_code == 200", "test_health()",
     )
-    assert audit_source(good, auth_required=True, allowed_modules=set()).ok
+    assert audit_source(
+        good,
+        auth_required=True,
+        allowed_modules=set(),
+        allowed_origin="https://staging.acme.com",
+    ).ok
 
     cases = {
         "variable-cookie": (False, source(
@@ -2565,6 +2866,29 @@ def run_self_test() -> None:
             '    requests.get("https://staging.acme.com/me", timeout=30)', "if TYPE_CHECKING:",
             "    test_case()"), "uncalled-test"),
         "no-http": (False, source("def test_case():", "    assert True", "test_case()"), "no-http-request"),
+        "no-material-assert": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/me", timeout=30)',
+            "    assert True", "test_case()"), "missing-material-assert"),
+        "url-query-secret": (False, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me?api_key=live-query-secret-123456", timeout=30)',
+            "    assert response.status_code == 200", "test_case()"), "embedded-secret"),
+        "params-secret": (False, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me",',
+            '        params={"access_token": "live-params-secret-123456"}, timeout=30)',
+            "    assert response.status_code == 200", "test_case()"), "embedded-secret"),
+        "data-secret": (False, source(
+            "import requests", "def test_case():",
+            '    response = requests.post("https://staging.acme.com/me",',
+            '        data={"password": "live-data-secret-123456"}, timeout=30)',
+            "    assert response.status_code == 200", "test_case()"), "embedded-secret"),
+        "json-secret": (False, source(
+            "import requests", "def test_case():",
+            '    response = requests.post("https://staging.acme.com/me",',
+            '        json={"client_secret": "live-json-secret-123456"}, timeout=30)',
+            "    assert response.status_code == 200", "test_case()"), "embedded-secret"),
         "except-only": (False, source(
             "import requests", "def test_case():", "    try:", "        value = 1", "    except Exception:",
             '        requests.get("https://staging.acme.com/me", timeout=30)', "    assert value == 1",
@@ -2578,6 +2902,16 @@ def run_self_test() -> None:
             "import requests", "def test_case():", "    try:",
             '        requests.get("https://staging.acme.com/me", timeout=30)', "    finally:",
             "        pass", "test_case()"), "unproven-request"),
+        "pytest-skip": (False, source(
+            "import pytest", "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me", timeout=30)',
+            '    pytest.skip("not today")', "    assert response.status_code == 200",
+            "test_case()"), "skipped-test"),
+        "assertion-swallowing": (False, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me", timeout=30)',
+            "    try:", "        assert response.status_code == 200", "    except AssertionError:",
+            "        pass", "test_case()"), "assertion-swallowing"),
         "handled-exception-return": (False, source(
             "import requests", "def test_case():", "    values = {}", "    try:",
             '        values["missing"]', "    except KeyError:", "        return",
@@ -2818,6 +3152,21 @@ def run_self_test() -> None:
             "import requests", '"""__AUTH_HEADERS__ is only documentation here."""', "def test_case():",
             '    requests.get("https://staging.acme.com/me", timeout=30)', "test_case()"),
             "missing-managed-auth"),
+        "managed-origin-mismatch": (True, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://other.acme.com/me", headers=__AUTH_HEADERS__,',
+            "        timeout=30, allow_redirects=False)",
+            "    assert response.status_code == 200", "test_case()"), "managed-origin-mismatch"),
+        "managed-query-target": (True, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me?view=private",',
+            "        headers=__AUTH_HEADERS__, timeout=30, allow_redirects=False)",
+            "    assert response.status_code == 200", "test_case()"), "credential-bearing-target"),
+        "managed-redirect-default": (True, source(
+            "import requests", "def test_case():",
+            '    response = requests.get("https://staging.acme.com/me",',
+            "        headers=__AUTH_HEADERS__, timeout=30)",
+            "    assert response.status_code == 200", "test_case()"), "managed-redirects"),
         "dead-auth": (True, source(
             "import requests", "def test_case():", '    requests.get("https://staging.acme.com/me", timeout=30)',
             "    if False:", '        requests.get("https://staging.acme.com/private",',
@@ -2979,25 +3328,38 @@ def run_self_test() -> None:
             "private-target"),
     }
     for name, (auth_required, body, expected) in cases.items():
-        codes = {finding.code for finding in audit_source(body, auth_required, set()).errors}
+        codes = {
+            finding.code
+            for finding in audit_source(
+                body,
+                auth_required,
+                set(),
+                allowed_origin="https://staging.acme.com",
+            ).errors
+        }
         assert expected in codes, (name, expected, codes)
 
     positives = {
         "session": source(
             "import requests", "def test_case():", "    with requests.Session() as session:",
-            '        session.get("https://staging.acme.com/me", timeout=30)', "test_case()"),
+            '        response = session.get("https://staging.acme.com/me", timeout=30)',
+            "        assert response.status_code == 200", "test_case()"),
         "session-name-scope": source(
             "import requests", "def test_session_request():", "    with requests.Session() as session:",
-            '        session.get("https://staging.acme.com/one", timeout=30)',
+            '        response = session.get("https://staging.acme.com/one", timeout=30)',
+            "        assert response.status_code == 200",
             "def test_plain_mapping():", '    session = {"status": 200}',
-            '    requests.get("https://staging.acme.com/two", timeout=30)',
-            '    assert session.get("status") == 200', "test_session_request()", "test_plain_mapping()"),
+            '    response = requests.get("https://staging.acme.com/two", timeout=30)',
+            '    assert response.status_code == session.get("status")',
+            "test_session_request()", "test_plain_mapping()"),
         "aliased-generic-request": source(
             "from requests import request as send", "def test_case():",
-            '    send("GET", "https://staging.acme.com/me", timeout=30)', "test_case()"),
+            '    response = send("GET", "https://staging.acme.com/me", timeout=30)',
+            "    assert response.status_code == 200", "test_case()"),
         "local-imported-method": source(
             "def test_case():", "    from requests import get as send",
-            '    send("https://staging.acme.com/me", timeout=30)', "test_case()"),
+            '    response = send("https://staging.acme.com/me", timeout=30)',
+            "    assert response.status_code == 200", "test_case()"),
         "multiple-requests": source(
             "import requests", 'BASE_URL = "https://staging.acme.com"', "def test_case():",
             '    first = requests.get(f"{BASE_URL}/health", timeout=30)',
@@ -3005,13 +3367,15 @@ def run_self_test() -> None:
             "    assert first.status_code == second.status_code", "test_case()"),
         "try-else-binding": source(
             "import requests", "def test_case():",
-            '    requests.get("https://staging.acme.com/health", timeout=30)', "    try:",
+            '    first = requests.get("https://staging.acme.com/health", timeout=30)',
+            "    assert first.status_code == 200", "    try:",
             '        detail_url = "https://staging.acme.com/detail"', "    except ValueError:",
             "        return", "    else:", "        requests.get(detail_url, timeout=30)",
             "test_case()"),
         "static-loop-binding": source(
             "import requests", "def test_case():",
-            '    requests.get("https://staging.acme.com/health", timeout=30)',
+            '    first = requests.get("https://staging.acme.com/health", timeout=30)',
+            "    assert first.status_code == 200",
             '    for detail_url in ("https://staging.acme.com/one",',
             '                       "https://staging.acme.com/two"):',
             "        requests.get(detail_url, timeout=30)", "test_case()"),
@@ -3045,15 +3409,37 @@ def run_self_test() -> None:
         "stateful-lifecycle": source(
             "import requests", 'BASE_URL = "https://staging.acme.com"', "def test_case():",
             '    created = requests.post(f"{BASE_URL}/resources", headers=__AUTH_HEADERS__,',
-            '        json={"name": "fixture"}, timeout=30)', "    resource_id = created.json()[\"id\"]",
+            '        json={"name": "fixture"}, timeout=30, allow_redirects=False)',
+            "    assert created.status_code == 201", "    resource_id = created.json()[\"id\"]",
             "    try:", '        fetched = requests.get(f"{BASE_URL}/resources/{resource_id}",',
-            "            headers=__AUTH_HEADERS__, timeout=30)", "        assert fetched.status_code == 200",
-            "    finally:", '        requests.delete(f"{BASE_URL}/resources/{resource_id}",',
-            "            headers=__AUTH_HEADERS__, timeout=30)", "test_case()"),
+            "            headers=__AUTH_HEADERS__, timeout=30, allow_redirects=False)",
+            "        assert fetched.status_code == 200", "    finally:",
+            '        deleted = requests.delete(f"{BASE_URL}/resources/{resource_id}",',
+            "            headers=__AUTH_HEADERS__, timeout=30, allow_redirects=False)",
+            "        assert deleted.status_code in {200, 204, 404}", "test_case()"),
     }
     for name, body in positives.items():
-        errors = audit_source(body, auth_required=False, allowed_modules=set()).errors
+        errors = audit_source(
+            body,
+            auth_required=False,
+            allowed_modules=set(),
+            allowed_origin="https://staging.acme.com",
+        ).errors
         assert not errors, (name, [(finding.code, finding.line) for finding in errors])
+
+    redirects_authorized = source(
+        "import requests", "def test_case():",
+        '    response = requests.get("https://staging.acme.com/me",',
+        "        headers=__AUTH_HEADERS__, timeout=30)",
+        "    assert response.status_code == 200", "test_case()",
+    )
+    assert audit_source(
+        redirects_authorized,
+        auth_required=True,
+        allowed_modules=set(),
+        allowed_origin="https://staging.acme.com",
+        allow_managed_redirects=True,
+    ).ok
 
     private_targets = [
         "http://localhost./x",
@@ -3088,7 +3474,8 @@ def run_self_test() -> None:
     scope_source = source(
         "import requests", 'BASE_URL = "https://module.acme.com"', "def helper():",
         '    BASE_URL = "https://helper.acme.com"', "    return BASE_URL", "def test_case():",
-        '    requests.get(f"{BASE_URL}/health", timeout=30)', "test_case()",
+        '    response = requests.get(f"{BASE_URL}/health", timeout=30)',
+        "    assert response.status_code == 200", "test_case()",
     )
     scope_tree = ast.parse(scope_source)
     scope_report = audit_source(scope_source, auth_required=False, allowed_modules=set())
@@ -3118,6 +3505,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", nargs="?", type=Path, help="backend Python file to audit")
     parser.add_argument("--auth-required", action="store_true", help="require __AUTH_HEADERS__ usage")
+    parser.add_argument(
+        "--allowed-origin",
+        help="exact HTTPS application origin allowed to receive managed headers",
+    )
+    parser.add_argument(
+        "--allow-managed-redirects",
+        action="store_true",
+        help="allow separately authorized redirects on managed-header requests",
+    )
     parser.add_argument("--allow-module", action="append", default=[], help="allow an additional verified module")
     parser.add_argument("--json", action="store_true", help="emit machine-readable findings")
     parser.add_argument("--self-test", action="store_true", help="run deterministic built-in checks")
@@ -3131,11 +3527,19 @@ def main() -> int:
         return 0
     if args.path is None:
         raise SystemExit("path is required unless --self-test is used")
+    if args.auth_required and args.allowed_origin is None:
+        raise SystemExit("--allowed-origin is required with --auth-required")
     try:
         body = args.path.read_text(encoding="utf-8")
     except OSError as exc:
         raise SystemExit(f"cannot read {args.path}: {exc}") from exc
-    report = audit_source(body, args.auth_required, set(args.allow_module))
+    report = audit_source(
+        body,
+        args.auth_required,
+        set(args.allow_module),
+        args.allowed_origin,
+        args.allow_managed_redirects,
+    )
     payload = {
         "ok": report.ok,
         "errors": [finding.as_dict() for finding in report.errors],
