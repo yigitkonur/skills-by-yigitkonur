@@ -6,19 +6,28 @@ Notifications are only delivered to clients with active `subscriptions/listen` r
 
 ## How Subscriptions Work
 
-1. **Client initiates:** A client sends `subscriptions/listen` with a notification type it wants (e.g., `"resources/updated"`).
-2. **Open connection:** The server keeps that subscription active as an open request stream.
-3. **Notification published:** When you call `server.notifyResourceUpdated(uri)`, it broadcasts to all clients currently listening for that type.
+1. **Client initiates:** A client sends `subscriptions/listen` with a required `notifications` filter object, not a single type string:
+   ```typescript
+   {
+     toolsListChanged?: boolean;
+     promptsListChanged?: boolean;
+     resourcesListChanged?: boolean;
+     resourceSubscriptions?: string[]; // exact URIs to receive resources/updated for
+   }
+   ```
+   An absent or invalid filter is rejected with `-32602`.
+2. **Open connection:** The server narrows the requested filter against its own advertised capabilities and echoes the honored subset back as a `notifications/subscriptions/acknowledged` message, then keeps the request open as a live stream.
+3. **Notification published:** When you call `server.notifyResourceUpdated(uri)`, it broadcasts to every open listener whose filter matches — for resource updates, only listeners that included that exact `uri` in `resourceSubscriptions`.
 4. **Client re-syncs:** Upon receiving the notification, the client re-reads the resource via `resources/read`.
 
 ## Notification Types
 
-| Type | Method | Clients must listen for | Notes |
+| Wire method | Method to send it | Filter field the client sets | Notes |
 |------|--------|------------------------|----|
-| `"tools/list_changed"` | `server.notifyToolsChanged()` | `"tools/list_changed"` | Sent when tool list or metadata changes |
-| `"prompts/list_changed"` | `server.notifyPromptsChanged()` | `"prompts/list_changed"` | Sent when prompt list changes |
-| `"resources/list_changed"` | `server.notifyResourcesChanged()` | `"resources/list_changed"` | Sent when resource URIs change |
-| `"resources/updated"` | `server.notifyResourceUpdated(uri)` | `"resources/updated"` | Sent when a specific resource changes |
+| `notifications/tools/list_changed` | `server.notifyToolsChanged()` | `toolsListChanged: true` | Sent when tool list or metadata changes |
+| `notifications/prompts/list_changed` | `server.notifyPromptsChanged()` | `promptsListChanged: true` | Sent when prompt list changes |
+| `notifications/resources/list_changed` | `server.notifyResourcesChanged()` | `resourcesListChanged: true` | Sent when resource URIs change |
+| `notifications/resources/updated` | `server.notifyResourceUpdated(uri)` | `resourceSubscriptions: [uri, ...]` | Sent when a specific resource changes; the exact URI must be listed, not just a boolean flag |
 
 ## Stateless Constraints
 
@@ -49,8 +58,8 @@ server.post("/api/health", async (c) => {
 });
 
 // Client side (not in this skill):
-// 1. Opens subscriptions/listen("resources/updated")
-// 2. Server sends notification: { type: "resources/updated", uri: "app://status" }
+// 1. Opens subscriptions/listen({ notifications: { resourceSubscriptions: ["app://status"] } })
+// 2. Server sends notification: { method: "notifications/resources/updated", params: { uri: "app://status" } }
 // 3. Client calls resources/read("app://status")
 // 4. Server responds with current state: { health: "degraded" }
 ```

@@ -24,7 +24,9 @@ server.use("mcp:tools/call", async (ctx, next) => {
 | `mcp:resources/read` | `resources/read` request | SDK resource-read params | Resource handler result |
 | `mcp:prompts/list` | `prompts/list` request | SDK list params | Prompt descriptor array |
 | `mcp:prompts/get` | `prompts/get` request | SDK prompt-get params | Prompt handler result |
-| `mcp:*` | Every MCP operation | Pattern-dependent | (pass-through only) |
+| `mcp:*` | Every MCP operation | Pattern-dependent | (pass-through only; must call `next()` or throw — cannot inspect/replace the typed result) |
+
+`server.use()` accepts only these 6 exact patterns plus `mcp:*` (`McpMiddlewarePattern`). `server.on()` additionally accepts **group wildcards** — `mcp:tools/*`, `mcp:resources/*`, `mcp:prompts/*` — that match every method under that prefix; these group forms are event-listener-only and are rejected by `server.use()`.
 
 Completion observers use `server.on()` with a `:complete` event pattern; `server.use()` does not accept `:complete`.
 
@@ -46,7 +48,7 @@ Each middleware receives a context object with:
 - `params`: Operation-specific parameters (tool name, resource URI, etc.)
 - `auth`: SDK `AuthInfo` when authentication is present
 - `request`: Hono request object
-- `session`: Optional `{ sessionId }`
+- `session`: Optional `{ sessionId }` transport metadata for the current request. It is not durable identity, server-side storage, or a reason to add session affinity; key policy/state by verified user, API key, or another explicit external identifier.
 - `state`: Shared `Map<string, unknown>`
 - Standard Hono context properties (get/set/var, env, executionCtx, etc.)
 
@@ -70,45 +72,67 @@ server.use("/health", async (c, next) => {
 
 See `06-custom-routes.md` for adding custom routes.
 
-## Middleware Utilities
+## Fetch Middleware Utilities
 
-mcp-use exports utilities for common validation scenarios:
+`hostValidationMiddleware()`, `originValidationMiddleware()`, and `jsonBodyMiddleware()` use the Fetch signature `(request, next)`, not Hono's `(context, next)`. Do not pass them to `server.use()`. Use constructor configuration for an `MCPServer`, or `composeFetch()` when you own a Fetch boundary.
 
-### hostValidationMiddleware
+### Host and Origin validation
 
-Validates `Host` header against an allowlist.
-
-```typescript
-import { hostValidationMiddleware } from "mcp-use";
-
-server.use(hostValidationMiddleware(["api.example.com", "localhost"]));
-// Rejects requests with Host header not on allowlist
-```
-
-See `04-dns-rebinding-and-host-validation.md`.
-
-### originValidationMiddleware
-
-Validates `Origin` header (non-GET/HEAD only) against an allowlist.
+Prefer server configuration so validation applies consistently to the MCP endpoint and custom routes:
 
 ```typescript
-import { originValidationMiddleware } from "mcp-use";
-
-server.use(originValidationMiddleware(["https://app.example.com"]));
-// Rejects POST/PUT/DELETE with Origin not in allowlist
+const server = new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedHosts: ["api.example.com", "localhost"],
+  allowedOrigins: ["app.example.com"],
+});
 ```
 
-See `03-cors-and-allowed-origins.md`.
+`allowedOrigins` uses the same safe-method behavior as the built-in Origin validation policy: `GET`/`HEAD` remain available for view assets, while unsafe methods are checked. See `03-cors-and-allowed-origins.md` and `04-dns-rebinding-and-host-validation.md`.
+
+### Custom Fetch composition
+
+Use the exported middleware values only around a Fetch terminal:
+
+```typescript
+import {
+  composeFetch,
+  hostValidationMiddleware,
+  originValidationMiddleware,
+} from "mcp-use";
+
+const validatedFetch = composeFetch(
+  server.fetch,
+  hostValidationMiddleware(["api.example.com", "localhost"]),
+  originValidationMiddleware(["app.example.com"]),
+);
+
+export default validatedFetch;
+```
+
+Pass `false` as the second `originValidationMiddleware()` argument only when `GET`/`HEAD` must also have an allowed Origin.
 
 ### jsonBodyMiddleware
 
-Parses JSON request body once and stores in request context for reuse.
+`jsonBodyMiddleware()` parses an `application/json` request once and stores it in a per-`Request` `WeakMap`-backed bag. Invalid JSON short-circuits with `400 "Invalid JSON"`.
+
+mcp-use already mounts this middleware internally. Add it only to an outer custom Fetch pipeline that must inspect JSON before `server.fetch` runs:
 
 ```typescript
-import { jsonBodyMiddleware } from "mcp-use";
+import { composeFetch, getRequestBag, jsonBodyMiddleware } from "mcp-use";
 
-server.use(jsonBodyMiddleware());
-// Body parsed; available via ctx.var.body or context bag
+const inspectJson = async (request: Request, next: () => Promise<Response>) => {
+  const parsed = getRequestBag(request).parsedBody;
+  console.log("Parsed request:", parsed);
+  return next();
+};
+
+export default composeFetch(
+  server.fetch,
+  jsonBodyMiddleware(),
+  inspectJson,
+);
 ```
 
 ### composeMiddleware
@@ -141,7 +165,7 @@ server.on("mcp:tools/call", async (ctx) => {
 });
 ```
 
-Event patterns match middleware patterns (`mcp:tools/call`, `mcp:resources/read`, etc.). Use listeners for logging, metrics, or side effects that don't affect the response.
+Event patterns match middleware patterns (`mcp:tools/call`, `mcp:resources/read`, etc.) plus the group wildcards `mcp:tools/*`, `mcp:resources/*`, `mcp:prompts/*` (event-only — not valid for `server.use()`). Use listeners for logging, metrics, or side effects that don't affect the response.
 
 ## Stacking: Order Matters
 

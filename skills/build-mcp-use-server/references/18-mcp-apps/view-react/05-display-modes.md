@@ -78,6 +78,7 @@ export const viewConfig = {
 Then call `useSendSizeChanged()` on layout changes:
 
 ```typescript
+import { useEffect } from "react";
 import { useSendSizeChanged } from "mcp-use/react";
 
 function AspectRatioChart() {

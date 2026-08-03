@@ -2,9 +2,9 @@
 
 *Read this when you need OAuth protection and want to choose a provider.*
 
-mcp-use v2 uses **Dynamic Client Registration (DCR)** as the primary OAuth model. Your MCP server advertises itself to upstream identity providers (Clerk, Auth0, Keycloak, Supabase, WorkOS, Better Auth), which register it as an OAuth client and issue access tokens. The server verifies bearer tokens and exposes protected endpoints.
+mcp-use v2 supports resource-server providers whose authorization server implements **Dynamic Client Registration (DCR)**. The MCP client registers itself with the upstream authorization server (Clerk, Auth0, Keycloak, Supabase, WorkOS, Better Auth, or any other DCR-capable AS) and performs the authorization flow directly with it — your MCP server never handles authorization codes or exchanges them for tokens. `MCPServer` protects the transport, publishes discovery metadata, verifies bearer tokens, and exposes the verified identity on `ctx.auth`.
 
-Unauthenticated requests to `/.well-known/oauth-authorization-server` and all MCP endpoints (`/mcp/*`, including tools, resources, prompts) are rejected with 401 Unauthorized.
+Discovery metadata (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) is published **publicly** — clients must be able to fetch it without a token to complete the OAuth discovery flow. Only the MCP transport route itself (`basePath`, default `/mcp`) requires a bearer token; unauthenticated requests to that route are rejected with 401 Unauthorized, but requests to the metadata endpoints are not.
 
 ## Provider Decision
 
@@ -22,34 +22,42 @@ See `providers/` for each provider's setup, user fields, and gotchas.
 ## How It Works
 
 ```typescript
-import { MCPServer } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
 import { oauthClerkProvider } from "mcp-use/oauth/clerk";
+import { z } from "zod";
 
 const server = new MCPServer({
   name: "secure-server",
+  version: "1.0.0",
   oauth: oauthClerkProvider({
     frontendApiUrl: "https://verb-noun-42.clerk.accounts.dev",
   }),
 });
 
-server.tool({
-  name: "list-secrets",
-  description: "List user's secrets",
-  inputSchema: z.object({}),
-  async (ctx) => {
+server.tool(
+  {
+    name: "list-secrets",
+    description: "List user's secrets",
+    inputSchema: z.object({}),
+  },
+  async (_args, ctx) => {
     // User is authenticated; ctx.auth.user populated
     return {
       content: [{ type: "text", text: `User: ${ctx.auth.user.id}` }],
     };
   },
-});
+);
 
 await server.listen(3000);
 ```
 
 When a client sends:
 ```bash
-curl -H "Authorization: Bearer <access_token>" https://mcp.example.com/mcp/tools/list-secrets/call
+curl -H "Authorization: Bearer <access_token>" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list-secrets","arguments":{}}}' \
+  https://mcp.example.com/mcp
 ```
 
 The server verifies the token, extracts user info (e.g., Clerk's `id`, `email`, `organizationId`), and makes it available on `ctx.auth.user`.

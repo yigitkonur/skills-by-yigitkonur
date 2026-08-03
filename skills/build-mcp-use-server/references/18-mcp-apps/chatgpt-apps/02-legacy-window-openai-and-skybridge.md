@@ -1,114 +1,113 @@
-# Legacy: window.openai API and Skybridge MIME
+# Legacy `window.openai` and Skybridge
 
-*Read this for historical context only. Do not implement these patterns yourself.*
+*Read this for historical context and migration only. Do not implement these patterns in a new mcp-use v2 View.*
 
-Before the MCP Apps spec, ChatGPT had two proprietary protocols for widget rendering. mcp-use abstracts both automatically; you should never hand-roll them.
+Before standard MCP Apps UI, ChatGPT widgets used the proprietary `text/html+skybridge` MIME type and direct `window.openai` calls. mcp-use v2 generated Views do not emit Skybridge. ChatGPT still provides selected `window.openai` capabilities, but shipped mcp-use code uses them only at narrow compatibility branches.
 
-## Skybridge MIME Type
+## Skybridge Is Not the v2 Server Wire
 
-**v1 artifact:** `text/html+skybridge`
+Legacy resource MIME:
 
-Skybridge was ChatGPT's internal MIME type for widget resources before the MCP Apps spec existed. It used `window.openai` JavaScript API for state management.
-
-**v2 status:** Removed. Use `text/html;profile=mcp-app` instead.
-
-**mcp-use handling:** The framework emits both MCP Apps protocol and legacy ChatGPT metadata, so old ChatGPT versions still work via compatibility layer. You do not touch this.
-
-## window.openai API
-
-**v1 artifact:** ChatGPT widgets used `window.openai.setWidgetState()` and `window.openai.widgetState` to communicate with the host.
-
-```typescript
-// v1 ChatGPT widget (LEGACY — DO NOT USE)
-if (window.openai?.setWidgetState) {
-  window.openai.setWidgetState({
-    modelContent: "User selected item X",
-  });
-}
-
-if (window.openai?.widgetState?.modelContent) {
-  const state = window.openai.widgetState.modelContent;
-}
+```text
+text/html+skybridge
 ```
 
-**v2 status:** Still present in ChatGPT for backward compatibility, but mcp-use hooks handle it transparently.
+mcp-use v2 generated View resource MIME:
 
-**mcp-use replacement:** Use `useViewState()` instead.
+```text
+text/html;profile=mcp-app
+```
+
+Shipped source boundary: `packages/server/src/views/wire.ts` builds one `ui://views/<name>.html` MCP Apps resource and does not emit a second Skybridge resource.
+
+Do not:
+
+- register a duplicate Skybridge resource for ChatGPT;
+- return Skybridge HTML in a tool result;
+- branch in the server based on the calling host;
+- describe mcp-use as merging or translating two server protocols.
+
+## Direct State Calls Are a Legacy Implementation Pattern
+
+Older code may contain calls such as:
 
 ```typescript
-// v2 (mcp-use — always use this)
+// Historical example only — do not copy into a new mcp-use View.
+window.openai?.setWidgetState({
+  modelContent: { selectedId: "item-1" },
+});
+```
+
+Use `useViewState()` instead:
+
+```typescript
 import { useViewState } from "mcp-use/react";
 
-const [state, setState] = useViewState({ modelContent: "" });
-setState({ modelContent: "User selected item X" });
+const [state, setState] = useViewState({ selectedId: null as string | null });
+setState((previous) => ({ ...previous, selectedId: "item-1" }));
 ```
 
-The `useViewState()` hook detects if `window.openai` is available (ChatGPT) and stores state accordingly; on MCP Apps hosts, it uses the standard protocol. **You never call `window.openai` directly.**
+Verified shipped behavior in `model-context-store.ts`:
 
-## Legacy Widget Metadata
+- when a usable `window.openai.setWidgetState` exists, mcp-use restores `widgetState.modelContent`, listens for `openai:set_globals`, and writes updated `modelContent`;
+- otherwise it uses standard `App.updateModelContext()` when the host declares the capability;
+- the server wire is unchanged in both cases.
 
-**v1 artifact:** Widgets exported `widgetMetadata` to declare shape and behavior.
+This is the one state compatibility branch. It does not mean every hook calls `window.openai`.
+
+## Standard Hooks Replace Direct Host Calls
+
+Prefer the standard mcp-use hook whenever one exists:
+
+| Direct or legacy pattern | mcp-use v2 path |
+|---|---|
+| `window.openai.setWidgetState()` / `widgetState` | `useViewState()` |
+| `window.openai.callTool()` | `useCallTool()` |
+| `window.openai.sendFollowUpMessage()` | `useSendFollowUp()` |
+| `window.openai.openExternal()` | `useOpenExternal()` |
+| `window.openai.requestDisplayMode()` | `useDisplayMode()` |
+| manual input/output globals | `useToolContext()` |
+| `useWidget()` | `useToolContext<"tool-name">()` |
+| `widgetMetadata` export | server `view` field plus optional `viewConfig` |
+| `text/html+skybridge` | generated `text/html;profile=mcp-app` View resource |
+
+The first six replacement hooks use the standard MCP Apps bridge except for the verified `useViewState()` state branch. Do not add direct `window.openai` detection to select between them.
+
+## The Shipped File Exception Is Narrow
+
+`useFiles()` intentionally wraps only two optional ChatGPT methods:
 
 ```typescript
-// v1 (LEGACY)
-export const widgetMetadata: WidgetMetadata = {
-  description: "Show results",
-  props: z.object({
-    results: z.array(z.object({ id: z.string() })),
-  }),
-  exposeAsTool: false,
-};
+const { isSupported, upload, getDownloadUrl } = useFiles();
 ```
 
-**v2 replacement:** Use `viewConfig` export (optional) and server-side tool `view` field.
+Shipped `view-runtime.ts` verifies both `window.openai.uploadFile` and `window.openai.getFileDownloadUrl` before setting `isSupported`. It does not wrap the official ChatGPT `{ library: true }` upload option or `selectFiles()` helper, and it captures support when the runtime is created rather than reacting to late API injection.
 
-```typescript
-// v2
-export const viewConfig: ViewConfig = {
-  displayModes: ["inline", "fullscreen"],
-};
+The official OpenAI Plugin UI reference is the authority for the wider `window.openai` surface. That wider surface is not evidence that mcp-use wraps each method.
 
-// Server-side (index.ts)
-view: {
-  name: "results",
-  description: "Show results",
-  csp: { /* ... */ },
-}
-```
+## Metadata Migration Is Standard-First
 
-## Why You Shouldn't Hand-Roll These
+Legacy Apps SDK projects may contain OpenAI-namespaced descriptor or resource metadata. Migrate to standard mcp-use fields where an equivalent exists:
 
-1. **Protocol fragmentation** — Skybridge is ChatGPT-only; MCP Apps is the standard spec. Mixing both is maintainable only via a framework.
-2. **State sync bugs** — `window.openai.setWidgetState()` calls need precise timing and protocol ordering. mcp-use handles this.
-3. **Capability detection** — You'd need to detect which host is running and emit different metadata. mcp-use does this.
-4. **CSP conflicts** — Skybridge and MCP Apps have different sandbox rules; mcp-use merges them correctly.
+| ChatGPT compatibility key | Preferred mcp-use v2 field |
+|---|---|
+| `openai/outputTemplate` | `view.name` → generated `_meta.ui.resourceUri` |
+| `openai/visibility` / `openai/widgetAccessible` | top-level `visibility` and standard tool calls |
+| `openai/widgetPrefersBorder` | `view.prefersBorder` |
+| `openai/widgetDomain` | `view.domain` |
+| legacy `openai/widgetCSP` standard categories | `view.csp` |
 
-## When You Might See These Terms
+Some OpenAI extensions have no standard equivalent: invocation status strings, `openai/fileParams`, `openai/widgetDescription`, and `openai/widgetCSP.redirect_domains`. Tool-descriptor extensions can pass through `ToolDefinition._meta`; generated resource extensions cannot be authored through a public arbitrary resource `_meta` surface in beta.66. See `01-dual-protocol.md` and `03-csp-differences.md` for the exact boundary.
 
-- **Documentation** — older MCP tutorials may reference `window.openai` or Skybridge; they describe v1 or early ChatGPT code.
-- **Existing codebases** — legacy projects may have direct `window.openai` calls; migrate them to mcp-use hooks.
-- **ChatGPT-only servers** — some internal ChatGPT systems still use Skybridge. mcp-use transparently supports them.
+## Migration Checklist
 
-## Migration Path
+1. Remove Skybridge MIME/resource registration.
+2. Bind the tool with `view: { name }` and declare `outputSchema`.
+3. Replace direct standard-equivalent host calls with mcp-use hooks.
+4. Keep `useFiles()` capability-gated if the app needs the shipped ChatGPT file subset.
+5. Move standard metadata to `view`, `visibility`, and other top-level mcp-use fields.
+6. Add only the ChatGPT-specific tool `_meta` extensions the use case requires.
+7. Treat unsupported resource-level OpenAI extensions as framework limitations, not hidden configuration fields.
+8. Validate the standard View in Inspector, then validate ChatGPT-specific behavior in real ChatGPT.
 
-If you have v1 or Apps SDK code:
-
-| v1/Legacy | v2 + mcp-use |
-|-|-|
-| `window.openai.setWidgetState()` | `useViewState()` |
-| `window.openai.widgetState` | `useViewState()` |
-| `widgetMetadata` export | `viewConfig` export + server `view: { ... }` |
-| `text/html+skybridge` MIME | `text/html;profile=mcp-app` MIME |
-| `useWidget()` hook | `useToolContext<"tool-name">()` hook |
-| Manual widget registration | Tool-level `view` field binding |
-
-See `references/28-migration/06-v1-to-v2-widgets-to-views.md` for detailed migration steps.
-
-## Do Not Implement
-
-- ❌ Direct `window.openai` calls
-- ❌ `text/html+skybridge` MIME type emission
-- ❌ Checking `window.openai` presence to decide flow
-- ❌ Manual `widgetMetadata` export (use `viewConfig` instead)
-
-**Always use mcp-use hooks.** They handle all protocol differences, host detection, and backward compatibility.
+See `references/28-migration/06-v1-to-v2-widgets-to-views.md` for the broader v1-to-v2 migration flow.

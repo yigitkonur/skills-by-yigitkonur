@@ -18,68 +18,74 @@ my-project/
 
 ## What `index.ts` Demonstrates
 
+This is the real generated file, verbatim (`{{PROJECT_NAME}}` is substituted with the project name at scaffold time):
+
 ```typescript
-import { MCPServer } from "mcp-use";
+import { completable, MCPServer } from "mcp-use";
 import { z } from "zod";
 
 const server = new MCPServer({
-  name: "my-server",
+  name: "{{PROJECT_NAME}}",
+  title: "{{PROJECT_NAME}}",
   version: "1.0.0",
+  description: "An MCP server built with mcp-use",
 });
 
-// Tool: weather forecast
-export const getWeather = server.tool(
+// Tool: demo weather lookup
+export const fetchWeather = server.tool(
   {
-    name: "get-weather",
-    description: "Get 5-day weather forecast for a city",
-    inputSchema: z.object({
-      city: z.string().describe("City name"),
-      unit: z.enum(["celsius", "fahrenheit"]).optional().describe("Temperature unit"),
-    }),
+    name: "fetch-weather",
+    description: "Return demo weather for a city",
+    inputSchema: z.object({ city: z.string() }),
     outputSchema: z.object({
       city: z.string(),
-      forecast: z.array(z.object({ day: z.string(), high: z.number(), low: z.number() })),
+      conditions: z.string(),
+      temperature: z.string(),
     }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  async ({ city, unit = "celsius" }) => {
-    // Mock response for demo
+  async ({ city }) => {
+    const weather = { city, conditions: "sunny", temperature: "22°C" };
     return {
-      content: [{ type: "text", text: `5-day forecast for ${city}` }],
-      structuredContent: {
-        city,
-        forecast: [{ day: "Monday", high: 22, low: 18 }],
-      },
+      content: [{ type: "text", text: JSON.stringify(weather) }],
+      structuredContent: weather,
     };
   }
 );
 
-// Prompt: code review assistant
+// Prompt: code review assistant with a completable argument
 server.prompt(
   {
-    name: "code-review",
-    description: "Review code for style and bugs",
-    arguments: [{ name: "language", description: "Programming language" }],
+    name: "review-code",
+    description: "Review code for correctness and maintainability",
+    schema: z.object({
+      language: completable(z.string(), ["typescript", "javascript", "python", "go"]),
+      code: z.string(),
+    }),
   },
-  async ({ language }) => [
-    {
-      type: "text",
-      text: `You are a code reviewer for ${language}. Be constructive.`,
-    },
-  ]
+  async ({ language, code }) => ({
+    messages: [
+      {
+        role: "user",
+        content: { type: "text", text: `Review this ${language} code:\n\n${code}` },
+      },
+    ],
+  })
 );
 
 export default server;
-
-server.listen();  // Starts HTTP on PORT (default 3000)
 ```
+
+Note the CLI, not the entry file, starts the listener — there is no `server.listen()` call. `mcp-use dev`/`mcp-use start` import the default export and bind it.
 
 ## Key Points
 
-1. **Tools are exported as const** — `export const getWeather = server.tool(...)` enables type inference in `mcp-env.d.ts` and view bindings.
+1. **Tools are exported as const** — `export const fetchWeather = server.tool(...)` enables type inference in `mcp-env.d.ts` and view bindings.
 2. **Raw MCP responses** — Return `{ content, structuredContent }` directly (no deprecated helpers).
 3. **No views** — Tools don't have a `view` field; they render as text.
-4. **Prompts are optional** — Demonstrations only; omit if not needed.
-5. **server.listen()** defaults to `process.env.PORT` or 3000; HTTP endpoint at `/mcp`.
+4. **Prompts use `schema`, not `arguments`** — `PromptDefinition` takes `{ name, title?, description?, schema? }` where `schema` is a Standard Schema (Zod object). There is no `arguments` array field in v2; wrap completable fields with `completable(schema, suggestions)` imported from `mcp-use`.
+5. **No `server.listen()` in the scaffolded file** — `npm run dev`/`npm run build`/`npm run start` (all `mcp-use` CLI subcommands) own the HTTP socket. Call `.listen(port?, options?)` yourself only in hand-coded, non-scaffolded servers (see `references/29-templates/04-template-blank-and-manual.md`).
+6. **`annotations`** — `{ readOnlyHint, openWorldHint, ... }` describe tool behavior to clients; see `references/04-tools/04-describe-and-annotations.md`.
 
 ## Development
 
@@ -93,13 +99,17 @@ npm run dev
 
 ```bash
 npm run deploy
-# Requires GitHub repo + login (mcp-use whoami)
-# Deploys to Manufact Cloud → https://{slug}.run.mcp-use.com/mcp
+# Default source mode: GitHub-backed. Requires a configured `origin` remote,
+# the Manufact GitHub App installed on that repo, and `mcp-use login` first.
+# Prints server ID, deployment ID, status, and a dashboard URL — copy the
+# generated MCP endpoint from the dashboard; do not infer it from the slug.
 ```
+
+`mcp-use deploy --no-github` skips Git entirely and uploads the local project as a managed archive (80 MB limit) instead — use it when there is no GitHub repo yet. `mcp-use login` authenticates; `mcp-use whoami` only prints the already-authenticated identity, it does not log in. Full flag/behavior reference: `references/25-deploy/`.
 
 ## Next Steps
 
 - Add more tools to `index.ts` — each as an exported const.
-- Use resources for data access (read `../06-resources/01-overview.md`).
-- Add OAuth to protect endpoints (read `../11-auth/01-overview.md`).
-- Read `04-tools/canonical-anchor.md` for a fully annotated tool example.
+- Use resources for data access (read `references/06-resources/01-overview.md`).
+- Add OAuth to protect endpoints (read `references/11-auth/01-overview.md`).
+- Read `references/04-tools/canonical-anchor.md` for a fully annotated tool example.

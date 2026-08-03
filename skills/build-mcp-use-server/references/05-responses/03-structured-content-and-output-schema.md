@@ -11,8 +11,10 @@ When `outputSchema` is set, callback must return:
 
 Or error:
 ```typescript
-{ isError: true, content: [...] }            // no structuredContent when error
+{ isError: true, content: [...] }            // structuredContent not required or validated when isError is true
 ```
+
+The SDK's output-schema check (`validateToolOutput`) skips validation entirely when `result.isError` is true — an `outputSchema`-bound tool with no `structuredContent` and `isError: false`/absent throws a protocol error (`InvalidParams`); with `isError: true` it is accepted regardless of `structuredContent`.
 
 ## Example: inventory search
 
@@ -51,17 +53,17 @@ SDK validates `structuredContent` against `outputSchema` at runtime.
 
 ## Auto JSON appending
 
-SDK auto-appends JSON text block when:
-1. `structuredContent` is a non-object scalar (number, string, boolean, array of scalars)
+SDK auto-appends a JSON text block when:
+1. `structuredContent` is a non-object value — array, string, number, boolean, or `null` (not a plain object)
 2. No `type: "text"` block already in `content`
 
 ```typescript
 // SDK adds JSON block automatically
-return { structuredContent: [1, 2, 3] };
+return { content: [], structuredContent: [1, 2, 3] };
 // Result: { content: [{ type: "text", text: "[1,2,3]" }], structuredContent: [1, 2, 3] }
 ```
 
-For objects, SDK does **not** auto-append; return explicit text block.
+For objects, SDK does **not** auto-append; return explicit text block. This fallback lives in the wire codec (`projectCallToolResult`), applied to every `tools/call` result regardless of protocol era.
 
 ## _meta privacy (separate from structuredContent)
 

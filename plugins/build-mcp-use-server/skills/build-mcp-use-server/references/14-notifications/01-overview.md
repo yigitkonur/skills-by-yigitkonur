@@ -28,7 +28,7 @@ Post-response pushes are impossible in a stateless HTTP model — v2 has no pers
 
 ## Cross-request (server methods)
 
-Use `server.notifyToolsChanged()`, `server.notifyPromptsChanged()`, `server.notifyResourcesChanged()`, or `server.notifyResourceUpdated(uri)` **between** requests to signal that a capability changed. Only clients with an active `subscriptions/listen` request for that notification type receive the message.
+Use `server.notifyToolsChanged()`, `server.notifyPromptsChanged()`, `server.notifyResourcesChanged()`, or `server.notifyResourceUpdated(uri)` to signal a change to clients with an active `subscriptions/listen` request. These server methods may be called from tool callbacks, custom routes, or background/external events; they are not restricted to gaps between requests.
 
 This is not a durable delivery system. If no client is listening when the notification fires, it is lost. Clients read the updated resource on their next explicit `resources/read` call.
 
@@ -37,5 +37,6 @@ This is not a durable delivery system. If no client is listening when the notifi
 - **No delivery queue:** If a client connects after a notification fires, it does not receive a backlog.
 - **No server-push after response:** Once a tool callback returns, the HTTP response ends. New notifications cannot be sent to that request.
 - **Subscription recovery:** Clients handle re-sync by re-reading resources after receiving a `resourceUpdated` notification.
+- **Response mode defaults to auto-upgrade.** The default transport mode (`"auto"`) automatically upgrades a request's response to an SSE stream the moment a mid-call notification, progress update, or log needs to go out, so request-scoped notifications are not lost under normal `MCPServer` usage. Forcing the underlying handler's response mode to `"json"` (only reachable through the low-level `createMcpMount`/`CreateMcpHandlerOptions` API, not the standard `new MCPServer({...})` config) drops any notification emitted before the final result — avoid setting it explicitly if you rely on `ctx.sendNotification`/`ctx.reportProgress`/`ctx.sendLog`.
 
 See `references/06-resources/06-subscriptions-listen.md` for stateless subscription workflow.

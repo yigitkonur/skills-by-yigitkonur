@@ -2,7 +2,7 @@
 
 *Read this when configuring host/origin validation, CORS, CSP, or handling secrets in Views.*
 
-Production deployments must validate HTTP headers, manage CORS, and prevent View iframes from exposing secrets in `structuredContent._meta`.
+Production deployments must validate HTTP headers, manage CORS, and prevent View iframes from receiving secrets in tool results (`structuredContent` or result `_meta`).
 
 ## Host validation and DNS rebinding
 
@@ -46,7 +46,7 @@ const server = new MCPServer({
 });
 ```
 
-**Views and `structuredContent`:** View iframes load from `MCP_ASSETS_URL` (build-time). If assets and MCP endpoints are on different origins, set `cors.origin` to include the View origin.
+**Views and `structuredContent`:** View iframes load assets from `MCP_ASSETS_URL` (read at runtime per request, falling back to `MCP_URL`/the request origin when unset). If assets and MCP endpoints are on different origins, set `cors.origin` to include the View origin.
 
 **ChatGPT integration:** When serving ChatGPT Apps via `server.fetch`, ChatGPT's origin (`https://chatgpt.openai.com`) must be in `cors.origin` if you use `credentials: true`.
 
@@ -95,9 +95,30 @@ export const searchTool = server.tool(
 );
 ```
 
-The framework merges CSP directives across all tool views; hosts enforce the union (most restrictive rule wins).
+On each `resources/read`, the framework merges CSP in this priority order (high to low):
 
-## Secrets and `structuredContent._meta`
+1. Author `view.csp` on the bound tool (above)
+2. `CSP_*_DOMAINS` env vars (per category) or the `CSP_URLS` shortcut
+3. MCP auto-append: `MCP_URL` → `connectDomains`; the resolved assets origin → `resourceDomains`
+
+`CSP_URLS` and per-category env vars rank above the MCP auto-append; duplicate origins keep the higher-priority entry's position.
+
+Set global domains without touching per-tool code:
+
+```bash
+# Shortcut: same domains across all four categories
+CSP_URLS=https://api.example.com,https://cdn.example.com
+
+# Or override one category independently
+CSP_CONNECT_DOMAINS=https://api.example.com
+CSP_RESOURCE_DOMAINS=https://cdn.example.com
+CSP_FRAME_DOMAINS=https://embed.example.com
+CSP_BASE_URI_DOMAINS=https://myserver.com
+```
+
+MCP Apps CSP fields (both on `view.csp` and via env): `connectDomains`, `resourceDomains`, `frameDomains`, `baseUriDomains`.
+
+## Secrets in tool results (`structuredContent` and result `_meta`)
 
 **Do NOT include secrets in `structuredContent`** — Views can read it via `useToolContext()` hooks. Secrets visible in the MCP wire become visible to ChatGPT/Claude/clients.
 
@@ -133,29 +154,35 @@ When using `input_required` round-trips (elicitation), the client echoes back `r
 ```typescript
 import { createRequestStateCodec } from "mcp-use";
 
-const requestStateCodec = createRequestStateCodec({
-  secret: process.env.REQUEST_STATE_SECRET,  // 32+ bytes
-  algorithm: "sha256",
+const requestStateCodec = createRequestStateCodec<{ userId: string }>({
+  key: process.env.REQUEST_STATE_SECRET!,  // 32+ bytes; string is UTF-8-encoded (also accepts Uint8Array)
+  ttlSeconds: 600,  // Default 600 (10 min); echoed state past its expiry is rejected
 });
 
 const server = new MCPServer({
   name: "my-server",
   version: "1.0.0",
-  requestState: requestStateCodec.verify,  // Codec verifies integrity
+  requestState: { verify: requestStateCodec.verify },  // Codec verifies integrity
 });
 
-// In a tool that elicits input:
+// Minting: seal a payload into the opaque wire string returned from inputRequired({ requestState })
+const wireState = await requestStateCodec.mint({ userId: "user-123" });
+
+// In a tool that elicits input, read the verified payload via ctx.requestState()
+// (a function, not an object — the seam has already run verify() by the time the handler runs)
 server.tool(
   { name: "auth-action", /* ... */ },
   async (params, ctx) => {
-    const userId = ctx.requestState?.userId;  // Verified by codec
-    if (!userId) {
+    const state = ctx.requestState<{ userId: string }>();  // Verified by codec; undefined on first call
+    if (!state?.userId) {
       return { isError: true, content: [{ type: "text", text: "Auth state invalid" }] };
     }
-    // Safe to use userId
+    // Safe to use state.userId
   }
 );
 ```
+
+`createRequestStateCodec` is signed, not encrypted — the payload is integrity-protected but readable by anyone with the wire string. Never put secrets in the payload. `verify()` throws a fixed opaque reason (`'malformed'` / `'mac'` / `'expired'` / `'bind'`) on any failure, never the decoded payload.
 
 ## TLS/HTTPS
 
@@ -182,15 +209,17 @@ Use a Software Composition Analysis (SCA) tool (Snyk, Dependabot) for continuous
 
 ## Logging and monitoring
 
-Use `ctx.sendLog()` to send sensitive events to the server for monitoring (not to the client):
+**`ctx.sendLog(level, data, logger?)` sends an MCP `notifications/message` notification to the connected CLIENT** — it is not a server-side or internal logging channel. Never route sensitive events, secrets, or internal error details through it; a client-visible channel is the wrong place for anything you wouldn't put directly in a tool response. It also does not honor any client-set log-level threshold: it calls the notify transport directly, unlike the SDK's own internal `logging/setLevel`-gated log path — so `sendLog("debug", ...)` reaches the client even if it requested only `"error"` and above. Use it only for status updates the client is meant to see (see `references/14-notifications/`).
+
+For server-side security/audit logging, use a real server-side sink (structured logger, Sentry, DataDog) inside an MCP event listener — the completed result arrives as the listener's second parameter, not `ctx.result`:
 
 ```typescript
-server.on("mcp:tools/call:complete", async (ctx) => {
-  if (ctx.result?.isError) {
-    await ctx.sendLog("warning", {
+server.on("mcp:tools/call:complete", async (ctx, result) => {
+  if (result.isError) {
+    logger.warn("tool_failed", {
       tool: ctx.params.name,
-      error: ctx.result.content?.[0]?.text,
-    }, "auth");
+      error: result.content?.[0]?.type === "text" ? result.content[0].text : undefined,
+    });
   }
 });
 ```

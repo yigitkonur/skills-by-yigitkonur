@@ -25,7 +25,7 @@ Do **not** use this skill when:
 
 - *The code is app-side `MCPClient` / browser / react client mounting — route to `build-mcp-use-client`.*
 - *The work is `MCPAgent` LLM orchestration over MCP tools — route to `build-mcp-use-agent`.*
-- *The user wants raw `@modelcontextprotocol/sdk` primitives or strict stdio without mcp-use — route to `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2` (v2 of mcp-use cannot serve stdio at all).*
+- *The user wants raw official SDK primitives or strict stdio without mcp-use — route v1 `@modelcontextprotocol/sdk` work to `build-mcp-server-sdk-v1`, and split-package v2 `@modelcontextprotocol/{core,server,client}` work to `build-mcp-server-sdk-v2` (mcp-use v2 cannot serve stdio).*
 - *The question is layer placement, import direction, or composition-root structure — route to `build-clean-mcp-architecture` first (see `references/00-clean-architecture-coordination.md`), then return here for mechanics.*
 
 ## Version stance
@@ -54,7 +54,7 @@ This skill teaches **v2** (verified against `mcp-use@2.0.0-beta.66`; exact pins 
 | Extend an existing v2 server | `scripts/audit-server-readiness.sh.md` | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/08-server-config/01-mcp-server-constructor.md`, `references/22-validate/01-inspector-walkthrough.md` |
 | v1 project detected | `references/28-migration/02-v1-to-v2-overview.md` | `references/28-migration/03-v1-to-v2-imports-server-and-tools.md`, `references/28-migration/04-v1-to-v2-responses-and-helpers.md`, then per-area migration files |
 | Greenfield HTTP tool server | `references/02-setup/02-scaffold-with-create-mcp-use-app.md` or `references/02-setup/04-manual-http-server.md` | `references/04-tools/02-registering-a-tool.md`, `references/05-responses/01-overview-decision-table.md`, `references/22-validate/02-curl-handshake.md`, `references/30-workflows/01-greenfield-tool-server-to-vercel.md` |
-| MCP Apps view / ChatGPT app | `references/18-mcp-apps/canonical-anchor.md` | `references/18-mcp-apps/server-surface/01-tool-view-field.md`, `references/18-mcp-apps/view-react/01-setup-and-providers.md`, `references/30-workflows/02-views-app-chart-widget.md`, `references/20-inspector/08-debugging-chatgpt-apps.md` |
+| MCP Apps view / ChatGPT app | `references/18-mcp-apps/canonical-anchor.md` | `references/18-mcp-apps/server-surface/01-tool-view-field.md`, `references/18-mcp-apps/view-react/01-setup-and-providers.md`; if the host/model must act on mounted UI, `references/18-mcp-apps/view-react/09-useviewtool.md`; then `references/30-workflows/02-views-app-chart-widget.md`, `references/20-inspector/08-debugging-chatgpt-apps.md` |
 | Next.js drop-in | `references/19-nextjs-drop-in/01-overview-withmcpuse.md` | `references/19-nextjs-drop-in/02-route-and-file-placement.md`, `references/30-workflows/05-nextjs-drop-in.md` |
 | Auth / OAuth | `references/11-auth/01-overview.md` | `references/11-auth/02-attaching-a-provider.md`, the provider file under `references/11-auth/providers/`, `references/11-auth/06-debugging-checklist.md` |
 | Wrap a REST API | `references/17-advanced/03-openapi-fromopenapi.md` | `references/30-workflows/06-openapi-to-mcp.md` |
@@ -68,7 +68,7 @@ Use `references/00-reference-index.md` only when the intent table is not specifi
 ## Core rules
 
 - Import `MCPServer` and server APIs from `mcp-use` (root). `mcp-use/server` does not exist in v2.
-- Install the `beta` tag: `mcp-use@beta`, `@mcp-use/cli@beta`, scaffold with `create-mcp-use-app@beta`. Node >= 22, ESM only, zod v4 in the project's own dependencies.
+- Install the `beta` tag: `mcp-use@beta`, `@mcp-use/cli@beta`, scaffold with `create-mcp-use-app@beta`. Require Node >= 22.22.2 and ESM; install a `StandardSchemaWithJSON` library in the project (this skill's examples use zod v4).
 - Return raw MCP result envelopes (`CallToolResult` etc.). The v1 helpers still exported are deprecated — only `references/05-responses/07-deprecated-v1-helpers.md` teaches them, for migration.
 - v2 is stateless per request: no session stores in the shipped beta, no post-response push, no `ctx.sample()`. Cross-request state goes through the `requestState` codec or your own store.
 - Serve over Streamable HTTP only (`/mcp` by default). Strict stdio is a raw-SDK requirement — route out.
@@ -104,7 +104,7 @@ Summarize: target path, v1 vs v2, existing server vs none, tools-only vs views, 
 
 **No server:** scaffold with `create-mcp-use-app@beta` (`scripts/scaffold-mcp-use-server.sh` automates it) or hand-build from `references/02-setup/04-manual-http-server.md`. For an existing app, add a side-car per `references/02-setup/05-add-to-existing-app.md`; for Next.js follow `references/19-nextjs-drop-in/`.
 
-**Underspecified:** ask only for what blocks implementation: exposed data/service, auth requirement, tools-only vs views, deploy target.
+**Underspecified:** infer from the existing project when possible; ask only for user-owned choices that block implementation (the exposed service/data, auth policy, tools-only vs. views, or deploy target).
 
 ### 4. Build or extend
 
@@ -123,9 +123,9 @@ Pick the smallest set that proves the changed behavior; report only the rung rea
 
 - read-only scan: files inspected, nothing executed
 - static: `mcp-use typecheck` / `npm run build`
-- local runtime: `mcp-use dev` serving `/mcp` (Inspector automounts at `/mcp/inspector`)
+- local runtime: `mcp-use dev` serving `/mcp`; its CLI-owned listener auto-mounts Inspector at `/mcp/inspector` unless `--no-inspector` is set. Direct `server.listen()`, `server.fetch`, embedded Next.js handlers, and plain `mcp-use start` do not auto-mount it.
 - Inspector: surface observed and called (`references/22-validate/01-inspector-walkthrough.md`)
-- curl handshake: initialize, tools/list, tools/call (`references/22-validate/02-curl-handshake.md`)
+- curl protocol probe: use the native modern wire (no `initialize`) from `references/09-transports/02-streamable-http.md`, or the legacy compatibility handshake (`initialize`, `tools/list`, `tools/call`) in `references/22-validate/02-curl-handshake.md`; legacy POSTs require `Accept: application/json, text/event-stream`.
 - unit: `server.fetch(new Request(...))` tests (`references/22-validate/04-unit-testing-server-fetch.md`)
 - live client: `mcp-use client`, tunnel, or `test-by-mcpc-cli` session (`references/22-validate/03-connect-real-clients.md`)
 - deployed: health route plus a live MCP call against the public URL
@@ -137,20 +137,20 @@ For views, verify the text fallback (`content`) and, when possible, Inspector CS
 - Return concise complete `content` always; add `structuredContent` when there is an `outputSchema`, a typed consumer, or view props — and keep the two semantically equivalent.
 - Put private or bulky data in `_meta`; treat `structuredContent` as model-visible (`references/05-responses/06-meta-and-private-data.md`).
 - Expected failures return `isError` envelopes; unexpected failures throw (`references/05-responses/05-error-handling.md`).
-- Guard elicitation on `ctx.client.capabilities()` before requesting input (`references/16-client-introspection/02-capabilities.md`).
+- Guard the exact elicitation mode before returning `input_required`: check `ctx.client.capabilities().elicitation?.form` for `inputRequired.elicit(...)` and `.url` for `inputRequired.elicitUrl(...)` (`references/12-elicitation/01-overview.md`, `references/16-client-introspection/02-capabilities.md`).
 - Need model-side generation? The host generates, the tool validates — sampling is gone (`references/13-sampling/01-sampling-removed-in-v2.md`).
-- Views: `view.name` must match `views/<name>/view.tsx`; `outputSchema` is mandatory; declare CSP domains in the `view.csp` field; call tools via `useCallTool`, never raw `fetch`.
+- Views: `view.name` must match the one-level `views/<name>/view.tsx` folder; `outputSchema` is mandatory; declare domains in `view.csp`; use `useCallTool` for View → server and `useViewTool` for host/model → mounted View, never raw `fetch`.
 - One server definition serves both MCP Apps and ChatGPT hosts — never hand-roll `window.openai` (`references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md`).
 
 ## Guardrails
 
-- Never import server primitives from `@modelcontextprotocol/sdk` directly.
+- In an mcp-use server, do not mix in raw official SDK server primitives (`@modelcontextprotocol/sdk` v1 or `@modelcontextprotocol/{core,server}` v2); route a raw-SDK implementation to the matching sibling skill instead.
 - Never install bare `mcp-use` for a v2 project — that is v1; pin the `beta` tag.
 - Never use zod v3, CommonJS, or Node < 22 with v2.
 - Never use `z.any()`/`z.unknown()` where a concrete schema is possible; `.describe()` every model-filled field.
 - Never teach or write v1 response helpers in new code; raw envelopes only.
 - Never put secrets in source, logs, `structuredContent`, view props, or view state.
-- Never skip CORS/allowed-hosts decisions for public HTTP servers (`references/26-anti-patterns/05-security-and-cors.md`).
+- Decide Host validation, Origin validation, and CORS separately: localhost `listen()` auto-enables Host checks; `server.fetch()` needs explicit `allowedHosts`; Origin checks require `allowedOrigins`; CORS headers require `cors` (`references/08-server-config/03-cors-and-allowed-origins.md`, `references/08-server-config/04-dns-rebinding-and-host-validation.md`).
 - Never embed the MCP server as middleware inside another framework's app — use the runtime adapters or side-car patterns.
 - Never claim session persistence exists in shipped v2 — see `references/10-sessions/01-overview-stateless-truth.md`.
 
@@ -177,7 +177,7 @@ Unless the user asks for another format, report:
 3. implementation or exact plan
 4. validation rung reached, commands run, and blockers
 5. if views changed: text fallback and CSP verification state
-6. if deploy/production changed: checklist and health state
+6. if deploy/production changed: platform deployment ID, source branch/SHA when available, terminal conclusion, exact dashboard/platform URL, checklist state, and live health/operation evidence
 7. key references used, with exact paths for the route actually followed
 
 ## Reference routing
@@ -208,7 +208,7 @@ Start with intent or symptoms; use the inventory only as fallback.
 - **Advanced:** `references/17-advanced/01-proxy-and-gateway.md`, `references/17-advanced/02-proxy-auth-and-namespacing.md`, `references/17-advanced/03-openapi-fromopenapi.md`, `references/17-advanced/04-mcp-use-vs-official-sdk.md`, `references/17-advanced/canonical-anchor.md`
 - **MCP Apps:** `references/18-mcp-apps/01-what-are-mcp-apps.md`, `references/18-mcp-apps/02-mcp-apps-vs-chatgpt-apps-sdk.md`, `references/18-mcp-apps/03-vocabulary-views.md`, `references/18-mcp-apps/04-when-to-use-vs-tools-only.md`, `references/18-mcp-apps/05-host-capability-detection.md`, `references/18-mcp-apps/anti-patterns.md`, `references/18-mcp-apps/canonical-anchor.md`
 - **MCP Apps server surface:** `references/18-mcp-apps/server-surface/01-tool-view-field.md`, `references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md`, `references/18-mcp-apps/server-surface/03-viewconfig.md`, `references/18-mcp-apps/server-surface/04-assets-mcp-url-and-serving.md`, `references/18-mcp-apps/server-surface/05-csp-metadata.md`
-- **MCP Apps react:** `references/18-mcp-apps/view-react/01-setup-and-providers.md`, `references/18-mcp-apps/view-react/02-usetoolcontext.md`, `references/18-mcp-apps/view-react/03-usecalltool.md`, `references/18-mcp-apps/view-react/04-useviewstate-and-model-context.md`, `references/18-mcp-apps/view-react/05-display-modes.md`, `references/18-mcp-apps/view-react/06-followups-and-open-external.md`, `references/18-mcp-apps/view-react/07-host-context-files-and-size.md`, `references/18-mcp-apps/view-react/08-theme-and-components.md`
+- **MCP Apps react:** `references/18-mcp-apps/view-react/01-setup-and-providers.md`, `references/18-mcp-apps/view-react/02-usetoolcontext.md`, `references/18-mcp-apps/view-react/03-usecalltool.md`, `references/18-mcp-apps/view-react/04-useviewstate-and-model-context.md`, `references/18-mcp-apps/view-react/05-display-modes.md`, `references/18-mcp-apps/view-react/06-followups-and-open-external.md`, `references/18-mcp-apps/view-react/07-host-context-files-and-size.md`, `references/18-mcp-apps/view-react/08-theme-and-components.md`, `references/18-mcp-apps/view-react/09-useviewtool.md`
 - **ChatGPT apps:** `references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md`, `references/18-mcp-apps/chatgpt-apps/02-legacy-window-openai-and-skybridge.md`, `references/18-mcp-apps/chatgpt-apps/03-csp-differences.md`, `references/18-mcp-apps/chatgpt-apps/04-runtime-detection.md`
 - **Next.js:** `references/19-nextjs-drop-in/01-overview-withmcpuse.md`, `references/19-nextjs-drop-in/02-route-and-file-placement.md`, `references/19-nextjs-drop-in/03-views-in-nextjs.md`, `references/19-nextjs-drop-in/04-deploying-on-vercel.md`
 - **Inspector:** `references/20-inspector/01-overview.md`, `references/20-inspector/02-cli.md`, `references/20-inspector/03-connection-settings.md`, `references/20-inspector/04-url-parameters.md`, `references/20-inspector/05-keyboard-shortcuts-and-palette.md`, `references/20-inspector/06-integration-and-add-to-client.md`, `references/20-inspector/07-self-hosting.md`, `references/20-inspector/08-debugging-chatgpt-apps.md`, `references/20-inspector/09-changelog-pointer.md`

@@ -12,7 +12,7 @@
 | Build MCP Apps views (React components) that render tool results | **this skill** (`18-mcp-apps/`) |
 | Connect an app to a server: list/call tools, read resources, subscribe | `build-mcp-use-client` |
 | Build an LLM agent that plans and orchestrates multiple servers | `build-mcp-use-agent` |
-| Use raw `@modelcontextprotocol/sdk` directly (no framework) | `build-mcp-server-sdk-v2` |
+| Use the official split-package SDK directly (`@modelcontextprotocol/server`/`client`/`core`, no `mcp-use` wrapper) | `build-mcp-server-sdk-v2` |
 
 ## Fuzzy boundaries
 

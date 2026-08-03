@@ -1,8 +1,8 @@
-# Canonical Example: End-to-End Tool + View + CSP
+# Canonical Example: Minimal End-to-End Tool + View
 
-*Read this as the authoritative reference implementation for an MCP Apps tool with a view.*
+*Read this as the authoritative minimal reference implementation for an MCP Apps tool with a view.*
 
-This example shows a complete, minimal, production-ready tool + view + CSP setup. Use it as the template for your own tools.
+This example shows a small, copy-paste-oriented tool + view baseline. Add authentication, provider-response validation, host-specific metadata, and deployment controls when your application requires them.
 
 ## Server (index.ts)
 
@@ -39,43 +39,27 @@ export const searchWeb = server.tool(
       limit: z.number().int().min(1).max(20).describe("Results to return").default(10),
     }),
     outputSchema: searchResultSchema,
-    // Bind to view; declare CSP
+    // Bind the tool result to the View.
     view: {
       name: "search-results",
-      description: "Display search results in a clickable list",
-      csp: {
-        connectDomains: ["https://api.search-provider.com"],
-      },
+      description: "Display search results in a list",
       prefersBorder: true,
     },
   },
   async ({ query, limit }) => {
-    // Fetch results from external API (CSP allows this)
-    const apiResponse = await fetch(
-      `https://api.search-provider.com/search?q=${encodeURIComponent(query)}&limit=${limit}`,
-      { headers: { "Authorization": `Bearer ${process.env.SEARCH_API_KEY}` } }
-    );
-
-    if (!apiResponse.ok) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: `Search failed: ${apiResponse.statusText}` }],
-      };
-    }
-
-    const rawResults = await apiResponse.json();
-
-    // Parse and shape results
-    const results = rawResults.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      url: item.url,
-      snippet: item.description,
+    // Keep the baseline self-contained. Replace this with your database or
+    // server-side provider call; View CSP does not authorize or restrict work
+    // performed inside this server callback.
+    const results = Array.from({ length: limit }, (_, index) => ({
+      id: `result-${index + 1}`,
+      title: `${query} result ${index + 1}`,
+      url: `https://example.com/search?q=${encodeURIComponent(query)}`,
+      snippet: "Replace this generated row with data from your server-side source.",
     }));
 
     // Return raw MCP result
     // - `content`: text for the model
-    // - `structuredContent`: typed by outputSchema, passed to view as props
+    // - `structuredContent`: typed by outputSchema and exposed as View toolOutput
     return {
       content: [
         {
@@ -86,18 +70,16 @@ export const searchWeb = server.tool(
       structuredContent: {
         query,
         results,
-        totalCount: rawResults.totalCount,
+        totalCount: results.length,
       },
     };
   }
 );
 
-// Register views and start server
-const viewsManifest = require("./.mcp-use/build/views-manifest.json");
-server.registerViews(viewsManifest);
-
-await server.listen(3000);
-console.log("MCP server running on http://localhost:3000/mcp");
+// No registerViews() call and no listen() call here. `mcp-use dev` and
+// `mcp-use build` own view discovery/build and the server socket — the
+// entry file's only job is this default export.
+export default server;
 ```
 
 ## View (views/search-results/view.tsx)
@@ -105,23 +87,23 @@ console.log("MCP server running on http://localhost:3000/mcp");
 ```typescript
 import {
   useToolContext,
-  useCallTool,
+  useHostContext,
+  useOpenExternal,
   ThemeProvider,
   ModelContext,
-  ViewControls,
   type ViewConfig,
 } from "mcp-use/react";
 
-// Optional: export immutable view config
+// Optional: export pre-render view config
 export const viewConfig: ViewConfig = {
   displayModes: ["inline", "fullscreen"],
   autoResize: true,
 };
 
 export default function SearchResultsView() {
-  // Typed by tool's outputSchema
   const ctx = useToolContext<"search-web">();
-  const { callTool: detailTool } = useCallTool("get-result-detail");
+  const openExternal = useOpenExternal();
+  const { hostCapabilities } = useHostContext();
 
   // Guard on status
   if (ctx.status === "pending") {
@@ -144,14 +126,14 @@ export default function SearchResultsView() {
     );
   }
 
-  // status === "ready"
-  const { results, totalCount } = ctx.toolOutput;
+  // status === "ready"; toolInput can still be undefined, so use the query
+  // returned in structuredContent instead of dereferencing toolInput.
+  const { query, results, totalCount } = ctx.toolOutput;
+  const canOpenLinks = hostCapabilities?.openLinks !== undefined;
 
   return (
     <ThemeProvider>
-      <ModelContext
-        content={`Search results for "${ctx.toolInput.query}": ${totalCount} found`}
-      >
+      <ModelContext content={`Search results for "${query}": ${totalCount} found`}>
         <div style={{ padding: "1rem" }}>
           <h2>Results ({results.length})</h2>
           <ul style={{ listStyle: "none", padding: 0 }}>
@@ -162,42 +144,27 @@ export default function SearchResultsView() {
                   marginBottom: "1rem",
                   borderBottom: "1px solid #ccc",
                   paddingBottom: "1rem",
-                  cursor: "pointer",
-                }}
-                onClick={async () => {
-                  // Call another tool from the view
-                  try {
-                    await detailTool({ resultId: result.id });
-                  } catch (err) {
-                    console.error("Failed to get details:", err);
-                  }
                 }}
               >
-                <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ textDecoration: "none", color: "blue" }}
-                >
-                  <h3 style={{ marginTop: 0 }}>{result.title}</h3>
-                </a>
+                <h3 style={{ marginTop: 0 }}>{result.title}</h3>
                 <p style={{ margin: "0.5rem 0", fontSize: "0.9rem" }}>
                   {result.snippet}
                 </p>
+                {canOpenLinks && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void openExternal({ url: result.url }).catch((error) => {
+                        console.error("Host could not open result:", error);
+                      });
+                    }}
+                  >
+                    Open result
+                  </button>
+                )}
               </li>
             ))}
           </ul>
-
-          <ViewControls>
-            <button
-              onClick={() => {
-                // Model could also request more results
-                console.log("Request more from model");
-              }}
-            >
-              More Results
-            </button>
-          </ViewControls>
         </div>
       </ModelContext>
     </ThemeProvider>
@@ -207,27 +174,19 @@ export default function SearchResultsView() {
 
 ## Key Patterns
 
-1. **Tool definition** has `outputSchema`, `view: { name }`, and `csp` for external APIs.
+1. **Tool definition** has `outputSchema` and `view: { name }`.
 2. **Server result** returns raw `{ content, structuredContent }` matching the schema.
 3. **View export** is the default component + optional `viewConfig`.
-4. **Status guard** protects against crashes when `status !== "ready"`.
-5. **useToolContext** is typed by the tool name (e.g., `"search-web"`).
-6. **useCallTool** from the view invokes other tools with proper error handling.
-7. **ModelContext** describes the current UI state to the model.
-8. **CSP declaration** allows the server to fetch from external APIs safely.
+4. **Status guard** protects against access before `status === "ready"`.
+5. **Ready input remains optional**; render from `toolOutput` when the output already carries the needed value.
+6. **useToolContext** is typed by the exported tool name (`"search-web"`).
+7. **External navigation** goes through `useOpenExternal` and is shown only when the host advertises `openLinks`.
+8. **ModelContext** describes the current UI state to the model.
+9. **View CSP is an iframe boundary.** Add `view.csp.connectDomains` only when browser code in the View calls an external origin. It does not authorize or constrain the server callback's `fetch`.
 
-## Environment Setup
+## When to Add View CSP
 
-Ensure these are set at deploy time:
-
-```bash
-# Server env vars
-SEARCH_API_KEY=sk-xxxxx          # API credentials (only server sees)
-MCP_URL=https://myserver.com     # Auto-added to CSP connectDomains
-
-# CSP env vars (optional, overrides tool view.csp)
-CSP_CONNECT_DOMAINS=https://api.search-provider.com
-```
+This baseline does not fetch from third-party origins in browser code, so it declares no third-party View CSP domains. If the View itself later calls `https://api.example.com`, add that origin to `view.csp.connectDomains`. A database or provider request performed inside the server callback is outside the View iframe's CSP boundary.
 
 ## Testing Locally
 
@@ -236,14 +195,17 @@ npm run dev
 # Server at http://localhost:3000/mcp
 # Inspector at http://localhost:3000/mcp/inspector
 
-# Test via inspector: call search-web tool
-# View renders at http://localhost:3000/mcp/views/search-results
+# Test via inspector: call search-web tool, then confirm the
+# search-results view renders below the tool result in the inspector's
+# tool-call panel. There is no standalone browsable URL for a view — it
+# renders only inside a host (the Inspector or a real MCP client), fetched
+# as the ui://views/search-results.html resource the tool result points to.
 ```
 
 ## Cross-References
 
 - **Server setup:** `references/18-mcp-apps/server-surface/01-tool-view-field.md`
 - **CSP details:** `references/18-mcp-apps/server-surface/05-csp-metadata.md`
-- **View hooks:** `references/18-mcp-apps/view-react/02-usetoolcontext.md`, `03-usecalltool.md`
+- **View hooks:** `references/18-mcp-apps/view-react/02-usetoolcontext.md`, `references/18-mcp-apps/view-react/06-followups-and-open-external.md`, `references/18-mcp-apps/view-react/07-host-context-files-and-size.md`
 - **Anti-patterns:** `references/18-mcp-apps/anti-patterns.md`
 - **ChatGPT support:** `references/18-mcp-apps/02-mcp-apps-vs-chatgpt-apps-sdk.md`

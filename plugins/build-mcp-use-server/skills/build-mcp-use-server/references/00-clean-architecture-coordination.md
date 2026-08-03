@@ -5,7 +5,7 @@ Use this when a task blends TypeScript MCP server structure with mcp-use v2 mech
 The counterpart reference is in `build-clean-mcp-architecture` at:
 
 ```text
-skills/build-clean-mcp-architecture/skills/build-clean-mcp-architecture/references/coordinate-with-build-mcp-use-server.md
+skills/build-clean-mcp-architecture/references/coordinate-with-build-mcp-use-server.md
 ```
 
 ## Ownership split

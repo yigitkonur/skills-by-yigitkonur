@@ -24,7 +24,7 @@
 
 **Structured content** — JSON data returned by a tool (the `structuredContent` field of its result). Passed as props to the view component via `useToolContext()`.
 
-**Model context** — the declarative description of the current view UI, assembled from `<ModelContext>` components and `useViewState()` calls. Sent to the model as `_meta.ui` to inform next steps.
+**Model context** — the declarative description of the current view UI, assembled from `<ModelContext>` components and `useViewState()` calls, merged into one JSON snapshot with a reserved `_uiContext` key holding the serialized `<ModelContext>` tree. This is NOT sent via `_meta` — `_meta` never reaches the model (view-only channel). On MCP Apps hosts the runtime sends the merged snapshot as `structuredContent` plus a JSON text `content` block through the `ui/update-model-context` request; on ChatGPT it writes to `modelContent` via `window.openai.setWidgetState`.
 
 ## Deprecated v1 Terminology (Do Not Use)
 
@@ -42,7 +42,7 @@
 - **MCP** = Model Context Protocol (the underlying wire protocol)
 - **MCP Apps** = MCP Applications (interactive UI extension standard)
 - **CSP** = Content Security Policy (sandbox restrictions for views)
-- **UIResource** / **MCP UI Resource** = the auto-generated resource metadata for a view
+- **View resource** = the auto-generated MCP resource for a view (`ui://views/<name>.html`); the spec's underlying metadata shape is `McpUiResourceMeta` (`csp`, `permissions`, ...) from `@modelcontextprotocol/ext-apps` — not a symbol named `UIResource` exported by mcp-use
 
 ## Authority
 

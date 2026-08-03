@@ -31,6 +31,11 @@ export const greet = server.tool(
 ## Full Signature (with Optional Fields)
 
 ```typescript
+const ticketStore = [
+  { id: "T-100", title: "Login fails after reset", status: "open" },
+  { id: "T-101", title: "Update billing address", status: "closed" },
+] as const;
+
 export const searchTickets = server.tool(
   {
     name: "search-tickets",
@@ -59,7 +64,11 @@ export const searchTickets = server.tool(
   },
   async (args, ctx) => {
     await ctx.sendLog("info", `Searching: query="${args.query}" status=${args.status}`);
-    const tickets = await db.searchTickets(args.query, args.status, args.limit);
+    const normalized = args.query.toLowerCase();
+    const tickets = ticketStore
+      .filter((ticket) => ticket.status === args.status)
+      .filter((ticket) => ticket.title.toLowerCase().includes(normalized))
+      .slice(0, args.limit);
     return {
       content: [{ type: "text", text: `Found ${tickets.length} tickets` }],
       structuredContent: { tickets, total: tickets.length },
@@ -75,7 +84,8 @@ export const searchTickets = server.tool(
 | `name` | `string` | (required) | Unique kebab-case identifier, e.g., `"get-user"` |
 | `title` | `string` | Inferred from `name` | Human-readable label for UIs |
 | `description` | `string` | undefined | LLM-facing description of behavior |
-| `inputSchema` | `StandardSchemaWithJSON` | undefined | Input validation (Zod v4, ArkType, Valibot, etc.); every field must have `.describe()` |
+| `inputSchema` | `StandardSchemaWithJSON` | undefined | Input validation (Zod v4, ArkType, Valibot, etc.); every field must have `.describe()`. Emitted on the wire as `inputSchema`. |
+| `schema` | `StandardSchemaWithJSON` | undefined | Alias for `inputSchema`. `inputSchema` wins when both are set. Prefer `inputSchema` in new code — it matches the MCP wire field name. |
 | `outputSchema` | `StandardSchemaWithJSON` | undefined | Output schema (required if tool has a `view`); SDK validates `structuredContent` at runtime |
 | `annotations` | `ToolAnnotations` | undefined | Hints: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` |
 | `_meta` | `MetaObject` | undefined | Opaque extension metadata on `tools/list` descriptor |
@@ -87,9 +97,9 @@ export const searchTickets = server.tool(
 Handlers return `ToolResult<TOutput>`:
 
 ```typescript
-type ToolResult<TOutput> = 
+type ToolResult<TOutput> =
   | InputRequiredResult                         // elicitation re-run
-  | (TOutput extends never 
+  | ([TOutput] extends [never]
       ? CallToolResult                          // no outputSchema: any CallToolResult
       : (CallToolResult & { structuredContent: TOutput })  // with outputSchema: must include structuredContent
         | (CallToolResult & { isError: true }))  // or error response
@@ -111,7 +121,7 @@ Avoid: bare nouns (`user`), generic verbs (`handle`, `process`), camelCase.
 Write for the LLM. Include **what**, **when to use**, and **what is returned**:
 
 ```typescript
-description: 
+description:
   "Search support tickets by status and keyword. " +
   "Returns matching tickets sorted by creation date. " +
   "Use when the user needs to find specific tickets."
@@ -126,13 +136,23 @@ export const getTool = server.tool(...);
 // mcp-env.d.ts now knows getTool's input and output types
 ```
 
-## Chaining
+## No Chaining — `tool()` Returns a `ToolRef`, Not the Server
 
-`server.tool()` returns the server for chaining:
+`server.tool()` returns a frozen `ToolRef<Name, Input, Output>` (`{ name }` plus phantom types), not `this`. Calling `.tool()` again on that return value does not compile:
 
 ```typescript
+// WRONG — ToolRef has no .tool() method; this fails to type-check.
 server
   .tool({ name: "greet", ... }, ...)
-  .tool({ name: "search", ... }, ...)
-  .tool({ name: "update", ... }, ...);
+  .tool({ name: "search", ... }, ...);
 ```
+
+Register each tool as its own statement, against `server` directly:
+
+```typescript
+export const greet = server.tool({ name: "greet", ... }, ...);
+export const search = server.tool({ name: "search", ... }, ...);
+export const update = server.tool({ name: "update", ... }, ...);
+```
+
+`resource()` and `prompt()` do return `this` for chaining — `tool()` is the exception because its return value carries the phantom types views need.

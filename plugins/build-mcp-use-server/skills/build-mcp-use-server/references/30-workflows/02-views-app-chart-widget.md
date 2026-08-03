@@ -65,8 +65,9 @@ export const generateChart = server.tool(
 );
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
 
 **Verify:** `npm run typecheck` passes.
 

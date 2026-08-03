@@ -36,8 +36,10 @@ new MCPServer({
 | `enabled` | `boolean` | `true` (when `cors` is set) | Set to `false` to disable CORS headers. |
 | `origin` | `string \| string[] \| function` | Reflects request `Origin` header | Single origin, array of origins, or callback returning origin or `null` to reject. `"*"` requires explicit opt-in (not default). |
 | `methods` | `string[]` | `["GET", "HEAD", "POST", "OPTIONS"]` | Allowed HTTP methods. |
-| `allowedHeaders` | `string[]` | Common MCP + JSON headers | Headers the browser may send in the request. |
+| `allowedHeaders` | `string[]` | `["Content-Type", "Authorization", "mcp-protocol-version", "mcp-method", "mcp-name"]` | Headers the browser may send in the request. |
 | `credentials` | `boolean` | `false` | When `true`, allows `Authorization` header and cookies. Required for bearer tokens. |
+
+CORS middleware short-circuits `OPTIONS` preflight requests with a bare `204` response carrying the CORS headers (no MCP handler invoked). For non-`OPTIONS` requests it merges CORS headers onto whatever response the rest of the stack produces, unless a response already carries `Access-Control-Allow-Origin` (double-wrap guard).
 
 ## Origin Validation: Request-Side Access Control
 
@@ -59,14 +61,17 @@ new MCPServer({
 
 ## Localhost-Class Protection
 
-When you bind to `127.0.0.1`, `localhost`, or `::1`, **localhost-class origins are automatically allowed**. You can add extra hosts without losing local access.
+Binding to `127.0.0.1`, `localhost`, or `::1` does **NOT** by itself turn Origin validation on — Origin validation is off everywhere, including localhost binds, until `allowedOrigins` is set (this is the opposite of Host validation, which localhost binds enable automatically — see `04-dns-rebinding-and-host-validation.md`).
 
 ```typescript
-// Local development: localhost origins auto-allowed
+// Local development, no allowedOrigins: Origin validation is OFF
 await server.listen(3000);  // binds 127.0.0.1:3000
-// POST from http://localhost:3000 → allowed (localhost)
-// POST from http://other-machine:3000 → rejected (not localhost)
+// POST from https://any-origin.example → allowed (Origin validation not configured)
+```
 
+Once you set `allowedOrigins`, localhost-class origins (`http://localhost`, `http://127.0.0.1`, `http://[::1]`, any port) are added **additively** alongside your explicit list — so turning validation on for a public origin never locks out local testing:
+
+```typescript
 // Public deployment with extra origin
 new MCPServer({
   name: "api",
@@ -74,7 +79,8 @@ new MCPServer({
   allowedOrigins: ["https://app.example.com"],
 });
 // POST from https://app.example.com → allowed (in allowedOrigins)
-// POST from https://other.com → rejected
+// POST from http://localhost:3000 → allowed (localhost-class, additive)
+// POST from https://other.com → rejected (403)
 // POST with no Origin header → allowed (non-browser clients)
 ```
 

@@ -32,7 +32,7 @@ const server = new MCPServer<TUser>(config: ServerConfig<TUser>)
 | `legacy` | `"stateless" \| "reject"` | `"stateless"` | How to serve 2025-era (non-envelope) legacy requests: stateless with fresh instance, or reject with unsupported-protocol-version. |
 | `publicLandingPage` | `boolean` | `false` | Expose landing page without bearer auth when OAuth configured. MCP protocol requests remain protected. |
 | `logging` | `LoggingOptions` | (enabled at `info` level) | Request logging control: `{ enabled?: boolean, level?: "info" \| "debug" \| "trace" }`. `MCP_USE_LOG_LEVEL` env overrides. |
-| `requestState` | `ServerOptions["requestState"]` | `undefined` | Integrity codec (e.g., `createRequestStateCodec(...).verify`) for `input_required` round-trip state validation. |
+| `requestState` | `ServerOptions["requestState"]` | `undefined` | Integrity options object for `input_required` round-trip state validation, typically `{ verify: createRequestStateCodec(...).verify }`. |
 | `cors` | `CorsOptions \| undefined` | `undefined` | CORS headers on all routes: off when omitted; `{}` enables with defaults. |
 | `oauth` | `OAuthProvider<TUser>` | (none if `TUser = never`) | External OAuth provider; required when `TUser ≠ never`. |
 
@@ -43,7 +43,7 @@ interface CorsOptions {
   enabled?: boolean;  // default: true when cors is set
   origin?: string | string[] | ((origin: string | null) => string | null);
   methods?: string[];  // default: ["GET", "HEAD", "POST", "OPTIONS"]
-  allowedHeaders?: string[];  // default: common MCP + JSON headers
+  allowedHeaders?: string[];  // default: ["Content-Type", "Authorization", "mcp-protocol-version", "mcp-method", "mcp-name"]
   credentials?: boolean;  // default: false
 }
 ```
@@ -64,7 +64,7 @@ For `await server.listen(port?, options?)`:
 3. `config.host`
 4. `"127.0.0.1"`
 
-Return value: `{ port: number, url: string }` (e.g., `http://localhost:3000/mcp`).
+Return value: `{ port: number, url: string }` — `url` is always built as `http://localhost:${port}${basePath}` (literal `"localhost"`, not the resolved `host`); see `02-network-basepath-and-endpoints.md`.
 
 ## Minimal Example
 

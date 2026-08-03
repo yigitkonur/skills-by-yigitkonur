@@ -7,30 +7,43 @@ Form mode renders an in-client structured-data form. Use for confirmations, mult
 ## Schema constraints
 
 Forms support **flat objects only**:
-- Top-level primitive fields (`string`, `number`, `boolean`, enum)
+- Top-level primitive fields (`string`, `number`, `boolean`)
+- Single-value enums (`z.enum([...])`)
+- Arrays of enum values (`z.array(z.enum([...]))`) — SEP-1330 multi-select
+- Optional fields via `.optional()`, defaults via `.default()` — SEP-1034 default values on every primitive type are supported
 - String arrays (`z.array(z.string())`)
-- Optional fields via `.optional()`
-- Enums via `z.enum([...])`
 
 Nested objects and file uploads are not supported. Use URL mode for complex flows.
 
 ## API
 
 ```typescript
-import { inputRequired } from "mcp-use";
+import { acceptedContent, inputRequired, inputResponse } from "mcp-use";
 
-const result = await ctx.elicit(key, {
-  schema: z.object({
-    productId: z.string(),
-    quantity: z.number().min(1),
-    giftWrap: z.boolean().optional(),
-  }),
+const schema = z.object({
+  productId: z.string(),
+  quantity: z.number().min(1),
+  giftWrap: z.boolean().optional(),
 });
+
+const response = inputResponse(ctx.inputResponses, key);
+if (response.kind === "elicit" && response.action !== "accept") {
+  // "decline" or "cancel"
+}
+const form = acceptedContent(ctx.inputResponses, key, schema);
 ```
 
-The helper `inputRequired.elicit()` returns an `InputRequiredResult` envelope:
+`inputRequired.elicit({ message, requestedSchema })` builds one `inputRequests` entry; wrap it in `inputRequired({ inputRequests: {...} })` to build the actual `InputRequiredResult` your tool returns:
 
 ```typescript
+import { acceptedContent, inputRequired, inputResponse, MCPServer } from "mcp-use";
+import { z } from "zod";
+
+const confirmSchema = z.object({
+  confirmGiftWrap: z.boolean().describe("Wrap as gift?"),
+  shippingSpeed: z.enum(["standard", "express", "overnight"]).describe("Delivery speed"),
+});
+
 export const order = server.tool(
   {
     name: "place-order",
@@ -38,24 +51,29 @@ export const order = server.tool(
     inputSchema: z.object({ items: z.array(z.object({ sku: z.string() })) }),
   },
   async (params, ctx) => {
-    // Re-entry guard: only ask for confirmation on first call
-    if (!ctx.inputResponses) {
-      return inputRequired.elicit("order-confirm", {
-        schema: z.object({
-          confirmGiftWrap: z.boolean().describe("Wrap as gift?"),
-          shippingSpeed: z.enum(["standard", "express", "overnight"]).describe("Delivery speed"),
-        }),
-      }).result;
+    const response = inputResponse(ctx.inputResponses, "order-confirm");
+    if (response.kind === "elicit" && response.action !== "accept") {
+      return { content: [{ type: "text", text: `Order not placed: ${response.action}` }], isError: true };
     }
 
-    // Re-entry: validation is automatic; data is present
-    const { confirmGiftWrap, shippingSpeed } = ctx.inputResponses;
-    
-    // Now perform the actual order
+    const confirmed = acceptedContent(ctx.inputResponses, "order-confirm", confirmSchema);
+    if (confirmed === undefined) {
+      // First call, or the round did not carry valid accepted data yet: ask.
+      return inputRequired({
+        inputRequests: {
+          "order-confirm": inputRequired.elicit({
+            message: "Confirm order options",
+            requestedSchema: confirmSchema,
+          }),
+        },
+      });
+    }
+
+    // Now perform the actual order — confirmed is typed and schema-validated.
     const orderId = await placeOrder({
       items: params.items,
-      giftWrap: confirmGiftWrap,
-      shipping: shippingSpeed,
+      giftWrap: confirmed.confirmGiftWrap,
+      shipping: confirmed.shippingSpeed,
     });
 
     return {
@@ -74,12 +92,14 @@ export const order = server.tool(
 | `z.number()` | Number input | Add `.int()`, `.min()`, `.max()` |
 | `z.boolean()` | Checkbox / toggle | Add `.default()` to pre-fill |
 | `z.enum([...])` | Dropdown / radio / segmented control | Values are the selectable options |
+| `z.array(z.enum([...]))` | Multi-select | SEP-1330 multi-value enum |
+| `z.array(z.string())` | Tag list / repeated text input | Flat string arrays only, no nested objects |
 
 Always add `.describe()` — it becomes field label or UI hint.
 
 ## Validation
 
-SDK validates the schema **before your callback re-runs**. Invalid data never reaches `ctx.inputResponses` — the client re-prompts the user:
+`acceptedContent()` validates the round's raw response against the schema you pass it and returns `undefined` on any mismatch — treat `undefined` the same as "not yet answered" and return another `inputRequired(...)` result rather than trusting unvalidated data:
 
 ```typescript
 z.object({

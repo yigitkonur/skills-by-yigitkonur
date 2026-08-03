@@ -80,17 +80,23 @@ Always prefer the v2 standard `GetPromptResult`:
 Where `PromptMessage` is:
 ```typescript
 {
-  role: "user" | "assistant" | "system"
-  content: ContentBlock | ContentBlock[]
+  role: "user" | "assistant"
+  content: ContentBlock
 }
 ```
 
-And `ContentBlock` is one of:
+There is no `"system"` role for prompt messages — the MCP spec restricts `PromptMessage.role` to `"user" | "assistant"`. Model system-style instructions as the first `"user"` message and let the client's chat template place it appropriately, or split guidance into `description` text shown before the messages render.
+
+`content` is a single block per message, not an array — use one message per content block. `ContentBlock` is one of:
 ```typescript
 { type: "text", text: string }
-| { type: "image", data: string, mimeType: string }
-| { type: "resource", uri: string, mimeType?: string, text?: string, blob?: Uint8Array }
+| { type: "image", data: string, mimeType: string }       // data is base64
+| { type: "audio", data: string, mimeType: string }       // data is base64
+| { type: "resource", resource: { uri: string, mimeType?: string, text: string } | { uri: string, mimeType?: string, blob: string } }
+| { type: "resource_link", uri: string, name: string, title?: string, mimeType?: string, description?: string }
 ```
+
+`blob` is a base64-encoded string, not `Uint8Array`.
 
 ---
 
@@ -211,10 +217,25 @@ server.prompt(
 
 ## Using context
 
-The `ctx` parameter carries auth, request, and client capability information. Use it to tailor prompts per caller:
+The `ctx` parameter carries request and client capability information. When the server is configured with a typed OAuth provider, it also carries required authenticated user data:
 
 ```typescript
-server.prompt(
+import { MCPServer } from "mcp-use";
+import {
+  oauthClerkProvider,
+  type ClerkOAuthUser,
+} from "mcp-use/oauth/clerk";
+import { z } from "zod";
+
+const authServer = new MCPServer<ClerkOAuthUser>({
+  name: "personalized-prompts",
+  version: "1.0.0",
+  oauth: oauthClerkProvider({
+    frontendApiUrl: "https://example.clerk.accounts.dev",
+  }),
+});
+
+authServer.prompt(
   {
     name: "personalized-analysis",
     schema: z.object({ data: z.string() }),
@@ -224,23 +245,25 @@ server.prompt(
       role: "user",
       content: {
         type: "text",
-        text: `Analyze this data: ${data}${
-          ctx.auth ? `\n\nAs: ${ctx.auth.user.id}` : ""
-        }`,
+        text: `Analyze this data: ${data}\n\nAuthenticated user: ${ctx.auth.user.id}`,
       },
     }],
   })
 );
 ```
 
+Unauthenticated requests are rejected before this callback runs. Without OAuth, `ctx.auth` is unavailable; do not probe it as an optional value.
+
 ---
 
 ## Notifying changes
 
-When you register or remove prompts at runtime:
+Register every prompt before `server.listen()`/`server.fetch` — `server.prompt()` throws once the server has started. To vary what different clients see, register all prompts up front and filter per-request with `mcp:prompts/list` middleware (see `02-static-prompts.md`).
+
+When the filtering condition changes (e.g., a feature flag flips):
 
 ```typescript
 await server.notifyPromptsChanged();
 ```
 
-Clients re-issue `prompts/list` and refresh their UI.
+Clients with an active `subscriptions/listen` request re-issue `prompts/list` and refresh their UI.

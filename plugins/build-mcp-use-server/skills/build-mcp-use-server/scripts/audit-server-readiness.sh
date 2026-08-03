@@ -17,19 +17,23 @@ WARN=0
 FAIL=0
 
 # Helper functions
+# NOTE: `((VAR++))` returns the pre-increment value as its exit status; when
+# VAR is 0 that status is 0 (bash-false), which kills the script under `set
+# -e` on the very first check. `: $((VAR++))` discards the arithmetic exit
+# status so the increment can never abort the run.
 check_pass() {
     echo "✓ $1"
-    ((PASS++))
+    : $((PASS++))
 }
 
 check_warn() {
     echo "⚠ $1"
-    ((WARN++))
+    : $((WARN++))
 }
 
 check_fail() {
     echo "✗ $1"
-    ((FAIL++))
+    : $((FAIL++))
 }
 
 echo "=== 1. Package Configuration ==="
@@ -41,15 +45,18 @@ else
     check_fail "Not ESM. Add \"type\": \"module\" to package.json"
 fi
 
-# Check mcp-use version
-if grep -q '"mcp-use":.*@beta\|"mcp-use": "\^2\.' package.json; then
-    check_pass "mcp-use v2 (beta or 2.x)"
+# Check mcp-use version. `npm install mcp-use@beta` resolves and writes a
+# concrete semver range (e.g. "^2.0.0-beta.66"), never the literal "beta" —
+# match any "2." version token after the mcp-use key, with or without a
+# leading range operator (^, ~, >=).
+if grep -qE '"mcp-use": *"[~^>=]*2\.' package.json; then
+    check_pass "mcp-use v2 (2.x)"
 else
     check_warn "mcp-use may be v1. Verify: npm list mcp-use"
 fi
 
 # Check zod v4
-if grep -q '"zod": "\^4\.' package.json; then
+if grep -qE '"zod": *"[~^>=]*4\.' package.json; then
     check_pass "zod v4 (correct)"
 else
     check_warn "zod not v4. Add: npm install zod@^4"
@@ -121,12 +128,15 @@ echo ""
 echo "=== 5. Tool Definitions ==="
 
 if [ -n "$ENTRY" ] && [ -f "$ENTRY" ]; then
-    TOOL_COUNT=$(grep -c 'server\.tool(' "$ENTRY" || echo "0")
+    # `grep -c` always prints a count (0 or more) and only exits nonzero on
+    # zero matches; `|| echo "0"` there would print a second "0" line and
+    # break the numeric comparison below, so swallow the exit status instead.
+    TOOL_COUNT=$(grep -c 'server\.tool(' "$ENTRY" || true)
     if [ "$TOOL_COUNT" -gt 0 ]; then
         check_pass "Found $TOOL_COUNT tool(s) defined"
 
         # Check for outputSchema
-        OUT_SCHEMA=$(grep -c 'outputSchema:' "$ENTRY" || echo "0")
+        OUT_SCHEMA=$(grep -c 'outputSchema:' "$ENTRY" || true)
         if [ "$OUT_SCHEMA" -gt 0 ]; then
             check_pass "$OUT_SCHEMA tool(s) with outputSchema (used by views)"
         else
@@ -148,10 +158,12 @@ echo "=== 6. Build Artifacts ==="
 if [ -d ".mcp-use/build" ]; then
     check_pass ".mcp-use/build/ directory exists"
 
-    if [ -f ".mcp-use/build/index.js" ] || [ -f ".mcp-use/build/server.js" ]; then
-        check_pass "Build output present (server bundle)"
+    # mcp-use build always emits .mcp-use/build/index.js (Vite entryFileNames is
+    # hardcoded to "index.js"); it never produces server.js.
+    if [ -f ".mcp-use/build/index.js" ]; then
+        check_pass "Build output present (.mcp-use/build/index.js)"
     else
-        check_warn ".mcp-use/build/ exists but no .js files. Run: mcp-use build"
+        check_warn ".mcp-use/build/ exists but no index.js. Run: mcp-use build"
     fi
 else
     check_warn "No .mcp-use/build/. Run: mcp-use build"
@@ -160,10 +172,12 @@ fi
 echo ""
 echo "=== 7. Generated Type Files ==="
 
-if [ -f ".mcp-use/mcp-env.d.ts" ]; then
-    check_pass ".mcp-use/mcp-env.d.ts generated (tool types for views)"
+# mcp-use typecheck writes mcp-env.d.ts to the project root (sibling to
+# index.ts/package.json), not under .mcp-use/.
+if [ -f "mcp-env.d.ts" ]; then
+    check_pass "mcp-env.d.ts generated at project root (tool types for views)"
 else
-    check_warn "No .mcp-use/mcp-env.d.ts. Run: mcp-use typecheck"
+    check_warn "No mcp-env.d.ts at project root. Run: mcp-use typecheck"
 fi
 
 echo ""

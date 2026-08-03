@@ -66,29 +66,24 @@ export const getRoomBookings = server.tool(
 
 Instance 1 caches to Redis. Instance 2's first request hits Redis; cold start is only 1 DB query, not repeated per instance.
 
-## Graceful shutdown (Node.js)
+## Shutdown (Node.js)
 
-On `SIGTERM`, drain in-flight requests before closing:
+`server.close()` aborts active MCP exchanges; it does not wait for them to finish. Use it directly when an aborting shutdown is acceptable:
 
 ```typescript
-const { port, url } = await server.listen(3000);
+const { url } = await server.listen(3000);
 console.log(`Listening at ${url}`);
 
-let isShuttingDown = false;
-
 process.on("SIGTERM", async () => {
-  isShuttingDown = true;
-  console.log("Graceful shutdown");
-  
-  // Stop accepting new requests (load balancer stops routing here)
-  // Existing requests finish naturally
+  console.log("Aborting active exchanges and closing the listener");
   await server.close();
-  
   process.exit(0);
 });
 ```
 
-Platform (Railway, Vercel, etc.) sends `SIGTERM` before killing the container. You have ~30 seconds to drain.
+For graceful draining, first make the instance unready and have the load balancer stop routing new traffic, then wait for request tracking outside `MCPServer` to reach zero (or a drain deadline) before calling `server.close()`. Calling `close()` immediately after setting an `isShuttingDown` flag still aborts in-flight work.
+
+Platforms such as Railway send `SIGTERM` before killing the container. Fit any external drain within the platform's termination window.
 
 ## Serverless / edge (no graceful shutdown needed)
 
@@ -104,7 +99,7 @@ Each invocation is isolated; nothing to clean up.
 
 ## Rate limiting without sessions
 
-v1 could rate-limit per session (e.g., `ctx.session.sessionId`). v2 has no sessions, so rate-limit by verified user:
+v1 could rate-limit per session (e.g., `ctx.session?.sessionId`). v2 has no sessions, so rate-limit by verified user:
 
 ```typescript
 import { Ratelimit } from "@upstash/ratelimit";

@@ -1,103 +1,157 @@
-# Debugging MCP Apps Widgets
+# Debugging MCP Apps Views and ChatGPT Compatibility
 
-*Read this when testing MCP Apps widgets, layout behavior, CSP (Content Security Policy), and runtime compatibility.*
+*Read this when verifying a View's standard MCP Apps behavior locally and its ChatGPT-specific behavior in the real host.*
 
-Use the Inspector to debug a widget before you try it in a production host. The fastest loop is: connect your server, run the tool that returns the widget, inspect the widget data, then test layout, display modes, and CSP.
+Inspector is authoritative for the standard MCP Apps path it implements. It is not a ChatGPT emulator: current Inspector source has MCP Apps View controls and CSP diagnostics, but no verified MCP Apps-versus-ChatGPT host protocol toggle.
 
-## Connect and run the widget tool
+## Connect and Run a View-Backed Tool
 
-1. Run your mcp-use app locally:
-   ```bash
-   npm run dev
-   ```
+For the CLI-owned development listener:
 
-2. Open `http://localhost:3000/mcp/inspector` and connect to `http://localhost:3000/mcp`.
+1. Start the project through its normal `mcp-use dev` script.
+2. Open `<basePath>/inspector` (commonly `http://localhost:3000/mcp/inspector`).
+3. Connect to the MCP endpoint (commonly `http://localhost:3000/mcp`).
+4. Open **Tools**, select the View-backed tool, and call it with minimal valid input.
 
-3. Open the **Tools** tab, select the tool that returns the widget, and run it with a small input.
+Direct `server.listen()`, `server.fetch`, and embedded Next.js handlers do not auto-mount Inspector. Use the external Inspector for those topologies, for example:
 
-The widget should render below the tool result. If no widget appears, check:
-- `widget.name` in the server tool definition matches a folder in `resources/`
-- The tool result metadata points to the widget resource
-- Browser console errors from the widget iframe
+```bash
+npx @mcp-use/inspector --url <mcp-url>
+```
 
-## Protocol toggle
+If no View appears, check:
 
-The Inspector can test MCP Apps behavior and ChatGPT Apps SDK compatibility for widgets that support both runtimes.
+- the tool's `view.name` matches `views/<name>/view.tsx`;
+- the tool declares `outputSchema`;
+- returned `structuredContent` matches that schema;
+- the generated `ui://views/<name>.html` resource can be read;
+- View compilation, asset, iframe, or runtime errors.
 
-When the protocol toggle appears, it allows you to switch between:
+## What Inspector Proves
 
-| Protocol | What it tests |
-| --- | --- |
-| **MCP Apps** | The standard MCP Apps bridge over `postMessage`. |
-| **ChatGPT Apps** | ChatGPT compatibility behavior, including Apps SDK-style host globals. |
+Use Inspector to verify the standard server wire and standard View runtime:
 
-Prefer `useWidget()` and other `mcp-use/react` hooks in widget code — they abstract over the runtime differences.
+| Surface | Check |
+|---|---|
+| Tool descriptor | Standard `_meta.ui.resourceUri`, flat `ui/resourceUri`, and optional `_meta.ui.visibility` |
+| Tool result | `content`, schema-valid `structuredContent`, result `_meta`, and stamped resource URI links on successful View-bound results |
+| View resource | `text/html;profile=mcp-app`, `ui://views/<name>.html`, and standard resource `_meta.ui` |
+| Host bridge | Standard capability gating for tool calls, messages, links, display modes, and other MCP Apps operations |
+| Rendering | Ready/loading/error branches, assets, theme, sizing, safe area, and interaction behavior |
+| CSP | Permissive diagnostics and Widget-Declared enforcement |
 
-## Inspect widget data
+Some Inspector labels may still say “widget.” Map them to the v2 View contract; do not look for v1 `props`, `useWidget()`, or Skybridge resources.
 
-Use the widget debug panels to confirm what the widget receives:
+## What Inspector Does Not Prove
 
-| Panel | What to verify |
-| --- | --- |
-| `props` | The structured data the widget renders. |
-| `output` | The raw structured tool output, when exposed separately. |
-| `metadata` | Widget-only metadata (timestamps, cache info, host hints). |
-| `state` | Persisted widget state after user interactions. |
-| Tool input | Arguments passed to the tool that produced the widget. |
+Do not claim local Inspector verifies:
 
-When `props` are missing, compare the server's `outputSchema` with the widget's expected prop shape — they should describe the same fields.
+- real `window.openai.widgetState` restoration;
+- real `openai:set_globals` timing;
+- `window.openai.setWidgetState` persistence across ChatGPT renders;
+- real ChatGPT file upload, file-library access, or temporary URL behavior;
+- ChatGPT invocation status presentation;
+- compatibility aliases;
+- dedicated-domain submission acceptance;
+- `openai/widgetCSP.redirect_domains` or other ChatGPT-only resource metadata.
 
-## Test layout and display modes
+Inspector source can supply optional mock OpenAI file helpers in an MCP Apps host. That is useful for exercising a local UI branch, but it is not a second host protocol and does not reproduce ChatGPT permissions, injection timing, persistence, library availability, or review policy.
 
-Use the debug controls to test the widget in different contexts:
+A connection control for MCP protocol version changes MCP wire-version negotiation. It is not ChatGPT emulation.
 
-- Inline, picture-in-picture, and fullscreen display modes
-- Desktop, tablet, and mobile sizing
-- Touch and hover behavior
-- Light and dark themes
-- Locale and timezone-dependent formatting
-- Safe-area insets for mobile layouts
+## Inspect Input, Output, and Metadata
 
-The host may grant a different display mode than the widget requests. Read `displayMode` from `useWidget()` when the current mode matters.
+Compare the raw tool call/result with the View:
 
-## Test Content Security Policy
+| Data | What to verify |
+|---|---|
+| Tool input | Complete and partial input appear through `useToolContext()` as expected |
+| `structuredContent` | Matches `outputSchema` and the data the View renders |
+| Text `content` | Provides a useful model/transcript fallback |
+| Result `_meta` | Contains only View-private invocation data; no secrets intended for the model |
+| View state | Contains only serializable UI/model-context state intended to persist |
 
-Test widget-declared CSP before shipping. The Inspector widget debug controls test both permissive and widget-declared CSP.
+Remember that framework-stamped resource URI keys may be present in delivered result `_meta` for a successful View-bound tool.
 
-Use the widget-declared CSP mode to verify your widget works with the domains you declared. If the widget works in permissive mode but fails with widget-declared CSP, update the widget CSP configuration. See `references/18-mcp-apps/server-surface/05-csp-metadata.md` for server and widget settings.
+## Test Standard Host Interactions
 
-## Use browser DevTools
+Exercise each used hook over the standard bridge:
 
-Open browser DevTools while the widget renders. Console messages from the widget iframe help identify:
+- `useCallTool()` for View-to-server tool calls;
+- `useSendFollowUp()` when `hostCapabilities.message` is present;
+- `useOpenExternal()` when `hostCapabilities.openLinks` is present;
+- `useDisplayMode()` for requested and granted modes;
+- `useSendSizeChanged()` for intrinsic sizing;
+- `useViewTool()` for host/model-to-mounted-View actions;
+- `useViewState()` for local state and standard model-context updates.
 
-- Runtime errors
-- Blocked requests
-- CSP violations
-- Missing props
-- Failed tool calls
+Gate each optional operation on its specific capability. Do not use `hostInfo.name` as a substitute.
 
-Keep console output intentional — log the minimum state needed to debug, then remove noisy logs before release.
+## Test Layout and Display Modes
 
-## Test in chat
+Use Inspector controls to exercise:
 
-After the tool works directly, open the **Chat** tab and ask the model to use the tool.
+- inline, picture-in-picture, and fullscreen presentation;
+- desktop, tablet, and mobile sizes;
+- touch and hover assumptions;
+- light and dark themes;
+- locale and timezone formatting;
+- safe-area insets.
 
-Use chat to verify end-to-end behavior:
+The host may grant a different display mode from the one requested. Read the actual mode from `useDisplayMode()`.
 
-- The model chooses the right tool
-- The tool receives valid arguments
-- The model-visible text output is useful
-- The widget renders with the same structured data
-- Widget actions (tool calls, state updates, follow-up messages) behave as expected
+## Test Declared CSP
 
-Use the Tools tab again when you need to isolate whether a failure is in the tool, widget, or model behavior.
+Current Inspector source exposes:
 
-## Troubleshoot missing widgets
+- **Permissive** mode, which records would-be policy blocks;
+- **Widget-Declared** mode, which enforces the resource metadata policy.
 
-| Symptom | Check |
-| --- | --- |
-| Tool result appears, but no widget appears. | Confirm `widget.name` matches a folder under `resources/`. |
-| Widget frame appears blank. | Check iframe console errors and missing required props. |
-| Widget loads in permissive CSP only. | Add the required domains to widget CSP. |
-| ChatGPT protocol fails, but MCP Apps works. | Check [Apps SDK compatibility](/typescript/mcp-apps/apps-sdk-compatibility). |
-| A widget action fails. | Verify the tool name, arguments, auth state, and iframe console logs. |
+Test Widget-Declared mode before release. If a View works only in Permissive mode, inspect browser requests and map them to:
+
+- `connectDomains` for browser fetch/XHR/WebSocket;
+- `resourceDomains` for static assets;
+- `frameDomains` for nested frames;
+- `baseUriDomains` for `<base>` targets.
+
+View CSP applies to the iframe, not to server-side tool callback fetches.
+
+Inspector CSP checks validate standard `_meta.ui.csp`. They do not validate ChatGPT's remaining `openai/widgetCSP.redirect_domains` extension, which generated mcp-use View resources cannot author through a public arbitrary resource `_meta` surface in beta.66.
+
+## Verify in Real ChatGPT
+
+After the standard flow is green, connect the deployed HTTPS MCP server to real ChatGPT and verify the ChatGPT-only boundary:
+
+1. Confirm the View loads from the same standard resource wire.
+2. Change `useViewState()` state, remount/reinvoke as appropriate, and verify restoration and follow-up model context.
+3. If using files, verify `useFiles().isSupported`, a real upload, and a fresh download URL.
+4. Verify tools using `openai/fileParams` receive the documented snake_case file object fields.
+5. Observe optional `openai/toolInvocation/invoking` and `openai/toolInvocation/invoked` strings.
+6. Confirm the dedicated `view.domain` origin satisfies ChatGPT submission/review requirements.
+7. Test every external-link and redirect flow in the actual host.
+
+The literal ChatGPT metadata and file-schema requirements come from the official OpenAI Plugin UI reference. The availability of those keys in `ToolDefinition._meta` comes from shipped mcp-use tool types and `buildToolUiMeta()` pass-through behavior.
+
+## Known beta.66 Limits to Record
+
+- `useFiles()` wraps only upload and temporary-download-URL methods, not `selectFiles()` or upload `{ library: true }`.
+- File support is captured when the View runtime is created; late method injection does not update `isSupported`.
+- The standard MCP Apps `ui/download-file` operation has no public `mcp-use/react` hook.
+- Generated View resources have no public arbitrary resource `_meta` authoring surface for `openai/widgetDescription` or `openai/widgetCSP.redirect_domains`.
+
+Do not “verify” around these limits by inventing APIs or adding direct `window.openai` calls where a standard hook exists.
+
+## Troubleshooting Split
+
+| Symptom | First check |
+|---|---|
+| Tool result appears, no View | Standard descriptor/result/resource wire in Inspector |
+| Blank View | Iframe console, generated assets, `useToolContext()` branches |
+| Works only in Permissive CSP | Standard `view.csp` categories in Widget-Declared mode |
+| Standard View works, ChatGPT state does not persist | Real ChatGPT `useViewState()` branch; Inspector cannot prove it |
+| `useFiles().isSupported` is false in ChatGPT | Both real file methods must exist at runtime creation |
+| ChatGPT file tool receives no file object | Literal `openai/fileParams` and required schema shape |
+| Submission rejects UI domain | Dedicated unique `view.domain` and deployed origin |
+| ChatGPT-only resource extension needed | Current generated-resource authoring limitation |
+
+For deeper standard View diagnosis, continue with `references/23-debug/03-view-debugging.md`. For architecture and metadata classification, see `references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md`.

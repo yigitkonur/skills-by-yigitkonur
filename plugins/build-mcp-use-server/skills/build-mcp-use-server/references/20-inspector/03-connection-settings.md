@@ -43,6 +43,7 @@ Add custom headers only when the server requires them (bearer tokens, API keys, 
 By default, the Inspector uses Dynamic Client Registration (DCR), so no credentials are needed. Use the Authentication dialog when:
 
 - The upstream auth server doesn't expose `registration_endpoint` (common for proxy-mode servers fronting Slack, WorkOS, or GitHub).
+- The provider requires a confidential client without PKCE.
 - You want to use a pre-registered OAuth client instead of DCR.
 
 | Field | When to set it |
@@ -51,7 +52,7 @@ By default, the Inspector uses Dynamic Client Registration (DCR), so no credenti
 | Client Secret | Use a confidential client (switches token endpoint auth away from `none`). |
 | Scope | Request a provider-specific space-separated scope list. |
 
-When a server requires OAuth, the connection enters `pending_auth`. Click **Authenticate**, complete the provider flow, and return to the Inspector.
+When a server requires OAuth, the connection enters `pending_auth`. Click **Authenticate**, complete the provider flow, and return to the Inspector. If the popup is blocked, use the open-auth-page fallback link instead.
 
 **Security:** Browser OAuth session values are encrypted at rest with AES-256-GCM. The non-extractable origin key is kept in IndexedDB, and versioned ciphertext remains in localStorage.
 

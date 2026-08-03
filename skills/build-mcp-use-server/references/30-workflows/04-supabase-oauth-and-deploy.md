@@ -7,7 +7,7 @@
 - Node.js >= 22
 - Supabase account (https://supabase.com)
 - Supabase project created
-- GitHub repo (for Vercel deploy)
+- GitHub repo for the default Manufact Cloud source mode, or plan to use `mcp-use deploy --no-github` for managed upload
 
 ## Steps
 
@@ -31,7 +31,8 @@ In Supabase dashboard:
 Edit `index.ts`:
 
 ```typescript
-import { MCPServer, oauthSupabaseProvider } from "mcp-use";
+import { MCPServer } from "mcp-use";
+import { oauthSupabaseProvider } from "mcp-use/oauth/supabase";
 import { z } from "zod";
 
 const server = new MCPServer({
@@ -39,7 +40,7 @@ const server = new MCPServer({
   version: "1.0.0",
   oauth: oauthSupabaseProvider({
     projectId: process.env.SUPABASE_PROJECT_ID || "your-project-id",
-    // Optional: jwtSecret for HS256 (legacy). Omit for ES256 JWKS verification (recommended).
+    resource: process.env.MCP_RESOURCE_URL, // Full public MCP endpoint outside localhost
   }),
 });
 
@@ -51,7 +52,7 @@ export const getUser = server.tool(
     outputSchema: z.object({
       id: z.string(),
       email: z.string().optional(),
-      appMetadata: z.record(z.unknown()).optional(),
+      claims: z.record(z.string(), z.unknown()),
     }),
   },
   async (args, ctx) => {
@@ -64,7 +65,9 @@ export const getUser = server.tool(
       structuredContent: {
         id: ctx.auth.user.id,
         email: ctx.auth.user.email,
-        appMetadata: ctx.auth.user.id ? { provider: "supabase" } : undefined,
+        // ctx.auth.payload carries the raw, verified JWT claims — SupabaseOAuthUser
+        // has no appMetadata field, so read app-specific claims from payload directly.
+        claims: ctx.auth.payload,
       },
     };
   }
@@ -78,7 +81,7 @@ export const queryDatabase = server.tool(
       table: z.string().describe("Table name"),
     }),
     outputSchema: z.object({
-      rows: z.array(z.record(z.unknown())),
+      rows: z.array(z.record(z.string(), z.unknown())),
       count: z.number(),
     }),
   },
@@ -101,8 +104,9 @@ export const queryDatabase = server.tool(
 );
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
 
 **Verify:** `npm run typecheck` passes.
 
@@ -114,11 +118,14 @@ Create `.env.local`:
 SUPABASE_PROJECT_ID=your-project-id-here
 ```
 
-Create `.env.production`:
+Create `.env.production` only when the canonical public endpoint is known:
 
 ```bash
 SUPABASE_PROJECT_ID=your-project-id-here
+MCP_RESOURCE_URL=https://mcp.example.com/mcp
 ```
+
+For a platform-generated domain, set `MCP_RESOURCE_URL` after the server is created using the exact dashboard endpoint, then redeploy. Never derive it from a slug.
 
 **Verify:** `npm run dev` starts without errors.
 
@@ -155,7 +162,8 @@ git commit -m "feat: supabase-protected server"
 git push origin main
 
 mcp-use deploy --env SUPABASE_PROJECT_ID=your-project-id-here
-# Auto-detects GitHub repo; creates Vercel project
+# Resolves the GitHub repo from git origin and confirms GitHub App repo access;
+# creates/updates a Manufact Cloud server — never a Vercel project.
 ```
 
 **Option B: Via env file**
@@ -164,7 +172,7 @@ mcp-use deploy --env SUPABASE_PROJECT_ID=your-project-id-here
 mcp-use deploy --env-file .env.production
 ```
 
-**Verify:** Deployment succeeds; URL shown: `https://my-supabase-mcp.vercel.app/mcp`.
+**Verify:** Capture the deployment ID, apply the terminal-success gate in `../25-deploy/platforms/01-mcp-use-cloud.md`, and copy the exact MCP endpoint from the dashboard. If that generated endpoint was not known before the first deploy, set it with `mcp-use servers env set <server-id-or-slug> MCP_RESOURCE_URL=<dashboard-mcp-url>`, redeploy, and wait for the new deployment to succeed before testing.
 
 ## Understanding Supabase OAuth in v2
 
@@ -179,14 +187,14 @@ No proxy involved; direct OAuth flow.
 
 | Issue | Solution |
 |-------|----------|
-| 401 on deploy | Check `SUPABASE_PROJECT_ID` is set in Vercel env vars |
+| 401 on deploy | Check `SUPABASE_PROJECT_ID` is set via `mcp-use deploy --env` or the deployed server's env vars |
 | JWT verification fails | Ensure Supabase JWKS is reachable; check token issuer claim |
 | User data is empty | Check Supabase JWT claims; ensure `aud` matches expectation |
 | DCR fails in Inspector | Supabase may not have registered your client yet; wait a few seconds and retry |
 
 ## Adding Supabase Client
 
-For database access, install Supabase client:
+For database access, install Supabase client and set `SUPABASE_ANON_KEY` in every environment that runs the database tool:
 
 ```bash
 npm install @supabase/supabase-js
@@ -199,7 +207,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co`,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_ANON_KEY!,
 );
 
 // Within tool:

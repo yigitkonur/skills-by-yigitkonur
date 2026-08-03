@@ -24,8 +24,9 @@ server.post("/webhook", async (c) => {
   return c.json({ received: true }, 201);
 });
 
-// Catch-all
-server.all("*", (c) => c.text("Not found", 404));
+// Framework-level fallback. Unlike a registered `*` route, this does not
+// intercept the lazily mounted MCP endpoint.
+server.app.notFound((c) => c.text("Not found", 404));
 ```
 
 ## Route Handler Context
@@ -36,7 +37,7 @@ Each handler receives a Hono context object `c` with:
 - `c.json(data, status?)`, `c.text(text, status?)`, `c.html(html, status?)`
 - `c.header(name, value)`, `c.status(code)`
 
-Standard Hono patterns apply.
+Standard Hono patterns apply. `c.status(code)` returns `void` — it is not chainable. Write `c.status(503); return c.json({...})` on separate statements, or pass the status directly: `c.json({...}, 503)`.
 
 ## Health Check Endpoint
 
@@ -144,7 +145,9 @@ function verifySignature(signature: string, payload: WebhookPayload): boolean {
 
 ## Mounting Custom Routes Before/After MCP
 
-Routes are Hono routes; they coexist with the MCP endpoint at `basePath`.
+Routes are Hono routes; they coexist with the MCP endpoint at `basePath`. Do not register `server.all("*", ...)` as a fallback: because the MCP route is mounted lazily, an earlier catch-all can finalize `/mcp` before that route runs. Use `server.app.notFound(...)` for a framework-level 404, or restrict `server.all()` to a non-MCP prefix such as `/api/*`.
+
+Custom routes run behind the **same** Host/Origin-validation and CORS middleware stack as the MCP endpoint — a localhost-class `listen()` bind rejects a forged `Host` header on `/health` exactly as it does on `/mcp`, and `allowedOrigins`/`cors` apply uniformly. See `03-cors-and-allowed-origins.md` and `04-dns-rebinding-and-host-validation.md`.
 
 ```typescript
 const server = new MCPServer({

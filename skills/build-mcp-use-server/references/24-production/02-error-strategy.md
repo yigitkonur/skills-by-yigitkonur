@@ -14,7 +14,7 @@ server.tool(
     name: "fetch-user",
     description: "Fetch a user by ID",
     inputSchema: z.object({ id: z.string() }),
-    outputSchema: z.object({ name: string; email: string }),
+    outputSchema: z.object({ name: z.string(), email: z.string() }),
   },
   async ({ id }, ctx) => {
     try {
@@ -52,33 +52,45 @@ server.tool(
 **Rules:**
 - Return `isError: true` for expected failures (not found, validation, permission denied, timeout).
 - Include a human-readable message in the content block.
-- **Do NOT throw** — exceptions become raw HTTP 500 errors that bypass the MCP response layer.
+- **Prefer returning `{ isError: true, content: [...] }` over throwing.** A thrown error IS caught by the SDK's `tools/call` handler — it does not become a raw HTTP 500 and does not bypass the MCP response layer — but the SDK converts it to `{ content: [{ type: "text", text: error.message }], isError: true }` using the *raw, unsanitized* `error.message`. An explicit return gives you control to redact secrets/internals before the message reaches the client; a throw does not.
 - Log the full exception internally (see middleware section below) without exposing stack traces to the client.
 
 ## Middleware exception handling
 
-Uncaught exceptions in tool callbacks are caught by the SDK and returned as `{ isError: true }` automatically. To add custom logging:
+Uncaught exceptions in tool callbacks are caught by the SDK and returned as `{ isError: true }` automatically, using the raw error message (see above). To inspect or log the result after the handler completes, use an event listener — `:complete` is only valid on `server.on()`, not `server.use()`, and the result arrives as the listener's **second parameter**, never as a field on `ctx`:
 
 ```typescript
-server.use("mcp:tools/call:complete", async (ctx) => {
-  if (ctx.result.isError) {
-    console.error(`Tool ${ctx.params.name} failed:`, ctx.result.content);
+server.on("mcp:tools/call:complete", (ctx, result) => {
+  if (result.isError) {
+    console.error(`Tool ${ctx.params.name} failed:`, result.content);
   }
 });
 ```
 
-Or use an event listener (cannot block, only observe):
+Event listeners cannot block, override, or mutate the result — only observe:
 
 ```typescript
-server.on("mcp:tools/call:complete", async (ctx) => {
-  if (ctx.result.isError) {
+server.on("mcp:tools/call:complete", async (ctx, result) => {
+  if (result.isError) {
     // Log to external service (Sentry, DataDog, etc.)
     await logToMonitoring({
       tool: ctx.params.name,
-      error: ctx.result.content,
+      error: result.content,
       timestamp: new Date(),
     });
   }
+});
+```
+
+To block or mutate a result before it's returned, use `server.use()` on the exact method and capture `next()`'s return value instead:
+
+```typescript
+server.use("mcp:tools/call", async (ctx, next) => {
+  const result = await next();
+  if (result.isError) {
+    console.error(`Tool ${ctx.params.name} failed:`, result.content);
+  }
+  return result;
 });
 ```
 
@@ -94,11 +106,13 @@ Example:
 // Custom health check that can fail
 server.get("/health", (c) => {
   if (!isReady) {
-    return c.status(503).json({ status: "not-ready" });
+    return c.json({ status: "not-ready" }, 503);
   }
   return c.json({ status: "ok" });
 });
 ```
+
+Hono's `c.status(code)` sets the status for a later `c.body()`/`c.text()` call and returns `void` — it is not chainable with `.json()`. Pass the status as `c.json(data, statusCode)` instead.
 
 ## Timeout handling
 
@@ -115,7 +129,7 @@ async ({ url }, ctx) => {
     const response = await fetch(url, { signal: controller.signal });
     // …
   } catch (err) {
-    if (err.name === "AbortError") {
+    if (err instanceof Error && err.name === "AbortError") {
       return {
         isError: true,
         content: [{ type: "text", text: "Request timed out" }],
@@ -134,7 +148,8 @@ async ({ url }, ctx) => {
 
 ```typescript
 catch (err) {
-  const sanitized = err.message
+  const message = err instanceof Error ? err.message : String(err);
+  const sanitized = message
     .replace(/Bearer\s+\S+/g, "Bearer [REDACTED]")
     .replace(/sk_\w+/g, "[REDACTED]");
   return {
@@ -144,15 +159,11 @@ catch (err) {
 }
 ```
 
-Better: Log the full error to an internal service; return a generic message to the client:
+Better: log the full error to a real server-side sink; return a generic message to the client:
 
 ```typescript
 catch (err) {
-  await ctx.sendLog("error", {
-    tool: ctx.params.name,
-    error: err,
-    requestState: ctx.requestState,
-  }, "mcp-server");
+  console.error(`[${ctx.params?.name ?? "tool"}] execution failed:`, err); // Or Sentry/DataDog/etc.
   return {
     isError: true,
     content: [{ type: "text", text: "Tool execution failed" }],
@@ -160,16 +171,17 @@ catch (err) {
 }
 ```
 
+`ctx.sendLog(level, data, logger?)` sends an MCP `notifications/message` notification **to the connected client**, not to a server-side log — never route sensitive errors or secrets through it. It also fires unconditionally: unlike the SDK's own internal logging path (which checks the client's `logging/setLevel` threshold and the server's declared `logging` capability before sending), `ctx.sendLog()` calls the notify transport directly and does not filter by level. Use it only for status updates the client should see (see `references/14-notifications/`).
+
 ## Monitoring and alerting
 
-Use MCP event listeners + external observability to monitor production errors:
+Use MCP event listeners + external observability to monitor production errors. The completed result arrives as the listener's second parameter, not `ctx.result`. `isError` only exists on `tools/call`, `resources/read`, and `prompts/get` results (not on the `*/list` array results), so target the exact method rather than the `mcp:*:complete` wildcard when checking it:
 
 ```typescript
-server.on("mcp:*", async (ctx) => {
-  if (ctx.result?.isError) {
+server.on("mcp:tools/call:complete", async (ctx, result) => {
+  if (result.isError) {
     await metrics.recordError({
-      method: ctx.request?.method,
-      path: ctx.request?.path,
+      tool: ctx.params.name,
       timestamp: Date.now(),
     });
   }

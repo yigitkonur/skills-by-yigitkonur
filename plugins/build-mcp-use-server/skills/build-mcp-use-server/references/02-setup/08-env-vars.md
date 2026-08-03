@@ -8,17 +8,24 @@ The CLI and runtime respect a small set of environment variables for port, host,
 
 | Variable | Used by | Default | Purpose |
 |----------|---------|---------|---------|
-| `PORT` | `mcp-use dev`, `mcp-use start` | 3000 | TCP port. Precedence: flag → env → 3000. |
-| `HOST` | `mcp-use dev`, `mcp-use start` | 127.0.0.1 | Bind address. Precedence: flag → env → 127.0.0.1. Public: `0.0.0.0`. |
-| `NODE_ENV` | `mcp-use start` | forced to `production` | Always production on start. Dev does not set it. |
-| `MCP_URL` | Dev / Inspector client | http://127.0.0.1:PORT/mcp | URL clients use to reach the server. Auto-set by dev if not present. |
+| `PORT` | `mcp-use dev`, `mcp-use start` | 3000 | TCP port. Precedence: flag → env → code (`ServerConfig.port`, `start` only) → 3000. |
+| `HOST` | `mcp-use dev`, `mcp-use start` | 127.0.0.1 | Bind address. Precedence: flag → env → code (`ServerConfig.host`, `start` only) → 127.0.0.1. Public: `0.0.0.0`. |
+| `NODE_ENV` | `mcp-use start` | set to `production` only if unset | `process.env.NODE_ENV ??= "production"` — never clobbers an explicit `NODE_ENV`. `dev` does not set it. |
+| `MCP_URL` | server runtime (OAuth, CSP, View asset/connect URLs) | request origin when available; otherwise unset | Absolute public **origin only** (scheme + host + optional port, no path). OAuth on non-local/`server.fetch` deployments requires a valid value or explicit provider `resource`; pathful/malformed values are rejected by OAuth. |
+| `MCP_ASSETS_URL` | `mcp-use build` | server origin | CDN/base URL to rewrite view asset paths to at build time (e.g. serving views from a separate static host). Must be a valid absolute URL or it is ignored. |
+| `CSP_URLS` | server runtime (views CSP) | none | Comma-separated domain shortcut applied to all four CSP categories below when a category-specific var is unset. |
+| `CSP_CONNECT_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed in `connect-src`. |
+| `CSP_RESOURCE_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed for resource loads (scripts/styles/images/fonts). |
+| `CSP_FRAME_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed in `frame-src`. |
+| `CSP_BASE_URI_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed in `base-uri`. |
+| `MCP_USE_TUNNEL_API` | `mcp-use dev --tunnel` | `https://local.mcp-use.run` | Tunnel broker endpoint; override to point at a self-hosted or alternate tunnel service. |
 
 Set them:
 
 ```bash
 PORT=4000 npm run dev
 HOST=0.0.0.0 npm run dev
-MCP_URL=https://my-server.example.com/mcp npm run dev
+MCP_URL=https://my-server.example.com npm run dev
 ```
 
 Or in `.env`:
@@ -27,7 +34,7 @@ Or in `.env`:
 # .env (git-ignored)
 PORT=4000
 HOST=127.0.0.1
-MCP_URL=http://localhost:4000/mcp
+MCP_URL=http://localhost:4000
 ```
 
 Then:

@@ -19,6 +19,8 @@ If the data varies per request (per-user, per-id), use a **template**. Otherwise
 ```typescript
 import { MCPServer } from "mcp-use";
 
+const server = new MCPServer({ name: "app", version: "1.0.0" });
+
 // Static — fixed URI
 server.resource(
   {
@@ -28,30 +30,50 @@ server.resource(
     description: "Current application configuration",
     mimeType: "application/json",
   },
-  async () => object({ env: "production", version: "1.0.0" })
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify({ env: "production", version: "1.0.0" }),
+      },
+    ],
+  })
 );
 
-// Template — URI with {param} placeholders
+// Template — RFC 6570 URI template
 server.resourceTemplate(
   {
     name: "user-profile",
     uriTemplate: "users://{userId}/profile",
     mimeType: "application/json",
   },
-  async (uri, { userId }) => object(await db.getUser(userId))
+  async (uri, { userId }, ctx) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(await db.getUser(userId)),
+      },
+    ],
+  })
 );
 ```
 
-## Protocol and helpers
+Return the raw `{ contents: [...] }` envelope (`ReadResourceResult`). Each entry carries its own `uri` and `mimeType`, plus either `text` or a base64 `blob`. Deprecated helper-shaped returns (`text()`, `object()`, ...) are still converted automatically — see `../05-responses/07-deprecated-v1-helpers.md`.
+
+## Protocol surface
 
 | Surface | Purpose |
 |---|---|
 | `resources/list` | Enumerate static resources |
-| `resources/read` | Fetch the content of one URI |
-| `listResourceTemplates()` | Client helper that enumerates templates separately |
-| `resources/subscribe` | Subscribe a client to a URI for updates |
-| `notifications/resources/updated` | Server-pushed notification of content change |
-| `notifications/resources/list_changed` | Server-pushed notification of registry change |
+| `resources/templates/list` | Enumerate registered templates |
+| `resources/read` | Fetch the content of one URI (static or template match) |
+| `subscriptions/listen` | v2's stateless per-request listener for change notifications — see `06-subscriptions-listen.md` |
+| `notifications/resources/updated` | Server-pushed notification of content change (`server.notifyResourceUpdated(uri)`) |
+| `notifications/resources/list_changed` | Server-pushed notification of registry change (`server.notifyResourcesChanged()`) |
+
+mcp-use still advertises a `resources.subscribe: true` server capability, and the underlying SDK still defines `resources/subscribe`/`resources/unsubscribe` request schemas — but neither is reachable against a v2 mcp-use server: the modern (`2026-07-28`) method registry never includes them, and no handler for them is ever installed even on a legacy-negotiated connection, so both are rejected with `-32601 Method Not Found`. The `subscribe` capability bit signals "ask for resource updates via `subscriptions/listen`'s `resourceSubscriptions` filter," not "the legacy request works." See `06-subscriptions-listen.md` for the full trace and what actually ships.
 
 ## Definition fields
 
@@ -59,22 +81,23 @@ server.resourceTemplate(
 |---|---|---|
 | `name` | yes | Unique identifier within the server |
 | `uri` (static) | yes | Fixed string, must include a scheme |
-| `uriTemplate` (template) | yes | Simple template with `{var}` placeholders |
+| `uriTemplate` (template) | yes | RFC 6570 URI template — see `03-resource-templates.md` |
 | `title` | no | Human display label; falls back to `name` |
 | `description` | no | Shown to clients in resource pickers |
-| `mimeType` | no | Hint for client rendering |
+| `mimeType` | no | Advertised in `resources/list` / `resources/templates/list`; content entries carry their own `mimeType` on the wire — set it in the callback's result too |
 | `annotations` | no | `audience`, `priority`, `lastModified` — see `02-static-resources.md` |
-| `callbacks.complete` | no | URI variable autocompletion — see `03-resource-templates.md` |
+| `_meta` | no | Extension metadata on the `resources/list` descriptor; not copied into `resources/read` content — return it per-entry from the callback |
+| `complete` (template only) | no | Top-level map, URI variable autocompletion — see `03-resource-templates.md` |
 
 ## Cluster map
 
 | File | Topic |
 |---|---|
-| `02-static-resources.md` | Fixed-URI resources, response helpers, annotations |
-| `03-resource-templates.md` | URI templates, parameter handlers, completion |
+| `02-static-resources.md` | Fixed-URI resources, raw envelopes, annotations |
+| `03-resource-templates.md` | RFC 6570 URI templates, parameter handlers, completion |
 | `04-binary-and-image.md` | Image, audio, PDF, generic binary payloads |
-| `05-uri-conventions.md` | Scheme design, simple template rules, anti-patterns |
-| `06-subscriptions.md` | Subscription lifecycle, `notifyResourceUpdated`, registry changes |
-| `canonical-anchor.md` | `mcp-use/mcp-resource-watcher` reference repo |
+| `05-uri-conventions.md` | Scheme design, template rules, anti-patterns |
+| `06-subscriptions-listen.md` | Stateless subscription lifecycle, `notifyResourceUpdated`, registry changes |
+| `canonical-anchor.md` | One complete, runnable v2 resource server (static, template, binary, subscriptions) |
 
-**Canonical doc:** https://manufact.com/docs/typescript/server/resources
+**Canonical doc:** https://docs.mcp-use.com/v2/typescript/server/resources

@@ -4,37 +4,38 @@
 
 ## tsconfig.json
 
-Scaffolded projects include a standard ESM + source-map config:
+All three `create-mcp-use-app` templates (`mcp-server`, `mcp-apps`, `blank`) generate the identical config:
 
 ```json
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2024",
+    "jsx": "react-jsx",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2020"],
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": ".",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "strict": true,
-    "skipLibCheck": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "noUncheckedSideEffectImports": true
   },
-  "include": ["index.ts", "mcp-env.d.ts"],
-  "exclude": ["node_modules", ".mcp-use"]
+  "include": ["index.ts", "mcp-env.d.ts", "src/**/*", "views/**/*", "server.ts", ".mcp-use/**/*.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }
 ```
 
 Key points:
-- **`module: "NodeNext"`** — ESM output
+- **`module`/`moduleResolution: "NodeNext"`** — ESM, matches `"type": "module"`
+- **`lib: [..., "DOM", "DOM.Iterable"]`** — required even for tool-only servers because `mcp-env.d.ts` and view type-checking pull in DOM lib types; do not narrow this to drop DOM
+- **`jsx: "react-jsx"`** — present in every template, including `mcp-server` and `blank` (not just `mcp-apps`), so views can be added later without a tsconfig edit
+- **`noEmit: true`** — tsc is typecheck-only in v2. Build output is produced by a separate Vite pipeline through `mcp-use build`, not by `tsc` emission. Do **not** add `declaration`, `declarationMap`, `sourceMap`, `outDir`, or `rootDir` — none of these are in the shipped template and `noEmit: true` makes them no-ops or conflicting
 - **`"mcp-env.d.ts"` in `include`** — bridges server tools to views
+- **`".mcp-use/**/*.d.ts"` in `include`** — picks up other CLI-generated declaration files in the workspace directory
 - **`strict: true`** — enforces type safety
-- **`declaration: true`** — generates `.d.ts` files (needed for views)
 
-Do not use `skipLibCheck: false` or weaken strict mode without reason.
+Do not set `skipLibCheck: false` or weaken strict mode without reason. Do not reintroduce `resolveJsonModule` or emit-related options — they are not part of the real template and add nothing under `noEmit: true`.
 
 ## mcp-env.d.ts
 
@@ -113,15 +114,14 @@ Views calling `myTool` will see these types in `useCallTool`.
 ## Workflow
 
 ```bash
-# After any schema change:
+# After any schema change, regenerate declarations and run tsc --noEmit:
 npm run typecheck
 
-# Check for type errors:
+# Start the development server with HMR (does not run tsc):
 npm run dev
-# TypeScript errors print; fix and save
 
-# Build (also typechecks):
+# Produce the Vite build (does not run tsc):
 npm run build
 ```
 
-CI should enforce `npm run typecheck` before build/deploy.
+Neither `dev` nor `build` is a substitute for `typecheck`; both use Vite transforms rather than the TypeScript compiler. CI should enforce `npm run typecheck` before build/deploy.

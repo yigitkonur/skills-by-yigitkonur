@@ -1,161 +1,137 @@
 # Assets, MCP_URL, and MCP_ASSETS_URL
 
-*Read this when you need to serve static assets, configure asset URLs for production, or understand the Vite build pipeline.*
+*Read this when deploying View bundles, public assets, or a separate asset origin.*
 
-The framework serves compiled view assets and public files through two URL namespaces. Environment variables `MCP_URL` and `MCP_ASSETS_URL` control asset rewriting for production deployments.
+The View build produces a manifest plus JS/CSS assets. The server synthesizes HTML when the MCP resource is read and resolves every external asset URL for that request.
 
-## Asset Serving Routes
+## Served Namespaces
 
-The MCP server exposes these routes under the configured `basePath` (default `/mcp`):
+With the default `basePath` `/mcp`:
 
-| Route | Purpose | Source |
-|-------|---------|--------|
-| `/{basePath}/_mcp-use/views/<name>/<asset>` | Compiled view JS/CSS | `.mcp-use/build/views/<name>/` |
-| `/{basePath}/_mcp-use/public/<asset>` | Static files | `public/` directory |
-| `/{basePath}/inspector` | Inspector UI | Automounted in dev; optional in production |
+| HTTP path | Disk source in a production build |
+|-|-|
+| `/mcp/_mcp-use/views/<name>/<asset>` | `.mcp-use/build/views/<name>/<asset>` |
+| `/mcp/_mcp-use/public/<asset>` | `.mcp-use/build/views/public/<asset>` |
 
-## MCP_URL Environment Variable
+In dev, View modules are served by Vite and public files are read from the project's `public/` directory. Asset responses support `GET`/`HEAD`; unsafe or missing paths return 404.
 
-`MCP_URL` is the public origin of your MCP server. The framework uses this to populate the CSP `connectDomains` for views (so they can reach back to the server).
+## Build Artifacts
 
-```bash
-# Local development
-MCP_URL=http://localhost:3000
+Default external build:
 
-# Staged deployment
-MCP_URL=https://staging.example.com
-
-# Production
-MCP_URL=https://myserver.example.com
+```text
+.mcp-use/build/
+├── index.js
+├── manifest.json
+└── views/
+    ├── product-search/
+    │   └── assets/
+    │       ├── product-search-ABC123.js
+    │       └── product-search-DEF456.css
+    └── public/
+        ├── logo.svg
+        └── icons/star.png
 ```
 
-**How it affects CSP:**
-- Automatically appended to view resource's `_meta.ui.csp.connectDomains`
-- Allows views to fetch from the server via `fetch()`, XHR, or WebSocket
-- Set by `mcp-use dev` automatically if not already set; must be explicit in production
+The corresponding `manifest.json` contains a `views` map:
 
-## MCP_ASSETS_URL Environment Variable
+```json
+{
+  "entryPoint": "index.js",
+  "views": {
+    "product-search": {
+      "kind": "external",
+      "entry": "assets/product-search-ABC123.js",
+      "css": ["assets/product-search-DEF456.css"]
+    }
+  }
+}
+```
 
-`MCP_ASSETS_URL` rewrites compiled view asset paths for serving from a separate origin (CDN, static host, etc.). When set, relative paths like `assets/index-ABC123.js` become full URLs.
+`mcp-use build --inline` stores minified `js` and aggregated `css` strings in each manifest entry instead of writing that View's separate JS/CSS bundle.
+
+No build mode requires a physical per-View `index.html`. During `resources/read`, `synthesizeViewDocument()` creates the complete document:
+
+| Manifest kind | Synthesized HTML |
+|-|-|
+| `external` | Absolute `<script type="module" src="...">` and `<link rel="stylesheet" href="...">` URLs |
+| `inline` | Embedded `<script type="module">` and optional `<style>` |
+
+The synthesized document also injects the request-resolved `publicBase` before the View module runs.
+
+## MCP_URL
+
+`MCP_URL` identifies the public server origin used for View CSP and request-independent serving contexts.
 
 ```bash
-# Dev (omit or set to server origin)
-MCP_ASSETS_URL=http://localhost:3000
+MCP_URL=https://mcp.example.com
+```
 
-# Production with CDN
+- A valid value is reduced to its URL **origin**; a path suffix is ignored.
+- The server origin is appended to resource `_meta.ui.csp.connectDomains`.
+- In dev, its WebSocket origin is also appended for HMR.
+- If absent or invalid during an HTTP request, the framework resolves the origin from `Forwarded`, `X-Forwarded-Proto` + `X-Forwarded-Host`, or the request URL.
+
+## MCP_ASSETS_URL
+
+`MCP_ASSETS_URL` is an optional asset URL prefix. Unlike `MCP_URL`, it may include a path:
+
+```bash
 MCP_ASSETS_URL=https://cdn.example.com/mcp-assets
-
-# Production with Supabase static bucket
-MCP_ASSETS_URL=https://project.supabase.co/storage/v1/object/public/mcp-views
 ```
 
-**Build-time rewriting:**
-- `mcp-use build` outputs relative asset paths (e.g., `assets/index-ABC123.js`)
-- At runtime, the framework rewrites these to full URLs if `MCP_ASSETS_URL` is set
-- If omitted, paths are resolved relative to the server origin
+- Trailing slashes are removed.
+- Its origin is appended to resource `_meta.ui.csp.resourceDomains`.
+- External builds rewrite manifest JS/CSS paths to full CDN URLs when the variable is set at build time.
+- Without it, external View assets and public files resolve against the server origin and `basePath`.
+- Inline View JS/CSS does not need an external bundle URL, but public assets still use the resolved public base.
 
-## Dev Build Pipeline
+If the build manifest contains full CDN URLs, publish the contents of `.mcp-use/build/views/` at the matching `<MCP_ASSETS_URL><basePath>/_mcp-use/views/<view-name>/` layout.
 
-During `mcp-use dev`:
+## URL Resolution Truth Table
 
-1. **Vite watches** `views/` directory
-2. **Origin-absolute paths** emitted (e.g., `/src/views/product-search/view.tsx?import`)
-3. **Vite dev server** serves compiled chunks via WebSocket (HMR)
-4. **Fast Refresh** enabled (hot-reload on save, preserves React state)
+| Manifest asset value | Resolution |
+|-|-|
+| `https://cdn.example.com/file.js` | Used unchanged |
+| `data:...` | Used unchanged |
+| `/@id/...` or another `/...` dev path | Prefixed with the request-resolved assets base |
+| `assets/view-ABC.js` | Resolved under `<assetsBase><basePath>/_mcp-use/views/<name>/` |
 
-No asset rewriting in dev; Vite handles URL resolution automatically.
+## Public Assets
 
-## Production Build Output
+Author public files live in `public/` and are copied to `.mcp-use/build/views/public/` for production.
 
-After `mcp-use build`:
-
-```bash
-.mcp-use/build/views/
-├── product-search/
-│   ├── index.html              # Synthesized; links to assets below
-│   ├── assets/
-│   │   ├── index-ABC123DEF.js  # Minified view module
-│   │   └── index-XYZ789.css    # Aggregated styles
-└── dashboard/
-    └── ...
+```text
+public/
+├── logo.svg
+└── icons/star.png
 ```
 
-**Asset paths in HTML:**
-```html
-<!-- Default (external paths, rewritten at runtime) -->
-<script src="assets/index-ABC123DEF.js" type="module"></script>
-<link rel="stylesheet" href="assets/index-XYZ789.css">
-
-<!-- With --inline flag -->
-<script type="module">(minified source)</script>
-<style>(aggregated CSS)</style>
-```
-
-## --inline vs --external Build Flags
-
-```bash
-# External (default): assets served separately
-mcp-use build
-# Output: relative asset paths, rewritten via MCP_ASSETS_URL
-
-# Inline: embed JS/CSS in HTML
-mcp-use build --inline
-# Output: minified source in <script type="module"> + <style>
-```
-
-**When to use inline:**
-- Small views (< 50 KB minified)
-- Assets cannot be cached separately
-- Deployment prefers monolithic bundles
-
-**When to use external:**
-- Large views or many views (browser caches assets)
-- Assets served from CDN
-- Multi-view server (shared asset caching)
-
-## Public Assets (public/ directory)
-
-Place static files in `public/`:
-
-```
-my-server/
-├── public/
-│   ├── logo.svg
-│   ├── icons/
-│   │   └── star.png
-│   └── data.json
-```
-
-Access from views via `getPublicBaseUrl()`:
+Use the published React helper:
 
 ```typescript
 import { getPublicBaseUrl } from "mcp-use/react";
 
 export default function MyView() {
-  const publicUrl = getPublicBaseUrl();
-  return <img src={`${publicUrl}/logo.svg`} alt="Logo" />;
+  const publicBase = getPublicBaseUrl();
+  return <img src={`${publicBase}logo.svg`} alt="Logo" />;
 }
 ```
 
-**Served at:** `/{basePath}/_mcp-use/public/<asset>`
+`getPublicBaseUrl()` returns an absolute prefix with a trailing slash inside a synthesized View document. Append paths **without** a leading slash. Outside that document it returns an empty string.
 
-## Configuration Precedence
+For the default base path and no separate asset host, `logo.svg` resolves to:
 
-| Variable | Set By | Behavior |
-|----------|--------|----------|
-| `MCP_URL` | User or `mcp-use dev` | Server's public origin (appended to CSP connectDomains) |
-| `MCP_ASSETS_URL` | User only | Asset URL prefix (for CDN rewriting); defaults to MCP_URL if omitted |
-
-**Typical production setup:**
-```bash
-MCP_URL=https://myserver.example.com
-MCP_ASSETS_URL=https://cdn.example.com/mcp-assets
+```text
+https://mcp.example.com/mcp/_mcp-use/public/logo.svg
 ```
 
-Views can now connect to the server (`MCP_URL`) and load assets from the CDN (`MCP_ASSETS_URL`).
+## CSP Boundary
+
+View CSP governs browser activity inside the sandboxed iframe. It does not govern server-side `fetch()` calls made by a tool callback. Add a `connectDomains` entry only when View code itself connects to that origin.
 
 ## Next Steps
 
-- **CSP domains and permissions:** references/18-mcp-apps/server-surface/05-csp-metadata.md
-- **View folder structure:** references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md
-- **Deployment:** references/25-deploy/ cluster
+- Manifest priming and binding validation: `02-register-views-and-folder-conventions.md`
+- CSP merge rules: `05-csp-metadata.md`
+- Deployment references: `../../25-deploy/01-decision-matrix.md`

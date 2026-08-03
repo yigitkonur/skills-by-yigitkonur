@@ -13,9 +13,11 @@ mcp-use dev --tunnel
 
 Output includes:
 ```
+[mcp-use] dev server ready
+  ➜ MCP endpoint:  http://localhost:3000/mcp
+  ➜ Inspector:     http://localhost:3000/mcp/inspector
 [mcp-use] starting tunnel for port 3000…
-mcp-use server running at http://localhost:3000/mcp
-mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+  ➜ Tunnel:        https://happy-blue.local.mcp-use.run/mcp
 ```
 
 **Copy the full URL** (including `/mcp`) into your remote MCP client.
@@ -26,6 +28,13 @@ mcp-use build
 mcp-use start --port 3000 --tunnel
 ```
 
+Output includes:
+```
+[mcp-use] starting tunnel for port 3000…
+mcp-use server running at http://localhost:3000/mcp
+mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+```
+
 **With a standalone server already running on /mcp:**
 ```bash
 npx @mcp-use/tunnel 3000
@@ -33,11 +42,13 @@ npx @mcp-use/tunnel 3000
 
 Output:
 ```
-Public URL:
-  https://happy-blue.local.mcp-use.run/mcp
+✔ Local MCP server available at
 
-Local Port: 3000
+  https://happy-blue.local.mcp-use.run
+
 ```
+
+The standalone package prints the bare origin — **append `/mcp` yourself** before handing the URL to a client; the tunnel only forwards `/mcp**` and `/mcp-use**` paths, so other paths (including the bare origin) return `404`.
 
 ## URL format
 
@@ -47,6 +58,8 @@ https://<subdomain>.local.mcp-use.run/mcp
 ```
 
 The `/mcp` suffix is required — clients must include it.
+
+**Inspector is not reachable through the tunnel.** Only the MCP endpoint is exposed publicly; the Inspector UI, its proxy, and its OAuth routes stay local-only. Requesting `/mcp/inspector` through the tunnel URL returns `404`. Debug with the Inspector on the local URL (`http://localhost:3000/mcp/inspector`) while the remote client talks to the tunnel URL.
 
 ## Verify
 

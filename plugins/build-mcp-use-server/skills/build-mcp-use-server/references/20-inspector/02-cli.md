@@ -1,6 +1,6 @@
 # Inspector CLI
 
-*Read this when running the Inspector standalone with command-line flags or environment variables.*
+*Read this when running the Inspector standalone with command-line flags.*
 
 ## Quick start
 
@@ -46,6 +46,14 @@ You can combine flags:
 npx @mcp-use/inspector --url http://localhost:3000/mcp --port 9000 --no-open
 ```
 
+### `--version, -v`
+
+Print the installed `@mcp-use/inspector` version and exit.
+
+```bash
+npx @mcp-use/inspector --version
+```
+
 ### `--help, -h`
 
 Display help information and available options.
@@ -54,36 +62,4 @@ Display help information and available options.
 npx @mcp-use/inspector --help
 ```
 
-## Environment variables
-
-### `MCP_INSPECTOR_FRAME_ANCESTORS`
-
-Configure which origins can embed the Inspector in iframes via the `frame-ancestors` CSP directive.
-
-**Default behavior:**
-- Development mode: `*` (allows all origins)
-- Production mode: `'self'` (same-origin only)
-
-**Format:** Space-separated list of origins or `*`
-
-```bash
-# Allow embedding from specific domains
-MCP_INSPECTOR_FRAME_ANCESTORS="https://app.example.com https://dev.example.com" npx @mcp-use/inspector
-
-# Allow all origins (development only)
-MCP_INSPECTOR_FRAME_ANCESTORS="*" npx @mcp-use/inspector
-```
-
-### `MCP_URL`
-
-Set the external base URL when running behind a reverse proxy (ngrok, E2B sandboxes, Cloudflare tunnels). This ensures widget asset URLs and Vite HMR WebSocket connections work correctly through the proxy.
-
-```bash
-# ngrok tunnel
-MCP_URL=https://abc123.ngrok.io npx @mcp-use/inspector
-
-# E2B sandbox
-MCP_URL=https://3000-abc123.e2b.app npx @mcp-use/inspector
-```
-
-If not set, the Inspector generates a localhost URL automatically.
+The standalone `npx @mcp-use/inspector` CLI reads no environment variables — configure it with the flags above. `MCP_URL` is a `mcp-use dev` variable (reverse-proxy base URL for the dev server's own automounted Inspector, not the standalone package); see references/03-cli/10-environment-variables.md.

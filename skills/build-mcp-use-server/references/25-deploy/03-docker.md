@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run typecheck && npm run build
 
 FROM node:22-slim
 WORKDIR /app
@@ -50,16 +50,20 @@ node_modules
 dist
 *.md
 .env*
-.mcp-use/sessions
+.mcp-use/cache
+.mcp-use/state
+.mcp-use/generated
 ```
+
+The `.mcp-use/` workspace has five subdirectories: `build/` (ship this — the CLI's runtime import target), `generated/`, `cache/`, `state/` (includes `state/tunnel.json`), and `cloud/` (includes `cloud/link.json`, tracked in git separately — see `04-cli-and-org-management.md`). There is no `.mcp-use/sessions/`; v2 keeps no per-session server state to exclude. Only `build/` is required at runtime.
 
 ## Verification
 
-After building:
+After building, verify the root-level health route if your server registered `server.get("/health", ...)`:
 ```bash
 docker build -t my-mcp-server .
 docker run --rm -p 3000:3000 my-mcp-server &
-curl http://localhost:3000/mcp/health
+curl http://localhost:3000/health
 ```
 
 See `platforms/04-google-cloud-run.md` for `gcloud run deploy` with Docker.

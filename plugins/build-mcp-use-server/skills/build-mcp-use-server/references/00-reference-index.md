@@ -68,7 +68,7 @@
 - `references/06-resources/04-binary-and-image.md` — Binary and Image Resources
 - `references/06-resources/05-uri-conventions.md` — URI Conventions
 - `references/06-resources/06-subscriptions-listen.md` — Resource Subscriptions & Listening (Stateless Model)
-- `references/06-resources/canonical-anchor.md` — Example Reference: `mcp-use/mcp-resource-watcher`
+- `references/06-resources/canonical-anchor.md` — Canonical Example: Resource Server with Templates and Subscriptions
 
 ## 07-prompts
 
@@ -99,7 +99,7 @@
 ## 10-sessions
 
 - `references/10-sessions/01-overview-stateless-truth.md` — Sessions in v2: Stateless Truth
-- `references/10-sessions/02-session-storage-roadmap.md` — Session storage roadmap
+- `references/10-sessions/02-session-storage-roadmap.md` — v1 Session Storage Migration Reference (Not a v2 Roadmap)
 - `references/10-sessions/03-state-patterns-without-sessions.md` — State patterns without sessions
 - `references/10-sessions/04-multi-instance-and-scaling.md` — Multi-instance and scaling
 
@@ -170,9 +170,9 @@
 - `references/18-mcp-apps/05-host-capability-detection.md` — Host Capability Detection
 - `references/18-mcp-apps/anti-patterns.md` — Anti-Patterns in MCP Apps Views
 - `references/18-mcp-apps/canonical-anchor.md` — Canonical Example: End-to-End Tool + View + CSP
-- `references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md` — Dual-Protocol: One Server Definition, Both MCP Apps and ChatGPT
+- `references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md` — One Server Definition and One Wire, with Host-Specific Client Runtime Branching
 - `references/18-mcp-apps/chatgpt-apps/02-legacy-window-openai-and-skybridge.md` — Legacy: window.openai API and Skybridge MIME
-- `references/18-mcp-apps/chatgpt-apps/03-csp-differences.md` — CSP Differences: MCP Apps vs. ChatGPT
+- `references/18-mcp-apps/chatgpt-apps/03-csp-differences.md` — Uniform CSP Metadata Across MCP Apps and ChatGPT
 - `references/18-mcp-apps/chatgpt-apps/04-runtime-detection.md` — Runtime Detection: ChatGPT vs. MCP Apps
 - `references/18-mcp-apps/server-surface/01-tool-view-field.md` — The Tool `view` Field
 - `references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md` — Register Views and Folder Conventions
@@ -187,6 +187,7 @@
 - `references/18-mcp-apps/view-react/06-followups-and-open-external.md` — Follow-ups and open external
 - `references/18-mcp-apps/view-react/07-host-context-files-and-size.md` — Host context, files, and size
 - `references/18-mcp-apps/view-react/08-theme-and-components.md` — Theme and components
+- `references/18-mcp-apps/view-react/09-useviewtool.md` — useViewTool: Host or Model Actions on a Mounted View
 
 ## 19-nextjs-drop-in
 
@@ -299,9 +300,9 @@
 ## 31-canonical-examples
 
 - `references/31-canonical-examples/00-how-to-use-this-cluster.md` — Canonical Examples Cluster
-- `references/31-canonical-examples/01-chart-builder.md` — Chart Builder Example
-- `references/31-canonical-examples/02-diagram-builder.md` — Diagram Builder Example
-- `references/31-canonical-examples/03-example-inventory.md` — Full Example Inventory
+- `references/31-canonical-examples/01-chart-builder.md` — External Template-Gallery App: Chart Builder
+- `references/31-canonical-examples/02-diagram-builder.md` — External Template-Gallery App: Diagram Builder
+- `references/31-canonical-examples/03-example-inventory.md` — Canonical In-Repo and External Template Example Inventory
 
 ## Root hubs
 

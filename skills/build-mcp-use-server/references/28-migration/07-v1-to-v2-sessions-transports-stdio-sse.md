@@ -46,7 +46,7 @@ export const tool = server.tool(..., async (input, ctx) => {
 
 | v1 session use | v2 replacement |
 |---|---|
-| Wizard step / form progress | `ctx.elicit()` input-required rounds + `createRequestStateCodec` |
+| Wizard step / form progress | `input_required` rounds (`inputRequired()`/`inputResponse()`/`acceptedContent()`) + `createRequestStateCodec` |
 | User preferences | Database keyed by `ctx.auth.user.id` |
 | Temporary calculation cache | External cache (Redis) keyed by request or user |
 | Anonymous session | Client passes state token as tool input |
@@ -55,45 +55,63 @@ export const tool = server.tool(..., async (input, ctx) => {
 
 ## Request state codec for elicitation
 
-Use `createRequestStateCodec` to persist state across input-required rounds:
+> **`ctx.elicit(key, message, schema)` is documented in some v2 docs but not shipped in 2.0.0-beta.66.** `RequestContextBase` in the shipped `dist/context.d.ts` has no `elicit` field. Use the real, shipped primitives below — `inputRequired()`, `inputResponse()`, `acceptedContent()` — re-exported from `mcp-use` root (originally from `@modelcontextprotocol/server`). See `../12-elicitation/01-overview.md` for the full elicitation model.
+
+Use `createRequestStateCodec` to persist state across input-required rounds. It mints an HMAC-signed wire string in `inputRequired({ requestState })` and verifies it on the client's retry via `ServerOptions.requestState.verify`:
 
 ```typescript
-import { createRequestStateCodec } from "mcp-use";
+import { MCPServer, createRequestStateCodec, inputRequired, inputResponse, acceptedContent } from "mcp-use";
 import { z } from "zod";
 
-const stateCodec = createRequestStateCodec(
-  z.object({ orderId: z.string(), step: z.number() })
-);
+const stateCodec = createRequestStateCodec<{ orderId: string; step: number }>({
+  key: process.env.REQUEST_STATE_SECRET!, // >= 32 bytes; throws RangeError otherwise
+  ttlSeconds: 600, // defaults to 600 if omitted
+});
+
+const server = new MCPServer({
+  name: "checkout-server",
+  version: "1.0.0",
+  requestState: { verify: stateCodec.verify }, // wire the verify hook in
+});
+
+const confirmSchema = z.object({ confirmed: z.boolean() });
 
 export const checkout = server.tool(
   { name: "checkout", inputSchema: z.object({ orderId: z.string() }), outputSchema: z.object({ ok: z.boolean() }) },
   async ({ orderId }, ctx) => {
-    const state = ctx.requestState
-      ? stateCodec.decode(ctx.requestState)
-      : { orderId, step: 1 };
-
-    const confirmation = await ctx.elicit(
-      "confirm-checkout",
-      "Confirm checkout?",
-      z.object({ confirmed: z.boolean() })
-    );
-
-    if (confirmation.status === "required") {
-      return confirmation.result;
-    }
-
-    if (confirmation.status !== "accept" || !confirmation.data.confirmed) {
+    const state = ctx.requestState<{ orderId: string; step: number }>() ?? { orderId, step: 1 };
+    const response = inputResponse(ctx.inputResponses, "confirm-checkout");
+    if (response.kind === "elicit" && response.action !== "accept") {
       return { content: [{ type: "text", text: "Cancelled" }], structuredContent: { ok: false } };
     }
 
-    // Side effects only after accept (handler re-runs on input)
-    await db.orders.complete(orderId);
+    const confirmation = acceptedContent(ctx.inputResponses, "confirm-checkout", confirmSchema);
+    if (confirmation === undefined) {
+      return inputRequired({
+        inputRequests: {
+          "confirm-checkout": inputRequired.elicit({
+            message: "Confirm checkout?",
+            requestedSchema: confirmSchema,
+          }),
+        },
+        requestState: await stateCodec.mint(state),
+      });
+    }
+
+    if (!confirmation.confirmed) {
+      return { content: [{ type: "text", text: "Cancelled" }], structuredContent: { ok: false } };
+    }
+
+    // Side effects only after accept (handler re-runs from the top on input)
+    await db.orders.complete(state.orderId);
     return { content: [{ type: "text", text: "Done" }], structuredContent: { ok: true } };
   }
 );
 ```
 
-**Important**: The handler re-runs when the client supplies input. Make side effects idempotent or execute only after `status === "accept"`.
+`stateCodec.mint(payload)` returns `Promise<string>`; the verified payload is read back inside the handler as `ctx.requestState<{ orderId: string; step: number }>()` (called as a generic function, not `.decode()`/`.parse()`). A tampered or expired `requestState` fails `verify` and is rejected before your handler runs. The codec is signed, not encrypted: clients can read its payload. Signing prevents tampering but does not by itself bind a token to one authenticated user, so never use request state alone as an authorization boundary; re-check `ctx.auth` and durable ownership before side effects.
+
+**Important**: The handler re-runs from the top when the client supplies input — there is no suspended stack frame. Make side effects idempotent or execute only after `acceptedContent()` returns validated data.
 
 ## Post-response push removal
 

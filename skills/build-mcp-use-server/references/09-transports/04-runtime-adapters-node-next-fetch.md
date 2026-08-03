@@ -66,7 +66,19 @@ import { createNextHandler } from "mcp-use/next";
 export const { GET, POST, DELETE, OPTIONS } = createNextHandler(server);
 ```
 
-`withMcpUse()` integrates View compilation into Next.js build; View assets mount at `/_mcp-use/views/`. The optional route handler lets you customize the handler (e.g., add logging, pre-checks).
+`withMcpUse()` integrates View compilation into Next.js build; View assets mount at `{basePath}/_mcp-use/views/`. The optional route handler lets you customize the handler (e.g., add logging, pre-checks).
+
+### Standalone beside Next.js (alternative topology)
+
+Instead of embedding the MCP server inside a Next.js Route Handler, run it as a separate process next to the Next.js app, owning its own HTTP server and port:
+
+```bash
+mcp-use dev --mcp-dir src/mcp --port 3001    # development
+mcp-use build --mcp-dir src/mcp             # production build
+mcp-use start                                # production run
+```
+
+Use `--path`, `--entry`, and `--views-dir` flags to point at a split monorepo layout where the MCP server code does not live at the Next.js project root. Choose Standalone when the MCP server needs independent scaling/deployment from the Next.js app, or when the app itself is not on Next.js's Route Handler request path (e.g., static export). Choose Embedded (above) when the MCP server should deploy and scale as part of the Next.js app with no second process to manage. See the "Next.js" server doc page for the full Standalone verification checklist.
 
 ## Fetch API (Edge, Cloudflare Workers, Deno, etc.)
 
@@ -132,7 +144,7 @@ Deno.serve({ port: 3000 }, (req) => {
 Build outputs `.mcp-use/build/views/`; deploy it alongside server code.
 
 ```bash
-MCP_URL=https://your-domain.com/mcp npm run build
+MCP_URL=https://your-domain.com npm run build
 # Deploy: server + .mcp-use/build/views/
 ```
 
@@ -141,7 +153,7 @@ Mount `.mcp-use/build/views/` as a static asset binding or upload to CDN. Route 
 
 **External CDN:**
 ```bash
-MCP_URL=https://api.example.com/mcp \
+MCP_URL=https://api.example.com \
 MCP_ASSETS_URL=https://cdn.example.com/assets \
 npm run build
 ```

@@ -12,6 +12,7 @@
 | Client uses a command instead of a URL | Check whether it expects stdio. v2 serves HTTP only. | `references/09-transports/05-no-stdio-and-sse-history.md` |
 | 404 at `/sse` or `/stdio` | Wrong v1 endpoint. | Connect to `/mcp`. |
 | HTML returned to MCP client | Wrong endpoint, auth redirect, or proxy page. | Inspect status, `content-type`, and redirects with curl. |
+| `406 Not Acceptable` mentions accepting JSON and event-stream | Legacy compatibility POST is missing `Accept: application/json, text/event-stream`. | `references/22-validate/02-curl-handshake.md` and `references/23-debug/02-transport-debugging.md` |
 | Browser CORS error | `cors` config is missing or incomplete. | `references/08-server-config/03-cors-and-allowed-origins.md` |
 | Host validation 403 | Hostname is absent from `allowedHosts`. | `references/08-server-config/04-dns-rebinding-and-host-validation.md` |
 | No tools | Confirm registration occurs before serving and inspect `tools/list`. | `references/04-tools/02-registering-a-tool.md` |

@@ -61,6 +61,7 @@ export default app;
 | `devMode` | boolean | `true` | Enables same-origin sandbox for MCP Apps widgets |
 | `sandboxOrigin` | string \| null | undefined | Override sandbox origin for MCP Apps widgets |
 | `oauthProxyAllowLoopback` | boolean | `true` | Permit local proxy/OAuth to loopback targets |
+| `oauthProxyAllowedOrigins` | readonly string[] | `[]` | Explicit cross-origin callers allowed to reach the OAuth BFF; same-origin is always implicit |
 
 Each mounted Inspector enforces process-local rate limits: 120 proxy/OAuth requests and 600 asset requests per minute. Exhausted routes return `429 Too Many Requests` with `Retry-After`.
 

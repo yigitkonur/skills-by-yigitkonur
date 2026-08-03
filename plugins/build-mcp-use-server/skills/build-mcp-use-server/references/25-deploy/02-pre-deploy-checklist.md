@@ -27,20 +27,19 @@ Skip these and you will have post-deploy outages. Work through all sections.
 
 ## 4. Server Code
 
-- [ ] Server entry exports `default` (for Node: `export default server.fetch`).
-- [ ] Server does NOT call `listen()` if deploying to serverless/edge (Vercel, Cloudflare, Supabase).
-- [ ] Server DOES call `listen()` if deploying to Node-based platform (Manufact, Cloud Run, Railway).
-- [ ] Health endpoint registered before `listen()` if needed: `server.get("/health", (c) => c.json({ status: "ok" }))`.
+- [ ] Server entry `export default`s something. For Manufact Cloud / `mcp-use start` / Cloud Run / Railway (any Node CLI-managed listener), export the `MCPServer` instance itself (`export default server;`) — the CLI's `start` command requires the default export to expose a `.listen()` method and throws otherwise. For serverless/edge platforms, expose the same Web boundary through the platform's documented shape: Vercel can `export default server`; Cloudflare exports an object whose `fetch` wrapper calls `server.fetch`; Deno calls `Deno.serve((request) => server.fetch(request))`; Hono mounts `server.fetch(c.req.raw)`.
+- [ ] Server does NOT call `listen()` if deploying to serverless/edge (Vercel, Cloudflare, Supabase, Deno Deploy).
+- [ ] Server DOES call `listen()` — or is started via `mcp-use start` / `npm start`, which calls it for you — if deploying to a Node-based platform (Manufact, Cloud Run, Railway).
+- [ ] Health endpoint registered at the root level (not nested under the MCP `basePath`): `server.get("/health", (c) => c.json({ ok: true }))`.
 
 ## 5. Staging Smoke Test
 
 Before production deploy:
 
 - [ ] Deploy to staging environment first (separate service/app/project).
-- [ ] Inspector connects and lists all tools.
-- [ ] One tool called end-to-end; result correct.
-- [ ] Views render (if applicable): `npx mcp-use@beta screenshot --mcp <staging-url>/mcp --tool <name> --output test.png`.
-- [ ] No CSP violations or 404s in browser console.
+- [ ] **Every server:** connect to the exact staging MCP URL, list tools, and complete one relevant tool call via Inspector, `mcp-use client`, or the verified curl flow.
+- [ ] **Views only:** render the View with `npx mcp-use@beta screenshot --mcp <staging-mcp-url> --tool <name> --output test.png`.
+- [ ] **Views only:** no CSP violations, missing assets, or runtime errors in the iframe/browser console.
 
 ## 6. Git (if using GitHub deploy)
 
@@ -52,10 +51,9 @@ Before production deploy:
 
 After platform reports success:
 
-- [ ] Health endpoint responds: `curl -s <deployed-url>/mcp/health | jq .`
-- [ ] Inspector connects and lists tools.
-- [ ] One full tool call succeeds.
-- [ ] If Views used: screenshot from live endpoint shows rendered content (not broken links).
+- [ ] Health endpoint responds: `curl -s <deployed-origin>/health | jq .`
+- [ ] **Every server:** exact deployed MCP URL connects, tools list successfully, and one relevant tool call succeeds.
+- [ ] **Views only:** live screenshot renders expected content, and asset/CSP console checks are clean.
 - [ ] Production client configurations updated with new URL if it changed.
 
 ---

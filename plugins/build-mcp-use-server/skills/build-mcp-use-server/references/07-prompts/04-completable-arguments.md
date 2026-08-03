@@ -107,14 +107,14 @@ import { completable } from "mcp-use";
 
 completable<T extends StandardSchemaV1>(
   schema: T,
-  complete: string[] | number[] | boolean[] | CompletionCallback
+  complete: ReadonlyArray<string | number | boolean> | CompletionCallback
 ): ReturnType<typeof sdkCompletable<T>>
 ```
 
 | Parameter | Type | Purpose |
 |---|---|---|
 | `schema` | Zod / ArkType / Valibot | The field schema (any Standard Schema v1) |
-| `complete` | Array or Callback | Static values or dynamic suggestion function |
+| `complete` | `ReadonlyArray<string \| number \| boolean>` or `CompletionCallback` | Static values (mixed types allowed in one array) or a dynamic suggestion function |
 
 ---
 
@@ -139,8 +139,8 @@ language: completable(z.string(), [...]).describe("Language")
 language: completable(z.string(), ["python", "typescript"]).optional()
 ```
 
-- **Limit results to ~100 items** — clients may clip large suggestion lists.
-- **All suggestions must be strings** — no objects or complex types.
+- **Server truncates at 100 items.** The SDK's completion handler slices the result to `values.slice(0, 100)` and sets `hasMore: true` when the source list is longer — suggestions beyond the 100th are dropped before they reach the client, not just visually clipped by the client.
+- **The static array accepts `string | number | boolean`** — mixed types are fine (`createPrefixCompletion` normalizes them). A `CompletionCallback` must return `string[]` (or `Promise<string[]>`) regardless of the field's underlying type.
 
 ---
 

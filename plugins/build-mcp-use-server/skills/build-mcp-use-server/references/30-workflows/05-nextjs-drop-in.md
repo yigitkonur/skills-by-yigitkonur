@@ -13,7 +13,7 @@
 ### 1. Install `mcp-use`
 
 ```bash
-npm install mcp-use
+npm install mcp-use@beta zod@4
 ```
 
 **Verify:** `npm ls mcp-use` shows v2.
@@ -90,7 +90,13 @@ export const { GET, POST, DELETE, OPTIONS } = createNextHandler(server);
 npm run dev
 ```
 
-Open `http://localhost:3000/api/mcp/inspector`, connect to `http://localhost:3000/api/mcp`, then call `echo` with `{"message":"Hello Next.js!"}`.
+The embedded Next.js topology does not auto-mount an inspector route — there is no `/api/mcp/inspector`. Run the standalone Inspector against the running route instead:
+
+```bash
+npx @mcp-use/inspector --url http://localhost:3000/api/mcp
+```
+
+Connect and call `echo` with `{"message":"Hello Next.js!"}`.
 
 **Verify:** The response contains `echoed: "Hello Next.js!"` and a numeric `timestamp`.
 
@@ -104,7 +110,11 @@ npm run build
 
 Deploy through the application's normal Vercel workflow. The MCP endpoint is `https://your-domain.com/api/mcp`.
 
-**Verify:** Connect Inspector to the deployed URL and repeat the `echo` call.
+**Verify:** Point the standalone Inspector at the deployed URL and repeat the `echo` call — the deployed route has no `/inspector` sub-path either:
+
+```bash
+npx @mcp-use/inspector --url https://your-domain.com/api/mcp
+```
 
 ## Common Issues
 
@@ -116,5 +126,5 @@ Deploy through the application's normal Vercel workflow. The MCP endpoint is `ht
 
 ## Next
 
-- Read `references/19-nextjs-drop-in/01-overview-withmcpuse.md` for integration details.
-- Read `references/19-nextjs-drop-in/04-deploying-on-vercel.md` for Vercel details.
+- Read `../19-nextjs-drop-in/01-overview-withmcpuse.md` for integration details.
+- Read `../19-nextjs-drop-in/04-deploying-on-vercel.md` for Vercel details.
