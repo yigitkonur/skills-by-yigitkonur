@@ -91,13 +91,13 @@ Auto-connect searches Chrome's `DevToolsActivePort`, then common ports 9222/9229
 
 ## Provider conflict on this machine
 
-`~/.zshrc` sources both Kernel and Browser Use env files; the later Browser Use file currently leaves:
+No rc file auto-sources `AGENT_BROWSER_PROVIDER=browseruse` into a fresh interactive zsh (verified 2026-08-03: `~/.zshrc` does not source `agent-browser-browseruse.env` or `agent-browser-kernel.env`). `~/.bashrc` does auto-source `agent-browser-kernel.env`, which leaves:
 
 ```text
-AGENT_BROWSER_PROVIDER=browseruse
+AGENT_BROWSER_PROVIDER=kernel
 ```
 
-The CLI rejects CDP + provider together:
+The same variable also gets exported into the current shell when you manually `source` a provider env file that defines it (the Browser Use and Kernel files currently do; Browserless exports only its key). Either path collides with CDP:
 
 ```text
 Cannot use --cdp and -p/--provider together

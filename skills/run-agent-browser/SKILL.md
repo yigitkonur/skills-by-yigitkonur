@@ -26,7 +26,7 @@ Installed CLI help wins on syntax. This skill owns **runtime selection and failu
 |---|---|---|
 | **1. Plain local** | Default for every new task | Unset provider env; launch local Chrome with stealth args |
 | **2. Steel CDP** | Tier 1 fails (no Chrome, display, sandbox, or user asked for managed CDP) | Source Steel env; attach via `--cdp`; details in `references/cdp-and-steel.md` |
-| **3. Cloud provider** | Tier 2 fails or unavailable | Browser Use → Kernel → Browserless → Browserbase (or user-named); details in `references/providers.md` |
+| **3. Cloud provider** | Tier 2 fails or unavailable | Browser Use → Kernel → Browserless → Browserbase (or user-named); if Browser Use returns `CDP WebSocket connect failed: HTTP error: 400 Bad Request`, skip it and fall through — do not retry it (see tier 3 below); details in `references/providers.md` |
 | **4. Ask user** | All tiers fail or no credentials | Request CDP URL, provider key, or approval to install/deploy — then configure and retry |
 
 Special cases (skip the ladder only when clearly required):
@@ -55,7 +55,7 @@ Never put proxy passwords, API keys, or cookie values in command output, commits
 
 ## Tier 1 — plain local (start here)
 
-This host loads `AGENT_BROWSER_PROVIDER=browseruse` from `~/.config/agent-browser-browseruse.env`. **Always unset it for tier 1**, or you will silently hit a cloud provider instead of local Chrome.
+No rc file auto-sources a provider env into a fresh zsh shell (the default here) — but `.bashrc` auto-sources `agent-browser-kernel.env` (`AGENT_BROWSER_PROVIDER=kernel`), and manually `source`-ing any provider file during tier-3 work leaves that variable exported for the rest of the shell. **Always unset it for tier 1** regardless of which shell or prior command ran, or you will silently hit a cloud provider instead of local Chrome.
 
 ```bash
 SESSION="local-$(agent-browser session id --scope cwd --prefix task)"
@@ -111,15 +111,18 @@ env -u AGENT_BROWSER_PROVIDER agent-browser --session cdp-user --cdp "$USER_SUPP
 
 Read **`references/providers.md`** for env files, stealth defaults, and install. Order when the user has not named a provider:
 
-1. **Browser Use** (`-p browseruse`) — key often already on this host  
-2. **Kernel** (`-p kernel`) — set `KERNEL_STEALTH=true`  
-3. **Browserless** (`-p browserless`) — stealth on by default  
-4. **Browserbase** (`-p browserbase`) — only if key present / user provides  
+1. **Browser Use** (`-p browseruse`) — key often already on this host, but see the known-broken note below before relying on it
+2. **Kernel** (`-p kernel`) — set `KERNEL_STEALTH=true`; verified working on this host
+3. **Browserless** (`-p browserless`) — stealth on by default; verified working on this host
+4. **Browserbase** (`-p browserbase`) — only if key present / user provides
+
+**Known issue (this host, agent-browser 0.33.2, checked 2026-08-03):** `-p browseruse` fails deterministically with `✗ CDP WebSocket connect failed: HTTP error: 400 Bad Request` on every attempt — different session names, with/without `-v`/`--debug`, fresh shell, doc-verbatim syntax. This is not a bad key: an authenticated API probe returns `200`, session creation via the raw API succeeds, and the returned `webSocketDebuggerUrl` accepts a raw WebSocket upgrade directly — so the break is inside agent-browser's own Browser Use connect path, not the account or network. Treat one `400 Bad Request` from `-p browseruse` as a **known failure signal, not a transient blip** — do not retry it, fall straight to Kernel.
 
 ```bash
 # Example: Browser Use (do NOT print the key)
 source "$HOME/.config/agent-browser-browseruse.env"   # if present
 # If BROWSER_USE_API_KEY empty → ask user for the key; write to that env file (chmod 600); source; retry
+# If it returns "CDP WebSocket connect failed: HTTP error: 400 Bad Request" → known-broken on this host, skip to Kernel
 
 SESSION="prov-$(agent-browser session id --scope cwd --prefix task)"
 env -u AGENT_BROWSER_PROVIDER \

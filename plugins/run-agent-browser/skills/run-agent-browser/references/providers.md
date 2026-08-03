@@ -11,7 +11,7 @@ Use when tier 1 (local) and tier 2 (Steel/CDP) failed, or the user named a cloud
 
 ## Credential hygiene
 
-- Keys live only in `~/.config/*.env` files, `chmod 600`, sourced from `~/.zshrc` with a guarded line.
+- Keys live only in `~/.config/*.env` files with `chmod 600`; source them process-locally unless the user explicitly chooses a guarded shell startup line.
 - Never print key values. Confirm with "present" / character length only.
 - Prefer process-local `source` + `-p` over exporting a sticky global provider for the whole shell (globals break Steel/CDP later on this host).
 
@@ -19,17 +19,21 @@ Use when tier 1 (local) and tier 2 (Steel/CDP) failed, or the user named a cloud
 
 | Order | Provider | CLI | Required env | Stealth default | Local env file on this host |
 |---|---|---|---|---|---|
-| 1 | Browser Use | `-p browseruse` | `BROWSER_USE_API_KEY` | n/a (cloud) | `~/.config/agent-browser-browseruse.env` |
-| 2 | Kernel | `-p kernel` | `KERNEL_API_KEY` | `KERNEL_STEALTH=false` → **set true** | `~/.config/agent-browser-kernel.env` |
-| 3 | Browserless | `-p browserless` | `BROWSERLESS_API_KEY` | `BROWSERLESS_STEALTH=true` (default) | `~/.config/browserless.env` |
+| 1 | Browser Use | `-p browseruse` | `BROWSER_USE_API_KEY` | n/a (cloud) | `~/.config/agent-browser-browseruse.env` — **known-broken here, see below** |
+| 2 | Kernel | `-p kernel` | `KERNEL_API_KEY` | `KERNEL_STEALTH=false` → **set true** | `~/.config/agent-browser-kernel.env` — verified working |
+| 3 | Browserless | `-p browserless` | `BROWSERLESS_API_KEY` | `BROWSERLESS_STEALTH=true` (default) | `~/.config/browserless.env` — verified working |
 | 4 | Browserbase | `-p browserbase` | `BROWSERBASE_API_KEY` | n/a | *(not configured here)* |
 
 If the user names a provider, use that name regardless of order.
+
+**Browser Use known-broken (this host, agent-browser 0.33.2, checked 2026-08-03):** `-p browseruse` fails every attempt with `✗ CDP WebSocket connect failed: HTTP error: 400 Bad Request` — reproduced across fresh session names, with `-v`/`--debug`, and doc-verbatim syntax with no custom session. The key itself is valid: authenticated `GET/POST` probes to the sessions API return `200`, session creation succeeds, and the session's own `webSocketDebuggerUrl` accepts a raw WebSocket upgrade. The fault is in agent-browser's Browser Use connect path, not the account, key, or network. Do not retry `-p browseruse` after one `400` — go straight to Kernel. Re-test only if the user reports an agent-browser version bump past 0.33.2.
 
 ## Browser Use
 
 Docs: https://agent-browser.dev/providers/browser-use  
 Dashboard: Browser Use Cloud Dashboard (API key + free credits).
+
+**Known-broken on this host as of 2026-08-03 — see the note in "Default preference order" above before spending a retry on it.**
 
 ```bash
 # ~/.config/agent-browser-browseruse.env
@@ -129,6 +133,7 @@ chmod 600 "$HOME/.config/agent-browser-<provider>.env"
 | Symptom | Action |
 |---|---|
 | `Cannot use --cdp and -p/--provider together` | Drop one of the two; re-run |
+| `CDP WebSocket connect failed: HTTP error: 400 Bad Request` from `-p browseruse` | Known-broken on this host (see above) — do not retry, skip straight to Kernel |
 | `401` / unauthorized from provider | Key missing/wrong — re-ask user, rewrite env file |
 | Provider timeout | Raise Kernel/Browserless TTL; retry once; else next provider |
 | Local Chrome missing | Tier 2 Steel, else tier 3 |
