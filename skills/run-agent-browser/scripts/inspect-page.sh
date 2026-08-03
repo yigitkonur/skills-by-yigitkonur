@@ -5,9 +5,9 @@ usage() {
   cat <<'EOF'
 Usage: inspect-page.sh [--screenshot] URL [output-dir]
 
-Captures URL, title, interactive snapshots, readable DOM, and browser errors.
-On Yigit's Mac it uses and safely releases the managed headed-CDP pool. Where
-the pool is unavailable it uses an isolated temporary upstream session.
+Captures URL, title, interactive snapshots, readable DOM, and browser errors via
+Steel Browser CDP using a unique named agent-browser session. Unsets any global
+provider variable for the subprocess to avoid runtime conflicts.
 EOF
 }
 
@@ -33,59 +33,44 @@ done
 OUTPUT_DIR="${OUTPUT_DIR:-./agent-browser-inspect}"
 mkdir -p "$OUTPUT_DIR"
 
-if command -v agent-browser >/dev/null 2>&1; then
-  AB_CMD=(agent-browser)
-else
-  AB_CMD=(npx --no-install agent-browser)
+if [[ -r "$HOME/.config/steel-browser-cdp.env" ]]; then
+  # shellcheck disable=SC1091
+  source "$HOME/.config/steel-browser-cdp.env"
 fi
 
-MANAGED=0
-SESSION=""
-OWNED_TAB=""
-if "${AB_CMD[@]}" pool status >/dev/null 2>&1; then
-  MANAGED=1
-else
-  SESSION="inspect-page-$$-$(date +%s)"
+if [[ -z "${STEEL_AGENT_BROWSER_CDP:-}" ]]; then
+  echo "STEEL_AGENT_BROWSER_CDP is missing (source ~/.config/steel-browser-cdp.env)" >&2
+  exit 1
 fi
+
+if command -v agent-browser >/dev/null 2>&1; then
+  AB_BIN=(agent-browser)
+else
+  AB_BIN=(npx --no-install agent-browser)
+fi
+
+SESSION="inspect-page-$$-$(date +%s)"
 
 run_ab() {
-  if [[ "$MANAGED" -eq 1 ]]; then
-    "${AB_CMD[@]}" "$@"
-  else
-    "${AB_CMD[@]}" --session "$SESSION" "$@"
-  fi
+  env -u AGENT_BROWSER_PROVIDER "${AB_BIN[@]}" --session "$SESSION" --cdp "$STEEL_AGENT_BROWSER_CDP" "$@"
 }
 
 cleanup() {
-  if [[ "$MANAGED" -eq 1 ]]; then
-    if [[ -n "$OWNED_TAB" ]]; then
-      if ! "${AB_CMD[@]}" tab close "$OWNED_TAB" >/dev/null 2>&1; then
-        "${AB_CMD[@]}" tab "$OWNED_TAB" >/dev/null 2>&1 || true
-        "${AB_CMD[@]}" open about:blank >/dev/null 2>&1 || true
-      fi
-    fi
-    "${AB_CMD[@]}" close >/dev/null 2>&1 || true
-  else
-    run_ab close >/dev/null 2>&1 || true
-  fi
+  run_ab close >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-echo "resolved command: ${AB_CMD[*]}"
-echo "runtime:          $([[ "$MANAGED" -eq 1 ]] && echo managed-pool || echo upstream-session)"
-[[ -z "$SESSION" ]] || echo "session:          $SESSION"
+echo "resolved command: ${AB_BIN[*]}"
+echo "runtime:          Steel Browser CDP"
+echo "session:          $SESSION"
+echo "endpoint:         $STEEL_AGENT_BROWSER_CDP"
 echo "url:              $URL"
 echo "output dir:       $OUTPUT_DIR"
 
 run_ab open "$URL"
-if [[ "$MANAGED" -eq 1 ]]; then
-  "${AB_CMD[@]}" pool current
-  OWNED_TAB="$("${AB_CMD[@]}" --json tab | sed -n 's/.*"active":true[^}]*"tabId":"\([^"]*\)".*/\1/p' | head -n 1)"
-  [[ -n "$OWNED_TAB" ]] || { echo "Could not determine active task tab" >&2; exit 1; }
-fi
 
 if ! run_ab wait --load networkidle >/dev/null 2>&1; then
-  run_ab wait --load domcontentloaded >/dev/null
+  run_ab wait --load domcontentloaded >/dev/null 2>&1 || true
 fi
 
 run_ab get url >"$OUTPUT_DIR/final-url.txt"

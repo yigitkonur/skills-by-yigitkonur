@@ -1,42 +1,74 @@
 # run-agent-browser
 
-An agent skill for reliable `agent-browser` automation with fresh `@ref` snapshots, deterministic verification, trust-boundary handling, and Yigit's multi-agent headed-Chrome CDP pool.
+A Claude/Codex skill for reliable browser automation with the installed
+`agent-browser` CLI, this host's private Steel Browser CDP service, and its
+separate authenticated Patchright scrape pool.
 
-The official upstream skill is dynamic: the installed CLI supplies version-matched guidance through `agent-browser skills get core [--full]`. This skill layers local runtime policy and multi-agent ownership on top instead of freezing an upstream command catalog.
+Last reconciled against the installed CLI (`agent-browser --version`),
+<https://agent-browser.dev/cdp-mode>, the live Steel Browser deployment
+(`/root/dev/zeo-crawler-omniroute/deploy/steel-browser/README.md`), and the
+live `patchright-browserpool` Coolify application. The current version pin
+lives in `SKILL.md`.
 
-Last reconciled against `agent-browser 0.31.1` and upstream commit [`afae698`](https://github.com/vercel-labs/agent-browser/commit/afae698a51242166170b6fe4809dd57fe9f75798). Always refresh from the [official discovery skill](https://github.com/vercel-labs/agent-browser/blob/main/skills/agent-browser/SKILL.md) and installed core skill when the CLI changes.
-
-## What it adds
-
-- headed persistent Chrome lanes (`general`, plus per-service authenticated lanes and scratch `slot_01`-`slot_10`), created/removed at runtime with `pool create`/`pool remove` — nothing is hardcoded, so the same commands work on a fresh machine;
-- automatic per-agent leasing and per-lane serialization;
-- task-owned tab tracking and exact lease cleanup;
-- recovery without deleting Chrome locks or daemon files;
-- explicit routing for public `read`, unmanaged launch flags, providers, Electron, and remote CDP;
-- prompt-injection, secret, artifact, and outward-action policy;
-- current references, pool-aware templates, and smoke helpers.
-
-## Install
-
-As a Codex/Claude plugin:
-
-```text
-/plugin marketplace add yigitkonur/skills-by-yigitkonur
-/plugin install run-agent-browser@yigitkonur
-```
-
-With the Skills CLI:
+The installed CLI remains the syntax authority:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser
+agent-browser skills get core --full
+agent-browser COMMAND --help
+agent-browser --version
 ```
 
-## First check
+## Runtime map
+
+| Runtime | Use it for | Entry point |
+|---|---|---|
+| Steel Browser | Normal interactive web/UI automation, refs, screenshots, deployment verification | `env -u AGENT_BROWSER_PROVIDER agent-browser --cdp "$STEEL_AGENT_BROWSER_CDP" ...` |
+| Patchright pool | Structured Google AI Overview/Mode and Gemini captures through rotating proxies | Authenticated HTTP `POST /scrape` (not CDP) |
+| Provider | Browser Use, Kernel, Browserless, AgentCore, etc. | `AGENT_BROWSER_PROVIDER` / `-p` |
+| Auto-connect/raw CDP | Intentional attachment to an existing local Chrome/profile | `--auto-connect` or `connect <port|url>` |
+
+## Key local facts
+
+- Steel env file: `~/.config/steel-browser-cdp.env` (chmod 600, sourced by
+  `.zshrc`); exact endpoint roles, ports, and tailnet equivalents are in
+  `SKILL.md` and `references/cdp-and-steel.md`.
+- Steel is one shared Chromium with single-session semantics — serialize Steel
+  tasks; see `references/cdp-and-steel.md`.
+- A global Browser Use provider is set on this machine. Explicit CDP commands
+  must use `env -u AGENT_BROWSER_PROVIDER ...` or the CLI rejects the mixed
+  runtime.
+- Patchright pool: purpose-built authenticated scrape API, no CDP socket;
+  capacity and limits are in `references/managed-cdp-pool.md`.
+
+## Skill layout
+
+- `SKILL.md` — runtime selection and operating loop.
+- `references/cdp-and-steel.md` — Steel endpoints, `connect`, `--cdp`, sessions,
+  provider conflict, tailnet security, live proof.
+- `references/managed-cdp-pool.md` — Patchright pool API, credential handling,
+  capacity, retries, response semantics.
+- `references/commands.md` — current everyday CLI routing.
+- `references/sessions-and-refs.md` — refs, tabs, sessions, restore/auth state.
+- `references/trust-boundaries.md` — prompt injection, secrets and outward
+  actions.
+- `references/safety.md` — recovery and shared-runtime safety.
+- `references/advanced.md` — providers, profiling, traces, engines and advanced
+  features.
+- `scripts/` and `assets/templates/` — reusable helpers; ad hoc browser tasks
+  remain one-command-at-a-time.
+
+## Minimal Steel smoke test
+
+Run each command separately and read the output before the next:
 
 ```bash
-bash scripts/check-agent-browser-version.sh
-agent-browser pool status
-agent-browser skills get core
+source "$HOME/.config/steel-browser-cdp.env"
+env -u AGENT_BROWSER_PROVIDER agent-browser --session steel-smoke --cdp "$STEEL_AGENT_BROWSER_CDP" open https://example.com
+env -u AGENT_BROWSER_PROVIDER agent-browser --session steel-smoke --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot -i
+env -u AGENT_BROWSER_PROVIDER agent-browser --session steel-smoke --cdp "$STEEL_AGENT_BROWSER_CDP" get title
+env -u AGENT_BROWSER_PROVIDER agent-browser --session steel-smoke close
+curl -fsS -X POST "$STEEL_API_URL/v1/sessions/release"   # full reset; close only detaches
 ```
 
-Read `SKILL.md` first. The six files under `references/` are routed detail, not optional duplicated documentation.
+See `references/cdp-and-steel.md` for the full runtime-identity proof and
+troubleshooting ladder.

@@ -34,7 +34,7 @@ agent-browser auth login service --credential-provider vault --item "Service acc
 
 Do not print the environment variable or cookie file. Delete a temporary sensitive export after its intended import if the user authorized creating it and no retention is required.
 
-On managed authenticated lanes (e.g. `app1`, `app2`), use existing profile state. Verify signed-in state through ordinary UI, not by dumping cookies/localStorage. Never browse unrelated account pages to prove authentication.
+When using an explicitly authorized authenticated Steel profile, provider session, restore key, or state file, reuse existing profile/session state rather than re-deriving credentials. Verify signed-in state through ordinary UI, not by dumping cookies or storage. Never browse unrelated account pages to prove authentication.
 
 ## Outward actions
 
@@ -76,7 +76,7 @@ JSON.stringify({ title: document.title, url: location.href })
 JS
 ```
 
-On the managed pool, launch-mutating options do not reliably affect the already-running Chrome. Use an explicit unmanaged `pool real` launch and record the bypass.
+Launch-mutating options do not reliably affect an already-running attached CDP browser. Use a deliberately unmanaged, uniquely named session when the task requires startup-time extensions, init scripts, proxy, user-agent, or raw Chrome arguments; record why Steel/provider attachment was bypassed.
 
 ## Evidence without exposure
 
