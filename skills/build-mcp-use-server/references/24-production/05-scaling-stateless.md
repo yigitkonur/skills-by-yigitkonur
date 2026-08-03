@@ -87,7 +87,7 @@ kubectl scale deployment my-server --replicas 3
 Stateless MCP means:
 - No session data to sync across replicas
 - No "sticky session" configuration required
-- Clients re-initialize on each new request (not visible; happens transparently)
+- Each HTTP operation is independent: modern `2026-07-28` clients send self-describing requests with no `initialize` handshake at all, while legacy compatibility clients may issue a stateless `initialize` per connection
 
 ## External state and databases
 
