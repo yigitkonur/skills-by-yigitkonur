@@ -17,6 +17,82 @@ import { z } from "zod";
 
 `mcp-use/server` no longer exists. Import `MCPServer` from root. Response helpers (`text`, `object`) are deprecated shims; prefer raw MCP envelopes.
 
+## Step 1b: The `Logger` root API is removed
+
+v1's application logger is not exported from v2. `Logger`, `Logger.get(name)`, `Logger.configure(...)`, `Logger.setDebug(level)`, and the default `logger` instance **do not exist** in beta.66 — v2's only root logging exports are `requestLogger` (Fetch middleware) and the built-in `logging` constructor option.
+
+**v1**:
+```typescript
+import { Logger } from "mcp-use";
+const log = Logger.get("startup");
+Logger.configure({ level: "debug" });
+Logger.setDebug(2);
+log.info("Starting");
+log.warn("slow path");
+log.error("failed", err);
+```
+
+**v2** — pick by *where the log must go*:
+
+| v1 use | v2 destination |
+|---|---|
+| Server-side startup/diagnostic logs | Your own logger (`console`, `pino`, Winston, Sentry). mcp-use does not provide one. |
+| HTTP request logging | Constructor `logging: { enabled?: boolean, level?: "info" \| "debug" \| "trace" }`, or env `MCP_USE_LOG_LEVEL`. |
+| Logs the *client* should see | `ctx.sendLog(level, data, loggerName?)` inside a tool callback — an MCP `notifications/message` to the connected client, not a server sink. |
+| Custom Fetch request logging | `requestLogger({...})` composed around `server.fetch` via `composeFetch` (not `server.use()`). |
+
+```typescript
+import { MCPServer } from "mcp-use";
+import pino from "pino";
+
+const log = pino({ name: "startup" }); // own logger, replaces Logger.get
+
+const server = new MCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  logging: { level: "debug" }, // framework request logging
+});
+
+export const work = server.tool({ name: "work", inputSchema: ..., outputSchema: ... }, async (input, ctx) => {
+  log.info("work started");                 // server-side only
+  await ctx.sendLog("info", { stage: "start" }); // delivered to the connected client
+  return { content: [...], structuredContent: {...} };
+});
+```
+
+`ctx.sendLog()` is client-facing and fires unconditionally — never route secrets through it. See `../15-logging/02-ctx-sendlog.md`.
+
+## Step 1c: Mechanical constructor/config renames
+
+These v1 `ServerConfig` fields fail as **type errors** in v2 — an import scan will not catch them. Rename or remove:
+
+| v1 field | v2 status | Action |
+|---|---|---|
+| `baseUrl` | **Removed** | Delete it. The public origin is runtime config (`MCP_URL` env or request origin), not a constructor field. The path comes from `basePath`. |
+| `cors.allowMethods` | → `cors.methods` | Rename |
+| `cors.allowHeaders` | → `cors.allowedHeaders` | Rename |
+| `cors.exposeHeaders` | **Removed** | Delete — v2 `CorsOptions` has no exposure field (`cors?: { enabled?, origin?, methods?, allowedHeaders?, credentials? }`). |
+| `sessionStore` / `streamManager` / `stateless: false` / `sessionIdleTimeoutMs` | **Removed** | See `07-v1-to-v2-sessions-transports-stdio-sse.md`. |
+
+```typescript
+// v1
+const server = new MCPServer({
+  name, version,
+  baseUrl: "https://api.example.com",
+  cors: { allowMethods: ["POST"], allowHeaders: ["authorization"], exposeHeaders: ["mcp-session-id"] },
+});
+
+// v2
+const server = new MCPServer({
+  name, version,
+  basePath: "/mcp",                       // path only; origin is env/runtime
+  cors: { methods: ["POST"], allowedHeaders: ["authorization"], credentials: true },
+});
+// MCP_URL=https://api.example.com npm start   ← public origin lives here
+```
+
+Scan for all of them: `grep -rnE 'baseUrl|allowMethods|allowHeaders|exposeHeaders|sessionStore|streamManager|sessionIdleTimeout|stateless' src/ index.ts`.
+
 ## Step 2: Server constructor
 
 **v1**:

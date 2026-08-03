@@ -94,7 +94,7 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 Do not stop after text substitutions. Prove the migrated server is in the v2 package/API world and exercises the original behavior:
 
 1. **Classify installed packages:** run the bundled `scripts/check-mcp-use-version.sh`; confirm `mcp-use` is 2.x/beta, has no `./server` export, and the CLI is 4.x/beta.
-2. **Scan for removed patterns:** search the migrated project for `mcp-use/server`, `ctx.sample`, `ctx.elicit`, `ctx.session`, `sessionStore`, stdio/SSE listener config, `widget:`, `useWidget`, and `resources/<name>/widget.tsx`. Every remaining hit must be an intentional comment/migration fixture, not live code.
+2. **Scan for removed patterns:** search the migrated project for `mcp-use/server`, `ctx.sample`, `ctx.elicit`, `ctx.session`, `sessionStore`, `streamManager`, `sessionIdleTimeout`, `stateless`, `baseUrl`, `allowMethods`, `allowHeaders`, `exposeHeaders`, `getActiveSessions`, `getServerForSession`, `registerCapabilities`, `Logger.get`, `Logger.configure`, `Logger.setDebug`, stdio/SSE listener config, `widget:`, `useWidget`, and `resources/<name>/widget.tsx`. Every remaining hit must be an intentional comment/migration fixture, not live code.
 3. **Static proof:** run `mcp-use typecheck` separately from `mcp-use build`; build alone is transpile-only.
 4. **Protocol proof:** start the migrated server and complete either the native modern probe in `references/09-transports/02-streamable-http.md` or the verified legacy initialize/list/call sequence in `references/22-validate/02-curl-handshake.md`.
 5. **Auth proof when applicable:** public discovery metadata works, a valid unauthenticated MCP POST returns 401, and a real OAuth client calls a protected tool.
