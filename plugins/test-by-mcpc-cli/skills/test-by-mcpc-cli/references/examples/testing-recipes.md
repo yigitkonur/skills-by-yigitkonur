@@ -1,13 +1,12 @@
 # Testing Recipes
 
-These are small copy-paste checks for `mcpc 0.2.4`.
-Prefer `--json` plus `jq` assertions over human-mode output.
+These are small copy-paste checks verified against `mcpc 0.6.0`; prefer `--json` plus `jq` assertions over human-mode output.
 
 ## Recipe: assert a session connects
 
 ```bash
 SESSION=@smoke
-TARGET=https://research.yigitkonur.com/mcp
+TARGET=https://research-mcp.yigitkonur.com/mcp
 
 mcpc connect "$TARGET" "$SESSION"
 mcpc --json | jq -e --arg s "$SESSION" '.sessions[] | select(.name == $s and .status == "live")' >/dev/null
@@ -36,27 +35,33 @@ RESULT=$(mcpc --json @research-test tools-call web-search '{"queries":["OpenAI M
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 ```
 
-## Recipe: assert a validation failure still exits `0`
+## Recipe: assert a validation failure exits `2`
 
 ```bash
-BAD=$(mcpc --json @research-test tools-call web-search queries:=OpenAI)
-printf '%s' "$BAD" | jq -e '.isError == true' >/dev/null
+mcpc --json @research-test tools-call web-search queries:=OpenAI
+[ "$?" -eq 2 ]
 ```
 
-Use this to catch the common array-vs-string mistake.
+Since v0.5.0, any `isError:true` result — schema validation, unknown tool,
+runtime failure — exits `2`, never `0`. Use this to catch the common
+array-vs-string mistake and confirm the exit code, not just the payload.
 
-## Recipe: assert a network error happens during `connect`
+## Recipe: assert a network error on an unreachable session
 
 ```bash
-if mcpc connect http://127.0.0.1:19999/mcp @bad >/tmp/mcpc.out 2>/tmp/mcpc.err; then
-  echo "expected connect to fail" >&2
-  exit 1
-fi
-status=$?
-[ "$status" -eq 3 ]
+mcpc connect http://127.0.0.1:19999/mcp @bad
+[ "$?" -eq 0 ]                        # this unreachable HTTP target still creates a session
+mcpc --json | jq -e '.sessions[] | select(.name=="@bad" and (.status=="connecting" or .status=="reconnecting"))' >/dev/null
+mcpc @bad ping
+[ "$?" -eq 1 ]                        # the first live round-trip surfaces failure
+mcpc close @bad
 ```
 
-Direct one-shot URL commands are gone in `0.2.x`, so test network failures on `connect`.
+`connect` no longer fails on an unreachable target — it creates a non-live
+`connecting` or `reconnecting` session with a warning and lets it recover if the server comes back. Assert the
+failure on the first command that actually round-trips (`ping`, `tools-list`,
+...); it exits `1` (a client-side connect failure, not the isError-driven `2`
+from a live tool call).
 
 ## Recipe: assert task-required behavior
 
@@ -72,27 +77,34 @@ TASK_RESULT=$(mcpc --json @everything-http tools-call simulate-research-query to
 printf '%s' "$TASK_RESULT" | jq -e '.isError != true' >/dev/null
 ```
 
-## Recipe: detach, inspect, and cancel if needed
+## Recipe: detach, poll, fetch the result, cancel if needed
 
 ```bash
 DETACHED=$(mcpc --json @everything-http tools-call simulate-research-query topic:='"mcpc detach"' --detach)
 TASK_ID=$(printf '%s' "$DETACHED" | jq -r '.taskId')
 mcpc --json @everything-http tasks-get "$TASK_ID" | jq -e '.taskId == "'"$TASK_ID"'"' >/dev/null
 mcpc --json @everything-http tasks-list | jq -e --arg id "$TASK_ID" '.tasks[]? | select(.taskId == $id)' >/dev/null || true
-mcpc @everything-http tasks-cancel "$TASK_ID" || true
+
+# tasks-result blocks until the task finishes — works from a fresh process too,
+# since state lives with the session, not the CLI invocation that started the task.
+mcpc --json @everything-http tasks-result "$TASK_ID" | jq -e '.isError != true' >/dev/null
+
+mcpc @everything-http tasks-cancel "$TASK_ID" || true   # errors (exit 2) once already
+                                                          # completed — expected here
 ```
 
-## Recipe: assert prompt schema validation wiring exists
+## Recipe: assert tool schema validation wiring exists
 
 ```bash
-if mcpc @everything-http prompts-get args-prompt city:=Paris --schema /tmp/does-not-exist.json >/tmp/mcpc.out 2>/tmp/mcpc.err; then
+if mcpc @research-test tools-get web-search --schema /tmp/does-not-exist.json >/tmp/mcpc.out 2>/tmp/mcpc.err; then
   echo "expected schema file lookup to fail" >&2
   exit 1
 fi
 rg 'Schema file not found' /tmp/mcpc.err >/dev/null
 ```
 
-This confirms current `prompts-get` accepts `--schema` in the released CLI.
+`--schema`/`--schema-mode` are scoped to `tools-get` and `tools-call` only.
+They were removed from `prompts-get` in v0.2.5; do not use them there.
 
 ## Recipe: assert a proxy is live without over-claiming auth
 
@@ -100,9 +112,9 @@ This confirms current `prompts-get` accepts `--schema` in the released CLI.
 UPSTREAM=@proxy-upstream
 CHECK=@proxy-check
 
-mcpc connect https://research.yigitkonur.com/mcp "$UPSTREAM" --proxy 127.0.0.1:8787 --proxy-bearer-token demo-token
+mcpc connect https://research-mcp.yigitkonur.com/mcp "$UPSTREAM" --proxy 127.0.0.1:8787
 curl -s http://127.0.0.1:8787/health | jq -e '.status == "ok"' >/dev/null
-mcpc connect http://127.0.0.1:8787/mcp "$CHECK" --no-profile
+mcpc connect http://127.0.0.1:8787/ "$CHECK" --no-profile
 mcpc close "$CHECK"
 mcpc close "$UPSTREAM"
 ```

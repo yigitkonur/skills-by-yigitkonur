@@ -1,7 +1,7 @@
 {
   "name": "test-by-mcpc-cli",
-  "version": "1.0.43",
-  "description": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
+  "version": "1.0.48",
+  "description": "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "test-by-mcpc-cli",
-    "shortDescription": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
+    "shortDescription": "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
     "longDescription": "Install only the test-by-mcpc-cli workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

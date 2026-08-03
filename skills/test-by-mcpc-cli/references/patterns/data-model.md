@@ -1,6 +1,6 @@
 # Data Model
 
-Use live JSON output as the contract you script against.
+Use live JSON output as the contract you script against, verified against 0.6.0.
 
 ## Top-level `mcpc --json`
 
@@ -11,16 +11,18 @@ Current output is shaped like:
   "sessions": [
     {
       "name": "@research-test",
-      "server": { "url": "https://research.yigitkonur.com/mcp" },
+      "server": { "url": "https://research-mcp.yigitkonur.com/mcp" },
       "createdAt": "...",
       "lastConnectionAttemptAt": "...",
       "lastSeenAt": "...",
       "status": "live",
+      "pid": 12345,
       "protocolVersion": "2025-11-25",
       "serverInfo": { "name": "...", "version": "..." },
+      "capabilities": { "tools": { "listChanged": true }, "...": "..." },
       "mcpSessionId": "...",
-      "notifications": { "tools": {}, "prompts": {}, "resources": {} },
-      "activeTasks": {}
+      "stateless": false,
+      "hasInstructions": false
     }
   ],
   "profiles": [
@@ -34,20 +36,58 @@ Current output is shaped like:
 }
 ```
 
-## Session JSON from `mcpc --json @session`
+`stateless` is tri-state (`true | false | null`, always present, never omitted) — `true` for
+2026-07-28 stateless servers, `false` for stateful (session-ID-bearing) connections, `null` while
+undetermined. `hasInstructions` reports only whether the server sent instructions text; the text
+itself is excluded here ("can be kilobytes per session") — fetch it with `mcpc --json @<session>`.
+`notifications`, `activeTasks`, and `resourceSubscriptions` are real fields on the session
+object, absent until their feature is used once — then they persist for the session's life
+even as an empty `{}` (e.g. subscribe-then-unsubscribe-all leaves `resourceSubscriptions: {}`,
+not a removed key). `notifications` shape: `references/patterns/notification-handling.md`.
 
-Expect fields such as:
+## Session JSON from `mcpc --json @session` / `connect --json`
 
-- `_mcpc.sessionName`
-- `_mcpc.server`
-- `protocolVersion`
-- `capabilities`
-- `serverInfo`
-- `tools`
+Both return an extended MCP `InitializeResult` (2025-11-25 connections) or `DiscoverResult`
+(2026-07-28 connections), with an `_mcpc` metadata block layered in:
+
+```json
+{
+  "_mcpc": {
+    "sessionName": "@research-test",
+    "profileName": "default",
+    "server": { "url": "https://research-mcp.yigitkonur.com/mcp" },
+    "transport": "streamable-http",
+    "stateless": false,
+    "logPath": "/root/.mcpc/logs/bridge-@research-test.log",
+    "resourceSubscriptions": [
+      { "uri": "demo://resource/dynamic/text/1", "filePath": "/tmp/sub.txt", "subscribedAt": "..." }
+    ]
+  },
+  "protocolVersion": "2025-11-25",
+  "supportedVersions": ["2026-07-28", "2025-11-25"],
+  "capabilities": { "...": "..." },
+  "serverInfo": { "name": "...", "version": "..." },
+  "instructions": "...",
+  "_meta": { "...": "..." },
+  "toolNames": ["plan-research", "web-search", "extract-evidence", "review-research"]
+}
+```
+
+- `_mcpc.transport` (0.6.0) — the wire transport name, e.g. `"streamable-http"`.
+- `_mcpc.stateless` — same tri-state semantics as above.
+- `_mcpc.logPath` — bridge log file for this session (0.3.1). Log file size is deliberately not
+  included; `stat` the path or run `mcpc @<session> logs` for a fresh read.
+- `_mcpc.resourceSubscriptions` here is an **array of `{uri, filePath, subscribedAt,
+  lastSyncedAt?, lastError?}` objects, omitted entirely when empty** — the opposite shape and
+  presence rule from the top-level list's URI-keyed object (which persists as `{}`). Plain
+  `mcpc @<session>` (no `--json`) shows the same data as a `Resource subscriptions:` block.
+- `supportedVersions` / `_meta` — only present on 2026-07-28 connections (from `server/discover`).
+- Schemas: `https://modelcontextprotocol.io/specification/2025-11-25/schema#initializeresult` and
+  `https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult`.
 
 ## Status vocabulary
 
-CLI-facing JSON commonly uses:
+CLI-facing JSON (`status` field, derived by `getBridgeStatus()`) uses exactly these 7 states:
 
 - `live`
 - `connecting`
@@ -57,21 +97,40 @@ CLI-facing JSON commonly uses:
 - `unauthorized`
 - `expired`
 
-Internal persisted status uses a related but not identical vocabulary.
-Do not assume the on-disk file shape is the stable public API.
+Internal persisted `status` on disk (`SessionStatus`) is a related but not identical, smaller
+vocabulary (`active | connecting | reconnecting | unauthorized | expired | crashed` — no
+`disconnected`, and persisted `active` maps to displayed `live`/`disconnected` depending on
+`lastSeenAt` recency). Do not assume the on-disk file shape is the stable public API — script
+against `mcpc --json`, not against `~/.mcpc/sessions.json` directly.
 
 ## Task data
 
-`SessionData` can include `activeTasks`.
-Public task support now exists through `tools-call --task`, `tools-call --detach`, and `tasks-*`.
-That means task metadata is no longer just an internal concern.
+`SessionData` persists `activeTasks` (task ID → `{taskId, toolName, createdAt}`) for crash
+recovery. Public task support is a first-class command surface: `tools-call --task`,
+`tools-call --detach`, and `tasks-list`/`tasks-get`/`tasks-result`/`tasks-cancel` — including
+`tasks-result`, which blocks until the final result is ready and works across process
+invocations (a `--detach` in one shell, `tasks-result` from a fresh shell later, both against the
+same task ID). `tasks-result` shares `renderCallToolResult()` with `tools-call`: `isError: true`
+in the result sets exit code 2 in both human and `--json` modes.
+
+## Error JSON shape
+
+CLI/session failures in `--json` mode use a compact error object on `stderr`, commonly:
+
+```json
+{ "error": "Failed to connect to MCP server: ...", "code": 1 }
+```
+
+Some paths also add `message` or `details`; script against `error` plus numeric `code`, not one universal full shape. Exit `2` has two forms: a server `isError:true` result on stdout, or a timeout/no-result `{error,code}` on stderr. Codes `3`/`4` are documented as network/auth in the upstream contract but were not reproduced in this 0.6.0 audit.
 
 ## Storage notes
 
-- credentials prefer OS keychain and fall back to `~/.mcpc/credentials.json`
+- credentials prefer OS keychain and fall back to `~/.mcpc/credentials.json` (mode `0600`)
 - x402 wallets prefer keychain and fall back to `~/.mcpc/wallets.json`
-- session logs live in `~/.mcpc/logs/bridge-@session.log`
-- shell history lives in `~/.mcpc/shell-history`
+- session logs live in `~/.mcpc/logs/bridge-@session.log`, rotated to `.log.1`–`.log.5`; read
+  via `mcpc @session logs` rather than the raw file
+- `~/.mcpc/sessions.json` is file-locked for concurrent access; corrupted files are now backed
+  up and reported instead of silently reset (0.5.0 fix)
 
 ## Config example
 

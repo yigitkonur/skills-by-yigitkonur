@@ -22,14 +22,14 @@ const server = new MCPServer({
 });
 
 const { port, url } = await server.listen();
-// Listening at http://127.0.0.1:3000/mcp
+// Listening at http://localhost:3000/mcp
 
 console.log(`Server at ${url}`);
 ```
 
 **Return value:** `{ port: number, url: string }`
 - `port`: Actual bound port (useful when ephemeral port `0` was requested)
-- `url`: Full MCP endpoint URL (e.g., `http://localhost:3000/mcp`)
+- `url`: `http://localhost:${port}${basePath}` — always the literal hostname `"localhost"`, regardless of the actual resolved `host` (e.g., still `"localhost"` when bound to `0.0.0.0`). Don't use it to report the real bind address for public/LAN binds.
 
 **Blocking:** `listen()` returns after the socket is bound. The process stays running until you call `server.close()` or the process terminates.
 
@@ -45,16 +45,13 @@ export default server.fetch;
 export const handler = server.fetch;
 ```
 
-`server.fetch` is a web-standard Fetch API handler:
-```typescript
-async (request: Request) => Promise<Response>
-```
+`server.fetch` is a web-standard Fetch API handler with Hono's full signature — `(request: Request, env?, executionCtx?) => Promise<Response>` — so edge runtimes that pass bindings/execution context (Cloudflare Workers' `env`, `ctx.waitUntil`) get them forwarded. You can also `export default server` directly; Hono instances implement the same `fetch` contract runtimes look for.
 
 No socket binding occurs; the platform manages HTTP listeners.
 
 ## Node.js Binding from fetch
 
-If you need to run `server.fetch` in Node.js without Hono's `listen()`, use the `mcp-use/node` adapter:
+If you need to run `server.fetch` in Node.js without mcp-use's own `listen()` (e.g., mounting inside Express or another framework), use the `mcp-use/node` adapter:
 
 ```typescript
 import { MCPServer } from "mcp-use";
@@ -63,8 +60,10 @@ import * as http from "node:http";
 
 const server = new MCPServer({ name: "api", version: "1.0.0" });
 
-// Convert web handler to Node signature
-const handler = toNodeHandler(server);
+// Convert web handler to Node (req, res, parsedBody?) signature
+const handler = toNodeHandler(server, {
+  onerror: (error) => console.error("Adapter error:", error), // optional
+});
 
 // Bind to Node HTTP server
 const httpServer = http.createServer(handler);
@@ -75,6 +74,8 @@ await new Promise<void>((resolve) => {
   });
 });
 ```
+
+`toNodeHandler(handler, opts?)` accepts any `{ fetch }`-shaped object (an `MCPServer` instance qualifies directly) and returns `(req, res, parsedBody?) => Promise<void>` — the optional third argument lets a framework that already parsed the JSON body (e.g., `express.json()`) hand it through instead of re-reading the stream. `opts.onerror` observes conversion/handler errors before a JSON-RPC error response is returned.
 
 ## Graceful Shutdown
 
@@ -184,7 +185,7 @@ CMD ["npm", "start"]
 ```
 
 ```bash
-MCP_URL=https://<service>.up.railway.app/mcp npm run build
+MCP_URL=https://my-service.up.railway.app npm run build
 ```
 
 The `npm start` script calls `server.listen()` and runs forever; Railway sends SIGTERM on shutdown.
@@ -198,8 +199,10 @@ For reliable operation, focus on:
 
 ```typescript
 server.get("/health", (c) => c.json({ ok: true }));
+```
 
-// Kubernetes probe
+```yaml
+# Kubernetes probe
 livenessProbe:
   httpGet:
     path: /health

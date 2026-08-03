@@ -16,7 +16,7 @@ Invalidate refs after:
 - a click/submission that changes the page;
 - modal, menu, dialog, or dynamic list changes;
 - tab or frame switch;
-- reconnect, pool recovery, or browser restart.
+- reconnect, runtime recovery, or browser restart.
 
 Do not manufacture refs, reuse refs from another tab, or write `@ref=e3`.
 
@@ -73,7 +73,7 @@ last_snapshot_tab: t3
 refs_fresh: true
 ```
 
-On the managed pool, the first fresh `open URL` becomes a new tab. Record its ID immediately. Never inspect, switch to, or close pre-existing authenticated tabs unless the requested task specifically targets them.
+On a fresh Steel CDP session, the first `open URL` becomes a new tab. Record its ID immediately. Never inspect, switch to, or close pre-existing authenticated tabs unless the requested task specifically targets them.
 
 ## Frames
 
@@ -88,16 +88,16 @@ agent-browser snapshot -i
 
 Frame switches invalidate the working refs. Cross-origin restrictions and application behavior still apply.
 
-## Managed pool versus upstream sessions
+## Steel CDP sessions versus upstream sessions
 
 | Runtime | Isolation/persistence | Cleanup |
 |---|---|---|
-| Managed pool | Owner-scoped lane lease over persistent headed Chrome profile | Close owned tabs, then exact `agent-browser close` |
+| Steel Browser (CDP) | Task-scoped `--session` over Steel's shared Chrome profile | Close owned tabs, then exact `ab close` (`agent-browser --session NAME close`) — this detaches only; pages persist until a Steel `sessions/release` |
 | Upstream named session | Separate agent-browser daemon/session | `agent-browser --session NAME close` |
 | Restore key | Periodically saved auth/session state (default autosave interval currently 30s) | Close session; retain/delete key per task |
 | Explicit profile | Persistent Chrome user-data directory | Close runtime; avoid concurrent reuse |
 
-Do not add `--session` to managed-pool commands: it can defeat the wrapper's exact release path. Use named sessions only under intentional unmanaged `pool real` execution or where the pool command is unavailable.
+Always add a unique `--session` to Steel CDP commands, but know its scope: on Steel, a named agent-browser session isolates **daemon** state only (refs, bookkeeping). The underlying browser and page are shared and single — distinct session names do not give concurrent agents separate browser state, so Steel tasks must run one at a time. Full semantics and the reset API are in `cdp-and-steel.md`. Use a deliberately unmanaged/local session (no `--cdp`) only when the task specifically requires a different, non-Steel runtime.
 
 ## Stable unmanaged session IDs
 
@@ -134,7 +134,7 @@ agent-browser auth login service \
   --item 'Service account'
 ```
 
-If a provider is unavailable, use `--password-stdin` and keep the secret out of logs. For an existing managed authenticated lane, use the profile rather than exporting credentials.
+If a provider is unavailable, use `--password-stdin` and keep the secret out of logs. For an existing authenticated Steel profile or saved state file, reuse that state rather than exporting credentials.
 
 ## Cookie import
 
@@ -148,12 +148,12 @@ Treat the file as a credential. Do not paste cookie values into chat, shell argu
 
 ## Session recovery
 
-Managed:
+Steel:
 
 ```bash
-agent-browser pool status
-agent-browser pool recover
-agent-browser pool doctor
+source "$HOME/.config/steel-browser-cdp.env"
+curl -fsS "$STEEL_HEALTH_URL"
+curl -fsS "$STEEL_CDP_VERSION_URL"
 ```
 
 Unmanaged:

@@ -51,9 +51,10 @@ export const generateChart = server.tool(
     }
 
     try {
-      // Generate image (simulated)
-      const base64Png = "iVBORw0KGgoAAAANSU..."; // actual PNG bytes, base64
-      
+      // Valid 1×1 PNG fixture (real PNG bytes encoded as base64)
+      const base64Png =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
+
       return {
         content: [
           {
@@ -95,7 +96,7 @@ await server.listen(3000);
 ## Response shapes broken down
 
 **Success path (values match):**
-- `content[0]`: Text description (markdown MIME for formatting)
+- `content[0]`: Text description (plain text block — `TextContent` has no `mimeType` field)
 - `content[1]`: Image block (PNG base64)
 - `structuredContent`: Matches `outputSchema`; model sees this
 - `_meta`: Stats (min/max/avg); View can access but model cannot
@@ -110,7 +111,7 @@ await server.listen(3000);
 1. **Always include text block** with context (even if paired with media)
 2. **structuredContent must match outputSchema** or error + don't set it
 3. **Use _meta for debugging/UI-only data** not in schema
-4. **Return errors, don't throw** — exceptions become raw errors to client
+4. **Return errors, don't throw for control** — an uncaught throw is still safe (the SDK auto-converts it to `{ isError: true, content: [{ type: "text", text: error.message }] }`), but an explicit return lets you choose the message and add context
 5. **Order content blocks by usefulness** — lead with text label, then media, then caption
 
 This example spans all response surfaces used in practice.

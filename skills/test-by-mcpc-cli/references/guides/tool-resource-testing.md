@@ -1,6 +1,6 @@
 # Tool, Prompt, and Resource Testing
 
-Use this guide once the session is already connected.
+Use this guide once the session is already connected. Verified against `mcpc` 0.6.0.
 
 ## Tools
 
@@ -12,31 +12,32 @@ mcpc --json @session tools-call tool-name '{"key":"value"}'
 
 Rules:
 
-- inspect schema before the first non-trivial call
-- prefer full JSON payloads for arrays or nested objects
-- always check `isError` in JSON mode
+- inspect schema (`tools-get`) before the first non-trivial call — trust the `Input:` type list, not the auto-generated `Call example:` line: for array-typed args it prints a JSON string literal (`queries:='"something"'`), which fails the tool's own schema; use `queries:=["value"]` or a full JSON payload instead
+- `tools-call` exits `2` when the result carries `isError: true` (since v0.5.0) — a clean signal on its own, but still inspect the payload for the failure reason
 
 ## Prompts
 
 ```bash
 mcpc @everything-http prompts-list
 mcpc @everything-http prompts-get args-prompt city:=Paris state:=Texas
-mcpc @everything-http prompts-get args-prompt city:=Paris --schema ./expected-schema.json
 ```
 
-`prompts-get` accepts `--schema` and `--schema-mode` in the current released CLI.
+`prompts-get` takes no `--schema`/`--schema-mode` flags — v0.2.5 scoped those to `tools-get`/`tools-call` only, removing them from `prompts-get`. For prompt schema drift checks, diff `mcpc --json @session prompts-get <name> ...` output yourself.
 
 ## Resources
 
 ```bash
 mcpc @everything-http resources-list
 mcpc @everything-http resources-read demo://resource/static/document/features.md
-mcpc @everything-http resources-subscribe demo://resource/dynamic/config
-mcpc @everything-http resources-unsubscribe demo://resource/dynamic/config
+mcpc @everything-http resources-read demo://resource/static/document/features.md -o ./features.md
+mcpc @everything-http resources-subscribe demo://resource/dynamic/text/1 ./text1-sync.json
+mcpc @everything-http resources-unsubscribe demo://resource/dynamic/text/1
 mcpc @everything-http resources-templates-list
 ```
 
-Subscriptions are easiest to validate through JSON session output or bridge logs.
+`resources-subscribe <uri> <file>` requires the `<file>` positional argument (since v0.4.0) — it downloads the resource to `<file>` immediately, then rewrites it on every server change notification for as long as the session stays connected, surviving reconnects and bridge restarts. Re-subscribing to the same `<uri>` just retargets `<file>`. `resources-unsubscribe` stops the sync but keeps the file on disk. `resources-read` supports `-o <file>`/`--output <file>` (binary-safe save) and `--raw` (bare content for piping); `--json` is needed to see all content items when a resource returns more than one.
+
+Active subscriptions show under a `Resource subscriptions:` block in plain `mcpc @session` output; `mcpc --json @session` carries the same data as an array under `_mcpc.resourceSubscriptions` (an object keyed by URI in the global `mcpc --json` sessions list instead).
 
 ## Logging
 
@@ -44,4 +45,4 @@ Subscriptions are easiest to validate through JSON session output or bridge logs
 mcpc @everything-http logging-set-level debug
 ```
 
-Use this together with bridge logs when you need to understand list-changed notifications or server-side failures.
+`logging-set-level` is deprecated: MCP 2026-07-28 removed `logging/setLevel`, so this only works against servers on protocol `2025-11-25` or older, and mcpc will drop the command in a future release. The warning fires even when talking to a `2025-11-25` server where the call still succeeds (exit `0`) — it is advance notice of upstream spec churn, not a failure of the current call. Use `mcpc @session logs` (with `-n`, `--follow`, `--since`) alongside it to read server-side log output.

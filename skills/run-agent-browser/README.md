@@ -1,42 +1,39 @@
 # run-agent-browser
 
-An agent skill for reliable `agent-browser` automation with fresh `@ref` snapshots, deterministic verification, trust-boundary handling, and Yigit's multi-agent headed-Chrome CDP pool.
+Priority-routed browser automation for the installed `agent-browser` CLI:
 
-The official upstream skill is dynamic: the installed CLI supplies version-matched guidance through `agent-browser skills get core [--full]`. This skill layers local runtime policy and multi-agent ownership on top instead of freezing an upstream command catalog.
+1. **Plain local Chrome** (always start here; unset sticky providers)
+2. **Steel Browser CDP** (self-hosted on this fleet — details in `references/cdp-and-steel.md`)
+3. **Cloud providers** — Browser Use, Kernel, Browserless, Browserbase (`references/providers.md`)
+4. **Ask the user** for a CDP URL, API key, or install/deploy approval — never dead-end
 
-Last reconciled against `agent-browser 0.31.1` and upstream commit [`afae698`](https://github.com/vercel-labs/agent-browser/commit/afae698a51242166170b6fe4809dd57fe9f75798). Always refresh from the [official discovery skill](https://github.com/vercel-labs/agent-browser/blob/main/skills/agent-browser/SKILL.md) and installed core skill when the CLI changes.
+Stealth defaults apply at every tier. Secrets stay in `chmod 600` env files; never printed.
 
-## What it adds
-
-- headed persistent Chrome lanes (`general`, plus per-service authenticated lanes and scratch `slot_01`-`slot_10`), created/removed at runtime with `pool create`/`pool remove` — nothing is hardcoded, so the same commands work on a fresh machine;
-- automatic per-agent leasing and per-lane serialization;
-- task-owned tab tracking and exact lease cleanup;
-- recovery without deleting Chrome locks or daemon files;
-- explicit routing for public `read`, unmanaged launch flags, providers, Electron, and remote CDP;
-- prompt-injection, secret, artifact, and outward-action policy;
-- current references, pool-aware templates, and smoke helpers.
-
-## Install
-
-As a Codex/Claude plugin:
-
-```text
-/plugin marketplace add yigitkonur/skills-by-yigitkonur
-/plugin install run-agent-browser@yigitkonur
-```
-
-With the Skills CLI:
+## Quick start
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser
+# Tier 1
+SESSION="local-$(agent-browser session id --scope cwd --prefix task)"
+env -u AGENT_BROWSER_PROVIDER agent-browser --session "$SESSION" \
+  --args "--disable-blink-features=AutomationControlled" \
+  open https://example.com
 ```
 
-## First check
+If that fails, source `~/.config/steel-browser-cdp.env` and use `--cdp "$STEEL_AGENT_BROWSER_CDP"` (see SKILL.md). If Steel fails, pick a provider from `references/providers.md`.
 
-```bash
-bash scripts/check-agent-browser-version.sh
-agent-browser pool status
-agent-browser skills get core
-```
+## Layout
 
-Read `SKILL.md` first. The six files under `references/` are routed detail, not optional duplicated documentation.
+| Path | Role |
+|---|---|
+| `SKILL.md` | Priority ladder + operating loop |
+| `references/cdp-and-steel.md` | Steel endpoints, single-session semantics, release, tailnet |
+| `references/providers.md` | Browser Use / Browserbase / Browserless / Kernel |
+| `references/managed-cdp-pool.md` | Patchright Google AI/Gemini scrape API |
+| `references/*.md` | Commands, safety, trust, advanced |
+| `scripts/` | Health check + page inspect helpers |
+
+## Sync targets
+
+- GitHub: `yigitkonur/skills-by-yigitkonur` → `skills/run-agent-browser/`
+- Local: `~/.claude/skills` + `~/.codex/skills` + plugin marketplace
+- MacBook: same skill paths + tailnet-oriented `~/.config/steel-browser-cdp.env`

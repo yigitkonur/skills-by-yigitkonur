@@ -1,103 +1,125 @@
 # useToolContext
 
-*Read this when you need to render the tool result in a view, or handle pending/error states during tool execution and streaming partial inputs.*
+*Read this when you need to render the tool result in a view, or handle pending/error states while complete or partial tool input arrives.*
 
 ## Signature
 
 ```typescript
-useToolContext<ToolName extends string>(): ToolContextHandle<ToolName>
+useToolContext<Name extends keyof RegisteredTools = never>(): ToolContextHandle<Name>
 
-interface ToolContextHandle<N extends string> {
-  status: "pending" | "ready" | "error";
-  toolInput: ToolInput;                        // Partial during input_required streaming
-  toolOutput: ToolOutput;                      // From structuredContent; typed by outputSchema
-  content: ContentBlock[];                     // Text/image/etc.; typed by result schema
-  meta: { ui?: { visibility, csp, ... } };    // View metadata (CSP, permissions, display hints)
-  error: ToolError | null;                     // When status === "error"
+// Discriminated union — narrow on `status` before reading branch-specific fields.
+type ToolContextHandle<Name> =
+  | { status: "pending"; toolInput: DeepPartial<ToolInput> | undefined; toolOutput: undefined; content: undefined; meta: undefined }
+  | { status: "ready"; toolInput: ToolInput | undefined; toolOutput: ToolOutput; content: ContentBlock[] | undefined; meta: Record<string, unknown> | undefined }
+  | { status: "error"; toolInput: ToolInput | undefined; toolOutput: undefined; content: ContentBlock[] | undefined; meta: Record<string, unknown> | undefined; error: ToolContextError }
+```
+
+`ToolContextError` is the public alias of `ToolError` used by the error branch. Narrow on `status` before reading `error`, `toolOutput`, `content`, or `meta`.
+
+## Result fields
+
+- `toolOutput` is the terminal result's typed `structuredContent`.
+- `content` is the terminal result's content-block array, when supplied.
+- `meta` is the delivered result `_meta`, available only after a terminal success or error.
+
+A handler may put arbitrary View-only data in `_meta`; it is not validated by `outputSchema` and does not enter model context. For a successful View-bound result, however, the delivered object is not necessarily identical to the handler's original `_meta`: mcp-use merges in the framework-owned View link keys:
+
+```typescript
+{
+  ui: { resourceUri: "ui://views/<name>.html" },
+  "ui/resourceUri": "ui://views/<name>.html"
 }
 ```
+
+Those resource-URI keys let the host associate the result with its View. Other UI configuration belongs elsewhere: tool visibility is advertised on the `tools/list` descriptor, while CSP, permissions, domain, and border preference are emitted on the View resource metadata. Do not expect those fields in `ctx.meta`.
 
 ## Lifecycle: pending → ready/error
 
-The hook tracks a single latched tool invocation. `status` follows the request lifecycle:
+The hook represents one rendering invocation for the lifetime of the mounted View:
 
-- **pending** → tool executing on server (or streaming partial input)
-- **ready** → result arrived; `toolOutput` + `content` populated
-- **error** → server returned `isError: true` or threw; `error` field set
+1. It starts as `pending`.
+2. Every complete `ontoolinput` or partial `ontoolinputpartial` notification received while pending replaces the current `toolInput` snapshot.
+3. Each changed pending snapshot emits to the hook subscription, so the component rerenders with the latest partial input.
+4. The first result with `structuredContent` becomes `ready`; the first result with `isError: true` becomes `error`.
+5. That first terminal success or error is latched. Later input, result, error, or cancellation notifications do not overwrite it.
 
-**Minimal render:**
+Content-only non-error results are ignored while pending because the protocol notifications do not include a tool name or request ID that would let the runtime correlate ambient tool activity. A cancellation notification also leaves this public context pending.
+
 ```typescript
-const ctx = useToolContext<"search-products">();
+import { useToolContext } from "mcp-use/react";
 
-if (ctx.status === "pending") {
-  return <p>Loading results...</p>;
-}
-if (ctx.status === "error") {
-  return <p>Error: {ctx.error?.message}</p>;
-}
+function ProductResults() {
+  const ctx = useToolContext<"search-products">();
 
-return (
-  <ul>
-    {ctx.toolOutput.results.map((r) => (
-      <li key={r.id}>{r.name}</li>
-    ))}
-  </ul>
-);
-```
+  if (ctx.status === "pending") {
+    return <p>Searching for {ctx.toolInput?.query ?? "…"}</p>;
+  }
 
-`useToolContext` is **NOT** a hook for calling tools (see `useCallTool` for that). It only reads the result of the view's own tool invocation.
+  if (ctx.status === "error") {
+    return <p>Error: {ctx.error.message}</p>;
+  }
 
-## Streaming and partial input
-
-When the server returns `input_required` (asking the user to fill a form), the hook emits a pending lifecycle with **partial `toolInput`** containing the values collected so far.
-
-**Streaming story** (replaces v1 "streaming tool props"):
-
-1. View renders with partial input from streaming `useToolContext()` result
-2. Form fields bind to the model-visible `useViewState()` (which the model can populate via follow-up messages)
-3. Server re-runs handler with `ctx.inputResponses` and collects final input
-4. Hook updates to `ready` with complete input and output
-
-**Example:**
-```typescript
-const ctx = useToolContext<"checkout">();
-
-if (ctx.status === "pending") {
-  // During input_required round: toolInput contains partial data
   return (
-    <form>
-      <input
-        value={ctx.toolInput?.address || ""}
-        placeholder="Address"
-        // Form updates useViewState, which model can populate
-      />
-      <p>Waiting for user...</p>
-    </form>
+    <ul>
+      {ctx.toolOutput.results.map((result) => (
+        <li key={result.id}>{result.name}</li>
+      ))}
+    </ul>
   );
 }
-
-return <p>Order placed: {ctx.toolOutput.orderId}</p>;
 ```
 
-The key difference from v1: **no ephemeral streaming state**. Model-visible choices live in `useViewState()`, partial server state flows through `toolInput`. This keeps the model informed on every re-entry.
+`useToolContext()` does not call tools. It only reads the invocation that caused the host to render this View. Use `useCallTool()` when the mounted View must initiate another server-tool call.
 
-Cross-reference `references/04-tools/05-the-ctx-object.md` for `ctx.inputResponses` server-side and `references/12-elicitation/04-multi-round-and-request-state.md` for the full protocol.
+## Progressive input
 
-## Typed queries
+Pending input is `DeepPartial<ToolInput>` because fields may be absent while the host progressively supplies arguments. Treat it as provisional display state: render previews, skeleton labels, or disabled controls, but do not perform irreversible actions from it.
 
-Type the hook with the tool name to get full TypeScript inference:
+```typescript
+import { useToolContext } from "mcp-use/react";
+
+function CheckoutPreview() {
+  const ctx = useToolContext<"checkout">();
+
+  if (ctx.status === "pending") {
+    return (
+      <section aria-busy="true">
+        <p>Recipient: {ctx.toolInput?.recipient?.name ?? "Waiting…"}</p>
+        <p>Address: {ctx.toolInput?.shippingAddress ?? "Waiting…"}</p>
+      </section>
+    );
+  }
+
+  if (ctx.status === "error") {
+    return <p>Checkout failed: {ctx.error.message}</p>;
+  }
+
+  return <p>Order placed: {ctx.toolOutput.orderId}</p>;
+}
+```
+
+Do not describe an `input_required` elicitation round as re-entering this same mounted View. The shipped runtime has no request correlation and latches the first terminal result/error; it does not establish a same-iframe multi-round elicitation lifecycle. Keep server elicitation design in `references/12-elicitation/04-multi-round-and-request-state.md`, and treat any host remount or later invocation as a separate host-managed lifecycle unless verified end to end.
+
+## Typed tool names
+
+Type the hook with an exported, registered tool name to get input/output inference:
 
 ```typescript
 const ctx = useToolContext<"search-products">();
-// ctx.toolOutput typed as { results: [...], query: string }
-// ctx.toolInput typed as { query: string }
+// pending toolInput: DeepPartial<{ query: string }> | undefined
+// ready toolInput: { query: string } | undefined
+// ready toolOutput: the tool outputSchema type
 ```
 
-For runtime-only tools without prior definition, pass `unknown` and assert manually.
+Once `mcp-env.d.ts` augments the exported `Register` interface, `RegisteredTools` becomes the strict map of exported server-tool names to their input and output types. Before any augmentation, its fallback is `Record<string, { input: Record<string, unknown>; output: unknown }>`, so non-scaffolded projects keep compiling. Generated registration declarations are the normal path; manually augment `Register` only in custom build setups that do not generate `mcp-env.d.ts`.
+
+The type parameter is then constrained to `keyof RegisteredTools`. An unregistered or runtime-only name is a compile error. Unlike `useCallTool()`, `useToolContext()` has no dynamic-name variant; omit the type parameter and manually narrow `unknown` fields when static registration cannot describe the rendering tool.
 
 ## Gotchas
 
-- **No re-render on partial input update during streaming** → use `useViewState()` instead for reactive form bindings
-- **`error` may be null even when `status === "error"`** → check status first; only then use `error.message`
-- **State persists across re-runs** → clearing the view's iframe resets `useToolContext()` to initial pending state
-
+- **Pending partial input does rerender** → complete and partial input notifications replace the pending snapshot and emit when its reference changes.
+- **Pending input is provisional** → `DeepPartial` means nested fields may be absent; never treat it as validated final input.
+- **Ready input remains optional** → a terminal result can arrive before a complete input snapshot.
+- **First terminal result wins** → the first structured success or tool error is latched for the mounted View's lifetime.
+- **Content-only success is not terminal** → without `structuredContent` or `isError: true`, the runtime leaves the context pending.
+- **Cancellation has no public branch** → an uncorrelated cancellation leaves the context pending.

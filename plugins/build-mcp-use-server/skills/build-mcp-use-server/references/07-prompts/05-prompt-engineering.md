@@ -30,7 +30,7 @@ Prompts shape *how the model reasons*. Tools execute deterministically. Resource
 
 5. **Reference resources by URI.** Mention `users://{id}`, `config://app` in prompt text — clients fetch them and include in context.
 
-6. **System + user split for non-trivial flows.** Use `{ messages: [...] }` with separate roles instead of cramming role-mixing into a single string.
+6. **Multiple messages for non-trivial flows.** Use `{ messages: [...] }` with several `user`/`assistant` messages instead of cramming everything into one giant string. There is no `"system"` role — put system-style framing in the first `user` message (see `03-prompt-templates.md`).
 
 7. **Prompt arguments, not branches.** If your handler has if/else picking between three different texts, that's three different prompts.
 

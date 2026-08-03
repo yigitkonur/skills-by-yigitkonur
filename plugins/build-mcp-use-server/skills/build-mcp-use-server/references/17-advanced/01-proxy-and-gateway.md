@@ -9,7 +9,7 @@
 Proxying requires `@mcp-use/client` v2 as an optional peer. If not installed and you call `server.proxy()`, mcp-use throws an install-command error.
 
 ```bash
-npm install mcp-use @mcp-use/client
+npm install mcp-use@beta @mcp-use/client@beta
 ```
 
 ## Config-map form
@@ -95,7 +95,7 @@ For rich gateway behaviors (combining multiple calls, filtering capabilities, tr
 
 ## Namespacing and static resource URIs
 
-Proxied static resources use `mcp-use-proxy://` scheme. The gateway maps these back to upstream URIs on read. Tool names and prompt names are prefixed with `<upstream>_`.
+Proxied static resources are re-exposed under `mcp-use-proxy:///<namespace>/<upstream-uri>` (namespace and the original upstream URI are both `encodeURIComponent`-escaped). The gateway resolves reads through the upstream connection captured at mount time, not by re-parsing this URI. Tool names and prompt names are prefixed with `<upstream>_`.
 
 Call `proxy()` before `listen()` or the first `server.fetch()` request. Failures are best-effort: connection error skips upstream; introspection error skips affected capability kind; name collision skips capability.
 

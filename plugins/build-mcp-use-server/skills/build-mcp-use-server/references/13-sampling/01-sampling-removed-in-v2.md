@@ -2,7 +2,7 @@
 
 *Read this if you have v1 code using `ctx.sample()` and are migrating to v2.*
 
-Server-side sampling (`ctx.sample()`) has been **removed entirely** from mcp-use v2. The boundary has shifted: the **model generates first**, then calls deterministic tools with the results.
+Server-side sampling (`ctx.sample()`) has been **removed** from mcp-use v2. The boundary has shifted: the **model generates first**, then calls deterministic tools with the results. A deprecated legacy-interop path (`inputRequired.createMessage()`) still exists for bridging old sampling-based integrations — see "No `ctx.sample()` — but a deprecated compatibility path exists" below — but it is not the v2 design pattern.
 
 ## Why it was removed
 
@@ -95,11 +95,44 @@ export const classifyEntities = server.tool({
 
 The model chains them: call extract → call classify → return to user.
 
-## No sampling capability guard
+## No `ctx.sample()` — but a deprecated compatibility path exists
 
-Since servers never request sampling in v2, there's no `ctx.client.can("sampling")` guard. Clients don't advertise it either.
+There is no `ctx.sample()` and no dedicated "sampling" input-required helper family for the primary v2 pattern above — this is the pattern to design new tools around. Server-initiated sampling is genuinely gone as an ergonomic, first-class API.
 
-If you need to offer a calculation that *looks* like sampling to users, use elicitation instead: ask the user for their preference, then perform the work.
+A narrower, deprecated compatibility path does still exist for legacy interop: a sessionless server can request sampling through the same `input_required` multi-round-trip mechanism elicitation uses, via `inputRequired.createMessage({ messages, maxTokens, ... })`. The client answers through the `onSampling` callback (see the client-side `sampling.mdx` doc: "A sessionless server enters the temporary `input_required` multi-round-trip compatibility flow"), and the server reads the result with `inputResponse(ctx.inputResponses, key)`, checking `.kind === "sampling"` and reading `.result`:
+
+```typescript
+import { inputRequired, inputResponse } from "mcp-use";
+
+if (!ctx.client.can("sampling")) {
+  return {
+    isError: true,
+    content: [{ type: "text", text: "Client does not support sampling/createMessage." }],
+  };
+}
+
+const response = inputResponse(ctx.inputResponses, "sample");
+if (response.kind === "missing") {
+  return inputRequired({
+    inputRequests: {
+      sample: inputRequired.createMessage({
+        messages: [{ role: "user", content: { type: "text", text: prompt } }],
+        maxTokens: 100,
+      }),
+    },
+  });
+}
+if (response.kind === "sampling") {
+  const blocks = Array.isArray(response.result.content) ? response.result.content : [response.result.content];
+  // ... consume the generated content
+}
+```
+
+Treat this as a legacy interop path for clients that only understand the old `sampling/createMessage` shape, not as the recommended v2 design. Prefer the host-generates-first pattern above for new tools; reach for `inputRequired.createMessage()` only when you must bridge an existing sampling-based integration.
+
+Client capability advertisement follows the same legacy boundary: `sampling/createMessage` is available only when the current request advertises the top-level `sampling` capability. Gate `inputRequired.createMessage()` with `ctx.client.can("sampling")`; elicitation support does not imply sampling support. The mcp-use client advertises `sampling: {}` only when an `onSampling` callback is configured.
+
+If you need to offer a calculation that *looks* like sampling to users without legacy interop constraints, use elicitation instead: ask the user for their preference, then perform the work.
 
 ## Full migration guide
 

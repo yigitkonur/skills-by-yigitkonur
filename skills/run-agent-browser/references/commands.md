@@ -11,31 +11,32 @@ agent-browser --version
 
 The upstream repository's `skills/agent-browser/SKILL.md` is intentionally a discovery stub. The installed `core` skill and command help are version-matched and authoritative.
 
-## Managed-pool note
+## Runtime selection on this host
 
-On Yigit's Mac, plain browser commands use the headed CDP pool. `agent-browser pool real ...` calls the underlying CLI without pool leasing. Read `managed-cdp-pool.md` before explicit CDP/profile/provider/launch mutation.
+- **Steel Browser (default interactive runtime):** `env -u AGENT_BROWSER_PROVIDER agent-browser --session <task> --cdp "$STEEL_AGENT_BROWSER_CDP" ...`
+- **Patchright Scrape Pool:** authenticated `POST /scrape` API on `https://browserpool.65.108.140.207.sslip.io` (read `references/managed-cdp-pool.md`).
+- **Provider plugins / Cloud:** set `AGENT_BROWSER_PROVIDER` or pass `-p`; do not combine with `--cdp`.
+- **Public URL text fetch:** `agent-browser read URL`.
 
 ## Navigation and inspection
 
 ```bash
-agent-browser open https://example.com     # navigate; first managed open creates a task tab
-agent-browser open                         # unmanaged: launch about:blank for pre-navigation setup
-agent-browser back
-agent-browser forward
-agent-browser reload
-agent-browser snapshot                     # accessibility tree
-agent-browser snapshot -i                  # interactive-first refs
-agent-browser snapshot -i -u               # include link URLs
-agent-browser snapshot -s '#main'           # scope selector
-agent-browser snapshot -c -d 4             # compact, depth-limited
-agent-browser read                          # active rendered DOM as readable text
-agent-browser read https://example.com      # public URL content negotiation/fallback fetch
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" open https://example.com
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" back
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" forward
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" reload
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot -i
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot -i -u
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot -s '#main'
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" snapshot -c -d 4
+env -u AGENT_BROWSER_PROVIDER agent-browser --session task --cdp "$STEEL_AGENT_BROWSER_CDP" read
 ```
 
-For a public URL that needs no browser session, prefer:
+For a public URL that does not need interactive browser state, use the direct-read runtime separately:
 
 ```bash
-agent-browser pool real read https://example.com
+agent-browser read https://example.com
 ```
 
 `read URL` can negotiate Markdown, try `.md`, discover nearby `llms.txt`, and fall back to HTML conversion. Check `read --help` for `--raw`, `--require-md`, `--llms`, `--outline`, `--filter`, and timeout options.
@@ -45,8 +46,8 @@ agent-browser pool real read https://example.com
 ```bash
 agent-browser click @e1
 agent-browser dblclick @e1
-agent-browser fill @e2 'text'               # replace value
-agent-browser type @e2 'text'               # type through keyboard events
+agent-browser fill @e2 'text'
+agent-browser type @e2 'text'
 agent-browser press Enter
 agent-browser hover @e3
 agent-browser focus @e3
@@ -160,7 +161,7 @@ agent-browser auth login service --credential-provider vault --item 'Service acc
 agent-browser state save ./state.json
 ```
 
-State files are credentials. The managed pool normally replaces explicit browser sessions with owner-scoped lane leases; do not prepend `--session` to managed commands.
+State files are credentials. On Steel Browser, connect using a task-specific session name to keep session daemon state isolated.
 
 ## Debug and performance
 
@@ -171,7 +172,6 @@ agent-browser profiler start
 agent-browser profiler stop ./profile.json
 agent-browser record start ./flow.webm https://example.com
 agent-browser record stop
-agent-browser pool real --headed --enable react-devtools open https://example.com
 agent-browser react tree
 agent-browser react inspect COMPONENT_ID
 agent-browser vitals
@@ -207,4 +207,4 @@ Use the specialized skill for its runtime, then verify syntax against current CL
 
 ## Global flags change
 
-Global options evolve. Current notable categories include session/restore, namespace, profile/state, providers, explicit CDP/auto-connect, headed mode, headers/proxy/user-agent/args, JSON/debug, content boundaries/action policy, engine, screenshots, and idle timeout. Verify exact names and types with `agent-browser --help`; do not resurrect removed `--native` or `AGENT_BROWSER_NATIVE` guidance.
+Global options evolve. Current notable categories include session/restore, namespace, profile/state, providers, explicit CDP/auto-connect, headed mode, headers/proxy/user-agent/args, JSON/debug, content boundaries/action policy, engine, screenshots, and idle timeout. Verify exact names and types with `agent-browser --help`.

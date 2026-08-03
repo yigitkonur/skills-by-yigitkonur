@@ -1,6 +1,6 @@
 {
   "name": "run-testsprite-backend",
-  "version": "1.0.43",
+  "version": "1.0.48",
   "description": "Use skill if you are creating, debugging, running, or managing credentials for TestSprite backend API tests against deployed services; not frontend, load, fuzz, security scanning, or native-only testing.",
   "author": {
     "name": "Yigit Konur",

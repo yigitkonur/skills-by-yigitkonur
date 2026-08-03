@@ -70,9 +70,12 @@ type PromptCallback<TInput, TUser, HasOAuth, TEnv> =
 ```typescript
 {
   messages: PromptMessage[]
-  // where PromptMessage = { role: "user" | "assistant", content: ContentBlock | ContentBlock[] }
+  // where PromptMessage = { role: "user" | "assistant", content: ContentBlock }
+  // content is a single block, not an array — one message = one content block
 }
 ```
+
+A `CallToolResult` (`{ content: [...] }`) is also accepted and converted at registration time: each content block becomes its own `user`-role message.
 
 ---
 
@@ -113,7 +116,7 @@ See `04-completable-arguments.md` for static lists and dynamic callbacks.
 | `prompts/list` | Enumerate available prompts |
 | `prompts/get` | Render a prompt with user-supplied arguments |
 | `notifications/prompts/list_changed` | Server-pushed notification of registry change |
-| `completion/complete` | Argument autocompletion (v2-compatible; see `04-completable-arguments.md`) |
+| `completion/complete` | Argument autocompletion; shipped in beta.66. See `04-completable-arguments.md` |
 
 ---
 

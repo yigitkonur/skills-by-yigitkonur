@@ -2,56 +2,95 @@
 
 *Deploy to the official mcp-use platform for managed Node.js hosting, preview environments, and GitHub integration.*
 
+## Prerequisites and Source Mode
+
+Build the server and sign in to a Manufact organization before deploying. Then choose one shipped CLI source mode:
+
+- **GitHub (default):** deploy the current `origin`. If no origin exists, an interactive run can create a private GitHub repository; `--yes` authorizes the same repository/Git mutations without prompts. For an existing origin, push the branch you intend to deploy and ensure the Manufact GitHub App can access the repository.
+- **Managed upload:** pass `--no-github` on the first deploy. The CLI archives local source (excluding `.git`, dependencies, build output, `.mcp-use`, `.env*`, caches, coverage, OS metadata, and symlinks) and uploads at most 80 MB compressed. Linked managed projects auto-detect this source mode on later deploys.
+
+Inspect Git state before a GitHub-backed deploy:
+
+```bash
+git remote get-url origin
+git branch --show-current
+git status --short
+```
+
+Use `--no-github` when you intentionally want the managed-upload path rather than allowing repository creation/mutation.
+
 ## First Deploy
 
 ```bash
 npm run build
 mcp-use login
-mcp-use deploy
+mcp-use deploy --name my-server
 ```
 
-Browser opens for GitHub App auth. After success, your server lives at:
+The first deploy resolves the repository from `origin`, confirms GitHub App access, creates a Git-backed cloud server, starts a deployment, and writes the non-secret project link to `.mcp-use/cloud/link.json`. It starts the deployment; it does not wait for the build to finish.
 
+## Deployment Completion Gate
+
+Capture the deployment ID printed by the CLI or shown in the dashboard. Do not test the public endpoint or claim the new revision is live until that exact deployment reaches a terminal successful conclusion:
+
+```bash
+mcp-use deployments get <deployment-id>
+mcp-use deployments logs <deployment-id> --build --follow
 ```
-https://<slug>.deploy.mcp-use.com/mcp
-```
+
+Confirm the deployment record points at the intended source branch/revision (or managed upload), and treat failure, cancellation, or timeout as a failed deploy. A healthy response from the public URL before this gate may come from the previous deployment and is not evidence for the new change.
+
+After success, copy the exact MCP URL from the dashboard and perform the tools-only or View verification branch in `references/25-deploy/02-pre-deploy-checklist.md`.
+
+**Do not infer a hostname from the server slug.** No fixed URL pattern (subdomain, preview-branch format, or otherwise) is documented or guaranteed — the Manufact dashboard is the sole authoritative source for a server's generated and custom domains. Copy the exact MCP URL from the dashboard after each deploy; never construct it from the slug or branch name.
 
 `.mcp-use/cloud/link.json` saves the deployment link; commit it so CI redeploys reuse the same server.
 
 ## How Deploys Work
 
-**GitHub auto-detect (default):**
-- CLI finds your GitHub remote
-- Runs build and start commands on GitHub's servers
-- Deploys from remote HEAD (not your local working tree)
-- Requires push before deploy: `git push && mcp-use deploy`
+**GitHub (default):**
+- CLI deploys the configured `origin`, or can create a private repository when none exists
+- The cloud platform runs the configured build and start commands from the selected Git branch
+- Existing repositories require the branch to be pushed before deployment; local unpushed file changes are not the deployed source
+- `--watch-paths` and `--wait-for-ci` are available only in this source mode
 
-**Without GitHub (`--no-github`):**
-- CLI uploads your local source to platform-managed storage
+**Managed upload (`--no-github`):**
+- CLI uploads an archive of local source to platform-managed storage
 - Platform runs the build pipeline
-- Works in CI/onboarding without GitHub integration
+- Works in CI or onboarding without GitHub integration
+- `--watch-paths` and `--wait-for-ci` are rejected
 
-## Preview URLs (Hobby+)
+## Redeploy and Additional Servers
 
-Every branch gets a stable preview URL:
+With a link file present, a plain `mcp-use deploy` starts another deployment on the linked server. Pass `--new` to ignore the link and create a separate cloud server instead — combine with `--yes` for non-interactive confirmation:
 
+```bash
+mcp-use deploy --new --yes
 ```
-https://<slug>--br-<branch>.deploy.mcp-use.com/mcp
-```
 
-Push to a branch, CLI auto-detects and deploys.
+Branch previews and their URL scheme are dashboard-managed; do not construct or assume a preview URL pattern (see the "Do not infer a hostname" warning above) — read the actual preview URL from the dashboard or `mcp-use deployments get <id>`.
 
 ## Environment Variables
+
+Use deploy flags to set environment variables when creating a server:
 
 ```bash
 mcp-use deploy --env API_KEY=sk-xxx --env-file .env.production
 ```
 
-Stored in dashboard; set once, reused on future deploys.
+For an existing server, use the dedicated commands instead of assuming deploy-time creation flags mutate it:
+
+```bash
+mcp-use servers env set <server-id-or-slug> API_KEY=sk-xxx
+mcp-use servers env unset <server-id-or-slug> API_KEY
+mcp-use servers env list <server-id-or-slug>
+```
+
+Values are stored by the platform; the CLI does not echo uploaded secret values.
 
 ## Link File
 
-`.mcp-use/cloud/link.json` links this repo to a specific cloud server. Without it, every deploy from a different checkout creates a new subdomain (breaks custom domains and cached URLs).
+`.mcp-use/cloud/link.json` links this checkout to a specific cloud server. Without it, the CLI cannot reuse that local linkage and may create or select a separate server depending on the source-mode flow. Commit the link file so future deploys target the intended server.
 
 Commit it:
 
@@ -61,21 +100,47 @@ git commit -m "chore: track cloud deployment"
 git push
 ```
 
+## Migrating from a v1 `.mcp-use/project.json`
+
+CLI 4 (beta.15) reads **only** `.mcp-use/cloud/link.json` — it does **not** consume the older `.mcp-use/project.json` link file. If your project still has `project.json`, do not run `mcp-use deploy` blindly: with no recognized link, the CLI may create a **new** cloud server instead of redeploying the existing one.
+
+Safe path:
+
+1. Identify the existing server by slug in the Manufact dashboard, or by `serverId` in your deploy automation.
+2. If you have a server ID, let the CLI regenerate the link by targeting it explicitly, or create the link file yourself at `.mcp-use/cloud/link.json` with the correct `organizationId`, `serverId`, and `serverSlug` (fields match what `mcp-use deploy` writes).
+3. Delete the stale `.mcp-use/project.json` after the new link works, then redeploy and confirm it targets the same server ID (not a new one).
+
+## Direct cloud API automation
+
+Some production scripts bypass the CLI and call the Manufact cloud REST API directly (`https://cloud.mcp-use.com/api/v1/...`) with an `MCP_USE_API_KEY`. That is not the supported beta.15 surface: the documented, version-pinned contract is the CLI's JSON mode (`mcp-use deploy --json`, `mcp-use deployments get <id>`, `mcp-use servers ...`). If you keep direct-API automation, you must re-verify every endpoint, header, and response field against the current cloud API yourself — it can drift independently of the shipped CLI. Prefer the CLI JSON commands for CI so the client contract is the one under version control.
+
+## Connect a Client
+
+Copy the exact generated MCP URL from the Manufact dashboard — never construct it from the slug:
+
+```bash
+export MCP_URL="PASTE_THE_GENERATED_MCP_URL"
+npx mcp-use client connect production "${MCP_URL}"
+npx mcp-use client production tools list
+```
+
 ## After Deploy
 
 ```bash
-# Verify with screenshot
+# Verify with screenshot (use the dashboard-copied URL from above)
 npx mcp-use@beta screenshot \
-  --mcp https://<slug>.deploy.mcp-use.com/mcp \
+  --mcp "${MCP_URL}" \
   --tool <tool-name> \
   --output deployed-view.png
 
-# View logs
-mcp-use deployments logs <id> --build --follow
+# Follow the build, then read runtime logs
+mcp-use deployments get <deployment-id>
+mcp-use deployments logs <deployment-id> --build --follow
+mcp-use deployments logs <deployment-id>
 ```
 
 Update client configs with the new URL.
 
 ---
 
-See `04-cli-and-org-management.md` for login, orgs, and CI patterns.
+See `references/25-deploy/04-cli-and-org-management.md` for login, orgs, and CI patterns.

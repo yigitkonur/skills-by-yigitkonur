@@ -1,7 +1,7 @@
 {
   "name": "run-agent-browser",
-  "version": "1.0.43",
-  "description": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
+  "version": "1.0.48",
+  "description": "Use if driving agent-browser for webpage interaction, screenshots, @ref snapshots, tabs, UI verification, CDP attach, Steel Browser, or cloud providers (Browser Use, Browserbase, Browserless, Kernel).",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "run-agent-browser",
-    "shortDescription": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
+    "shortDescription": "Use if driving agent-browser for webpage interaction, screenshots, @ref snapshots, tabs, UI verification, CDP attach, Steel Browser, or cloud providers (Browser Use, Browserbase, Browserless, Kernel).",
     "longDescription": "Install only the run-agent-browser workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

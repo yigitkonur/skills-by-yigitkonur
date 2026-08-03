@@ -39,7 +39,7 @@ Pass a URL-encoded JSON object to auto-connect with custom settings:
 }
 ```
 
-Supported JSON fields: `url` (required), `name`, `transportType` (`"http"` or `"sse"`), `connectionMode` (`"auto"`, `"direct"`, or `"proxy"`), `customHeaders`, `auth`, `requestTimeout`, `resetTimeoutOnProgress`, `maxTotalTimeout`.
+Supported JSON fields: `url` (required), `name`, `transportType` (`"http"` or `"sse"`), `connectionMode` (`"auto"`, `"direct"`, or `"proxy"`), `autoProxyFallback`, `connectionType` (`"Direct"` or `"Via Proxy"`, kept for older links), `customHeaders`, `auth`, `requestTimeout`, `resetTimeoutOnProgress`, `maxTotalTimeout`.
 
 URL-encode the JSON before adding it to the query string.
 

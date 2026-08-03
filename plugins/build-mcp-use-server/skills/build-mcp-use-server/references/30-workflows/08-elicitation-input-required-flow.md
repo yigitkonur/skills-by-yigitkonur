@@ -19,20 +19,21 @@ cd confirmation-server
 
 ### 2. Add a Request-State Verifier
 
-When the state affects authorization or business logic, configure a request-state codec. Use the exact codec signature documented in `references/12-elicitation/04-multi-round-and-request-state.md` for the installed v2 package.
+When the state affects authorization or business logic, configure a request-state codec. Use the exact codec signature documented in `../12-elicitation/04-multi-round-and-request-state.md` for the installed v2 package.
 
 ```typescript
 import { MCPServer, createRequestStateCodec, inputRequired } from "mcp-use";
 import { z } from "zod";
 
 const requestStateCodec = createRequestStateCodec({
-  secret: process.env.REQUEST_STATE_SECRET!,
+  key: process.env.REQUEST_STATE_SECRET!, // string or Uint8Array, >= 32 bytes/chars
+  ttlSeconds: 60,
 });
 
 const server = new MCPServer({
   name: "confirmation-server",
   version: "1.0.0",
-  requestState: requestStateCodec.verify,
+  requestState: { verify: requestStateCodec.verify }, // object wrapper, not the bare function
 });
 ```
 
@@ -43,6 +44,10 @@ const server = new MCPServer({
 Add a tool whose first invocation requests confirmation and whose second invocation reads `ctx.inputResponses`:
 
 ```typescript
+import { acceptedContent, inputRequired, inputResponse } from "mcp-use";
+
+const confirmSchema = z.object({ confirmed: z.boolean().describe("Confirm deletion") });
+
 export const deleteRecord = server.tool(
   {
     name: "delete-record",
@@ -52,31 +57,29 @@ export const deleteRecord = server.tool(
     }),
   },
   async ({ recordId }, ctx) => {
-    const response = ctx.inputResponses?.confirmDelete;
+    // Every round starts the handler over from the top — check this round's
+    // response before deciding whether to ask again.
+    const response = inputResponse(ctx.inputResponses, "confirmDelete");
+    if (response.kind === "elicit" && response.action !== "accept") {
+      return { content: [{ type: "text", text: `Deletion of ${recordId} ${response.action}` }], isError: true };
+    }
 
-    if (!response) {
-      return inputRequired.elicit({
-        key: "confirmDelete",
-        message: `Delete record ${recordId}?`,
-        schema: z.object({
-          confirmed: z.boolean().describe("Confirm deletion"),
-        }),
-        requestState: { recordId },
+    const confirmed = acceptedContent(ctx.inputResponses, "confirmDelete", confirmSchema);
+
+    // Initial and schema-invalid rounds both return input_required.
+    if (confirmed === undefined) {
+      return inputRequired({
+        inputRequests: {
+          confirmDelete: inputRequired.elicit({
+            message: `Delete record ${recordId}?`,
+            requestedSchema: confirmSchema,
+          }),
+        },
+        requestState: await requestStateCodec.mint({ recordId }),
       });
     }
 
-    const parsed = z
-      .object({ confirmed: z.boolean() })
-      .safeParse(response);
-
-    if (!parsed.success) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: "Invalid confirmation response" }],
-      };
-    }
-
-    if (!parsed.data.confirmed) {
+    if (!confirmed.confirmed) {
       return {
         content: [{ type: "text", text: `Deletion of ${recordId} cancelled` }],
       };
@@ -90,10 +93,11 @@ export const deleteRecord = server.tool(
 );
 
 export default server;
-server.listen();
 ```
 
-**Verify:** `npm run typecheck` passes against an installed version that ships the helper signature shown by `references/12-elicitation/01-overview.md`.
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
+
+**Verify:** `npm run typecheck` passes against an installed version that ships the helper signature shown by `../12-elicitation/01-overview.md`.
 
 ### 4. Run the First Round
 
@@ -109,7 +113,7 @@ In Inspector, call `delete-record` with `{"recordId":"record-123"}`.
 
 Accept the prompt and submit `{"confirmed":true}`.
 
-**Verify:** The host re-runs `delete-record` with the original tool arguments, verified request state, and `ctx.inputResponses.confirmDelete` populated.
+**Verify:** The host re-runs `delete-record` with the original tool arguments and a verified `requestState`; `inputResponse(ctx.inputResponses, "confirmDelete")` resolves to an accepted `{ confirmed: true }` response.
 
 ### 6. Verify Final Outcomes
 
@@ -124,4 +128,4 @@ Repeat the workflow twice:
 
 The handler starts from the top on every round. Never expect a suspended stack frame or in-memory continuation. Persist or encode only the minimum state needed to resume, validate `ctx.inputResponses`, and make the final side effect idempotent.
 
-Read `references/12-elicitation/01-overview.md` before adapting this recipe, then use `references/12-elicitation/02-form-mode.md` for flat-schema constraints.
+Read `../12-elicitation/01-overview.md` before adapting this recipe, then use `../12-elicitation/02-form-mode.md` for flat-schema constraints.

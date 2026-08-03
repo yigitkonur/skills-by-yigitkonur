@@ -1,44 +1,61 @@
 # CSP Metadata: Domains and Sandbox Permissions
 
-*Read this when you need to declare which third-party domains your view uses, set sandbox permissions, or troubleshoot CSP violations.*
+*Read this when a View loads remote content, embeds frames, or requests browser capabilities.*
 
-Views operate in isolated iframes with a strict Content Security Policy (CSP). You declare which domains the view needs to access via the tool's `view` field, environment variables, or auto-append defaults. The framework merges these three sources into a single CSP object sent to the host.
+View security facts are declared on the bound tool's `view` field and emitted on the generated resource under `_meta.ui`. They apply to browser code in the sandboxed View, not to server-side tool callback traffic.
 
-## CSP Structure
+## Public Types in beta.66
 
-CSP has four domain categories:
+The package root exports `ToolViewConfig` and `UiPermissions`. It does **not** export `McpUiResourceCsp` or `McpUiResourcePermissions`.
 
 ```typescript
-import type { McpUiResourceCsp } from "mcp-use";
+import type { ToolViewConfig, UiPermissions } from "mcp-use";
 
-const csp: McpUiResourceCsp = {
-  connectDomains: ["https://api.example.com"],      // fetch, XHR, WebSocket
-  resourceDomains: ["https://cdn.example.com"],     // CSS, scripts, images
-  frameDomains: ["https://embed.example.com"],      // iframes, embeds
-  baseUriDomains: ["https://myserver.example.com"],  // base URI (rarely used)
+type ViewCsp = ToolViewConfig["csp"];
+
+const csp: ViewCsp = {
+  connectDomains: ["https://api.example.com"],
+  resourceDomains: ["https://cdn.example.com"],
+  frameDomains: ["https://embed.example.com"],
+  baseUriDomains: ["https://views.example.com"],
+};
+
+const permissions: UiPermissions = {
+  camera: {},
+  microphone: {},
+  geolocation: {},
+  clipboardWrite: {},
 };
 ```
 
-## Three-Tier Merge Order (High → Low Priority)
+Inline `view.csp` and `view.permissions` objects are also inferred without standalone type aliases.
 
-CSP is merged from three sources in this order (highest priority first):
+## CSP Categories
 
-### 1. Author Declaration (Tool `view.csp`)
+| Key | Browser activity |
+|-|-|
+| `connectDomains` | `fetch`, XHR, EventSource, WebSocket |
+| `resourceDomains` | Scripts, styles, images, fonts, and other loaded assets |
+| `frameDomains` | Nested frames and embeds |
+| `baseUriDomains` | Allowed document base URI origins |
 
-Declared directly on the tool definition:
+Declare only origins the View itself needs:
 
 ```typescript
 server.tool(
   {
-    name: "search-products",
-    description: "Search products",
-    inputSchema: z.object({ query: z.string() }),
-    outputSchema: productSchema,
+    name: "create-chart",
+    inputSchema: z.object({ type: z.enum(["bar", "line"]) }),
+    outputSchema: z.object({
+      labels: z.array(z.string()),
+      data: z.array(z.number()),
+    }),
     view: {
-      name: "product-search",
+      name: "chart-builder",
       csp: {
         connectDomains: ["https://api.example.com"],
         resourceDomains: ["https://cdn.example.com"],
+        frameDomains: ["https://embed.example.com"],
       },
     },
   },
@@ -46,181 +63,158 @@ server.tool(
 );
 ```
 
-### 2. Environment Variables
+A server callback fetching `https://api.example.com` does not require View CSP. A `fetch()` executed by `view.tsx` does.
 
-Set at deployment time:
+## Additive Merge
+
+The framework builds every CSP category by concatenating three segments and removing duplicates in first-seen order:
+
+1. Author values from `view.csp`
+2. Environment values
+3. Framework auto-appended origins
+
+"Earlier wins" only determines duplicate ordering. Later sources are still added; author values do not replace the environment or automatic values.
+
+### Environment Sources
 
 ```bash
-# Per-category
-CSP_CONNECT_DOMAINS=https://api.example.com,https://analytics.example.com
+CSP_CONNECT_DOMAINS=https://api.example.com,https://events.example.com
 CSP_RESOURCE_DOMAINS=https://cdn.example.com
 CSP_FRAME_DOMAINS=https://embed.example.com
-CSP_BASE_URI_DOMAINS=https://myserver.example.com
-
-# Or shortcut (all four categories)
-CSP_URLS=https://api.example.com,https://cdn.example.com,https://embed.example.com
+CSP_BASE_URI_DOMAINS=https://views.example.com
 ```
 
-**Precedence within env vars:** Category-specific vars override `CSP_URLS`.
-
-### 3. Framework Auto-Append (Lowest Priority)
-
-The framework automatically appends:
-- `MCP_URL` → `connectDomains` (so views can reach the server)
-- `MCP_ASSETS_URL` → `resourceDomains` (so views can load assets)
-
-If `MCP_ASSETS_URL` is not set, the server origin is used instead.
-
-## Typical Flow
+`CSP_URLS` is a shortcut fallback for all four categories:
 
 ```bash
-# Production deployment
-
-# Set server & asset origins
-export MCP_URL=https://myserver.com
-export MCP_ASSETS_URL=https://cdn.myserver.com
-
-# Set third-party domains via env (or declare in tool.view.csp)
-export CSP_CONNECT_DOMAINS=https://api.thirdparty.com
-export CSP_RESOURCE_DOMAINS=https://images.thirdparty.com
-
-# Server starts; CSP is merged at resource emission time
-# Resulting CSP includes:
-# - Author domains (from tool.view.csp) — highest priority
-# - Env-set domains (CSP_* vars)
-# - Auto-appended: https://myserver.com (connect), https://cdn.myserver.com (resource)
+CSP_URLS=https://shared.example.com
 ```
 
-## Example: Multi-Domain View
+For each category, a non-empty category-specific variable replaces `CSP_URLS` as that category's **environment segment**. It does not replace author or automatic entries.
+
+### Automatic Origins
+
+- Server origin from `MCP_URL` or the request → `connectDomains`
+- WebSocket variant of the server origin in dev → `connectDomains`
+- Explicit `MCP_ASSETS_URL` origin → `resourceDomains`
+- Otherwise the server origin → `resourceDomains`
+
+The emitted CSP always contains all four arrays, even when some are empty.
+
+## Example Merge
+
+Given:
 
 ```typescript
-// index.ts
-const chartResultsSchema = z.object({
-  labels: z.array(z.string()),
-  data: z.array(z.number()),
-});
-
-server.tool(
-  {
-    name: "create-chart",
-    description: "Create an interactive chart",
-    inputSchema: z.object({ type: z.enum(["bar", "line"]) }),
-    outputSchema: chartResultsSchema,
-    view: {
-      name: "chart-builder",
-      description: "Interactive chart editor",
-      csp: {
-        connectDomains: ["https://analytics.stripe.com"],  // Stripe analytics
-        resourceDomains: ["https://fonts.googleapis.com"],  // Google Fonts
-        frameDomains: ["https://charts.example.com"],       // Chart iframe
-      },
-    },
+view: {
+  name: "chart-builder",
+  csp: {
+    connectDomains: ["https://api.example.com"],
+    resourceDomains: ["https://cdn.example.com"],
   },
-  async ({ type }) => ({
-    content: [{ type: "text", text: `Created ${type} chart` }],
-    structuredContent: { labels: ["A", "B"], data: [10, 20] },
-  })
-);
-
-export default server;
+}
 ```
-
-## Environment Variable Examples
-
-### Basic Setup
 
 ```bash
-mcp-use deploy --env MCP_URL=https://myapp.example.com
-mcp-use deploy --env CSP_CONNECT_DOMAINS=https://api.example.com
+MCP_URL=https://mcp.example.com
+MCP_ASSETS_URL=https://assets.example.com/static
+CSP_CONNECT_DOMAINS=https://events.example.com
+CSP_RESOURCE_DOMAINS=https://fonts.example.com
 ```
 
-### CDN + Multiple Third Parties
-
-```bash
-export MCP_URL=https://server.example.com
-export MCP_ASSETS_URL=https://cdn.example.com
-export CSP_CONNECT_DOMAINS=https://api.stripe.com,https://api.anthropic.com
-export CSP_RESOURCE_DOMAINS=https://images.example.com,https://fonts.googleapis.com
-export CSP_FRAME_DOMAINS=https://youtube.com,https://maps.google.com
-```
-
-### Using CSP_URLS Shortcut
-
-```bash
-# Adds to all four categories (rarely used; prefer category-specific)
-export CSP_URLS=https://example.com,https://api.example.com
-```
-
-## Verifying Emitted CSP
-
-The framework emits CSP on the view resource's `_meta.ui.csp` field. Inspect via:
-
-```bash
-# Using mcp-use client CLI
-mcp-use client local resources read ui://views/chart-builder.html | jq '._meta.ui.csp'
-
-# Or via direct HTTP
-curl -s http://localhost:3000/mcp/resources/read -d '{"uri":"ui://views/chart-builder.html"}' | jq '.[0]._meta.ui.csp'
-```
-
-Expected output (merged from all three sources):
+The resource metadata includes:
 
 ```json
 {
-  "_meta": {
-    "ui": {
-      "csp": {
-        "connectDomains": [
-          "https://api.example.com",     (from author)
-          "https://analytics.stripe.com", (from author)
-          "https://myserver.example.com"  (auto-appended MCP_URL)
-        ],
-        "resourceDomains": [
-          "https://fonts.googleapis.com",  (from author)
-          "https://cdn.example.com"        (auto-appended MCP_ASSETS_URL)
-        ],
-        "frameDomains": ["https://charts.example.com"]
-      }
+  "ui": {
+    "csp": {
+      "connectDomains": [
+        "https://api.example.com",
+        "https://events.example.com",
+        "https://mcp.example.com"
+      ],
+      "resourceDomains": [
+        "https://cdn.example.com",
+        "https://fonts.example.com",
+        "https://assets.example.com"
+      ],
+      "frameDomains": [],
+      "baseUriDomains": []
     }
   }
 }
 ```
 
+This object appears under the resource's `_meta`; the snippet shows only its `ui` value.
+
 ## Sandbox Permissions
 
-Declare permissions alongside CSP:
+`permissions` is an object whose key presence requests a capability. Values are empty objects, not booleans and not iframe `sandbox` tokens.
+
+```typescript
+import type { UiPermissions } from "mcp-use";
+
+const permissions: UiPermissions = {
+  camera: {},
+  microphone: {},
+  geolocation: {},
+  clipboardWrite: {},
+};
+```
+
+Only these four standard keys exist in beta.66. A host may deny a request, so feature-detect and handle denial in the View.
 
 ```typescript
 server.tool(
   {
-    name: "editor",
-    description: "Edit content",
-    inputSchema: z.object({ content: z.string() }),
-    outputSchema: z.object({ saved: z.boolean() }),
+    name: "scan-qr-code",
+    inputSchema: z.object({}),
+    outputSchema: z.object({ decoded: z.string() }),
     view: {
-      name: "editor",
-      csp: { connectDomains: ["https://api.example.com"] },
-      permissions: ["allow-same-origin", "allow-scripts", "allow-forms"],
+      name: "qr-scanner",
+      permissions: { camera: {} },
     },
   },
   handler
 );
 ```
 
-Common permissions:
-- `allow-same-origin` — Access cookies & localStorage
-- `allow-scripts` — Execute JavaScript
-- `allow-forms` — Submit forms
-- `allow-modals` — Show dialogs
-- `allow-popups` — Open windows
+## Domain and Border Metadata
 
-## Troubleshooting
+```typescript
+view: {
+  name: "oauth-view",
+  domain: "host-approved-sandbox-name",
+  prefersBorder: true,
+}
+```
 
-See **references/27-troubleshooting/05-csp-violations.md** for diagnosing CSP block messages and resolver strategies.
+- `domain` is a dedicated sandbox-origin hint. Its format and validation are host-dependent; it may not be a URL. If omitted, the host chooses its default sandbox origin.
+- `prefersBorder` is a request, not a guarantee. Set an explicit boolean when the visual boundary matters.
+
+For ChatGPT-specific submission and compatibility requirements, follow `../chatgpt-apps/01-dual-protocol.md` and `../chatgpt-apps/03-csp-differences.md`. Do not add ChatGPT-only resource extensions to standard `ToolViewConfig` snippets.
+
+## Inspect the Emitted Resource
+
+Read `ui://views/<name>.html` and inspect the content item's `_meta.ui`. The same resource metadata is also advertised on the resource listing.
+
+```bash
+npx mcp-use client connect dev http://localhost:3000/mcp
+npx mcp-use client dev resources read "ui://views/chart-builder.html" --json
+```
+
+Expected location:
+
+```text
+result.contents[0]._meta.ui.csp
+result.contents[0]._meta.ui.permissions
+result.contents[0]._meta.ui.domain
+result.contents[0]._meta.ui.prefersBorder
+```
 
 ## Cross-References
 
-- **Canonical tool + view example:** references/18-mcp-apps/canonical-anchor.md
-- **View folder conventions:** references/18-mcp-apps/server-surface/02-register-views-and-folder-conventions.md
-- **Asset serving and MCP_URL/MCP_ASSETS_URL:** references/18-mcp-apps/server-surface/04-assets-mcp-url-and-serving.md
-- **CSP violation debugging:** references/27-troubleshooting/05-csp-violations.md
+- Tool binding and wire metadata: `01-tool-view-field.md`
+- Manifest and validation: `02-register-views-and-folder-conventions.md`
+- Asset origins and synthesized HTML: `04-assets-mcp-url-and-serving.md`
+- CSP troubleshooting: `../../27-troubleshooting/05-csp-violations.md`

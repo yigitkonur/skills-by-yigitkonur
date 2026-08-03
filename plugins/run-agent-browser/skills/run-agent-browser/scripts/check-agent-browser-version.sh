@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_MIN_VERSION="0.31.1"
+DEFAULT_MIN_VERSION="0.33.2"
 
 usage() {
   cat <<'EOF'
 Usage: check-agent-browser-version.sh [minimum-version]
 
-Checks the installed CLI, version-matched core skill, and optional local CDP
-pool. Defaults to the version used to verify this skill: 0.31.1.
+Checks the installed CLI, version-matched core skill, Steel Browser endpoint
+configuration, provider/CDP conflict handling, and Patchright scrape-pool health.
+Defaults to the version used to verify this skill: 0.33.2.
 
-Uses an installed `agent-browser`, otherwise `npx --no-install`. It never
-installs packages or Chrome.
+Read-only: never installs packages, launches Chrome, reveals credentials, or
+changes provider/runtime state.
 EOF
 }
 
@@ -21,7 +22,7 @@ MIN_VERSION="${1:-$DEFAULT_MIN_VERSION}"
 MIN_VERSION="${MIN_VERSION#v}"
 MIN_VERSION="${MIN_VERSION#V}"
 if [[ ! "$MIN_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
-  echo "minimum version must look like 0.31.1, 0.31, or v0.31.1" >&2
+  echo "minimum version must look like 0.33.2, 0.33, or v0.33.2" >&2
   exit 2
 fi
 
@@ -63,25 +64,66 @@ if [[ "$VERSION_OUTPUT" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
   VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
 else
   echo "version parsed:    no" >&2
-  exit 1
+  exit 3
 fi
-echo "version parsed:    yes ($VERSION)"
 
+echo "version parsed:    $VERSION"
 if version_lt "$VERSION" "$MIN_VERSION"; then
-  echo "minimum satisfied: no"
-  exit 1
+  echo "version check:     fail (upgrade required)" >&2
+  exit 4
 fi
-echo "minimum satisfied: yes"
+echo "version check:     pass"
 
 if "${AB_CMD[@]}" skills get core >/dev/null 2>&1; then
   echo "core skill:        available"
 else
   echo "core skill:        unavailable" >&2
-  exit 1
+  exit 5
 fi
 
-if "${AB_CMD[@]}" pool status >/dev/null 2>&1; then
-  echo "managed CDP pool:  available"
+if [[ -r "$HOME/.config/steel-browser-cdp.env" ]]; then
+  # shellcheck disable=SC1091
+  source "$HOME/.config/steel-browser-cdp.env"
+  echo "steel env:         available"
 else
-  echo "managed CDP pool:  unavailable (standard CLI mode)"
+  echo "steel env:         unavailable" >&2
+  exit 6
 fi
+
+for name in STEEL_AGENT_BROWSER_CDP STEEL_HEALTH_URL STEEL_CDP_VERSION_URL STEEL_UI_URL; do
+  if [[ -z "${!name:-}" ]]; then
+    echo "steel var $name: missing" >&2
+    exit 7
+  fi
+done
+echo "steel vars:        complete"
+
+if curl -fsS --max-time 5 "$STEEL_HEALTH_URL" >/dev/null; then
+  echo "steel health:      pass"
+else
+  echo "steel health:      fail" >&2
+  exit 8
+fi
+
+if curl -fsS --max-time 5 "$STEEL_CDP_VERSION_URL" >/dev/null; then
+  echo "steel CDP:         pass"
+else
+  echo "steel CDP:         fail" >&2
+  exit 9
+fi
+
+if [[ -n "${AGENT_BROWSER_PROVIDER:-}" ]]; then
+  echo "global provider:   set (${AGENT_BROWSER_PROVIDER}; CDP commands need env -u AGENT_BROWSER_PROVIDER)"
+else
+  echo "global provider:   unset"
+fi
+
+POOL_HEALTH_URL="https://browserpool.65.108.140.207.sslip.io/health"
+if curl -fsS --max-time 10 "$POOL_HEALTH_URL" >/dev/null; then
+  echo "Patchright pool:   healthy"
+else
+  echo "Patchright pool:   unavailable" >&2
+  exit 10
+fi
+
+echo "runtime check:     pass"

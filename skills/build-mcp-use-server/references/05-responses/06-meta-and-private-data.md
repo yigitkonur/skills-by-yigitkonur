@@ -47,38 +47,53 @@ export const search = server.tool(
 );
 
 // In views/results/view.tsx:
-const ctx = useToolContext<"search">();
-const meta = ctx.meta as { items: Array<...> };
-// Use meta.items for rendering
+const view = useToolContext<"search">();
+if (view.status === "pending") return <Skeleton />;
+if (view.status === "error") return <ErrorBanner message={view.error.message} />;
+// view.status === "ready": view.toolOutput is typed structuredContent (Register-inferred output type)
+const items = (view.meta as { items: Array<...> } | undefined)?.items;
+// Use items for rendering
 ```
 
-View does not validate against `outputSchema`; use `_meta` for large/detailed data.
+`useToolContext` returns a `ToolContextHandle` — a three-way discriminated union on `status` (`"pending" | "ready" | "error"`), not a plain object. `toolOutput` (typed `structuredContent`) is only populated once `status === "ready"`; `meta` is `Record<string, unknown> | undefined` on both `"ready"` and `"error"`, and always `undefined` while `"pending"`. `meta` is not validated against `outputSchema`; use it for large/detailed view-only data.
 
 ## Privacy boundaries
 
-- `content` — **model-visible** (readability)
-- `structuredContent` — **model-visible + validated** (if `outputSchema` set)
-- `_meta` — **UI/view-only** (not sent to model; not validated)
+- `content` — **model-visible + View-visible** (readability) — the View reads it as `useToolContext().content` (raw `ContentBlock[]`); not validated
+- `structuredContent` — **model-visible + View-visible + validated** (if `outputSchema` set) — the View reads it as `useToolContext().toolOutput`, typed by the tool's `outputSchema`
+- `_meta` — **View-only** (not sent to model; not validated) — the View reads it as `useToolContext().meta`
 
-Use `_meta` to hide sensitive details (API keys, internal IDs, intermediate state) from model consumption.
+Use `_meta` for non-secret auxiliary data that may be disclosed to the connected host/View but should stay out of model context — for example, internal record IDs, presentation data, or intermediate state whose client disclosure is acceptable. Never put API keys, bearer tokens, credentials, or other secrets in `_meta`; data the View does not need should remain server-side.
 
 ## Example: large dataset
 
 ```typescript
+import { MCPServer } from "mcp-use";
+import { z } from "zod";
+
+const server = new MCPServer({
+  name: "event-server",
+  version: "1.0.0",
+});
+
+const events = Array.from({ length: 10_000 }, (_, index) => ({
+  id: `event-${index + 1}`,
+  label: `Event ${index + 1}`,
+}));
+
 server.tool(
   {
     name: "list-events",
     outputSchema: z.object({ count: z.number(), summary: z.string() }),
   },
-  async (ctx) => {
-    const events = await db.events.fetch(); // 10K items
+  async (_input, _ctx) => {
     return {
       content: [{ type: "text", text: `${events.length} events this month` }],
       structuredContent: {
         count: events.length,
-        summary: "See _meta for full event log"
+        summary: "See _meta for full event log",
       },
-      _meta: { events }  // Large array; not sent to model
+      _meta: { events }, // Client/View-visible; never put secrets here.
     };
   }
 );

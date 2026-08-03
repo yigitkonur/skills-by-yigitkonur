@@ -32,8 +32,9 @@ const server = MCPServer.fromOpenAPI({
 });
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
 
 **Verify:** `npm run typecheck` passes and the environment contains `API_TOKEN` when bearer auth is required.
 
@@ -73,4 +74,4 @@ npm run deploy
 - No automatic remote `$ref` bundling.
 - No automatic model-friendly workflow design; replace low-level generated operations with curated `server.tool()` declarations when necessary.
 
-Read `references/17-advanced/03-openapi-fromopenapi.md` for every option and limitation.
+Read `../17-advanced/03-openapi-fromopenapi.md` for every option and limitation.

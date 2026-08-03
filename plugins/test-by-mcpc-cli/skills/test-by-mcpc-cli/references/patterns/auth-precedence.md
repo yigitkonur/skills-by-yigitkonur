@@ -1,6 +1,6 @@
 # Auth Precedence
 
-Use this order when reasoning about what auth reaches the wire in `mcpc 0.2.4`.
+Use this order when reasoning about what auth reaches the wire in `mcpc 0.6.0`.
 
 ## Practical precedence
 
@@ -13,7 +13,12 @@ Use this order when reasoning about what auth reaches the wire in `mcpc 0.2.4`.
 ## Modifiers that change the default path
 
 - `--no-profile` disables default-profile auto-selection entirely
-- `--x402` also skips default-profile auto-selection unless `--profile` is explicit
+- `--x402 [scheme]` skips default-profile auto-selection unless `--profile` is explicit; unlike `-H`, it CAN combine with `--profile` for x402 payment plus OAuth identity
+- `--header` cannot be combined with `--profile` on the same connect (they compete for the same slot)
+
+## Grant type does not change precedence
+
+`--grant client-credentials` / `--grant id-jag` on `mcpc login` (see `references/guides/authentication.md`) change only how a profile is acquired. The stored profile still uses precedence rungs 2–3; grant type adds no new rung.
 
 ## Examples
 
@@ -36,4 +41,5 @@ mcpc connect https://mcp.example.com/mcp @paid --x402 --profile default
 ```bash
 mcpc login https://mcp.example.com/mcp --profile work --scope "read write"
 mcpc login https://mcp.example.com/mcp --client-id cli --client-secret secret
+mcpc login https://mcp.example.com/mcp --grant client-credentials --client-id svc --client-secret secret
 ```

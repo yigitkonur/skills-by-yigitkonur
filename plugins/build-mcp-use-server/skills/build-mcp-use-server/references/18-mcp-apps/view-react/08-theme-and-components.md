@@ -32,19 +32,21 @@ The hook does **not** re-render on locale or dimension updates — only color sc
 
 ## Image component
 
-Render images safely within views. Handles MIME types, fallbacks, and host constraints.
+A thin `<img>` wrapper that resolves root-relative `src` paths against the project's `public/` folder. It accepts every `React.ImgHTMLAttributes<HTMLImageElement>` prop (`alt`, `width`, `height`, `loading`, `onError`, `className`, `style`, ...) and passes them straight through to the rendered `<img>`.
 
 **Signature:**
 ```typescript
-<Image
-  src: string;
-  alt: string;
-  width?: number;
-  height?: number;
-  loading?: "lazy" | "eager";
-  onError?: () => void;
-/>
+const Image: React.FC<React.ImgHTMLAttributes<HTMLImageElement>>
 ```
+
+**Path resolution** (via the internal `publicAsset()` helper, not part of the public API):
+
+| `src` form | Resolved to |
+|---|---|
+| `/logo.svg` (root-relative) | `${basePath}/_mcp-use/public/logo.svg`, using the request-scoped base injected per view render |
+| `https://...`, `http://...`, `data:...` | Passed through unchanged |
+| `assets/logo.svg` (relative, no leading `/`) | Passed through unchanged (resolves relative to the iframe document) |
+| `""` (empty string) | Passed through unchanged |
 
 **Example:**
 ```typescript
@@ -54,11 +56,12 @@ function ProductCard({ product }) {
   return (
     <div>
       <Image
-        src={product.imageUrl}
+        src="/logo-mcp-use.svg"
         alt={product.name}
         width={200}
         height={150}
         loading="lazy"
+        className="product-image"
       />
       <p>{product.name}</p>
     </div>
@@ -66,12 +69,19 @@ function ProductCard({ product }) {
 }
 ```
 
-**Use instead of `<img>`:**
-- Respects view CSP constraints
-- Handles missing images gracefully
-- Supports resource domain filtering
+**Use `<Image>` for files shipped in your project's `public/` folder** (referenced by a root-relative path) so the URL resolves correctly behind proxies, tunnels, and `MCP_ASSETS_URL` — a bare `<img src="/logo.svg">` would resolve against the host's own origin instead, not the server's public assets. For remote images (`https://...`) `<Image>` and `<img>` behave identically; `<Image>` does **not** enforce CSP, filter by domain, or provide a fallback for a broken image — CSP `resourceDomains` restrictions (see `references/18-mcp-apps/server-surface/05-csp-metadata.md` for the tool `view.csp` config) apply to the browser's own image loading regardless of which component renders the tag, and a failed load still fires the standard `onerror` event you can handle via the `onError` prop.
 
-Do not use regular `<img>` for images in CSP-restricted views; always use `<Image>`.
+To read the resolved public-folder base URL directly (for example, for a stylesheet `<link>` or a non-`<img>` asset), call `getPublicBaseUrl()`, also exported from `mcp-use/react`. The returned base always ends with `/`, so append a public-folder path **without** a leading slash:
+
+```typescript
+import { getPublicBaseUrl } from "mcp-use/react";
+
+const publicBaseUrl = getPublicBaseUrl();
+const stylesheetUrl = `${publicBaseUrl}styles/widget.css`;
+const workerUrl = `${publicBaseUrl}workers/chart-worker.js`;
+```
+
+Outside a synthesized browser View document, `getPublicBaseUrl()` returns an empty string.
 
 ## ViewControls
 
@@ -125,6 +135,7 @@ export default function View() {
 ## Gotchas
 
 - **`useViewTheme()` returns `"light" | "dark"` directly** — do not destructure `colorScheme`
-- **`<Image>` honors CSP constraints** → if `resourceDomains` does not include the image origin, the image will not load
+- **`<Image>` does not enforce CSP** → CSP `resourceDomains` are a browser-level restriction the host applies to the iframe regardless of which component rendered the `<img>`; `<Image>` only resolves root-relative paths against the public-assets base
 - **ViewControls is a wrapper component with `debugger` and `viewControls` props**, not a compound component (`ViewControls.Action` does not exist)
+- **ViewControls internally calls `useToolContext()`, `useHostContext()`, and `useDisplayMode()`** → mount it inside the same provider tree as the rest of the view (it does not need its own `ThemeProvider`, but it does need an active runtime)
 

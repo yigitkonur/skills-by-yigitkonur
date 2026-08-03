@@ -1,151 +1,152 @@
-# Dual-Protocol: One Server Definition, Both MCP Apps and ChatGPT
+# ChatGPT Compatibility: One Standard Wire, Narrow Runtime Branches
 
-*Read this when understanding how mcp-use emits both protocols from one server definition.*
+*Read this when making an mcp-use v2 View work in both standard MCP Apps hosts and ChatGPT.*
 
-The mcp-use framework automatically translates your MCP Apps server definition into both the standard MCP Apps protocol and ChatGPT's proprietary Apps SDK format. You write once; both hosts receive compatible output.
+mcp-use emits **one standard MCP Apps server wire**. It does not emit a second ChatGPT payload and does not auto-translate standard metadata into a parallel proprietary protocol. ChatGPT-specific behavior exists only at narrow, verified client-runtime branches and through optional OpenAI metadata extensions that you choose explicitly.
 
-## One Definition, Two Wires
+## One Server Wire
 
-When you define a tool with a view, mcp-use generates:
+For a View-bound tool, shipped mcp-use server source emits:
 
-1. **MCP Apps protocol** — standard MCP wire with `text/html;profile=mcp-app` MIME, CSP metadata, and `structuredContent`.
-2. **ChatGPT Extensions** — Apps SDK metadata and `window.openai.setWidgetState()` calls, emitted alongside MCP protocol messages.
+- a `tools/list` descriptor with standard `_meta.ui.resourceUri`, the flat `ui/resourceUri` compatibility key, and optional `_meta.ui.visibility`;
+- completed, non-error tool results stamped with the same nested and flat resource URI links;
+- a generated `ui://views/<name>.html` resource with MIME `text/html;profile=mcp-app` and standard resource `_meta.ui` fields for CSP, permissions, domain, and border preference.
 
-Both are sent simultaneously; the host you connect to uses the protocol it understands.
-
-## What Stays the Same
-
-Your server code is entirely protocol-agnostic:
+Source boundary: `packages/server/src/views/wire.ts` (`buildToolUiMeta`, `buildToolResultUiMeta`, and `buildResourceUiMeta`). There is no server-side Skybridge emission or ChatGPT metadata translation in those functions.
 
 ```typescript
 export const search = server.tool(
   {
     name: "search",
     inputSchema: z.object({ query: z.string() }),
-    outputSchema: searchSchema,
-    view: { name: "results" },  // ONE definition
+    outputSchema: searchOutputSchema,
+    view: {
+      name: "results",
+      description: "Interactive search results",
+      domain: "https://components.example.com",
+    },
   },
   async ({ query }) => ({
-    content: [{ type: "text", text: "..." }],
-    structuredContent: { /* matches searchSchema */ },
+    content: [{ type: "text", text: `Results for ${query}` }],
+    structuredContent: { query, results: [] },
   })
 );
 ```
 
-mcp-use:
-- Emits this as standard MCP Apps to MCP Desktop, Claude Desktop, etc.
-- Simultaneously emits it as ChatGPT Apps SDK metadata.
+The same descriptor, result, and resource shapes are read by every host.
 
-## What Translation Covers
+## Verified Client-Runtime Branches
 
-| v2 Concept | MCP Apps | ChatGPT | Handled By |
-|-|-|-|-|
-| Tool definition | tools/list | Apps SDK tool | ✓ same |
-| Input schema | `inputSchema` | Apps SDK schema | ✓ auto-mapped |
-| Structured output | `structuredContent` | `window.openai.setWidgetState()` | ✓ auto-mapped |
-| Model-visible state | `_meta.ui` | `window.openai.widgetState.modelContent` | ✓ auto-mapped |
-| View rendering | `ui://views/<name>.html` | Apps SDK iframe | ✓ auto-mapped |
-| CSP metadata | `_meta.ui.csp` | Apps SDK sandbox rules | ✓ auto-mapped |
-| Visibility hint | `_meta.ui.visibility` | Apps SDK metadata | ✓ auto-mapped |
+Only these ChatGPT-specific branches are present in the shipped `mcp-use/react` runtime:
 
-## View Code Compatibility
+1. **View state/model context** — `model-context-store.ts` restores `window.openai.widgetState.modelContent`, listens for `openai:set_globals`, and writes through `window.openai.setWidgetState`. Without that API, it uses the standard MCP Apps `App.updateModelContext()` path when the host declares `updateModelContext`.
+2. **Files** — `view-runtime.ts` exposes `useFiles()` through `window.openai.uploadFile(file)` and `window.openai.getFileDownloadUrl({ fileId })` when both functions exist.
 
-Your React view code uses mcp-use hooks, which work on both platforms:
+Tool calls, follow-up messages, external links, display-mode requests, size notifications, and View tools use the standard MCP Apps `App` bridge. Do not describe every mcp-use hook as a `window.openai` wrapper.
 
-```typescript
-// views/results/view.tsx
-import { useToolContext, useCallTool, useSendFollowUp } from "mcp-use/react";
+## Standard First
 
-export default function ResultsView() {
-  const ctx = useToolContext<"search">();
-  const { callTool } = useCallTool("refine-search");
-  const sendFollowUp = useSendFollowUp();
-  
-  // Same code runs on:
-  // - MCP Apps hosts (Claude, MCP Desktop)
-  // - ChatGPT
-}
-```
+Use the shipped standard hooks whenever they cover the operation:
 
-**Never import or call `window.openai` directly.** The mcp-use hooks handle both protocol implementations.
+- `useToolContext()` for invocation input and results;
+- `useCallTool()` for View-to-server calls;
+- `useSendFollowUp()` for follow-up messages;
+- `useOpenExternal()` for host-mediated links;
+- `useDisplayMode()` for presentation modes;
+- `useViewTool()` for host/model-to-View actions;
+- `useViewState()` for state without hand-written host branching.
 
-## No Manual Protocol Selection
+Use `useFiles()` only when the ChatGPT-only file extension is needed and `isSupported` is true. Do not call `window.openai` directly when a shipped standard hook exists.
 
-You do NOT need to:
+## Descriptor Metadata Matrix
 
-- Detect which host is connected
-- Emit different metadata per host
-- Translate results yourself
-- Support two separate code paths
+The official OpenAI Plugin UI reference says to prefer MCP Apps standard fields and treats the `openai/*` descriptor fields as ChatGPT compatibility aliases or optional extensions. mcp-use `ToolDefinition._meta` passes author-supplied vendor keys through to `tools/list`, except framework-owned standard View/visibility keys derived from `view` and `visibility` take precedence.
 
-mcp-use handles all translation. Write for v2; it ships both.
+| Key | Classification | When to use | mcp-use v2 beta.66 authoring surface |
+|---|---|---|---|
+| `_meta.ui.resourceUri` | Standard MCP Apps | Link a tool to its UI resource | Generated from `view.name`; do not set it manually |
+| `_meta.ui.visibility` | Standard MCP Apps | Make a tool model- or app-facing | Generated from top-level `visibility` |
+| `_meta["openai/outputTemplate"]` | Optional ChatGPT compatibility alias | Existing integrations that still require the OpenAI alias | Can pass through `ToolDefinition._meta`; normally omit because `view.name` generates the standard key |
+| `_meta["openai/widgetAccessible"]` | Optional ChatGPT compatibility field | Existing ChatGPT UI integrations | Can pass through `ToolDefinition._meta`; prefer standard visibility plus `tools/call` |
+| `_meta["openai/visibility"]` | Optional ChatGPT compatibility field | Existing integrations using `public`/`private` | Can pass through `ToolDefinition._meta`; prefer top-level `visibility` |
+| `_meta["openai/toolInvocation/invoking"]` | Optional ChatGPT status text | Short text while a tool runs, at most 64 characters | Can pass through `ToolDefinition._meta` |
+| `_meta["openai/toolInvocation/invoked"]` | Optional ChatGPT status text | Short text after a tool completes, at most 64 characters | Can pass through `ToolDefinition._meta` |
+| `_meta["openai/fileParams"]` | ChatGPT-only, use-case-specific | Declare top-level tool inputs that ChatGPT should populate with file objects | Can pass through `ToolDefinition._meta` |
 
-## ChatGPT-Specific Behavior (Captured by Hooks)
+Source boundary: the literal keys, status-string limit, alias classifications, and file-parameter behavior come from the official OpenAI Plugin UI reference, sections “Tool descriptor parameters” and “Define file inputs.” The pass-through boundary comes from shipped mcp-use `ToolDefinition._meta` and `buildToolUiMeta()`.
 
-ChatGPT has platform-specific state restoration and widget-state handling. mcp-use's `useViewState()` hook detects the platform and stores state accordingly:
+Example with optional ChatGPT descriptor extensions:
 
 ```typescript
-const [filters, setFilters] = useViewState({ sort: "relevance" });
-
-// On ChatGPT: state persists across View re-renders via window.openai.widgetState
-// On MCP Apps hosts: state lives for the request lifetime
-// Hook implementation handles both transparently
-```
-
-## Metadata Translation Example
-
-**Your server code (one definition):**
-
-```typescript
-view: {
-  name: "results",
-  description: "Search results",
-  csp: { connectDomains: ["https://api.example.com"] },
-}
-```
-
-**MCP Apps protocol emitted:**
-
-```json
-{
-  "type": "text",
-  "uri": "ui://views/results.html",
-  "mimeType": "text/html;profile=mcp-app",
-  "_meta": {
-    "ui": {
-      "description": "Search results",
-      "csp": {
-        "connectDomains": ["https://api.example.com", "https://myserver.com"]
-      }
-    }
+export const analyzeFile = server.tool(
+  {
+    name: "analyze-file",
+    inputSchema: z.object({
+      file: z.object({
+        download_url: z.string(),
+        file_id: z.string(),
+        mime_type: z.string().optional(),
+        file_name: z.string().optional(),
+      }),
+    }),
+    outputSchema: analysisSchema,
+    view: { name: "analysis" },
+    _meta: {
+      "openai/fileParams": ["file"],
+      "openai/toolInvocation/invoking": "Analyzing file…",
+      "openai/toolInvocation/invoked": "Analysis ready",
+    },
+  },
+  async ({ file }) => {
+    // ChatGPT supplies download_url and file_id. Treat the URL as temporary.
+    return analyzeUploadedFile(file);
   }
-}
+);
 ```
 
-**ChatGPT Apps SDK emitted simultaneously:**
+For each field named by `openai/fileParams`, the official OpenAI reference requires the file-object schema to declare `download_url`, `file_id`, `mime_type`, and `file_name`; only `download_url` and `file_id` are required values. A top-level file field may also be an array of that object shape.
 
-```json
-{
-  "toolId": "search",
-  "appMetadata": {
-    "description": "Search results",
-    "sandbox": {
-      "connectSources": ["https://api.example.com", "https://myserver.com"]
-    }
-  }
-}
-```
+## Resource Metadata and Current Framework Limits
 
-Both arrive on the same wire; the host parses its version.
+| Key | Classification | mcp-use v2 beta.66 status |
+|---|---|---|
+| `_meta.ui.domain` | Standard, host-validated | Set through `view.domain` |
+| `_meta.ui.prefersBorder` | Standard | Set through `view.prefersBorder` |
+| `_meta.ui.csp` | Standard | Set through `view.csp` and merged by mcp-use |
+| `_meta["openai/widgetDescription"]` | Optional ChatGPT-only resource extension | No public arbitrary generated-resource `_meta` authoring surface |
+| `_meta["openai/widgetPrefersBorder"]` | Optional ChatGPT compatibility alias | Not publicly configurable on generated View resources; use `view.prefersBorder` |
+| `_meta["openai/widgetDomain"]` | Optional ChatGPT compatibility alias | Not publicly configurable on generated View resources; use `view.domain` |
+| `_meta["openai/widgetCSP"].redirect_domains` | ChatGPT-only redirect extension | No public generated-resource `_meta` authoring surface; see `03-csp-differences.md` |
 
-## Debugging
+The official OpenAI reference requires a dedicated, unique component origin when submitting a plugin with UI. Configure the standard field with `view.domain`; do not invent a ChatGPT metadata API. Host validation and submission acceptance must be checked in real ChatGPT.
 
-To see which protocol a connection is using, check the `mcp-use dev` logs. The Inspector UI shows both protocol capabilities.
+`view.description` becomes the MCP resource's ordinary `description`. It does **not** author the ChatGPT-only `openai/widgetDescription` key. beta.66's generated View resource builder returns only framework-owned `_meta.ui`; therefore arbitrary resource-level OpenAI extensions are a current framework limitation.
 
-For ChatGPT debugging specifically, see `04-runtime-detection.md`.
+## File API Boundary
+
+`useFiles()` is narrower than the full official ChatGPT file API:
+
+- wrapped: `uploadFile(file)` and `getFileDownloadUrl({ fileId })`;
+- not wrapped: the upload `{ library: true }` option and `selectFiles()`;
+- support is captured when the View runtime is created, so late injection of `window.openai` file methods does not update `isSupported` in beta.66.
+
+The standard MCP Apps protocol separately defines host-mediated `ui/download-file`, but beta.66 does not expose it through a public `mcp-use/react` hook. Do not equate that standard protocol method with `useFiles()`.
+
+## Verification Boundary
+
+Use Inspector to validate the standard MCP Apps wire, View rendering, hook behavior over the standard bridge, and declared CSP. Current Inspector source has no verified ChatGPT protocol toggle. Its optional mock file helpers do not reproduce the full ChatGPT host lifecycle.
+
+Verify these in real ChatGPT:
+
+- `window.openai` state restoration and `openai:set_globals` updates;
+- `useFiles()` against real uploads and temporary download URLs;
+- invocation status strings and compatibility aliases;
+- dedicated-domain submission acceptance;
+- any ChatGPT-only resource metadata or redirect behavior.
 
 ## See Also
 
-- `02-legacy-window-openai-and-skybridge.md` — historical protocols (for reference only)
-- `03-csp-differences.md` — how CSP metadata differs between protocols
-- `04-runtime-detection.md` — detecting runtime environment in a view
+- `02-legacy-window-openai-and-skybridge.md` — historical APIs and migration boundaries
+- `03-csp-differences.md` — standard CSP plus the remaining ChatGPT redirect extension
+- `04-runtime-detection.md` — capability-first runtime decisions
+- `../02-mcp-apps-vs-chatgpt-apps-sdk.md` — concise architecture comparison

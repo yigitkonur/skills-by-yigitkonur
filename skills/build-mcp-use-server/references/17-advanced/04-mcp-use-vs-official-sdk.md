@@ -1,21 +1,27 @@
-# mcp-use v2 vs @modelcontextprotocol/sdk
+# mcp-use v2 vs @modelcontextprotocol/server
 
 *Read this when deciding whether to use mcp-use or build directly on the official MCP SDK, or migrating from SDK to mcp-use.*
 
+## Which official SDK mcp-use wraps
+
+mcp-use v2 wraps `@modelcontextprotocol/server` — the **v2 split-package** official SDK (`McpServer`, `registerTool`, `createMcpHandler`, published separately from `@modelcontextprotocol/client` and `@modelcontextprotocol/core`). It does **not** wrap the classic single-package `@modelcontextprotocol/sdk` (v1, `Server` + `setRequestHandler(CallToolRequestSchema, ...)`). `mcp-use`'s own `package.json` lists `@modelcontextprotocol/server` as a direct dependency; internally `MCPServer` constructs an `SdkMcpServer` (the split-package `McpServer`) and drives it through `createMcpHandler`.
+
+If your comparison baseline is the classic `@modelcontextprotocol/sdk` v1 (still the npm `latest` tag), treat this file's "SDK" column as the v2 split package, not v1 — v1's API (`new Server(...)`, `setRequestHandler("tools/call", ...)`, `StdioServerTransport`) is a different, older surface. See sister skill `convert-mcp-sdk-v1-to-v2` for the v1→v2 SDK migration itself.
+
 ## What mcp-use adds
 
-mcp-use wraps `@modelcontextprotocol/sdk` and provides:
+mcp-use wraps `@modelcontextprotocol/server` (v2) and provides:
 
-| Feature | SDK | mcp-use | Benefit |
+| Feature | Official SDK (`@modelcontextprotocol/server`) | mcp-use | Benefit |
 |---|---|---|---|
-| **HTTP transport** | Stdio only | Streamable HTTP + runtime adapters | Cloud-friendly; works serverless |
-| **Stateless model** | Session-based | Per-request MCP instance | Scales horizontally; no session storage needed |
-| **Definition-first tools** | Callback + schema pair | Unified definition + callback | Single registration call; cleaner code |
-| **Runtime adapters** | N/A | Node, Next.js, edge/fetch, Hono | Write once, deploy anywhere |
-| **OAuth sugar** | Middleware pattern | Provider shortcuts (Clerk, Supabase, Auth0, ...) | No boilerplate |
-| **React hooks** | N/A | `useWidget`, `useCallTool`, `useViewState`, ... | Interactive views without glue |
+| **HTTP transport** | `createMcpHandler()` + framework adapter (Express/Hono via `@modelcontextprotocol/node`) | Streamable HTTP built in + runtime adapters | Less wiring; works serverless |
+| **Stateless model** | Per-request factory (`McpServerFactory` passed to `createMcpHandler`) | Per-request MCP instance | Same core model; mcp-use adds the HTTP/runtime layer on top |
+| **Definition-first tools** | `registerTool(name, config, callback)` | `server.tool(definition, callback)` | Similar shape; mcp-use unifies schema + view + CSP in one definition |
+| **Runtime adapters** | Node/Express/Hono adapters (official) | Node, Next.js, edge/fetch, Hono | mcp-use adds Next.js and generic Fetch adapters |
+| **OAuth sugar** | Not in the SDK — wire your own bearer verification | Provider shortcuts (Clerk, Supabase, Auth0, ...) | No boilerplate |
+| **React hooks** | N/A | `useToolContext`, `useCallTool`, `useViewState`, ... (from `mcp-use/react`) | Interactive views without glue |
 | **MCP Apps** | Not in SDK | Full React view support + CSP | Rich UIs with form/URL elicitation |
-| **Proxy composition** | Not in SDK | `server.proxy()` + optional `@mcp-use/client` | Gateway patterns; namespace management |
+| **Proxy composition** | Not in SDK | `server.proxy()` | Gateway patterns; namespace management |
 | **OpenAPI generation** | Not in SDK | `MCPServer.fromOpenAPI()` | Bootstrap from existing APIs |
 | **CLI tooling** | None | create-mcp-use-app, dev, build, deploy | Scaffold + dev + production pipeline |
 
@@ -31,36 +37,43 @@ mcp-use wraps `@modelcontextprotocol/sdk` and provides:
 
 ## When to use the SDK directly
 
-✅ **Use `@modelcontextprotocol/sdk` directly if:**
+✅ **Use `@modelcontextprotocol/server` directly if:**
 - Targeting only Node.js + stdio transport
 - Building internal CLIs or desktop apps (not cloud)
-- Need direct protocol control unavailable in mcp-use
+- Need direct protocol control unavailable in mcp-use (e.g., `Server`-level access, or the `tasks/*` task-primitive and `server/discover` methods, neither of which mcp-use's `ctx` exposes)
 - Prefer minimal dependencies
 
 For SDK-direct work, see sister skill `build-mcp-server-sdk-v2`.
 
 ## Key API differences
 
+The comparison blocks below are focused fragments, not standalone projects. Each fragment names its assumed surrounding value (such as an existing `server` or framework-provided `request`); file-specific adapter examples are labeled with their destination path.
+
 ### Server instantiation
 
 ```typescript
-// SDK
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-const server = new Server({ name: "my-server" });
+// Official SDK (v2 split package)
+import { McpServer } from "@modelcontextprotocol/server";
+const server = new McpServer({ name: "my-server", version: "1.0.0" });
 
 // mcp-use
 import { MCPServer } from "mcp-use";
-const server = new MCPServer({ name: "my-server" });
+const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 ```
 
 ### Tool registration
 
 ```typescript
-// SDK
-server.setRequestHandler(
-  "tools/call",
-  async ({ name, arguments: args }) => ({
-    content: [{ type: "text", text: "result" }],
+// Official SDK
+server.registerTool(
+  "greet",
+  {
+    title: "Greet",
+    description: "Say hello",
+    inputSchema: z.object({ name: z.string() }),
+  },
+  async ({ name }) => ({
+    content: [{ type: "text", text: `Hello, ${name}` }],
   })
 );
 
@@ -70,34 +83,62 @@ server.tool(
     name: "greet",
     inputSchema: z.object({ name: z.string() }),
   },
-  async ({ name }) => text(`Hello, ${name}`)
+  async ({ name }) => ({
+    content: [{ type: "text", text: `Hello, ${name}` }],
+  })
 );
 ```
 
-mcp-use registers tools as definitions with callbacks; SDK requires manual handler dispatch.
+Both are definition-first and callback-based — the SDK already moved to `registerTool` in v2. mcp-use's `server.tool()` folds view/CSP config into the same definition object. mcp-use ships `text()`/`object()`/`widget()`/... response-shape helpers, but all of them are `@deprecated` in the current dist typings — prefer returning a plain `CallToolResult` object (`{ content, structuredContent?, isError? }`) directly, as shown above.
 
 ### Transport
 
 ```typescript
-// SDK (stdio only)
-const transport = new StdioServerTransport({ ... });
-const mcp = new Server({ ..., transport });
+// Official SDK fragment — `createOfficialServer()` builds a fresh McpServer
+import { createMcpHandler } from "@modelcontextprotocol/server";
+const handler = createMcpHandler(() => createOfficialServer()); // Web-standard Fetch handler
+// Node/Express/Hono wiring uses @modelcontextprotocol/node adapters.
+// Stdio uses StdioServerTransport + server.connect(transport).
 
-// mcp-use (HTTP + adapters)
-await server.listen(3000);        // Node
-server.fetch(request);             // Fetch API (Cloudflare, Deno, edge)
-toNodeHandler(server)              // Convert to Node handler
-withMcpUse(server)                 // Next.js app router
-createNextHandler(server)          // Next.js API routes
+// mcp-use runtime fragments — `server` is an existing MCPServer
+await server.listen(3000);              // Bind a Node HTTP listener
+const response = await server.fetch(request); // Handle a Web Fetch Request
+
+import { toNodeHandler } from "mcp-use/node";
+const nodeHandler = toNodeHandler(server);
 ```
 
-mcp-use handles transport setup; SDK requires explicit transport class.
+For Next.js, configuration wrapping and route handling belong in different files:
+
+```typescript
+// next.config.ts
+import { withMcpUse } from "mcp-use/next";
+
+export default withMcpUse();
+```
+
+```typescript
+// app/api/mcp/route.ts
+import { server } from "@/mcp/server";
+import { createNextHandler } from "mcp-use/next";
+
+export const { GET, POST, DELETE, OPTIONS } = createNextHandler(server);
+```
+
+Both center on a Fetch-standard HTTP handler (`createMcpHandler` in the SDK, `server.fetch` in mcp-use); mcp-use adds the Node listener, Next.js adapters, and stdio removal — v2 mcp-use serves Streamable HTTP only, no stdio.
 
 ### Context
 
 ```typescript
-// SDK
-// No structured context; pass through handler closure
+// Official SDK — second callback argument is a ServerContext
+server.registerTool("greet", { inputSchema: z.object({ name: z.string() }) }, async (args, ctx) => {
+  ctx.mcpReq.log(...)               // Send a log notification (deprecated SEP-2577; still functional)
+  ctx.requestState                  // Multi-round state accessor
+  ctx.signal                        // AbortSignal for cancellation
+  ctx.send({ method: ..., params }) // Send a request related to this one
+  ctx.notify(...)                   // Send a notification related to this one
+  ctx.http?.authInfo                // Validated access token, HTTP transport only
+});
 
 // mcp-use
 server.tool({...}, async (args, ctx) => {
@@ -106,76 +147,103 @@ server.tool({...}, async (args, ctx) => {
   await ctx.reportProgress(...)    // Send progress
   ctx.signal                       // AbortSignal for cancellation
   await ctx.sendNotification(...)  // Custom notifications
-  ctx.requestState                 // Multi-round state (codec)
+  ctx.requestState<MyState>()      // Read decoded multi-round state (codec)
 });
 ```
 
-mcp-use provides a rich context object; SDK leaves context wiring to you.
+Both SDKs pass a structured context as the second callback argument — the "SDK has no context" framing is v1-only. The SDK's `ctx.http?.authInfo` carries a validated token but no decoded user; mcp-use's `ctx.auth.user` builds on top of it via the OAuth provider shortcuts. mcp-use also exposes `ctx.client` (capability introspection) and `ctx.reportProgress`, which the bare SDK does not provide directly.
 
 ### OAuth
 
 ```typescript
-// SDK
-// Middleware + token verification — write from scratch
+// Official SDK
+// No server-side OAuth in the SDK. Verify bearer tokens yourself and place the
+// result on ctx.http.authInfo (HTTP transport only) — see build-mcp-server-sdk-v2.
 
 // mcp-use
-new MCPServer({
-  oauth: oauthSupabaseProvider(),  // or Clerk, Auth0, etc.
-})
+import { MCPServer } from "mcp-use";
+import { oauthSupabaseProvider } from "mcp-use/oauth/supabase";
+import { z } from "zod";
 
-// In handler:
-async (args, ctx) => {
-  const user = ctx.auth.user.id;  // Immediate access
-}
+const authServer = new MCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  oauth: oauthSupabaseProvider({ projectId: "example-project" }), // or Clerk, Auth0, etc.
+});
+
+authServer.tool(
+  { name: "who-am-i", inputSchema: z.object({}) },
+  async (_args, ctx) => ({
+    content: [{ type: "text", text: `User: ${ctx.auth.user.id}` }],
+  })
+);
 ```
 
-mcp-use includes auth provider shortcuts; SDK requires custom middleware.
+mcp-use includes auth provider shortcuts; the SDK requires custom bearer-token verification wired into the HTTP layer.
 
 ### Views (MCP Apps)
 
 ```typescript
-// SDK
-// No built-in view support; you manage React + CSP separately
+// Official SDK
+// No built-in view support; you manage React + CSP separately.
 
-// mcp-use
-server.tool({
-  name: "create-chart",
-  view: {
-    name: "chart-viewer",
-    description: "Interactive chart",
-    csp: { connectDomains: ["api.example.com"] },
+// mcp-use server fragment — assumes an existing `server`
+import { z } from "zod";
+
+const chartOutput = z.object({ data: z.array(z.number()) });
+
+// Export the ToolRef so generated mcp-env.d.ts can type the view hook.
+export const createChart = server.tool(
+  {
+    name: "create-chart",
+    outputSchema: chartOutput,
+    view: {
+      name: "chart-viewer",
+      description: "Interactive chart",
+      csp: { connectDomains: ["https://api.example.com"] },
+    },
   },
-}, async (args) => widget({...}));
-
-// resources/chart-viewer/view.tsx
-import { useWidget } from "mcp-use/react";
-export default () => {
-  const { props } = useWidget();
-  return <Chart data={props} />;
-};
+  async () => ({
+    content: [{ type: "text", text: "Chart generated" }],
+    structuredContent: { data: [12, 19, 7] },
+  })
+);
 ```
 
-mcp-use integrates view scaffolding, CSP config, and React hooks; SDK offers no view layer.
+```tsx
+// views/chart-viewer/view.tsx
+import { useToolContext } from "mcp-use/react";
+
+export default function ChartViewer() {
+  const ctx = useToolContext<"create-chart">();
+
+  if (ctx.status === "error") return <p>{ctx.error.message}</p>;
+  if (ctx.status !== "ready") return <p>Generating chart…</p>;
+
+  return <pre>{JSON.stringify(ctx.toolOutput.data, null, 2)}</pre>;
+}
+```
+
+mcp-use integrates view scaffolding, CSP config, and React hooks; the SDK offers no view layer.
 
 ## Migration path: SDK → mcp-use
 
 If moving existing SDK servers to mcp-use:
 
-1. **Check transport:** SDK servers using stdio? Rewrite to HTTP (mcp-use default).
-2. **Rewrite tools:** Replace handler dispatch with `server.tool()` definitions.
-3. **Update context:** If handlers accessed request context, wire it via mcp-use context parameter.
-4. **Add OAuth:** If middleware-based auth, simplify via `oauth` config.
+1. **Check transport:** SDK servers using stdio? Rewrite to HTTP (mcp-use default; v2 mcp-use has no stdio transport).
+2. **Rewrite tools:** Replace `registerTool()` calls with `server.tool()` definitions (`inputSchema` becomes a `z.object({...})`, not a raw shape, for mcp-use's non-legacy overload).
+3. **Update context:** Replace `ctx.mcpReq.*`/`ctx.http.authInfo` reads with mcp-use's `ctx.client`/`ctx.auth`/`ctx.requestState` equivalents.
+4. **Add OAuth:** If you hand-rolled bearer verification, simplify via mcp-use's `oauth` config and a provider shortcut.
 5. **Choose deployment:** Deploy to Vercel, Cloudflare, etc., using mcp-use adapters.
 
 See `build-mcp-server-sdk-v2` and `convert-mcp-sdk-v1-to-v2` for detailed SDK guidance.
 
 ## Performance considerations
 
-- **mcp-use:** Lean abstraction (~20ms per request for registration + dispatch). Stateless scaling is horizontal.
-- **SDK direct:** Raw protocol handling; no overhead. Suitable for high-throughput stdio servers.
-
-Both are fast enough for LLM-powered applications.
+- **mcp-use:** Builds directly on the official SDK's `McpServer`/`createMcpHandler`; the added layer is request routing, context translation, and view/OAuth wiring — not a second protocol implementation. No published benchmark numbers exist for either package as of beta.66; do not cite a specific per-request overhead figure without a measured source.
+- **SDK direct:** Same core dispatch path, without mcp-use's HTTP-adapter and context-translation layer. Appropriate when you need to shave that layer off, or need SDK surface mcp-use doesn't expose (e.g., raw `Server`/`Protocol` access, the `tasks/*` task-primitive and `server/discover` methods).
+- **Stateless scaling:** Both are per-request-factory models under HTTP (`McpServerFactory` in the SDK, `MCPServer` instance construction in mcp-use) — horizontal scaling comes from that shared design, not from mcp-use alone.
 
 ## Summary
 
-**mcp-use is the recommended path for cloud MCP servers.** It trades minor protocol abstraction for major developer experience gains (views, OAuth, deploy tooling, HTTP transport). SDK is appropriate for stdio-only or maximum-control scenarios.
+**mcp-use is the recommended path for cloud MCP servers.** It trades minor protocol abstraction for major developer experience gains (views, OAuth, deploy tooling, HTTP transport) on top of the same official `@modelcontextprotocol/server` core. The SDK directly is appropriate for stdio-only, maximum-control, or minimal-dependency scenarios.

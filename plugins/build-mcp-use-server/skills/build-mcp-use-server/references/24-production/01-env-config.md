@@ -10,9 +10,9 @@ Production servers require these environment variables at startup. In serverless
 |----------|---------|---------|---------|-------|
 | `PORT` | Node.js, edge | HTTP listen port | `3000` | Port precedence: argument > `PORT` env > `config.port` > `3000`. In containerized runtimes (Cloud Run, Fly), set to `$PORT` (platform-injected). |
 | `HOST` | Node.js | Bind address | `127.0.0.1` | Use `0.0.0.0` for public binding behind a reverse proxy. Localhost-class binds (`127.0.0.1`, `::1`) get DNS-rebinding protection by default. |
-| `NODE_ENV` | Node.js | Runtime mode | `development` | Set to `production` in deploy; controls logging level and performance features. |
-| `MCP_URL` | Build-time | Public MCP endpoint | — | **Build-time only.** Set before `mcp-use build` so views link to correct origin: `MCP_URL=https://api.example.com/mcp npm run build`. Baked into View HTML; not read at runtime. |
-| `MCP_ASSETS_URL` | Build-time | View assets CDN origin | `${MCP_URL}` | **Build-time only.** For edge runtimes with external CDN: `MCP_ASSETS_URL=https://cdn.example.com/mcp-assets`. Views load from this origin. |
+| `NODE_ENV` | Node.js | Runtime mode | unset | Set to `production` only by the `mcp-use start` CLI (forces `process.env.NODE_ENV ??= "production"`). Controls favicon/View dev-mode branding only — **not** logging level, which is governed entirely by `MCP_USE_LOG_LEVEL`/`config.logging.level` (see Logging control below). |
+| `MCP_URL` | Build and runtime | Public server origin | request origin | Read **at runtime, per request** by `resolveServerOrigin()` to resolve the public server origin (OAuth resource identity, CSP `connectDomains`, View asset base fallback when `MCP_ASSETS_URL` is unset). Falls back to forwarded/request headers when unset. Also has a narrow build-time role: a synthetic `http://localhost:3000` default is used only for build-time OAuth entry-module inspection when unset. Set explicitly in production: `MCP_URL=https://api.example.com`. |
+| `MCP_ASSETS_URL` | Build and runtime | View assets CDN origin | `MCP_URL` (or request origin) | Read at runtime by `resolveAssetsBase()` for every View asset request. Also read at `mcp-use build` time to rewrite the asset manifest to absolute `https://` URLs for static/CDN upload workflows. For edge runtimes with external CDN: `MCP_ASSETS_URL=https://cdn.example.com/mcp-assets`. |
 
 ## OAuth variables (per provider)
 
@@ -44,7 +44,7 @@ const server = new MCPServer({
   host: process.env.HOST || "0.0.0.0",
   port: parseInt(process.env.PORT || "3000", 10),
   logging: {
-    level: process.env.NODE_ENV === "production" ? "info" : "debug",
+    level: "info", // Or set MCP_USE_LOG_LEVEL=debug/trace per-environment instead
   },
 });
 
@@ -62,11 +62,11 @@ Define custom health check routes via custom HTTP endpoints on `server.app` (see
 | Variable | Values | Effect |
 |----------|--------|--------|
 | `MCP_USE_LOG_LEVEL` | `info`, `debug`, `trace` | Overrides `config.logging.level`. At `info`, one summary line per request; at `debug`, compact payloads; at `trace`, full headers/body. |
-| `NODE_ENV` | `production`, `development` | When `production`, logging defaults to `info`; when `development`, defaults to `debug`. |
+| `NODE_ENV` | — | **No effect on logging level.** Resolution order is `MCP_USE_LOG_LEVEL` env (if valid) > `config.logging.level` > `"info"` default, always — regardless of `NODE_ENV`. |
 
 ## Stateless request model
 
-v2 builds a fresh MCP server from the registry **per request**; no persistent session state at runtime. Each variable is read once during server construction, then used identically for every request.
+v2 builds a fresh MCP server from the registry **per request**; no persistent session state at runtime. Most variables (`PORT`, `HOST`, OAuth credentials, `config.logging.level`) are read once during server construction and reused for every request. `MCP_URL` and `MCP_ASSETS_URL` are the exception — `resolveServerOrigin()`/`resolveAssetsBase()` re-read them from `process.env` on every request rather than caching a construction-time value.
 
 Do **not** change environment variables while the server is running in production — no reload hooks exist. Use:
 - **Container restart** (Kubernetes, Cloud Run) for env changes
@@ -79,11 +79,11 @@ After setting up environment variables, verify the server starts cleanly:
 
 ```bash
 # Local development
-npm run build  # Uses MCP_URL at build time
-npm run start
+npm run build  # MCP_ASSETS_URL (if set) rewrites the asset manifest to absolute URLs
+npm run start  # MCP_URL and MCP_ASSETS_URL are read per-request at this point
 
 # Docker / container
-docker run -e PORT=8080 -e NODE_ENV=production -e MCP_URL=https://api.example.com/mcp my-server:latest
+docker run -e PORT=8080 -e NODE_ENV=production -e MCP_URL=https://api.example.com my-server:latest
 ```
 
 Read `references/25-deploy/` for platform-specific environment setup (Vercel, Cloud Run, Railway, etc.).

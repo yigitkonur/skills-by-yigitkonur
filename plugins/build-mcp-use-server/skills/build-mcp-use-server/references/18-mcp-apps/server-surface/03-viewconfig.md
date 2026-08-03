@@ -1,10 +1,10 @@
 # ViewConfig: View Runtime Configuration
 
-*Read this when you need to declare display modes, auto-resize behavior, or other view-level runtime settings.*
+*Read this when declaring display modes or automatic size reporting for a View.*
 
-Views export an optional `viewConfig?: ViewConfig` object that declares immutable runtime configuration. This config is normalized by the framework at view bootstrap time and sent to the host to configure rendering behavior.
+A View may export `viewConfig`. Generated bootstrap code normalizes it before constructing the mounted MCP Apps runtime.
 
-## ViewConfig Shape
+## Shape
 
 ```typescript
 import type { ViewConfig } from "mcp-use/react";
@@ -15,61 +15,80 @@ export const viewConfig: ViewConfig = {
 };
 ```
 
-## Field Reference
+## Fields
 
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| `displayModes` | `DisplayMode[]` | `["inline"]` | Available rendering modes host may request; host chooses intersection with its capabilities |
-| `autoResize` | `boolean` | `true` | Framework auto-detects and reports intrinsic size; set `false` for manual `useSendSizeChanged()` |
+| Field | Type | Default | Contract |
+|-|-|-|-|
+| `displayModes` | `readonly ("inline" | "fullscreen" | "pip")[]` | `["inline", "fullscreen", "pip"]` | Non-empty, no duplicates, only known values, and must include `"inline"` |
+| `autoResize` | `boolean` | `true` | Lets the MCP Apps runtime observe the document and report intrinsic size changes |
 
-## displayModes
-
-Declare which display modes your view supports. The host negotiates the final set by taking the intersection with its capabilities.
+## Display Modes
 
 ```typescript
-// View supports both inline and fullscreen
-displayModes: ["inline", "fullscreen"]
-
-// View is fullscreen-only (e.g., map explorer)
-displayModes: ["fullscreen"]
-
-// Inline only (default if omitted)
-displayModes: ["inline"]
+export const viewConfig: ViewConfig = {
+  displayModes: ["inline", "fullscreen"],
+};
 ```
 
-At runtime, read the active display mode and its available options via `useDisplayMode()`:
+Invalid declarations throw during bootstrap:
+
+```typescript
+// Empty
+export const viewConfig: ViewConfig = { displayModes: [] };
+
+// Missing required inline mode
+export const viewConfig: ViewConfig = { displayModes: ["fullscreen"] };
+
+// Duplicate
+export const viewConfig: ViewConfig = {
+  displayModes: ["inline", "inline"],
+};
+```
+
+The config declares what the View can render. The runtime advertises those modes to the host; the host returns its available modes. Read the negotiated set and current mode with `useDisplayMode()`:
 
 ```typescript
 import { useDisplayMode } from "mcp-use/react";
 
 export default function MyView() {
-  const { displayMode, availableDisplayModes, requestDisplayMode } = useDisplayMode();
+  const { displayMode, availableDisplayModes, requestDisplayMode } =
+    useDisplayMode();
+
+  const canFullscreen = availableDisplayModes.includes("fullscreen");
 
   return (
-    <div>
-      <p>Current mode: {displayMode}</p>
-      <button onClick={() => requestDisplayMode({ mode: "fullscreen" })}>
-        Fullscreen
-      </button>
-    </div>
+    <button
+      disabled={!canFullscreen}
+      onClick={() => requestDisplayMode({ mode: "fullscreen" })}
+    >
+      Current: {displayMode}
+    </button>
   );
 }
 ```
 
-## autoResize
+A mode request is host-mediated. Promise resolution does not prove that the host changed modes; observe `displayMode` for the result.
 
-When `autoResize: true` (default), the framework uses a ResizeObserver to detect your view's intrinsic size and automatically reports it to the host via `useSendSizeChanged()`.
+## Automatic and Manual Size Reporting
 
-When `autoResize: false`, you manually control size reporting:
+With the default `autoResize: true`, the underlying MCP Apps runtime observes the document and reports size changes.
+
+Set it to `false` when the View owns reporting:
 
 ```typescript
+import { useEffect } from "react";
 import { useSendSizeChanged } from "mcp-use/react";
+import type { ViewConfig } from "mcp-use/react";
+
+export const viewConfig: ViewConfig = {
+  displayModes: ["inline"],
+  autoResize: false,
+};
 
 export default function FixedAspectView() {
   const sendSizeChanged = useSendSizeChanged();
 
   useEffect(() => {
-    // Explicitly report size, e.g. for aspect-ratio layouts
     sendSizeChanged({ width: 800, height: 600 });
   }, [sendSizeChanged]);
 
@@ -77,75 +96,47 @@ export default function FixedAspectView() {
 }
 ```
 
-## Immutability
+## Mounted-Runtime Snapshot
 
-`ViewConfig` is immutable — declared once at module load and never modified. The framework freezes the object to prevent accidental mutation.
+Treat `viewConfig` as static module configuration, but describe the lifecycle precisely:
+
+1. `bootstrapView()` reads the export and creates a new normalized object with defaults.
+2. The first mount stores that normalized config on the mounted runtime.
+3. HMR reuses the existing React root and MCP Apps runtime.
+4. If HMR supplies different `autoResize` or `displayModes`, the framework warns and keeps the original mounted config.
+5. A full iframe reload, or an explicit advanced dispose-and-bootstrap cycle, is required for new config to take effect.
+
+The framework does **not** call `Object.freeze()` on `viewConfig` or the normalized object. "Fixed for the mounted runtime" is the behavior; JavaScript-level freezing is not.
+
+Do not mutate configuration at runtime:
 
 ```typescript
-// ✅ Correct
-export const viewConfig: ViewConfig = { displayModes: ["inline"] };
+export const viewConfig: ViewConfig = {
+  displayModes: ["inline"],
+};
 
-// ❌ Do not mutate at runtime
-viewConfig.displayModes = ["fullscreen"];  // Error or no effect
+// Do not do this. It does not reconfigure the mounted runtime.
+viewConfig.displayModes = ["inline", "fullscreen"];
 ```
 
-## Normalize at Bootstrap
-
-The framework normalizes and validates `viewConfig` when the view is mounted:
-
-1. Merges defaults for missing fields
-2. Validates against host capabilities (e.g., display mode intersection)
-3. Freezes the normalized config for the view's lifetime
-
-You do not call a normalization function; the framework handles it via `bootstrapView()` in the view iframe.
+Use hooks and component state for live behavior. Change the export and reload the iframe when changing pre-render runtime configuration.
 
 ## No Config Export
 
-If you omit `viewConfig`, the framework uses defaults:
+Omitting `viewConfig` uses:
 
 ```typescript
-// No export → uses defaults
-export default function MyView() {
-  // displayModes defaults to ["inline"]
-  // autoResize defaults to true
-  return <div>...</div>;
+{
+  autoResize: true,
+  displayModes: ["inline", "fullscreen", "pip"]
 }
 ```
 
-## Example: Multi-Mode View
+Generated View modules call `bootstrapView()`; normal View authors do not call it manually.
 
-```typescript
-import { useDisplayMode, useSendSizeChanged, useToolContext } from "mcp-use/react";
-import type { ViewConfig } from "mcp-use/react";
+## Related
 
-export const viewConfig: ViewConfig = {
-  displayModes: ["inline", "fullscreen"],
-  autoResize: false,  // Manual size control for aspect-ratio layouts
-};
-
-export default function Dashboard() {
-  const { displayMode } = useDisplayMode();
-  const sendSize = useSendSizeChanged();
-  const ctx = useToolContext<"show-dashboard">();
-
-  useEffect(() => {
-    if (displayMode === "fullscreen") {
-      sendSize({ width: 1200, height: 800 });
-    } else {
-      sendSize({ width: 600, height: 400 });
-    }
-  }, [displayMode, sendSize]);
-
-  return (
-    <div style={{ padding: displayMode === "fullscreen" ? "2rem" : "1rem" }}>
-      {/* Dashboard content */}
-    </div>
-  );
-}
-```
-
-## Next Steps
-
-- **CSP and sandbox permissions:** references/18-mcp-apps/server-surface/05-csp-metadata.md
-- **Asset serving:** references/18-mcp-apps/server-surface/04-assets-mcp-url-and-serving.md
-- **React hooks and context:** references/18-mcp-apps/view-react/01-setup-and-providers.md
+- Host capability and display-mode checks: `../05-host-capability-detection.md`
+- View setup and generated providers: `../view-react/01-setup-and-providers.md`
+- Manual size reporting details: `../view-react/07-host-context-files-and-size.md`
+- Asset serving: `04-assets-mcp-url-and-serving.md`

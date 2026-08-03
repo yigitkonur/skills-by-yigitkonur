@@ -2,9 +2,9 @@
 
 *Read this to migrate response shapes and understand the helper deprecation timeline.*
 
-## Response envelope structure (unchanged wire format)
+## Core response envelope structure
 
-MCP wire format is the same in v1 and v2. The difference is **how you construct it**:
+The core result-envelope concepts remain (`content`, `structuredContent`, `isError`, resource `contents`, prompt `messages`), but do not describe the entire MCP wire protocol as unchanged — protocol revisions and capabilities changed, and v2 targets date-string revisions such as `2026-07-28`. The migration difference here is **how you construct results**:
 - **v1**: Use helpers (`text()`, `object()`, `widget()`)
 - **v2**: Return raw `CallToolResult`/`ReadResourceResult`/`GetPromptResult` envelopes
 
@@ -66,11 +66,11 @@ Multiple content blocks travel in the same `content: [...]` array. Do not assume
 
 ## Images, audio, and binary (media)
 
-**v1**:
+**v1** (positional args — `image(data, mimeType?)`, `audio(dataOrPath, mimeType?)`, `binary(base64Data, mimeType)`):
 ```typescript
-return image({ data: base64ImageData, mimeType: "image/png" });
-return audio({ data: base64AudioData });
-return binary({ data: base64Binary, mimeType: "application/pdf" });
+return image(base64ImageData, "image/png");
+return audio(base64AudioData, "audio/wav");
+return binary(base64Binary, "application/pdf");
 ```
 
 **v2**:
@@ -88,15 +88,19 @@ return {
   content: [{
     type: "audio",
     data: base64AudioData,
-    mimeType: "audio/mpeg",
+    mimeType: "audio/wav",
   }],
 };
 
+// Embedded resource block — `resource` is a nested object, not flat fields
 return {
   content: [{
     type: "resource",
-    uri: "file://path/to/document.pdf",
-    mimeType: "application/pdf",
+    resource: {
+      uri: "file://path/to/document.pdf",
+      mimeType: "application/pdf",
+      blob: base64PdfData,
+    },
   }],
 };
 ```
@@ -130,21 +134,24 @@ Structured content is automatically passed to the View via `useToolContext().too
 
 These helpers remain as **deprecated shims** for backward compatibility. Migrate to raw envelopes; beta.66 does not specify a removal release.
 
-| v1 Helper | v2 Equivalent Raw Envelope | Migration path |
+All v1 helpers took **positional arguments** (`text(content)`, `image(data, mimeType?)`, `object(data)`), not an options object. `ContentBlock`'s `text` variant is `{ type: "text", text }` only — it carries no `mimeType` field at the wire level; v1's `markdown()`/`html()`/`css()`/`javascript()`/`xml()` helpers only ever set `mimeType` on the deprecated wrapper's `_meta`, which the model does not see. Prefer plain text content in v2 and describe the format in the tool/description text instead.
+
+| v1 Helper (positional args) | v2 Equivalent Raw Envelope | Migration path |
 |---|---|---|
-| `text(s)` | `{ content: [{ type: "text", text: s }], structuredContent: {} }` | Inline the content block |
-| `markdown(s)` | `{ content: [{ type: "text", text: s }] }` | Return Markdown as text; `ContentBlock` has no text-block `mimeType` field |
+| `text(s)` | `{ content: [{ type: "text", text: s }] }` | Inline the content block |
+| `markdown(s)` | `{ content: [{ type: "text", text: s }] }` | Same as `text`; no wire-level `mimeType` on text blocks |
 | `object(o)` | `{ content: [{ type: "text", text: JSON.stringify(o) }], structuredContent: o }` | Must include both blocks |
-| `array(a)` | `{ content: [{ type: "text", text: JSON.stringify(a) }], structuredContent: a }` | Note: v1 wrapped as `{ data: a }`; v2 does not |
+| `array(a)` | `{ content: [{ type: "text", text: JSON.stringify(a) }], structuredContent: a }` | v1 wrapped as `{ data: a }`; v2 does not — put `a` directly in `structuredContent` |
 | `error(msg)` | `{ content: [{ type: "text", text: msg }], isError: true }` | Add `isError: true` |
 | `mix(...)` | `{ content: [block1, block2, ...], structuredContent: {...} }` | Array of content blocks |
-| `image({ data, mimeType })` | `{ content: [{ type: "image", data, mimeType }] }` | Explicit type |
-| `audio({ data })` | `{ content: [{ type: "audio", data, mimeType: "audio/mpeg" }] }` | Explicit type + mimeType |
-| `binary({ data, mimeType })` | `{ content: [{ type: "resource", uri: "...", mimeType }], text: base64 }` | Use `type: "resource"` for binaries |
-| `html(html)` | `{ content: [{ type: "text", text: html, mimeType: "text/html" }] }` | Add `mimeType` |
-| `javascript(js)` | `{ content: [{ type: "text", text: js, mimeType: "application/javascript" }] }` | Add `mimeType` |
-| `css(css)` | `{ content: [{ type: "text", text: css, mimeType: "text/css" }] }` | Add `mimeType` |
-| `xml(xml)` | `{ content: [{ type: "text", text: xml, mimeType: "application/xml" }] }` | Add `mimeType` |
+| `image(data, mimeType?)` | `{ content: [{ type: "image", data, mimeType }] }` | Explicit type; v1 default `mimeType` was `"image/png"` |
+| `audio(dataOrPath, mimeType?)` | `{ content: [{ type: "audio", data, mimeType }] }` | Explicit type; v1 default `mimeType` was `"audio/wav"` (v1 also accepted a file path and read it async — v2 has no equivalent, read the file yourself) |
+| `binary(base64Data, mimeType)` | `{ content: [{ type: "resource", resource: { uri, mimeType, blob: base64Data } }] }` | `resource` is a nested object with `uri`/`mimeType`/`text-or-blob`, not flat fields on the content block |
+| `resource(uri, mimeType, text?)` | `{ content: [{ type: "resource", resource: { uri, mimeType, text } }] }` | Same nested shape |
+| `html(html)` | `{ content: [{ type: "text", text: html }] }` | No wire-level `mimeType`; describe the format in tool text/description |
+| `javascript(js)` | `{ content: [{ type: "text", text: js }] }` | No wire-level `mimeType` |
+| `css(css)` | `{ content: [{ type: "text", text: css }] }` | No wire-level `mimeType` |
+| `xml(xml)` | `{ content: [{ type: "text", text: xml }] }` | No wire-level `mimeType` |
 | `widget(...)` | `{ content: [...], structuredContent: {...}, _meta: {...} }` | No wrapper; use View binding |
 
 ## Validation: Input and output

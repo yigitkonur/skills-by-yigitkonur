@@ -14,30 +14,34 @@ mcp-use login [options]
 
 By default, `login` initiates a browser-based authentication:
 
-1. CLI generates a user code and verification URL
-2. Browser opens automatically
+1. CLI generates a device code and verification URL
+2. Browser opens automatically (unless `--no-open`)
 3. You enter the user code and authorize
 4. CLI polls for up to 30 minutes for approval
-5. Credentials are stored in `~/.mcp-use/config.json` (local, not shared)
+5. On success, an API key is created and credentials are stored in `~/.mcp-use/config.json` (local, not shared)
 
-**Output example:**
+**Output example (stderr):**
 ```
-To authenticate, visit:
-  https://cloud.manufact.com/auth/device?user_code=ABC-123
+Open https://cloud.manufact.com/auth/device?user_code=ABC-123 and enter code ABC-123.
+```
 
-Waiting for authorization... (30 minutes)
-✓ Authenticated as user@example.com
+**Success line (stdout, human mode):**
+```
+Logged in as user@example.com (Acme Corp).
 ```
 
 ### Flags
 
 | Flag | Type | Effect |
 |------|------|--------|
-| `--api-key <key>` | string | Skip device flow; use a pre-generated API key instead |
+| `--api-key <key>` | string | Skip device flow; use a pre-generated API key instead (mutually exclusive with `--device-code`) |
 | `--device-code <code>` | string | Redeem a pre-approved device code (CI/CD pattern) |
-| `--org <id-or-slug>` | string | Set active org immediately (required for headless flows) |
+| `--org <id-or-slug>` | string | Set active org immediately (required for headless flows when the account has no default) |
 | `--no-open` | boolean | Don't auto-open browser |
 | `--json` | boolean | Output JSON instead of plain text |
+| `-h, --help` | boolean | Show help |
+
+If `--api-key`/`--device-code` are both omitted, an API key is also read from `$MCP_USE_API_KEY` before falling back to the device flow.
 
 ### API key authentication
 
@@ -72,7 +76,9 @@ mcp-use logout [options]
 | Flag | Type | Effect |
 |------|------|--------|
 | `--yes` | boolean | Skip confirmation (required in non-interactive runs) |
-| `--json` | boolean | Output JSON |
+| `--json` | boolean | Emit `{"loggedOut":true}`; never prompts |
+
+Deletes local cloud credentials only (`~/.mcp-use/config.json`); does not revoke the API key server-side.
 
 ## mcp-use whoami
 
@@ -88,22 +94,27 @@ mcp-use whoami [options]
 |------|------|--------|
 | `--json` | boolean | Output JSON |
 
-### Example output
+### Example output (human mode)
 
 ```
-Authenticated as: user@example.com
-Active organization: acme-prod (id: org_abc123)
+user@example.com — Acme Corp
 ```
 
 ## mcp-use org
 
-Manage your active organization (exact subcommands vary; use `mcp-use org --help`):
+Manage your active organization:
 
 ```bash
-mcp-use org <subcommand> [options]
+mcp-use org <command> [options]
 ```
 
-Used to switch between organizations or list your memberships. Consult your CLI's help text for current subcommands.
+| Subcommand | Effect |
+|------------|--------|
+| `list` | List memberships; active entry marked `*` in human output |
+| `current` | Show the active organization |
+| `use <id-or-slug>` | Save an active organization locally and best-effort update the account default |
+
+There is no `switch` subcommand — the real subcommand is `use`. All three accept `--json` and `-h/--help`.
 
 ## Credentials location
 
@@ -133,8 +144,8 @@ mcp-use whoami
 # Deploy
 mcp-use deploy --org acme-prod
 
-# Later: switch org
-mcp-use org <new-org>
+# Later: change active org
+mcp-use org use <new-org>
 
 # Eventually: sign out
 mcp-use logout --yes
@@ -144,10 +155,10 @@ mcp-use logout --yes
 
 ```bash
 # In CI: use API key
-mcp-use login --api-key "${MANUFACT_API_KEY}" --org "${ORG_NAME}"
+mcp-use login --api-key "${MCP_USE_API_KEY}" --org "${ORG_NAME}"
 
 # Then deploy
 mcp-use deploy
 ```
 
-Store `MANUFACT_API_KEY` in your CI secret manager (GitHub Actions, etc.).
+Store `MCP_USE_API_KEY` in your CI secret manager (GitHub Actions, etc.) — the CLI also reads it automatically when `login` is run with neither `--api-key` nor `--device-code` set.

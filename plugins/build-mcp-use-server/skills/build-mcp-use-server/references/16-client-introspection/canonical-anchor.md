@@ -3,7 +3,7 @@
 *The one reference example for capability detection and per-client adaptation.*
 
 ```typescript
-import { MCPServer, inputRequired } from "mcp-use";
+import { MCPServer, inputRequired, acceptedContent } from "mcp-use";
 import { z } from "zod";
 
 const server = new MCPServer({
@@ -63,41 +63,49 @@ export const performAnalysis = server.tool(
 );
 
 // Tool that uses elicitation capability detection
+const dbConfirmSchema = z.object({
+  confirmed: z.boolean().describe("I understand this cannot be undone"),
+});
+
 export const deleteDatabase = server.tool(
   {
     name: "delete_database",
     description: "Permanently delete a database",
-    inputSchema: z.object({
-      databaseId: z.string(),
-      confirmed: z.boolean().optional(),
-    }),
+    inputSchema: z.object({ databaseId: z.string() }),
   },
-  async ({ databaseId, confirmed }, ctx) => {
-    if (!confirmed) {
-      // Check if client can handle form-based elicitation
-      const caps = ctx.client.capabilities();
-      if (caps.elicitation?.form) {
-        // Client supports form mode — ask for confirmation
-        return inputRequired.elicit({
-          schema: z.object({
-            confirmed: z
-              .boolean()
-              .describe("I understand this cannot be undone"),
+  async ({ databaseId }, ctx) => {
+    // Check if client can handle form-based elicitation
+    const caps = ctx.client.capabilities();
+    if (!caps.elicitation?.form) {
+      // Client doesn't support elicitation
+      return {
+        isError: true,
+        content: [
+          { type: "text", text: `Cannot delete ${databaseId}: client does not support confirmation.` },
+        ],
+      };
+    }
+
+    const key = `delete_db_${databaseId}`;
+    const confirmation = acceptedContent(ctx.inputResponses, key, dbConfirmSchema);
+    if (confirmation === undefined) {
+      // Client supports form mode — ask for confirmation. The handler runs
+      // again from the top once the client retries with accepted content.
+      return inputRequired({
+        inputRequests: {
+          [key]: inputRequired.elicit({
+            message: `Permanently delete database ${databaseId}?`,
+            requestedSchema: dbConfirmSchema,
           }),
-          correlationKey: `delete_db_${databaseId}`,
-        });
-      } else {
-        // Client doesn't support elicitation
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Cannot delete ${databaseId}: client does not support confirmation. Retry with confirmed: true.`,
-            },
-          ],
-        };
-      }
+        },
+      });
+    }
+
+    if (!confirmation.confirmed) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Deletion not confirmed." }],
+      };
     }
 
     // Confirmed — perform deletion

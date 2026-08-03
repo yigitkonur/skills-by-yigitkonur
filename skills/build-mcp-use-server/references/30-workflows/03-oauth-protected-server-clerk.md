@@ -19,20 +19,21 @@ cd my-secure-server
 
 **Verify:** Basic server scaffolded.
 
-### 2. Install Clerk Provider
+### 2. Configure the Clerk Frontend API URL
+
+OAuth providers ship inside `mcp-use` itself as subpath exports — there is no separate `@mcp-use/oauth` package to install. Confirm the version already present:
 
 ```bash
-npm install @mcp-use/oauth@latest
+npm ls mcp-use
 ```
-
-Or it may already be included in `mcp-use`; check with `npm ls mcp-use`.
 
 ### 3. Configure Server with Clerk OAuth
 
 Edit `index.ts`:
 
 ```typescript
-import { MCPServer, oauthClerkProvider } from "mcp-use";
+import { MCPServer } from "mcp-use";
+import { oauthClerkProvider } from "mcp-use/oauth/clerk";
 import { z } from "zod";
 
 const server = new MCPServer({
@@ -40,6 +41,7 @@ const server = new MCPServer({
   version: "1.0.0",
   oauth: oauthClerkProvider({
     frontendApiUrl: process.env.CLERK_FRONTEND_API_URL || "https://example-12345.clerk.accounts.dev",
+    resource: process.env.MCP_RESOURCE_URL, // Full public MCP endpoint in non-local deployments
   }),
 });
 
@@ -72,8 +74,9 @@ export const getProfile = server.tool(
 );
 
 export default server;
-server.listen();
 ```
+
+Never call `server.listen()` here — the CLI (`mcp-use dev`/`mcp-use start`) owns the listener.
 
 **Verify:** `npm run typecheck` passes.
 
@@ -85,7 +88,7 @@ Create `.env.local`:
 CLERK_FRONTEND_API_URL=https://example-12345.clerk.accounts.dev
 ```
 
-Replace with your actual Clerk Frontend API URL.
+Replace with your actual Clerk Frontend API URL. Local loopback serving can infer the resource endpoint. Before any non-local deploy, also set `MCP_RESOURCE_URL` to the full canonical public MCP endpoint (including `/mcp`), or set `MCP_URL` to its public origin. Without one of those, OAuth mounting through `server.fetch()` or a non-local listener fails.
 
 ### 5. Test Locally
 
@@ -99,35 +102,50 @@ In Inspector (http://127.0.0.1:3000/mcp/inspector):
 
 **Expected:** First time: 401 Unauthorized (no token). Client should open Clerk login.
 
-**For CLI testing** (with token):
+**Verify the HTTP auth boundary with valid protocol requests:**
 
 ```bash
-# Get a token (requires Clerk token)
-# Then test with:
-curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/mcp/
+export MCP_ORIGIN="http://localhost:3000"
+export MCP_ENDPOINT="${MCP_ORIGIN}/mcp"
+
+# Discovery metadata is public.
+curl -i "${MCP_ORIGIN}/.well-known/oauth-protected-resource"
+
+# The MCP route rejects a valid unauthenticated legacy initialize request.
+curl -i -X POST "${MCP_ENDPOINT}" \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Content-Type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
+
+# With a real Clerk access token, the same request reaches the MCP handler.
+curl -i -X POST "${MCP_ENDPOINT}" \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer ${CLERK_ACCESS_TOKEN}" \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
 ```
 
-**Verify:** Response includes `userId`, `email`, `name` from authenticated user.
+**Verify:** discovery returns metadata; the unauthenticated POST returns 401 with `WWW-Authenticate`; the authenticated initialize returns a JSON-RPC response. Then complete the Inspector/real-client OAuth flow and call `get-profile` to verify `ctx.auth.user` mapping.
 
 ### 6. Deploy
 
-```bash
-npm run deploy
-# Set env vars during deploy:
-# mcp-use deploy --env CLERK_FRONTEND_API_URL=https://example-12345.clerk.accounts.dev
-```
-
-Or use `.env.production`:
+A production OAuth server needs a canonical public resource URL. If you already control a stable domain, deploy with the full endpoint:
 
 ```bash
-mcp-use deploy --env-file .env.production
+mcp-use deploy \
+  --env CLERK_FRONTEND_API_URL=https://example-12345.clerk.accounts.dev \
+  --env MCP_RESOURCE_URL=https://mcp.example.com/mcp
 ```
 
-**Verify:** Deployed server rejects unauthenticated requests with 401.
+If using a generated Manufact Cloud domain, use a two-phase setup: create/link the cloud server, copy its exact MCP endpoint from the dashboard, set `MCP_RESOURCE_URL` with `mcp-use servers env set <server-id-or-slug> MCP_RESOURCE_URL=<dashboard-mcp-url>`, then redeploy. Never infer a hostname from the slug.
+
+Capture the deployment ID and apply the terminal-state gate in `../25-deploy/platforms/01-mcp-use-cloud.md`: wait for that exact deployment to succeed and confirm its source revision before testing the dashboard-copied URL.
+
+**Verify after terminal success:** public discovery works; an unauthenticated valid MCP POST returns 401; a real OAuth client completes login and calls `get-profile`; deployed View checks are not applicable because this workflow is tools-only.
 
 ## Understanding the Flow
 
-1. **Client connects** to `https://my-secure-server.vercel.app/mcp`.
+1. **Client connects** to the exact public MCP endpoint copied from the deployment dashboard (never a hostname inferred from the slug).
 2. **Server responds** with OAuth metadata (Clerk's authorization endpoint).
 3. **Client registers** dynamically with Clerk (DCR: Dynamic Client Registration).
 4. **Client redirects user** to Clerk login page.
@@ -135,7 +153,7 @@ mcp-use deploy --env-file .env.production
 6. **Clerk issues** access token to client.
 7. **Client calls MCP** with `Authorization: Bearer <token>` header.
 8. **Server verifies** token via Clerk's JWKS endpoint.
-9. **ctx.auth.user` is populated** with user data from token.
+9. **`ctx.auth.user`** is populated with user data from token.
 
 ## Common Issues
 

@@ -1,129 +1,145 @@
 # Host Capability Detection
 
-*Read this when your view needs to use optional platform features.*
+*Read this when a View needs an optional host-mediated feature.*
 
-Not all MCP Apps hosts support the same features (follow-up messages, file picker, display-mode requests). Query the host's capabilities before calling platform-specific APIs.
+Hosts negotiate features independently. Gate each operation on its own capability; do not infer support from the host product name or from an unrelated capability.
 
-## UseHostContext
-
-Access host capabilities via the `useHostContext()` hook:
+## Read Negotiated Context
 
 ```typescript
 import { useHostContext } from "mcp-use/react";
 
 export default function MyView() {
   const hostContext = useHostContext();
-  
-  // Host environment info
-  console.log(hostContext.client.name);           // "ChatGPT", "Claude", etc. (if available)
-  console.log(hostContext.client.locale);         // User locale
-  console.log(hostContext.client.safeAreaInsets); // Notch/safe area info
-  
-  // Available features
-  console.log(hostContext.availableCapabilities); // string[]
-  
-  // Available display modes (intersection of viewConfig + host support)
-  console.log(hostContext.availableDisplayModes); // DisplayMode[]
-  
-  // View dimensions and theme
-  console.log(hostContext.dimensions);            // { width, height }
-  console.log(hostContext.theme);                 // "light" | "dark"
+
+  console.log(hostContext.theme);       // "light" | "dark"
+  console.log(hostContext.locale);      // BCP 47 locale
+  console.log(hostContext.timeZone);    // IANA time zone
+  console.log(hostContext.platform);    // "web" | "mobile"
+  console.log(hostContext.safeArea);    // { top, right, bottom, left }
+  console.log(hostContext.hostInfo);    // { name, version } | undefined
+  console.log(hostContext.hostCapabilities);
+  console.log(hostContext.isAvailable); // bridge connection status
+
+  return null;
 }
 ```
 
+`HostContextHandle` has no `.client` object and no capability-name array. Full field and fallback details are in `view-react/07-host-context-files-and-size.md`.
+
 ## Capability Checks
 
-| Capability | Needed For | Hook | How to Check |
-|-|-|-|-|
-| `message` | `useSendFollowUp()` | Check before calling | `hostContext.availableCapabilities.includes("message")` |
-| `files` | `useFiles()` | Check before calling | `hostContext.availableCapabilities.includes("files")` |
-| Display modes | `useDisplayMode()` | Optional; defaults to `["inline", "fullscreen"]` | `hostContext.availableDisplayModes` |
-| Theme changes | `useViewTheme()` | Optional; default `"light"` | No capability check needed |
+A supported capability is represented by an object; an unsupported or not-yet-negotiated capability is `undefined`.
 
-## Guarding APIs by Capability
+| Capability key | Gates | Check |
+|-|-|-|
+| `message` | `useSendFollowUp()` | `hostCapabilities?.message !== undefined` |
+| `openLinks` | Host-mediated external URL opening | `hostCapabilities?.openLinks !== undefined` |
+| `downloadFile` | Standard protocol `ui/download-file` | `hostCapabilities?.downloadFile !== undefined` |
+| `updateModelContext` | Standard model-context updates used by `useViewState()` / `<ModelContext>` | `hostCapabilities?.updateModelContext !== undefined` |
+| `serverTools` | View-to-server tool calls; `useCallTool()` requires this | `hostCapabilities?.serverTools !== undefined` |
+| `serverResources` | Host-proxied reads of server resources | `hostCapabilities?.serverResources !== undefined` |
+| `logging` | Host-accepted UI log messages | `hostCapabilities?.logging !== undefined` |
+
+`serverTools.listChanged` and `serverResources.listChanged` independently indicate support for their corresponding list-change notifications. One capability never proves the other.
+
+Display modes are negotiated separately through `useDisplayMode()`. ChatGPT file helpers exposed by `useFiles()` are also separate from standard `hostCapabilities`; gate them with `useFiles().isSupported`.
+
+## Guard a Tool Call
+
+`useCallTool()` self-guards and rejects if the host did not advertise `serverTools`. Check the capability as well when deciding whether to render the UI affordance:
+
+```typescript
+import { useCallTool, useHostContext } from "mcp-use/react";
+
+export default function RefreshButton() {
+  const { hostCapabilities } = useHostContext();
+  const refresh = useCallTool("refresh-results");
+
+  if (hostCapabilities?.serverTools === undefined) {
+    return <p>Refresh is not available in this host.</p>;
+  }
+
+  return (
+    <button onClick={() => refresh.callTool({})} disabled={refresh.isPending}>
+      Refresh
+    </button>
+  );
+}
+```
+
+## Guard a Follow-Up Message
 
 ```typescript
 import { useHostContext, useSendFollowUp } from "mcp-use/react";
 
 export default function ResultsView() {
-  const hostContext = useHostContext();
+  const { hostCapabilities } = useHostContext();
   const sendFollowUp = useSendFollowUp();
-  
-  // Only show "Ask for more" button if host supports follow-up
-  if (!hostContext.availableCapabilities.includes("message")) {
-    return <div>Feature not available in this host</div>;
+
+  if (hostCapabilities?.message === undefined) {
+    return <div>Follow-up messages are unavailable.</div>;
   }
-  
-  const handleAskMore = async () => {
-    await sendFollowUp({ prompt: "Show 20 more results" });
-  };
-  
+
   return (
-    <div>
-      <Results />
-      <button onClick={handleAskMore}>Show More</button>
-    </div>
+    <button onClick={() => sendFollowUp({ prompt: "Show 20 more results" })}>
+      Show More
+    </button>
   );
 }
 ```
 
-## Client Detection (Low Trust)
+The capability check controls the affordance. The hook also rejects before wire traffic when `message` is unavailable.
 
-The `hostContext.client` object carries hints about the platform (name, locale, user agent, etc.), but is **not authoritative**:
+## Host Identity Is a Hint
 
 ```typescript
-const { client } = useHostContext();
+const { hostInfo } = useHostContext();
 
-// Hints only — client can spoof these values
-if (client.name === "ChatGPT") {
-  // ChatGPT-specific hint, but don't trust it
+if (hostInfo?.name === "some-host") {
+  // A display-only hint is acceptable.
 }
 ```
 
-Use capabilities checks for feature gates, not client name. Features are verified by the host.
+Never use `hostInfo.name` as a security boundary or feature gate. The identity is self-reported; negotiated capabilities are the operational contract.
 
 ## Display Mode Negotiation
 
-Views can declare supported display modes in `viewConfig`:
-
 ```typescript
-// views/my-view/view.tsx
+import { useDisplayMode } from "mcp-use/react";
 import type { ViewConfig } from "mcp-use/react";
 
 export const viewConfig: ViewConfig = {
   displayModes: ["inline", "fullscreen", "pip"],
-  autoResize: true,
 };
 
 export default function MyView() {
-  const { availableDisplayModes, currentDisplayMode } = useHostContext();
-  // Intersection: only ["inline", "fullscreen", "pip"] that host also supports
+  const { displayMode, availableDisplayModes, requestDisplayMode } =
+    useDisplayMode();
+
+  if (!availableDisplayModes.includes("fullscreen")) return null;
+
+  return (
+    <button onClick={() => requestDisplayMode({ mode: "fullscreen" })}>
+      Open fullscreen; current mode is {displayMode}
+    </button>
+  );
 }
 ```
 
-The host decides the final display mode; the view can request a change via `useDisplayMode()`:
-
-```typescript
-const { displayMode, requestDisplayMode } = useDisplayMode();
-
-// Request change; host may ignore
-await requestDisplayMode({ mode: "fullscreen" });
-```
+The available set is the runtime's negotiated set. A resolved request means the host processed it, not that the mode changed; read `displayMode` for the actual state.
 
 ## Graceful Degradation
 
-Always provide fallback UI for missing capabilities:
+Provide a fallback for every optional feature. For ChatGPT-specific file helpers:
 
 ```typescript
-export default function AdvancedFeatureView() {
-  const hostContext = useHostContext();
-  
-  if (!hostContext.availableCapabilities.includes("files")) {
-    return <SimpleTextOnlyUI />;
-  }
-  
-  return <FilePickerUI />;
+import { useFiles } from "mcp-use/react";
+
+export default function FileFeature() {
+  const files = useFiles();
+  return files.isSupported ? <FilePickerUI /> : <SimpleTextOnlyUI />;
 }
 ```
 
-See `references/18-mcp-apps/view-react/07-host-context-files-and-size.md` for detailed file and size APIs.
+The standard protocol's `downloadFile` capability and the beta.66 `useFiles()` wrapper are not the same surface. See `view-react/07-host-context-files-and-size.md` for the shipped wrapper and its limitations.

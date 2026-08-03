@@ -23,7 +23,7 @@ The Inspector auto-connects to the local MCP server. You should see:
 Inspector → **Connection Settings** (gear icon):
 - **URL**: Pre-filled with `http://localhost:3000/mcp` for auto-connected dev server
 - **Transport**: HTTP (default for v2)
-- **Connection mode**: Auto (tries direct first; falls back to proxy on CORS fail)
+- **Connection mode**: Auto (tries Direct first; falls back to the configured Inspector proxy if direct access fails because of CORS or network policy)
 
 For deployed servers or tunneled endpoints, paste the full MCP URL (including `/mcp` suffix).
 
@@ -66,10 +66,10 @@ Inspector → **Add Connection** button (top-left) — saves server URL + auth +
 ## Debug Panels
 
 When a tool call returns a view:
-- **props**: Structured data the widget receives
+- **props**: Structured data the view receives (the tool result's `structuredContent`)
 - **output**: Raw tool result (text, structured, etc.)
 - **metadata**: Timestamps, cache state, host hints
-- **state**: Widget state after user interaction
+- **state**: View state after user interaction
 
 Use these to verify view props match your schema.
 

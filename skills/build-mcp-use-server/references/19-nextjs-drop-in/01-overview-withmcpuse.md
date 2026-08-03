@@ -12,7 +12,7 @@ The Route Handler pattern is simplest for single-deployment scenarios. `withMcpU
 
 1. **Install mcp-use and zod:**
 ```bash
-npm install mcp-use zod
+npm install mcp-use@beta zod@4
 ```
 
 2. **Export the MCP server** in `mcp-server.ts` (do NOT call `listen()`):
@@ -64,12 +64,14 @@ export const { GET, POST, DELETE, OPTIONS } = createNextHandler(server);
 
 **Testing:** Open `http://localhost:3000/api/mcp` in an MCP client.
 
+The complete embedded example is [`packages/server/examples/nextjs`](https://github.com/mcp-use/mcp-use/tree/beta/libraries/typescript/packages/server/examples/nextjs) in the mcp-use repo — it also shows a view importing a component shared with the Next.js landing page and an image from the app's `public` directory.
+
 ## Standalone beside Next.js
 
 Run the MCP server in a separate `mcp-use` process. This topology works in monorepos and allows independent scaling, restart, or deployment.
 
 ```bash
-npm install mcp-use zod
+npm install mcp-use@beta zod@4
 ```
 
 Create `src/mcp/server.ts` (do NOT call `listen()`). Optionally import browser-safe components and shared services from the Next.js project:
@@ -109,11 +111,15 @@ mcp-use dev --path apps/web --entry ../mcp/src/server.ts --views-dir ../mcp/src/
 
 Imports from `src/mcp/` automatically resolve via the Next.js `tsconfig.json` and project aliases.
 
+The complete standalone example is [`packages/server/examples/nextjs-standalone`](https://github.com/mcp-use/mcp-use/tree/beta/libraries/typescript/packages/server/examples/nextjs-standalone) in the mcp-use repo.
+
 ## Shared code safety
 
-Both topologies load the Next.js environment. Views run in browser iframes and must not import Server Components or server-only modules (e.g., `next/headers`, `next/cache`, database clients). Shared services that import `server-only` will load but the shims do not invent a request context.
+Embedded mode runs the MCP route handler inside the real Next.js server process, so shared services that import `server-only`, `next/headers`, or `next/cache` resolve normally — no shim needed.
 
-For the standalone topology, v2 CLI provides compatibility shims so shared services load without error. Pass identity through MCP authentication (see references/11-auth) and request data through tool input or `RequestContext`.
+The standalone CLI is not a Next.js process. When it detects a Next.js host project it loads the same environment-file cascade and installs compatibility shims for `server-only`, `client-only`, `next/cache`, `next/headers`, `next/navigation`, and `next/server` so shared services that import them load without throwing — but the shims do not invent a real website request: `headers()`/`cookies()` return empty, and cache invalidation is a no-op. Pass required identity through MCP authentication (see references/11-auth) and request data through tool input or `RequestContext`.
+
+In both topologies, views run in browser iframes and must not import Server Components or modules that depend on `server-only`, `next/headers`, a database client, the filesystem, or other server-only APIs — fetch data in the tool and return it to the view as `structuredContent`.
 
 ## Verification
 
@@ -126,5 +132,7 @@ For either topology:
 5. Read view URIs from tool metadata and assert HTML loads.
 6. Verify every referenced JavaScript, stylesheet, and public asset.
 7. (Embedded only:) Request the Next.js landing page and verify browser CORS preflight at the `/api/mcp` endpoint.
+
+Both `examples/nextjs` and `examples/nextjs-standalone` in the mcp-use repo expose a `pnpm verify` script that runs these MCP assertions with `@mcp-use/client`; the embedded example's `verify` additionally checks the Next.js landing page and a nested public-asset route, and the standalone example should also pass `pnpm next:build`.
 
 See `references/22-validate` for detailed CLI walkthroughs and `references/25-deploy/platforms/02-vercel.md` for production deployment patterns.

@@ -26,10 +26,10 @@ let isReady = false;
 // Health endpoint
 server.get("/health", (c) => {
   if (!isReady) {
-    return c.status(503).json({
-      status: "not-ready",
-      reason: "dependencies initializing",
-    });
+    return c.json(
+      { status: "not-ready", reason: "dependencies initializing" },
+      503
+    );
   }
   return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -41,6 +41,8 @@ server.get("/alive", (c) => {
 
 await server.listen(3000);
 ```
+
+Hono's `c.status(code)` returns `void` and is not chainable — pass the status code as `c.json(data, statusCode)` instead of `c.status(code).json(data)`.
 
 ## Containerized platforms (Cloud Run, Kubernetes)
 
@@ -123,7 +125,7 @@ process.on("SIGTERM", async () => {
 });
 ```
 
-No session or stream state exists in v2.0.0-beta.66, so shutdown only needs to close the HTTP listener, not drain in-flight streams or replay queued notifications. Clients reconnect and re-initialize on the next request.
+No session or stream state exists in v2.0.0-beta.66, so shutdown only needs to close the HTTP listener, not drain in-flight streams or replay queued notifications. Clients simply issue their next independent request; modern-wire clients perform no `initialize` handshake, and any long-lived `subscriptions/listen` stream ends with the listener.
 
 ## Latency considerations
 
@@ -144,12 +146,14 @@ server.use("*", async (c, next) => {
 });
 ```
 
-Attach to MCP events for operation-level insights:
+Attach to MCP events for operation-level insights. The read-only observer context has no built-in timing fields (no `ctx.startTime`/`ctx.endTime`) — track elapsed time manually with `mcp:tools/call` middleware, which wraps the actual handler call:
 
 ```typescript
-server.on("mcp:tools/call:complete", async (ctx) => {
-  const duration = ctx.endTime - ctx.startTime;
-  console.log(`[${ctx.params.name}] ${duration}ms`);
+server.use("mcp:tools/call", async (ctx, next) => {
+  const start = Date.now();
+  const result = await next();
+  console.log(`[${ctx.params.name}] ${Date.now() - start}ms`);
+  return result;
 });
 ```
 

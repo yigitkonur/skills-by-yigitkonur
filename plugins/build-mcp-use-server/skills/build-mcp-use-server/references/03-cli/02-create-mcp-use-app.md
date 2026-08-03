@@ -72,7 +72,7 @@ my-server/
 ├── tsconfig.json
 ├── mcp-env.d.ts              # MCP type definitions (auto-generated)
 ├── views/                     # (if mcp-apps template)
-│   ├── example/
+│   ├── my-view/
 │   │   └── view.tsx
 │   └── ...
 ├── .gitignore

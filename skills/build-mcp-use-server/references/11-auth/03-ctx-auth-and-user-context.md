@@ -2,7 +2,7 @@
 
 *Read this when you need to access authenticated user info inside tools, resources, or prompts.*
 
-Every authenticated tool, resource, or prompt callback receives a `RequestClientContext` with an `auth` field.
+Every authenticated tool, resource, or prompt callback's second argument (`ctx`, a `RequestContext<TUser, true>`) carries an `auth: OAuthAuth<TUser>` field populated by the bearer gate. This is distinct from `ctx.client` (`RequestClientContext`), which holds unverified client-reported hints (locale, user agent, coarse location) and is never a source of authentication.
 
 ## Full ctx.auth Shape
 
@@ -58,15 +58,17 @@ type ClerkOAuthUser = {
 ## Usage in Tools
 
 ```typescript
-server.tool({
-  name: "my-tool",
-  description: "Example tool",
-  inputSchema: z.object({ query: z.string() }),
-  async (input, ctx) => {
+server.tool(
+  {
+    name: "my-tool",
+    description: "Example tool",
+    inputSchema: z.object({ query: z.string() }),
+  },
+  async (params, ctx) => {
     // Access the user
     const userId = ctx.auth.user.id;
     const email = ctx.auth.user.email;
-    
+
     // Check scopes or permissions
     if (!ctx.auth.scopes.includes("email")) {
       return {
@@ -74,7 +76,7 @@ server.tool({
         content: [{ type: "text", text: "email scope required" }],
       };
     }
-    
+
     // Check roles (if provider includes them)
     if (ctx.auth.user.roles && !ctx.auth.user.roles.includes("admin")) {
       return {
@@ -82,10 +84,10 @@ server.tool({
         content: [{ type: "text", text: "admin role required" }],
       };
     }
-    
+
     // Token expires in how long?
     const expiresIn = ctx.auth.expiresAt - Math.floor(Date.now() / 1000);
-    
+
     return {
       content: [
         {
@@ -95,7 +97,7 @@ server.tool({
       ],
     };
   },
-});
+);
 ```
 
 ## Scopes vs Permissions
@@ -110,7 +112,7 @@ See `references/11-auth/04-permission-guards.md` for guard patterns.
 If you need to forward the access token to downstream services:
 
 ```typescript
-async (input, ctx) => {
+async (params, ctx) => {
   const response = await fetch("https://api.example.com/me", {
     headers: {
       Authorization: `Bearer ${ctx.auth.accessToken}`,

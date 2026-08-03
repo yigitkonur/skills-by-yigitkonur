@@ -12,10 +12,12 @@ Three templates exist; all are v2 beta.14. Pick one matching your surface intent
 | **`mcp-apps`** | React views, `useToolContext`, `useCallTool`, CSP config | Shipping interactive React components bound to tools. Dual MCP Apps + ChatGPT protocol. |
 | **`blank`** | Empty `MCPServer` | Minimal starting point; add everything yourself. |
 
+Omitting `--template`: a non-interactive invocation (CI, piped stdin) defaults to `mcp-server`; an interactive terminal prompts, with `mcp-apps` pre-selected as the default choice.
+
 ## Flag usage
 
 ```bash
-# mcp-server (default)
+# mcp-server (non-interactive default)
 npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-server --install
 
 # mcp-apps (React views)
@@ -33,11 +35,26 @@ npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --bun --insta
 
 | Flag | Effect |
 |------|--------|
-| `--install` / `--no-install` | Run npm install after scaffold (default: `--no-install`) |
-| `--npm` / `--pnpm` / `--bun` | Force package manager (default: auto-detect) |
-| `--skills` / `--no-skills` | Install mcp-apps-builder skill (Claude Code / Cursor / Codex) |
-| `--dev` | Use `workspace:*` for mcp-use dependency (v2 development only) |
-| `--sdk-version <version>` | Pin a specific mcp-use version (default: `2.0.0-beta.66`) |
+| `--install` / `--no-install` | Run npm install after scaffold (default: `false` when `--template` or non-interactive is set; interactive runs prompt) |
+| `--npm` / `--pnpm` / `--bun` | Force package manager (default: auto-detect from `npm_config_user_agent`, else `npm`) |
+| `--skills` / `--no-skills` | Install mcp-apps-builder skill into `.claude/skills/`, `.cursor/skills/`, `.agent/skills/` (default varies — see `02-scaffold-with-create-mcp-use-app.md`) |
+| `--no-git` | Skip initializing a git repository (listed in `--help`; git init behavior is otherwise on by default) |
+| `--dev` | Use `workspace:*` for the mcp-use dependency (mcp-use monorepo development only; mutually exclusive with `--sdk-version`) |
+| `--sdk-version <version>` | Pin mcp-use to a specific npm version or dist-tag (e.g. `canary`, `1.34.0`). Omitted: the CLI fetches the current `beta` dist-tag from the npm registry at scaffold time — there is no hardcoded default version baked into the CLI |
+| `-t`, `--template <name-or-url>` | Template name, or a GitHub repo URL/`owner/repo`/`owner/repo#branch` to scaffold from a custom template (requires git) |
+| `--list-templates` | Print all available templates and exit |
+
+## GitHub repo as template
+
+Any public GitHub repository can be used as a template instead of a built-in name:
+
+```bash
+npm create mcp-use-app@2.0.0-beta.14 my-project --template owner/repo
+npm create mcp-use-app@2.0.0-beta.14 my-project --template https://github.com/owner/repo
+npm create mcp-use-app@2.0.0-beta.14 my-project --template owner/repo#branch-name
+```
+
+Requires git; useful for organization-specific or community templates.
 
 ## Choosing
 

@@ -79,31 +79,17 @@ export const generateChart = server.tool(
   },
   async ({ data }, ctx) => {
     const chartConfig = generateChartJSON(data);
+    const result = { chart: chartConfig };
+    const text = ctx.client.supportsViews()
+      ? `Chart for data: ${data.join(", ")}`
+      : `Data: ${data.join(", ")}\n\nStats: min=${Math.min(...data)}, max=${Math.max(...data)}`;
 
-    if (ctx.client.supportsViews()) {
-      // Return rich structured content
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Chart for data: ${data.join(", ")}`,
-          },
-        ],
-        structuredContent: {
-          chart: chartConfig,
-        },
-      };
-    } else {
-      // Text-only fallback
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Data: ${data.join(", ")}\n\nStats: min=${Math.min(...data)}, max=${Math.max(...data)}`,
-          },
-        ],
-      };
-    }
+    // outputSchema applies to every successful branch. Vary the text fallback,
+    // but always return the same schema-valid structured payload.
+    return {
+      content: [{ type: "text", text }],
+      structuredContent: result,
+    };
   }
 );
 ```

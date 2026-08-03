@@ -1,4 +1,4 @@
-# `inspect-page.sh`
+# inspect-page.sh
 
 Use this helper only when the user asked for a repeatable capture; ad hoc browser work should remain one command at a time.
 
@@ -17,4 +17,6 @@ It writes:
 - `errors.txt`
 - optional `screenshot.png`
 
-On Yigit's Mac it uses the managed headed-CDP pool, records the task tab, closes only that tab, and releases the lane with exact top-level `agent-browser close`. On hosts without the pool it creates and closes an isolated temporary upstream session. Artifacts may contain private page data; inspect them before sharing or committing.
+The helper sources `~/.config/steel-browser-cdp.env`, creates a unique named agent-browser session, unsets the global provider variable only for each CDP subprocess, connects through `STEEL_AGENT_BROWSER_CDP`, and closes that task session on exit. It does not use the Patchright scrape pool or provider credits.
+
+Artifacts can contain private page data; inspect them before sharing or committing.

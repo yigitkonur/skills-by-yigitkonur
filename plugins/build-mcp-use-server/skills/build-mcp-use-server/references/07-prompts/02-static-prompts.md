@@ -107,38 +107,41 @@ Prefer `GetPromptResult`:
   messages: PromptMessage[]
   // where PromptMessage = {
   //   role: "user" | "assistant"
-  //   content: ContentBlock | ContentBlock[]
+  //   content: ContentBlock
   // }
+  // content is a single block per message — to send text and an image, use two messages.
 }
 ```
 
-Where `ContentBlock` is:
+Where `ContentBlock` is one of:
 ```typescript
-{ type: "text", text: string } 
-| { type: "image", data: string, mimeType: string }
-| { type: "resource", uri: string, mimeType?: string, text?: string, blob?: Uint8Array }
+{ type: "text", text: string }
+| { type: "image", data: string, mimeType: string }       // data is base64
+| { type: "audio", data: string, mimeType: string }       // data is base64
+| { type: "resource", resource: { uri: string, mimeType?: string, text: string } | { uri: string, mimeType?: string, blob: string } }
+| { type: "resource_link", uri: string, name: string, title?: string, mimeType?: string, description?: string }
 ```
+
+`resource`'s `blob` is a base64-encoded **string**, not `Uint8Array` — the SDK schema serializes binary content as base64 text over the wire.
 
 ---
 
 ## Notifying changes
 
-If you register or remove a static prompt at runtime, notify clients to refresh:
+`server.prompt()` throws if called after the server has started — registrations are replayed per request from a registry built once at construction time. Register every prompt before `server.listen()` or `server.fetch`; there is no runtime `server.prompt()` call to make later.
+
+To change what clients *see* at runtime (feature flags, per-tenant entitlements), register every possible prompt up front and filter the list with `mcp:prompts/list` middleware instead:
 
 ```typescript
-server.prompt(
-  {
-    name: "new-workflow",
-    description: "Newly added",
-  },
-  async (params, ctx) => ({
-    messages: [{
-      role: "user",
-      content: { type: "text", text: "..." },
-    }],
-  })
-);
+server.use("mcp:prompts/list", async (ctx, next) => {
+  const prompts = await next();
+  return prompts.filter((p) => isEnabledForTenant(p.name, ctx));
+});
+```
 
+When the filtering criteria change (a flag flips, a tenant's entitlements change), notify clients so they re-fetch:
+
+```typescript
 await server.notifyPromptsChanged();
 ```
 

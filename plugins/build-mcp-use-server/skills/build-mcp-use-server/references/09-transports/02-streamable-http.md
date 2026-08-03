@@ -6,23 +6,74 @@ v2 uses Web-standard Fetch API (`server.fetch(request)` → `Response`). Endpoin
 
 ## HTTP endpoint methods
 
-| Method | Purpose | Payload | Response |
+| Method | Purpose | Payload | Response (stateless default) |
 |--------|---------|---------|----------|
-| `POST /mcp` | Send MCP JSON-RPC request | JSON body: `{ jsonrpc, method, params }` | JSON `{ result, id }` or error envelope |
-| `GET /mcp` | Open SSE stream (reserved; legacy session pattern) | None | `text/event-stream` |
-| `DELETE /mcp` | Session teardown (reserved; legacy pattern) | Optional JSON | Success/error |
-| `OPTIONS /mcp` | CORS preflight | None | CORS headers + 200 |
+| `POST /mcp` | Send MCP JSON-RPC request (modern or legacy wire) | JSON body | JSON `{ result, id }` / error envelope (modern), or SSE-framed JSON-RPC (legacy) |
+| `GET /mcp` | Browser navigation or SDK probe | None | HTML navigation (`Accept: text/html`) returns the landing page/auth response; other probes return `204 No Content` |
+| `DELETE /mcp` | Optional SDK probe | None | `204 No Content` |
+| `HEAD /mcp` | Browser navigation or SDK probe | None | HTML navigation follows the landing-page branch; other probes return `204 No Content` |
+| `OPTIONS /mcp` | CORS preflight | None | `405` if `config.cors` is unset; `204` + CORS headers if `config.cors` is set |
 
-In **v2 stateless mode** (default), GET/DELETE return 405 (unsupported); every request is independent.
+DELETE and non-HTML GET/HEAD probes are **not** a legacy SSE-stream-open or session-teardown mechanism — the stateless mount answers them with `204`. HTML-accepting GET/HEAD navigation is handled first at the same `basePath` and returns the landing page (or its OAuth response). A bare `OPTIONS` without CORS configured is a real `405`, since there is no preflight to answer.
 
-## v2 curl handshake (stateless)
+## Modern wire (2026-07-28): the native v2 protocol
 
-Initialize the server and list tools:
+The modern wire has **no `initialize` handshake**. Every request carries its own protocol version and client identity in a `_meta` envelope, mirrored into headers for routing. Responses are plain `application/json`, never SSE-framed, and work with any `Accept` header (including none).
 
 ```bash
-# Initialize (server reports capabilities + ready state)
+# tools/list on the modern wire — no prior initialize call
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
+  -H "mcp-protocol-version: 2026-07-28" \
+  -H "mcp-method: tools/list" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {
+      "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": { "name": "cli", "version": "1.0.0" },
+        "io.modelcontextprotocol/clientCapabilities": {}
+      }
+    }
+  }' | jq .
+
+# tools/call — add mcp-name mirroring params.name for name-addressed methods
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "mcp-protocol-version: 2026-07-28" \
+  -H "mcp-method: tools/call" \
+  -H "mcp-name: my-tool" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "my-tool",
+      "arguments": { "arg": "value" },
+      "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": { "name": "cli", "version": "1.0.0" },
+        "io.modelcontextprotocol/clientCapabilities": {}
+      }
+    }
+  }' | jq .
+```
+
+Calling `initialize` on the modern wire is a protocol error (method not found) — there is nothing to initialize.
+
+## Legacy wire (2025-era): compatibility fallback
+
+Most existing MCP clients — including the official SDK's default posture — still speak the traditional `initialize` handshake with protocol versions `2025-11-25` (latest legacy), `2025-06-18`, `2025-03-26`, `2024-11-05`, or `2024-10-07`. mcp-use v2 serves these through `ServerConfig.legacy: "stateless"` (the default): each legacy request gets a fresh, session-less handler instance. `Mcp-Session-Id` is never generated or required in this mode.
+
+Legacy requests **must** send `Accept: application/json, text/event-stream` (both media types) — a bare `Accept: application/json` gets `406 Not Acceptable`. Legacy responses are SSE-framed (`Content-Type: text/event-stream`, body shaped as `event: message\ndata: {...}\n\n`) even for a single non-streaming JSON-RPC result.
+
+```bash
+# Legacy initialize handshake — dual Accept header is required
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 0,
@@ -32,37 +83,16 @@ curl -X POST http://localhost:3000/mcp \
       "capabilities": {},
       "clientInfo": { "name": "cli", "version": "1.0.0" }
     }
-  }' | jq .
-
-# List tools
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/list",
-    "params": {}
-  }' | jq .
-
-# Call a tool
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 2,
-    "method": "tools/call",
-    "params": {
-      "name": "my-tool",
-      "arguments": { "arg": "value" }
-    }
-  }' | jq .
+  }'
+# Response is SSE-framed: "event: message\ndata: {...}\n\n" — pipe through
+# `grep '^data:' | sed 's/^data: //' | jq .` to extract the JSON-RPC body.
 ```
 
-Protocol version is `2024-11-05` (MCP 2.0); mcp-use v2.0.0-beta.66 implements this version.
+Set `legacy: "reject"` on `ServerConfig` to refuse legacy-classified requests outright (unsupported-protocol-version error) and force clients onto the modern wire only.
 
 ## View asset routing
 
-Views compiled to `.mcp-use/build/views/` are mounted at `/mcp/_mcp-use/views/`. The server serves them as MCP resources; clients fetch view HTML from the same origin.
+Production build output `.mcp-use/build/views/<name>/<path>` maps to `GET {basePath}/_mcp-use/views/<name>/<path>` (default `/mcp/_mcp-use/views/<name>/<path>`); project-public files map to `GET {basePath}/_mcp-use/public/<path>`. Hosts obtain the View's HTML document only through `resources/read` — there is no separate HTTP document route.
 
 ## Security defaults
 

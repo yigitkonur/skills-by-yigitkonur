@@ -1,8 +1,8 @@
 # test-by-mcpc-cli
 
-testing or debugging MCP servers with mcpc 0.2.x across stdio or Streamable HTTP, including session setup, schemas, grep, tasks, and JSON scripting.
+Drive mcpc 0.6.x to test or smoke-check MCP servers over stdio or Streamable HTTP, including sessions, schemas, tasks, protocol versions, and JSON automation.
 
-**Category:** development
+**Category:** testing
 
 ## Install
 

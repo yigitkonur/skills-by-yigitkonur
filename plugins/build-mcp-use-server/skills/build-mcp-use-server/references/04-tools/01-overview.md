@@ -49,7 +49,7 @@ Handlers return raw MCP result shapes, **never helpers**. The SDK converts to wi
 
 - **Success:** `{ content: [{ type: "text", text: "..." }], structuredContent?: {...} }`
 - **Error:** `{ isError: true, content: [{ type: "text", text: "error message" }] }`
-- **Input required** (elicitation): `{ type: "input_required", inputRequest: { ... } }`
+- **Input required** (elicitation): `{ resultType: "input_required", inputRequests?: { [key]: InputRequest }, requestState?: string }` — `inputRequests` is a map keyed by server-assigned correlation IDs, not a single nested object. Build it with `inputRequired(...)` rather than hand-writing the shape (see `05-the-ctx-object.md`).
 
 ## Key Files
 

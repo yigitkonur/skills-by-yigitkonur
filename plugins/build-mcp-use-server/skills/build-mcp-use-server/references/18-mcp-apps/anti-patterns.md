@@ -18,6 +18,8 @@ export default function SearchResults() {
 
 ```typescript
 // CORRECT
+import { useToolContext } from "mcp-use/react";
+
 export default function SearchResults() {
   const ctx = useToolContext<"search">();
   
@@ -36,31 +38,39 @@ The `status` field transitions once: `pending` → `ready` or `error`. It does n
 **Anti-pattern:** Storing API keys, tokens, or private data in `useViewState()`.
 
 ```typescript
-// WRONG
+// WRONG: model-visible state must never contain secrets.
 export default function MyView() {
-  const [apiKey, setApiKey] = useViewState<string>("");
-  
+  const [state] = useViewState({ apiKey: "" });
+
   const handleClick = async () => {
-    const result = await fetch("https://api.example.com/data", {
-      headers: { "Authorization": `Bearer ${apiKey}` },
+    await fetch("https://api.example.com/data", {
+      headers: { "Authorization": `Bearer ${state.apiKey}` },
     });
   };
 }
 ```
 
-**Why:** View state is model-visible and travels in `_meta.ui` to the LLM. Secrets are exposed.
+**Why:** `useViewState()` is model-visible state — it is sent to the model on every update, through `ui/update-model-context` on MCP Apps hosts or `window.openai.setWidgetState` on ChatGPT (never `_meta`, which is view-only and never reaches the model). Secrets placed there are exposed to the LLM and to the conversation transcript.
 
 **Fix:** Call a server tool to fetch data with authentication. Never expose secrets client-side.
 
 ```typescript
 // CORRECT
+import { useCallTool } from "mcp-use/react";
+
 export default function MyView() {
   const { callTool } = useCallTool("fetch-protected-data");
-  
+
   const handleClick = async () => {
-    // Server tool owns the API key
-    const result = await callTool({});
+    // The server tool owns the API key.
+    await callTool({});
   };
+
+  return (
+    <button type="button" onClick={() => void handleClick()}>
+      Fetch protected data
+    </button>
+  );
 }
 ```
 
@@ -85,53 +95,73 @@ import { useViewState } from "mcp-use/react";
 
 export default function MyView() {
   const [state, setState] = useViewState({ key: "value" });
-  
-  // Updates are sent to all hosts via the same mechanism
-  setState({ key: "updated" });
+
+  return (
+    <button
+      type="button"
+      onClick={() => setState({ ...state, key: "updated" })}
+    >
+      Update model-visible state
+    </button>
+  );
 }
 ```
 
-## 4. Missing or Wrong CSP
+## 4. Missing or Misapplied View CSP
 
-**Anti-pattern:** Fetching from an external API without declaring CSP.
+**Anti-pattern:** Browser code in the sandboxed View fetches an external origin that the View resource CSP does not allow.
 
 ```typescript
 // views/my-view/view.tsx
+import { useEffect } from "react";
+
 export default function FetchFromAPI() {
   useEffect(() => {
-    fetch("https://api.example.com/data") // CSP not declared
-      .then(r => r.json())
-      .catch(err => console.error(err));
+    void fetch("https://api.example.com/data") // View CSP does not allow this origin.
+      .then((response) => response.json())
+      .catch((error) => console.error(error));
   }, []);
+
+  return <p>Loading external data...</p>;
 }
 ```
 
-**Why:** Browser CSP blocks the fetch; view silently fails.
+**Why:** The host applies the emitted CSP to the View iframe, so the browser blocks undeclared connections.
 
-**Fix:** Declare CSP on the server-side tool binding.
+**Fix for a View-side request:** Declare the external origin on the tool binding that owns the View resource.
 
 ```typescript
-// Server (index.ts)
+// index.ts
+import { MCPServer } from "mcp-use";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "data-server", version: "1.0.0" });
+
 export const getData = server.tool(
   {
     name: "get-data",
-    description: "Fetch data from API",
-    outputSchema: z.object({ data: z.any() }),
+    description: "Open the data view",
+    inputSchema: z.object({}),
+    outputSchema: z.object({ endpoint: z.string().url() }),
     view: {
-      name: "data-view",
+      name: "my-view",
       csp: {
         connectDomains: ["https://api.example.com"],
       },
     },
   },
   async () => ({
-    content: [{ type: "text", text: "Data fetched" }],
-    structuredContent: { data: await fetch("...").then(r => r.json()) },
+    content: [{ type: "text", text: "Opened the data view" }],
+    structuredContent: { endpoint: "https://api.example.com/data" },
   })
 );
+
+export default server;
 ```
 
-See `references/18-mcp-apps/server-surface/05-csp-metadata.md` for CSP merge rules.
+This CSP permits the sandboxed View to connect to `https://api.example.com`; it does not authorize or restrict `fetch()` inside the Node/server tool callback. If the server performs the external request and returns the data through `structuredContent`, keep credentials server-side and do not add the provider solely to View `connectDomains`.
+
+See `references/18-mcp-apps/server-surface/05-csp-metadata.md` for View CSP fields and merge rules.
 
 ## 5. Fetching Instead of useCallTool
 
@@ -159,16 +189,20 @@ import { useCallTool } from "mcp-use/react";
 
 export default function SearchView() {
   const { callTool, data, error } = useCallTool("search");
-  
+
   const handleSearch = async (query: string) => {
     const result = await callTool({ query });
-    // result is typed by tool's outputSchema
+    // The resolved value is the full successful tool result.
+    console.log(result.structuredContent);
   };
-  
+
   if (error) return <p>Error: {error.message}</p>;
-  return <Results data={data} />;
+  if (!data) return <button onClick={() => void handleSearch("mcp")}>Search</button>;
+  return <pre>{JSON.stringify(data.structuredContent, null, 2)}</pre>;
 }
 ```
+
+`callTool()` and `data` expose the full successful result envelope. Read the schema-typed payload from `structuredContent`; `content` and `_meta` remain available separately.
 
 ## 6. Mutating State Outside Hooks
 
@@ -176,11 +210,15 @@ export default function SearchView() {
 
 ```typescript
 // WRONG
-const [state, setState] = useViewState({ items: [] });
+interface Item {
+  id: string;
+  label: string;
+}
 
-const addItem = (item) => {
-  state.items.push(item);  // Direct mutation; not propagated to model
-  // Model doesn't see this change
+const [state] = useViewState<{ items: Item[] }>({ items: [] });
+
+const addItem = (item: Item) => {
+  state.items.push(item); // Direct mutation; not propagated to the model.
 };
 ```
 
@@ -188,18 +226,35 @@ const addItem = (item) => {
 
 ```typescript
 // CORRECT
-const [state, setState] = useViewState({ items: [] });
+import { useViewState } from "mcp-use/react";
 
-const addItem = (item) => {
-  setState((prev) => ({
-    ...prev,
-    items: [...prev.items, item],
-  }));
-  // Now model sees the updated state
-};
+interface Item {
+  id: string;
+  label: string;
+}
+
+export default function ItemList() {
+  const [state, setState] = useViewState<{ items: Item[] }>({ items: [] });
+
+  const addItem = (item: Item) => {
+    setState((previous) => ({
+      ...previous,
+      items: [...previous.items, item],
+    }));
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => addItem({ id: crypto.randomUUID(), label: "New item" })}
+    >
+      Add item ({state.items.length})
+    </button>
+  );
+}
 ```
 
-All `useViewState()` updates travel to `_meta.ui` for the model to observe.
+Every `setState()` call sends the complete state snapshot to the model — via `ui/update-model-context` on MCP Apps hosts, or `window.openai.setWidgetState` on ChatGPT. Not `_meta`; `_meta` is view-only and never reaches the model.
 
 ## 7. Guarding on `isPending` (v1 Anti-Pattern)
 
@@ -216,8 +271,13 @@ if (ctx.isPending) return <p>Loading</p>;
 
 ```typescript
 // CORRECT (v2)
-const ctx = useToolContext();
-if (ctx.status === "pending") return <p>Loading</p>;
+import { useToolContext } from "mcp-use/react";
+
+export default function LoadingGuard() {
+  const ctx = useToolContext();
+  if (ctx.status === "pending") return <p>Loading</p>;
+  return null;
+}
 ```
 
 The `status` field is latched: once it transitions to `ready` or `error`, it stays there for the view's lifetime.
@@ -227,7 +287,8 @@ The `status` field is latched: once it transitions to `ready` or `error`, it sta
 - [ ] Always check `useToolContext().status` before accessing output
 - [ ] Never store secrets in `useViewState()`
 - [ ] Never call `window.openai` directly
-- [ ] Always declare CSP for external APIs in the tool binding
-- [ ] Use `useCallTool()`, never fetch() for tool calls
+- [ ] Declare CSP for external origins used by browser code in the sandboxed View
+- [ ] Do not treat View CSP as authorization for server-side `fetch()`
+- [ ] Use `useCallTool()`, never HTTP `fetch()`, to invoke MCP tools
 - [ ] Mutate state only via `setState()`, never direct assignment
 - [ ] Guard on `status`, not on a non-existent `isPending` flag

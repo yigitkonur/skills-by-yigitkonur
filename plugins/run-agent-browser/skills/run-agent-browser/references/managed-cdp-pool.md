@@ -1,271 +1,223 @@
-# Managed headed-CDP pool
+# Patchright browser pool on this host
 
-This wrapper runs one persistent, visible Google Chrome process per registered lane, supervised by launchd. Lanes are not fixed: `pool create`/`pool remove` (below) add and drop them at runtime, and nothing about a lane's name, port, or count is hardcoded in the wrapper — the table below is only this particular machine's current lanes. The `agent-browser` executable on `PATH` is a local wrapper: ordinary browser commands acquire one lane, connect through CDP, serialize commands for that lane, and release the lease on an exact top-level `agent-browser close`.
+Read this when the task needs Google AI Overview, Google AI Mode, or Gemini capture through the existing rotating-proxy browser pool; when checking pool capacity/health; or when diagnosing `503`/retry behavior.
 
-This is the default for local web automation. It avoids one Chrome process per agent, profile-lock collisions, daemon socket collisions, and stale `Singleton*` cleanup while retaining real Chrome profiles and windows.
+Despite the historical filename, this service is **not a CDP pool for agent-browser**. It is an authenticated HTTP scrape API backed by four persistent headed Patchright/Chrome contexts.
 
-## Prerequisites (one-time per machine)
+## Deployed service
 
-Two things must exist before `pool create` (or any lane) works: this wrapper on `PATH` as `agent-browser`, and a per-lane supervisor script that launchd runs to keep one headed Chrome window alive per lane. Neither ships with the official `agent-browser` CLI — a fresh machine has neither.
+| Property | Current value |
+|---|---|
+| Coolify project | `zeogen` |
+| Coolify application/resource UUID | `uh4q7gub10k6ffbgawcsvxef` |
+| Container | `patchright-browserpool-uh4q7gub10k6ffbgawcsvxef-042104642940` |
+| Internal port | `8091` |
+| Public route | `https://browserpool.65.108.140.207.sslip.io` |
+| Slots | 4 (`POOL_SIZE=4`) |
+| Proxies | 20 configured; one proxy is leased per slot and burned/rotated on adverse verdicts |
+| Restart policy | `unless-stopped` |
+| Host port | None — routed through Coolify/Traefik only |
 
-Save the following as `~/.local/libexec/agent-browser-chrome-lane` and `chmod +x` it. It takes `<lane-name> <port> <profile-dir>`, launches headed Chrome on that CDP port with that profile, and preserves tab state across restarts. Nothing in it is hardcoded to a name, port, or username — the same file backs every lane on any machine:
+The public route responds `401` without Bearer auth. `GET /health` is deliberately unauthenticated and safe for operational counts.
 
-```sh
-#!/bin/sh
-# launchd supervisor for one headed Chrome CDP lane.
-set -u
+## What it is for
 
-lane="$1"
-port="$2"
-profile="$3"
-chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-pool_root="$HOME/.agent-browser/cdp-pool"
-tab_root="$pool_root/tabs"
-tmp_root="$pool_root/tmp"
-manifest="$tab_root/$lane.json"
+Supported `provider` values are exact:
 
-mkdir -p "$profile" "$tab_root" "$tmp_root"
-chmod 700 "$pool_root" "$tab_root" "$tmp_root" "$profile" 2>/dev/null || true
+- `google_ai_overview`
+- `google_ai_mode`
+- `google_gemini`
 
-snapshot_tabs() {
-  snapshot_tmp="$manifest.$$"
-  if curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/list" \
-    | jq '[.[] | select(.type == "page" and .url != "about:blank") | {title, url}]' > "$snapshot_tmp" 2>/dev/null; then
-    chmod 600 "$snapshot_tmp"
-    mv "$snapshot_tmp" "$manifest"
-  else
-    rm -f "$snapshot_tmp"
-  fi
+The service handles:
+
+- slot acquisition and queueing,
+- headed Chromium contexts via Patchright,
+- authenticated proxy selection,
+- Google navigation and form interaction,
+- DOM snapshots and HTML capture,
+- provider-specific response text extraction,
+- screenshot capture,
+- Gemini citation extraction,
+- AIO/adverse/captcha/blank/denied verdicts,
+- burning a bad context/proxy and replacing it on the next request.
+
+It is not a general-purpose interactive browsing API. It exposes no `/json/version`, CDP port, or browser WebSocket URL, and must not be passed to `agent-browser --cdp`.
+
+## Security and credentials
+
+`POST /warm` and `POST /scrape` require:
+
+```http
+Authorization: Bearer <POOL_AUTH>
+```
+
+`POOL_AUTH` and proxy records are secrets. Never print, log, commit, paste into command history, or return their values. Do not inspect `BROWSERPOOL_PROXY_URLS` except when a maintenance task explicitly requires it.
+
+The secret lives in Coolify's encrypted application env for resource UUID `uh4q7gub10k6ffbgawcsvxef`. Use a process-local retrieval pattern that avoids stdout and keeps `POOL_AUTH` out of command-line arguments. The token is read by curl from a mode-600 config file, so it never appears in curl's process argument vector. Example for an authorized maintenance script:
+
+```bash
+source "$HOME/.config/coolify-cloud.env"
+POOL_AUTH_FILE=$(mktemp)
+CURL_CFG_FILE=$(mktemp)
+cleanup() { rm -f "$POOL_AUTH_FILE" "$CURL_CFG_FILE"; }
+trap cleanup EXIT
+chmod 600 "$POOL_AUTH_FILE" "$CURL_CFG_FILE"
+
+curl -fsS \
+  "https://app.coolify.io/api/v1/applications/uh4q7gub10k6ffbgawcsvxef/envs" \
+  -H "Authorization: Bearer $COOLIFY_CLOUD_API_TOKEN" \
+| jq -r '[.[] | select(.key == "POOL_AUTH" and .is_preview == false) | .value] | first' \
+> "$POOL_AUTH_FILE"
+unset COOLIFY_CLOUD_API_TOKEN
+
+printf 'header = "Authorization: Bearer %s"\n' "$(<"$POOL_AUTH_FILE")" > "$CURL_CFG_FILE"
+
+# POOL_AUTH never appears in argv or shell history; curl reads it from the config file:
+curl -fsS -K "$CURL_CFG_FILE" -X POST https://browserpool.65.108.140.207.sslip.io/warm
+```
+
+Do not keep the pool token in a generic global environment variable unless the user explicitly chooses that tradeoff. Unlike Steel, this pool is publicly routed; its Bearer token is the security boundary.
+
+## Health and capacity
+
+No auth required:
+
+```bash
+curl -fsS https://browserpool.65.108.140.207.sslip.io/health | jq
+```
+
+Current response shape:
+
+```json
+{
+  "ok": true,
+  "svc": "patchright-browserpool",
+  "size": 4,
+  "warm": 4,
+  "busy": 0,
+  "queued": 0,
+  "proxies": 20
 }
+```
 
-restore_tabs() {
-  [ -s "$manifest" ] || return 0
-  current="$tmp_root/$lane.current.$$"
-  desired="$tmp_root/$lane.desired.$$"
-  curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/list" \
-    | jq -r '.[] | select(.type == "page" and .url != "about:blank") | .url' | sort > "$current"
-  jq -r '.[].url' "$manifest" | sort > "$desired"
-  if ! cmp -s "$current" "$desired"; then
-    curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/list" \
-      | jq -r '.[] | select(.type == "page") | .id' \
-      | while IFS= read -r target; do
-          curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/close/${target}" >/dev/null 2>&1 || true
-        done
-    jq -r '.[].url | @uri' "$manifest" \
-      | while IFS= read -r encoded_url; do
-          curl -fsS --max-time 2 -X PUT "http://127.0.0.1:${port}/json/new?${encoded_url}" >/dev/null 2>&1 || true
-        done
-  fi
-  curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/list" \
-    | jq -r '.[] | select(.type == "page" and .url == "about:blank") | .id' \
-    | while IFS= read -r target; do
-        curl -fsS --max-time 2 "http://127.0.0.1:${port}/json/close/${target}" >/dev/null 2>&1 || true
-      done
-  rm -f "$current" "$desired"
+Interpretation:
+
+- `size`: fixed slot count.
+- `warm`: slots with a live browser context.
+- `busy`: active scrape requests.
+- `queued`: callers waiting for a slot.
+- `proxies`: configured proxy pool size.
+
+A healthy idle pool is `warm == size`, `busy == 0`, `queued == 0`.
+
+## Warm endpoint
+
+`POST /warm` launches any missing contexts and returns health:
+
+```bash
+curl -fsS -K "$CURL_CFG_FILE" -X POST \
+  https://browserpool.65.108.140.207.sslip.io/warm | jq
+```
+
+Use it after a deploy/restart or when `warm < size`. It does not perform a scrape.
+
+## Scrape request
+
+`POST /scrape` accepts JSON:
+
+```json
+{
+  "provider": "google_ai_overview",
+  "query": "best ergonomic office chair for a tall person",
+  "captureScreenshot": true
 }
+```
 
-"$chrome" \
-  "--remote-debugging-port=$port" \
-  --remote-debugging-address=127.0.0.1 \
-  "--user-data-dir=$profile" \
-  --no-first-run \
-  --no-default-browser-check \
-  --restore-last-session &
-chrome_pid=$!
+Validation:
 
-stop_lane() {
-  snapshot_tabs
-  kill -TERM "$chrome_pid" 2>/dev/null || true
-  wait "$chrome_pid" 2>/dev/null || true
-  exit 0
+- `provider` must be one of the exact three values.
+- `query` must be a non-empty string.
+- `captureScreenshot` defaults to true.
+- `geo`, `language`, and `userAgent` are not part of the current deployed request contract. Unknown fields are ignored; using `prompt` instead of `query` returns `err:bad_request`.
+
+Safe command pattern (token read from the mode-600 curl config created above, body from stdin):
+
+```bash
+curl -fsS -K "$CURL_CFG_FILE" -X POST \
+  -H 'Content-Type: application/json' \
+  --data-binary @- \
+  https://browserpool.65.108.140.207.sslip.io/scrape <<'JSON'
+{
+  "provider": "google_ai_overview",
+  "query": "example query",
+  "captureScreenshot": true
 }
-trap stop_lane HUP INT TERM
-
-attempt=0
-while [ "$attempt" -lt 40 ]; do
-  if curl -fsS --max-time 1 "http://127.0.0.1:${port}/json/version" >/dev/null 2>&1; then
-    restore_tabs
-    break
-  fi
-  kill -0 "$chrome_pid" 2>/dev/null || break
-  sleep 0.5
-  attempt=$((attempt + 1))
-done
-
-while kill -0 "$chrome_pid" 2>/dev/null; do
-  snapshot_tabs
-  sleep 10
-done
-
-wait "$chrome_pid"
-exit $?
+JSON
 ```
 
-Once that file is in place, `agent-browser pool create <name>` (see "Creating and removing lanes" below) does everything else: generates the launchd plist, bootstraps it, and waits for CDP to answer.
+## Response shape
 
-## Architecture and invariants
+The deployed endpoint returns a compact provider-normalized result:
 
-Example only — this is what one machine currently has registered. Yours will differ unless you create the same lanes:
-
-| Lane | CDP | Profile | Intended use |
-|---|---:|---|---|
-| `general` | 9222 | `~/.agent-browser/real-chrome-cdp-profile` | Generic browsing |
-| `app1` | 9411 | `~/.agent-browser/app1-cdp-profile` | Authenticated state for one specific service |
-| `app2` | 9444 | `~/.agent-browser/app2-cdp-profile` | Authenticated state for another specific service |
-| `slot_01`-`slot_10` | 9501-9510 | `~/.agent-browser/slot_NN-cdp-profile` | Plain scratch lanes, no persistent auth |
-
-On this machine, `slot_01`-`slot_10` exist to absorb overflow so agents don't queue on the 3 named lanes under multi-agent load. They carry no persistent authenticated state — pick any lane that shows `free` in `pool status` by number, e.g. `pool use slot_07`. There is nothing special about the name `slot_NN`; it is just this machine's naming convention. Use `agent-browser pool create <any-name>` to add lanes with whatever names and count fit your own workflow.
-
-The endpoints bind to loopback. launchd keeps Chrome and the lane supervisor alive. The supervisor periodically records nonblank tab URL/title state and restores the exact URL multiset after a Chrome restart.
-
-The wrapper:
-
-- derives a per-agent owner from the process tree;
-- grants one lane lease to that owner, waiting up to 60 seconds when all lanes are busy;
-- expires abandoned leases after one hour;
-- serializes commands within each lane;
-- turns the first fresh `open URL` into `tab new URL`, preventing takeover of a pre-existing tab;
-- leaves pre-existing profile tabs alone;
-- releases the lane only when the first command word is top-level `close`.
-
-The pool is shared infrastructure. Never kill its Chrome processes, delete profile locks or `Singleton*` files, delete wrapper sockets/PIDs/leases, bind the ports publicly, or run `close --all`.
-
-## Start sequence
-
-Run these one at a time and read each result:
-
-```bash
-agent-browser pool status
-agent-browser open https://example.com
-agent-browser pool current
-agent-browser tab
-agent-browser snapshot -i
+```json
+{
+  "ok": true,
+  "present": true,
+  "answer": "...",
+  "sources": ["https://..."],
+  "verdict": "ok"
+}
 ```
 
-Record the lane, port, owner, active tab, and the tab created for the task. A successful command does not prove the expected page state; verify URL/title or visible content separately.
+`captureScreenshot: true` may add a screenshot artifact; treat it as sensitive page data. Do not assume internal slot/proxy/debug fields are public response fields.
 
-### Select an authenticated lane
+Common non-success verdicts observed or handled by the deployed service include `err:bad_request`, `err:aio_miss`, `err:not_typed`, captcha/rate-limit/blank/denied outcomes, and browser/page errors. `ok: false` can be a provider-result miss rather than infrastructure unavailability; check `/health` separately.
 
-Selection must happen before any browser command:
+Gemini responses may include external citation links in `sources`; internal Google URLs are filtered and redirect wrappers may be unwrapped.
 
-```bash
-agent-browser pool use app1
-agent-browser pool current
-agent-browser open https://app1.example.com
+## Admission, retries, and burning
+
+Verified numbers from the deployed source: 4 slots (`POOL_SIZE`), 150 s acquire timeout (`POOL_ACQUIRE_TIMEOUT_MS`, floor 1 s), 330 s scrape deadline (`POOL_SCRAPE_DEADLINE_MS`, default `DEFAULT_SCRAPE_DEADLINE_MS=330_000`, floor 10 s), 15 min proxy cooldown (`BROWSERPOOL_PROXY_COOLDOWN_MS`, floor 1 s), 20 proxies.
+
+The service queues callers when all four slots are busy. If slot acquisition exceeds the 150 s acquire timeout, it returns:
+
+```json
+{
+  "ok": false,
+  "error": "browserPool acquisition wait exceeded",
+  "retryable": true,
+  "retryAfterMs": 150000,
+  "busy": 4,
+  "size": 4,
+  "queued": 1
+}
 ```
 
-If the owner already holds another lane, `pool use` returns that existing lane rather than migrating the lease. Check `pool current`. If it is wrong, close owned tabs, run the exact top-level `agent-browser close`, then select the desired lane before reopening.
+`retryAfterMs` mirrors `POOL_ACQUIRE_TIMEOUT_MS` (150000 by default). HTTP status is `503`. Respect `retryAfterMs`; inspect `/health`; retry once. Do not bypass into container internals or launch an unmanaged fifth browser.
 
-Do not select `app1` or `app2` merely because they are free. Persistent authenticated profiles contain user state; use the least-privileged suitable lane — for anonymous/scratch work, prefer any free `slot_01`-`slot_10` over `general`, and `general` over `app1`/`app2`.
+Each scrape has a 330 s deadline. Retry attempts fit within the remaining deadline. The slot is burned after `captcha`, `rate_limited`, `blank`, `denied`, `browser_error`, or `page_error`; the proxy enters its 15 min cooldown and a fresh context uses the next eligible proxy.
 
-## Command routing
+## Operational verification
 
-| Need | Command shape | Why |
-|---|---|---|
-| Normal headed browsing | `agent-browser COMMAND ...` | Lease and reuse a pool lane |
-| Public URL text fetch only | `agent-browser pool real read URL` | Avoid an unnecessary Chrome lease |
-| Pool control/status | `agent-browser pool status|current|use|recover|doctor|create|remove` | Wrapper-owned operation |
-| Current CLI docs/install/doctor | `agent-browser skills ...`, `agent-browser --help`, etc. | Wrapper passes non-browser control commands through |
-| Explicit remote/local CDP | `agent-browser pool real --cdp ... COMMAND` | Intentional bypass |
-| Provider, engine, profile, auto-connect | `agent-browser pool real ...` | Intentional unmanaged runtime |
-| Extension, init script, proxy, UA, raw launch args | `agent-browser pool real ...` | Pool Chrome is already launched; launch mutation cannot reliably apply |
+After a pool task:
 
-Use `pool real` only when the task requires a property the pool cannot provide. State the bypass and its cleanup in the handoff. Do not combine pool ownership assumptions with an unmanaged process.
-
-## Creating and removing lanes
-
-Lanes are not hardcoded in the wrapper — they are a plain-text registry at `~/.agent-browser/cdp-pool/lanes.conf` (`name port`, one per line), read fresh on every invocation. `pool status` always reflects exactly what is in that file plus real launchd/CDP state; the "Architecture" table above is one machine's snapshot, not a fixed set baked into the tool.
-
-```bash
-agent-browser pool create NAME [PORT]   # PORT optional; auto-picks the next free port from 9500 up
-agent-browser pool remove NAME          # must not be currently leased; profile is left on disk
-```
-
-`pool create`:
-
-- validates `NAME` (letters/digits/underscore, must start with a letter) and rejects a duplicate;
-- auto-assigns a port starting at 9500 when none is given, skipping both registered ports and ports already bound by something else;
-- writes `~/Library/LaunchAgents/com.<user>.agent-browser-cdp.<name>.plist` — `<user>` comes from `id -un`, never hardcoded, so the identical command works on any machine and any account;
-- creates the Chrome profile at `~/.agent-browser/<name>-cdp-profile`;
-- `launchctl bootstrap`s the lane and polls CDP before reporting success;
-- rolls back the plist and registry line if `launchctl bootstrap` fails, so a failed create never leaves half-registered state.
-
-`pool remove` refuses a currently-leased lane, unloads the launchd service (`launchctl bootout`), deletes the plist, and drops the registry line. It does **not** delete the Chrome profile directory — that holds real cookies/session state, and is left for you to remove explicitly once you are sure you don't need it.
-
-The wrapper seeds `lanes.conf` the first time it runs after being installed or upgraded, by scanning `~/Library/LaunchAgents/com.<user>.agent-browser-cdp.*.plist` for lanes that already exist, so upgrading it never drops a lane you already created by hand. On a genuinely fresh machine with no prior setup, `lanes.conf` starts empty and every browser command fails with `No CDP lanes are registered yet. Create one: agent-browser pool create general` until you run `pool create` — that message is the expected first-run state, not a bug.
-
-## Tabs and cleanup
-
-The task owns only tabs it created. Current tab IDs are stable strings (`t1`, `t2`), not positional indexes.
-
-```bash
-agent-browser tab
-agent-browser tab close t7
-agent-browser close
-agent-browser pool status
-```
-
-Important distinctions:
-
-- `tab close t7` closes one tab but does not release the lane.
-- `agent-browser --session name close` does not trigger the wrapper's pool release because `--session` is the first argument.
-- `agent-browser close` must be exact and top-level for managed cleanup.
-- `close --all` can affect other agents and is prohibited.
-
-Chrome refuses to close its final tab. If the task-owned tab is the final tab, switch explicitly to that owned ID, navigate it to `about:blank`, then release the lease. Do not solve this by closing another tab.
+1. Confirm HTTP response status and `ok`.
+2. Record `present`, `verdict`, answer length, and source count — no credentials or private content.
+3. Validate the requested answer/source fields and any screenshot artifact.
+4. Recheck `/health`; ensure `busy` returns to zero and `warm` returns to four.
+5. Do not expose screenshot base64 or full answer text if it contains sensitive content.
 
 ## Recovery
 
-Use the narrowest rung and inspect the result before continuing:
+| Symptom | Action |
+|---|---|
+| `/health` fails | Inspect Coolify application/container status and logs; do not recreate manually before understanding the failure. |
+| `warm < size` | Call authenticated `/warm`; inspect browser launch errors if it stays low. |
+| HTTP 401 | Credential missing/invalid; fetch `POOL_AUTH` from Coolify securely. Do not guess or weaken auth. |
+| `err:bad_request` | Fix the required `provider`/`query` request shape. |
+| HTTP 503 | Respect `retryAfterMs`, check `busy`/`queued`, retry once. |
+| Captcha/rate-limit verdict | Service burns context/proxy automatically; inspect the final verdict and `/health`. |
+| Deadline error | Reduce concurrency or investigate target/provider latency; do not hide it with an unbounded client timeout. |
+| Repeated blank/denied | Review provider selectors and target changes; the pool may need code maintenance. |
 
-```bash
-agent-browser pool status
-agent-browser pool current
-agent-browser pool recover
-agent-browser pool doctor
-```
-
-- `status` shows lane health and leases.
-- `current` identifies the caller's assignment.
-- `recover` repairs wrapper/supervisor state without manual file deletion.
-- `doctor` performs the deeper pool diagnostic.
-
-After recovery, reopen the intended URL and verify it. Do not infer that restored tabs mean the previous DOM, refs, form state, downloads, or JS execution survived. Snapshot refs are always invalid after a restart or reconnect.
-
-### Why commands "hang" and how to tell it from a real failure
-
-The wrapper waits up to 60 seconds for a lane before giving up, and that wait produces no output — it just looks stuck. With only 3 named lanes this happens constantly under real multi-agent load; it is the most common source of "the agent is stuck" reports. Work through this order instead of killing and blindly retrying:
-
-1. `agent-browser pool status` first, always. If `general`/`app1`/`app2` show `leased`, that is the entire explanation. Switch to a free `slot_NN` lane (`pool use slot_04`) rather than waiting on a named lane you don't specifically need auth state from. If `pool status` prints only the header with no rows, no lanes are registered yet — `agent-browser pool create general` and retry.
-2. If a command still stalls on a `slot_NN` lane, don't block the foreground indefinitely — background it and check back. Genuine contention can legitimately take 60-150s end to end (lane wait + Chrome launch/navigation + CDP round trip), which is normal, not broken.
-3. An explicit error ending in `daemon may be busy or unresponsive` or `Resource temporarily unavailable (os error 35)` confirms real contention, not a syntax or targeting mistake — retry the same command, don't start guessing at flags.
-4. Still stuck after that: `agent-browser pool recover`, then re-verify with `pool status` before retrying the original command.
-
-Provisioning-time caveat: bootstrapping several lanes at once can transiently crash an already-running lane's GPU/network subprocess. Chrome exits cleanly (`exit 0`) when that happens, and because every lane's plist uses `KeepAlive/SuccessfulExit=false`, launchd does **not** auto-restart a clean exit — it needs a manual `launchctl kickstart -k gui/$(id -u)/com.$(id -un).agent-browser-cdp.<lane>`. After any bulk lane-provisioning change, re-check `pool status` for every previously-healthy lane, not just the new ones.
-
-## Multi-agent edge cases
-
-- A lane is a serialization boundary, not a privacy boundary. Other profile tabs may exist.
-- One agent should retain one lane for a task; do not hop lanes mid-flow.
-- The wrapper waits for a lane rather than spawning more Chrome. A timeout is evidence of contention, not permission to bypass silently.
-- A stale lease may expire, but the task should still clean up normally. Do not wait for TTL as routine cleanup.
-- Opening additional URLs creates and switches to new owned tabs. Record every returned/observed tab ID.
-- Labels improve task-local clarity but do not authorize closing a label you did not create.
-- Persistent cookies/storage remain after lease release. Log out or mutate shared account state only when the user requested that outcome.
-
-### Delegation contract
-
-For each delegated browser mission, specify the desired lane (or `auto`), URL/domain boundary, account/workspace, authorized persistent effects, deterministic proof, and cleanup. The worker must discover its own tab ID and refs; IDs from the coordinator's lane are meaningless and can be dangerous.
-
-Parallelize only independent read flows or mutations against distinct state. If two workers would update the same account, form, record, or tab-dependent workflow, serialize them even when two lanes are available. The coordinator should verify the worker's final URL/DOM/error evidence rather than accepting “done.”
-
-## Verification checklist
-
-Before claiming a pool task complete:
-
-1. Verify expected URL/title or DOM state.
-2. Run `agent-browser errors` for UI/runtime work.
-3. List tabs and close only task-owned IDs/labels.
-4. Run exact `agent-browser close`.
-5. Run `agent-browser pool status` and confirm the owner no longer holds the lane.
-6. Report any persistent account/profile mutation and sensitive artifacts.
+Never kill shared Chrome/Patchright processes, edit the rendered Coolify compose, expose 8091 as a host port, or read unrelated profile/session data.

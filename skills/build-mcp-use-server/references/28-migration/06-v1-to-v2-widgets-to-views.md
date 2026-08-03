@@ -2,7 +2,7 @@
 
 *Read this to migrate MCP App widgets (v1) to Views (v2).*
 
-MCP Apps are renamed to clarify: Views are React components in `views/` directory; they render tool results. The entire interaction model changed.
+v1 widgets become v2 Views: React components under `views/` that render tool results. The MCP Apps standard remains the protocol; the mcp-use file layout, binding, hooks, state, and result channels changed.
 
 ## File layout and directory structure
 
@@ -52,19 +52,23 @@ export const search = server.tool(
   {
     name: "search",
     inputSchema: z.object({ query: z.string() }),
-    outputSchema: z.object({ query: z.string(), results: z.array(...) }),
+    outputSchema: z.object({ query: z.string(), count: z.number() }),
     view: {
       name: "product-search",           // Folder name under `views/`
       description: "Search results",    // Optional; resource description
       csp: { connectDomains: [...] },   // Optional CSP config
-      permissions: [...],               // Optional sandbox permissions
+      permissions: { camera: {} },      // Optional — object of named capabilities, not a string array
       prefersBorder: true,              // Optional host rendering hints
     },
   },
-  async ({ query }) => ({
-    content: [{ type: "text", text: `Found ${results.length} results` }],
-    structuredContent: { query, results: [...] },
-  })
+  async ({ query }) => {
+    const results = await searchProducts(query);
+    return {
+      content: [{ type: "text", text: `Found ${results.length} results` }],
+      structuredContent: { query, count: results.length }, // Model-visible, schema-checked
+      _meta: { results },                                    // View-only data
+    };
+  }
 );
 ```
 
@@ -72,7 +76,20 @@ export const search = server.tool(
 - `widget` → `view` (renamed field)
 - Removed `invoking`/`invoked` strings (no longer in protocol)
 - Added `outputSchema` (required for Views; enables type checking)
-- Remove `widget()` helper from result; return raw envelope with `structuredContent`
+- Remove `widget()` helper from result; return raw envelope with `structuredContent` and/or `_meta`
+
+**Visibility changed, not just syntax**: v1's `widget({ props, output })` kept `props` hidden from the model (only `output`'s text was model-visible). v2's `structuredContent` is validated against `outputSchema` **and sent to the model** — it is not a drop-in replacement for `props`. For View-only data that should stay out of model context, put it in the result's `_meta` field instead and read it with `useToolContext().meta`:
+
+```typescript
+async ({ query }) => {
+  const results = await search(query);
+  return {
+    content: [{ type: "text", text: `Found ${results.length} results` }],
+    structuredContent: { count: results.length },  // model-visible, outputSchema-checked
+    _meta: { results },                             // View-only, unchecked — closest match to v1 `props`
+  };
+}
+```
 
 ## View component: Hooks and providers
 
@@ -104,8 +121,12 @@ export default function SearchWidget() {
 
 **v2** (`view.tsx`):
 ```typescript
-import { useToolContext, useViewState, useViewTheme, ThemeProvider, ModelContext, ViewControls } from "mcp-use/react";
+import { useToolContext, useViewState, ThemeProvider, ModelContext } from "mcp-use/react";
 import type { ViewConfig } from "mcp-use/react";
+
+type SearchMeta = {
+  results: Array<{ id: string; name: string }>;
+};
 
 export const viewConfig: ViewConfig = {
   displayModes: ["inline", "fullscreen"],
@@ -114,16 +135,20 @@ export const viewConfig: ViewConfig = {
 
 export default function SearchView() {
   const ctx = useToolContext<"search">();
-  const [expanded, setExpanded] = useViewState<boolean>(false);
+  const [state, setState] = useViewState({ expanded: false }); // Root state MUST be an object
 
   if (ctx.status === "pending") return <ThemeProvider><p>Loading...</p></ThemeProvider>;
   if (ctx.status === "error") return <ThemeProvider><p>Error: {ctx.error.message}</p></ThemeProvider>;
 
-  const { query, results } = ctx.toolOutput;
+  const { query, count } = ctx.toolOutput;
+  const results = (ctx.meta as SearchMeta | undefined)?.results ?? [];
 
   return (
     <ThemeProvider>
-      <ModelContext content={`Showing ${results.length} results for "${query}"`}>
+      <ModelContext content={`Showing ${count} results for "${query}"`}>
+        <button onClick={() => setState({ expanded: !state.expanded })}>
+          {state.expanded ? "Collapse" : "Expand"}
+        </button>
         <ul>
           {results.map((r) => (
             <li key={r.id}>{r.name}</li>
@@ -137,10 +162,10 @@ export default function SearchView() {
 
 **Key changes**:
 - `useWidget()` → `useToolContext<"search">()` (typed by tool name)
-- Access data via `ctx.toolOutput` (from `structuredContent`), not `props`
-- `useWidgetState()` → `useViewState()` (same, renamed)
+- Access schema-backed, model-visible data via `ctx.toolOutput`; access View-only result data via `ctx.meta` (narrow/validate it yourself) instead of v1 `props`
+- `useWidgetState()` → `useViewState()` — **root state must now be a JSON-serializable object** (`{ expanded: false }`, not a bare `boolean`/`string`); it also cannot contain the reserved `_uiContext` key
 - `useWidgetTheme()` → `useViewTheme()` (same, renamed)
-- Remove `McpUseProvider` wrapper; use explicit providers: `<ThemeProvider>` + `<ErrorBoundary>`
+- Remove the aggregate `McpUseProvider`; the framework owns bootstrap, connection, resizing, and its required top-level error boundary. Compose optional presentation components such as `<ThemeProvider>`, `<ViewControls>`, or your own nested `<ErrorBoundary>` only when needed.
 - Add `<ModelContext>` to describe View state to the model (new pattern)
 - Export `viewConfig?: ViewConfig` (optional but recommended for display modes)
 - Status is now `"pending" | "ready" | "error"` (not `isPending` boolean)
@@ -196,13 +221,19 @@ const result = await callTool("get-details", { id: "123" });
 
 **v2**:
 ```typescript
-import { useCallTool } from "mcp-use/react";
-const search = useCallTool(searchToolRef); // Typed call
-const result = await search.callTool({ query: "widget" });
+import { useCallTool, useDynamicTool } from "mcp-use/react";
 
-// Or dynamic (untyped):
+// Typed call — pass the tool NAME as a string, not the imported ToolRef.
+// Types are derived automatically from mcp-env.d.ts's RegisteredTools map.
+// Do not `import { search } from "../../index.js"` into a View file — the
+// View bundle must not include server code.
+const details = useCallTool("get-details");
+const result = await details.callTool({ id: "123" });
+
+// Dynamic (untyped) — for tools registered from a loop/config/OpenAPI doc,
+// which cannot export a static ToolRef:
 const lookup = useDynamicTool<{ id: string }, { value: string }>("get-details");
-const result = await lookup.callTool({ id: "123" });
+const result2 = await lookup.callTool({ id: "123" });
 ```
 
 ## Assets and public files
@@ -241,15 +272,18 @@ export const search = server.tool(
       csp: {
         connectDomains: ["https://api.example.com"],
         resourceDomains: ["https://cdn.example.com"],
+        // Also available: frameDomains, baseUriDomains (4 categories total)
       },
-      permissions: ["allow-scripts", "allow-forms"],
+      // permissions is an object of named capabilities the view may request
+      // from the host, not an iframe `sandbox` attribute string list:
+      permissions: { camera: {}, microphone: {}, geolocation: {}, clipboardWrite: {} },
     },
   },
   async (...) => ({ ... })
 );
 ```
 
-CSP is merged from tool definition + env vars (`CSP_*_DOMAINS`) + auto-append (MCP origin).
+Merge order (high → low priority): author `view.csp` → `CSP_*_DOMAINS` env vars (or the `CSP_URLS` shortcut for all four categories) → MCP auto-append (`MCP_URL` → `connectDomains`; assets origin → `resourceDomains`).
 
 ## ViewConfig options
 

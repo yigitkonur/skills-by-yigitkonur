@@ -61,6 +61,7 @@ Describes what the user currently sees in natural language. Serializes to the `_
 
 **Declarative (JSX):**
 ```typescript
+import { useState } from "react";
 import { ModelContext } from "mcp-use/react";
 
 function Dashboard() {

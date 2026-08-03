@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **53 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend/cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **54 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend/cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 53-skill pack; Claude Code gets 52 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex gets the complete 54-skill pack; Claude Code gets 53 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 52 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 53 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -107,7 +107,7 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 - **[build-mcp-use-agent](skills/build-mcp-use-agent/)** — mcp-use `MCPAgent`: an llm picks & orchestrates mcp tools via `run`, `stream`, `streamEvents`.
 - **[build-clean-mcp-architecture](skills/build-clean-mcp-architecture/)** — clean architecture layer boundaries for typescript mcp-use/server code, import direction, dependency-cruiser gates.
 - **[convert-mcp-sdk-v1-to-v2](skills/convert-mcp-sdk-v1-to-v2/)** — port a v1 mcp server to the v2 split-package sdk: package renames, `ServerContext`, zod v4.
-- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — drive the `mcpc` cli (0.2.x) to test/debug/smoke-check an mcp server over stdio or streamable http.
+- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — drive the `mcpc` cli (0.6.x) to test/debug/smoke-check an mcp server over stdio or streamable http.
 - **[audit-agentic-mcp](skills/audit-agentic-mcp/)** — audit an mcp server for agent-readiness, or design a new one before code: framework, security, context posture.
 - **[audit-agentic-cli](skills/audit-agentic-cli/)** — audit/design a cli for agent consumption: stable json, exit codes, non-interactive flags, repair loops.
 

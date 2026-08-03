@@ -13,16 +13,17 @@ return {
 };
 ```
 
-Never throw exceptions from tool callbacks; return error envelopes instead.
+Prefer returning error envelopes over throwing — you control the message and avoid the generic conversion below. That said, an uncaught throw is not fatal: the SDK's `tools/call` handler wraps every tool execution in try/catch and converts any thrown error into `{ content: [{ type: "text", text: errorMessage }], isError: true }` automatically, with no logging and no crash. `errorMessage` is `error.message` for `Error` instances, or `String(error)` otherwise — so a thrown `Error("Not found")` becomes indistinguishable on the wire from `return { isError: true, content: [{ type: "text", text: "Not found" }] }`. The difference is control: a thrown error loses the chance to add context, pick a friendlier message, or attach recovery hints before the client sees it.
 
 ## When to error vs throw
 
 | Scenario | Action | Example |
 |----------|--------|---------|
-| Validation failed (caught before callback) | SDK auto-errors | Invalid input schema |
+| Input schema rejects arguments (before callback runs) | SDK converts the thrown validation error into `{ isError: true, content: [...] }` — same try/catch as an in-callback throw | Missing required field |
 | Auth denied (token expired) | Return error | `{ isError: true, content: [...] }` |
 | Dependency unavailable (API down) | Return error | `isError: true` + helpful message |
-| Unhandled exception in callback | Logs, SDK wraps as error | Crash in async handler |
+| Unhandled exception in callback | SDK catches it and converts to `{ isError: true, content: [{ type: "text", text: error.message }] }` — no logging, no crash, no propagation to the process | A `db.query()` call throws |
+| Tool name not found / tool disabled | Raw JSON-RPC error response (`InvalidParams`), not a tool-domain `isError` result — this check runs *before* the try/catch | Client calls an unregistered or disabled tool name |
 
 ## Example: graceful degradation
 
@@ -63,17 +64,17 @@ server.tool(
 
 ## Error in structured context
 
-Errors **do not** include `structuredContent`; keep messages plain text:
+Keep error results plain text and omit `structuredContent`. The SDK's output-schema check (`validateToolOutput`) skips validation entirely when `isError: true`, so a stray `structuredContent` on an error result is not checked against `outputSchema` — but it is **not stripped** either; it still goes out on the wire and may confuse a client expecting the schema shape. Leave it off:
 
 ```typescript
-// Wrong
+// Avoid — structuredContent survives on the wire, unvalidated, and may not match outputSchema
 return {
   isError: true,
   content: [{ type: "text", text: "..." }],
-  structuredContent: { code: 404 },  // SDK ignores
+  structuredContent: { code: 404 },
 };
 
-// Right
+// Prefer
 return {
   isError: true,
   content: [{ type: "text", text: "Not found (error code 404)" }],
@@ -82,27 +83,39 @@ return {
 
 ## Auth errors
 
-When `ctx.auth` is missing or insufficient:
+With OAuth configured, unauthenticated HTTP requests are rejected before a tool callback runs, so `ctx.auth` is required inside the callback. Check the authenticated caller's scopes, permissions, or typed user fields:
 
 ```typescript
-server.tool(
+import { MCPServer } from "mcp-use";
+import {
+  oauthClerkProvider,
+  type ClerkOAuthUser,
+} from "mcp-use/oauth/clerk";
+import { z } from "zod";
+
+const authServer = new MCPServer<ClerkOAuthUser>({
+  name: "admin-tools",
+  version: "1.0.0",
+  oauth: oauthClerkProvider({
+    frontendApiUrl: "https://example.clerk.accounts.dev",
+  }),
+});
+
+authServer.tool(
   { name: "admin-action", inputSchema: z.object({ id: z.string() }) },
   async ({ id }, ctx) => {
-    if (!ctx.auth) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: "Unauthenticated. Please log in." }],
-      };
-    }
     if (!ctx.auth.permissions.includes("admin")) {
       return {
         isError: true,
         content: [{ type: "text", text: "Insufficient permissions (requires admin)" }],
       };
     }
-    // Continue...
+
+    return {
+      content: [{ type: "text", text: `Authorized admin action for ${id}` }],
+    };
   }
 );
 ```
 
-Do not throw; return error.
+Return a tool-domain error for insufficient authorization. Do not add an impossible `if (!ctx.auth)` branch to an OAuth-authenticated callback.
