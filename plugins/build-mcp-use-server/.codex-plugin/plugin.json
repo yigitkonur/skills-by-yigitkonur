@@ -1,6 +1,6 @@
 {
   "name": "build-mcp-use-server",
-  "version": "1.0.43",
+  "version": "1.0.44",
   "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers.",
   "author": {
     "name": "Yigit Konur",
