@@ -57,6 +57,24 @@ return {
 
 Helpers are marked `@deprecated` in `mcp-use@2.0.0-beta.66`. Plan migration to raw envelopes for new code.
 
+## Do not copy tool envelopes into resource callbacks
+
+The helpers above build **tool** results (`CallToolResult`: `content` array, `structuredContent`, `isError`). v1 code often reuses the same helper inside a `server.resource(...)` / `server.resourceTemplate(...)` callback — but resource reads return a **different** envelope, `{ contents: [...] }` (singular `contents`, each item `{ uri, mimeType?, text? | blob? }`). A tool envelope is not a valid resource result.
+
+```typescript
+// ✗ Wrong — tool envelope inside a resource callback
+server.resource({ name: "settings", uri: "app://settings" }, async (uri) => {
+  return { content: [{ type: "text", text: "{...}" }] }; // tool shape — invalid here
+});
+
+// ✓ Correct — resource envelope
+server.resource({ name: "settings", uri: "app://settings" }, async (uri) => ({
+  contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ theme: "dark" }) }],
+}));
+```
+
+Map helper usage by call site: `text()`/`object()`/`markdown()` in a **tool** → raw `CallToolResult`; in a **resource** → raw `{ contents }`. See `../06-resources/01-overview.md`.
+
 ## Helper implementation (for reference)
 
 Helpers are thin wrappers returning raw envelopes. No logic depends on them; SDK accepts both forms equally.

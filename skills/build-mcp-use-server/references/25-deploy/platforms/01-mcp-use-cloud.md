@@ -100,6 +100,20 @@ git commit -m "chore: track cloud deployment"
 git push
 ```
 
+## Migrating from a v1 `.mcp-use/project.json`
+
+CLI 4 (beta.15) reads **only** `.mcp-use/cloud/link.json` — it does **not** consume the older `.mcp-use/project.json` link file. If your project still has `project.json`, do not run `mcp-use deploy` blindly: with no recognized link, the CLI may create a **new** cloud server instead of redeploying the existing one.
+
+Safe path:
+
+1. Identify the existing server by slug in the Manufact dashboard, or by `serverId` in your deploy automation.
+2. If you have a server ID, let the CLI regenerate the link by targeting it explicitly, or create the link file yourself at `.mcp-use/cloud/link.json` with the correct `organizationId`, `serverId`, and `serverSlug` (fields match what `mcp-use deploy` writes).
+3. Delete the stale `.mcp-use/project.json` after the new link works, then redeploy and confirm it targets the same server ID (not a new one).
+
+## Direct cloud API automation
+
+Some production scripts bypass the CLI and call the Manufact cloud REST API directly (`https://cloud.mcp-use.com/api/v1/...`) with an `MCP_USE_API_KEY`. That is not the supported beta.15 surface: the documented, version-pinned contract is the CLI's JSON mode (`mcp-use deploy --json`, `mcp-use deployments get <id>`, `mcp-use servers ...`). If you keep direct-API automation, you must re-verify every endpoint, header, and response field against the current cloud API yourself — it can drift independently of the shipped CLI. Prefer the CLI JSON commands for CI so the client contract is the one under version control.
+
 ## Connect a Client
 
 Copy the exact generated MCP URL from the Manufact dashboard — never construct it from the slug:

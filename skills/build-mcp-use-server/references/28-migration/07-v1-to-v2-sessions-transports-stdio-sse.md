@@ -42,6 +42,49 @@ export const tool = server.tool(..., async (input, ctx) => {
 
 **Migration rule**: Replace all `ctx.session` reads/writes with application-owned storage keyed by verified identity (`ctx.auth.user.id`) or explicit request parameters.
 
+## The full v1 session-runtime family is removed (no v2 equivalent)
+
+beta.66 ships **none** of v1's stateful transport. Every one of these is gone — there is no renamed import, only a redesign:
+
+- `InMemorySessionStore`, `FileSystemSessionStore`, `RedisSessionStore`
+- `RedisStreamManager`
+- `MCPServer` config keys `sessionStore`, `streamManager`, `stateless: false`, `sessionIdleTimeoutMs`
+- `ctx.session` (and `ctx.session.sessionId`)
+- Session introspection: `server.getActiveSessions()`, `server.getServerForSession()`
+- Per-session capability injection: `server.registerCapabilities(...)` / runtime capability patching
+
+Check for all of them during migration — they fail as **type/config errors**, not imports, so an import scan alone will miss them:
+
+```bash
+grep -rnE 'stateless|sessionStore|streamManager|sessionIdleTimeout|RedisSessionStore|RedisStreamManager|InMemorySessionStore|FileSystemSessionStore|ctx\.session|getActiveSessions|getServerForSession|registerCapabilities' src/ index.ts
+```
+
+**Distinguish two uses of Redis before deleting anything.** v1 protocol state (sessions, stream resume) is obsolete in v2 — remove the `RedisSessionStore`/`RedisStreamManager` that fed `MCPServer`. But an **application** Redis store (a resume cache, ledger, or idempotency store keyed by your own ID) is still valid — keep it as ordinary application state outside the server config. Do not conflate the two.
+
+**Identity key when there is no OAuth.** The rule "key storage by `ctx.auth.user.id`" only works if your server authenticates. A v1 project that used a transport session ID as its identity for unauthenticated clients needs a replacement identity:
+
+| v1 identity | v2 replacement |
+|---|---|
+| Authenticated user | `ctx.auth.user.id` (unchanged pattern) |
+| Unauthenticated, correlation needed | Client passes a durable trace/session token as a tool **input parameter** (or mint one server-side and return it; client echoes it back). Validate/sanitize like any input. |
+| Multi-round wizard state | `createRequestStateCodec` + `requestState` (signed, tamper-evident) — see below |
+| Anonymous + no correlation | Stateless — no storage |
+
+```typescript
+// Unauthenticated correlation via explicit input token
+export const run = server.tool(
+  { name: "run", inputSchema: z.object({ task: z.string(), traceId: z.string().optional() }), outputSchema: ... },
+  async ({ task, traceId }, ctx) => {
+    const id = traceId ?? crypto.randomUUID();
+    await db.ledger.append(id, task);       // application store, not a session store
+    return { content: [...], structuredContent: { traceId: id, ... } };
+  }
+);
+```
+
+If you patched internal session factories (`getServerForSession`) or called `registerCapabilities()` at runtime, that behavior **cannot be ported** — v2 builds the per-request MCP instance from the registry and exposes no public hook. Expose the same information through tools/resources, set static capability text via the `instructions` constructor field, or drop to the low-level `@modelcontextprotocol/server` SDK only if you own the whole handler.
+
+
 ## State migration patterns
 
 | v1 session use | v2 replacement |
