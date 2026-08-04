@@ -1,6 +1,6 @@
 {
   "name": "run-codex-review-loop",
-  "version": "1.0.51",
+  "version": "1.0.52",
   "description": "Use skill if you are running repeatable Codex reviews across lenses or branches, optionally verifying and fixing confirmed findings in isolated worktrees.",
   "author": {
     "name": "Yigit Konur",
