@@ -22,7 +22,7 @@ The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.
 
 Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a Claude-compatible skill in exactly one `GROUPS` bundle; place a runtime-specific Codex skill in `CODEX_ONLY_SKILLS` and no Claude bundle.
 
-**Agents:** the internet-researcher subagents live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Keeping them in `subagents/` means only the entries that explicitly set `"agents": ["./subagents/claude/"]` ship them (`yk-researchers`, `yk-research`, `yk-everything`). Never rename `subagents/` back to `agents/`.
+**Agents:** subagent suites live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Marketplace entries reference explicit agent-file lists (`RESEARCHER_AGENTS` / `BROWSER_AGENTS` in `gen-marketplace.py`, never a bare folder): the internet-researcher suite ships with `yk-researchers`, `yk-research`, and `yk-everything`; the agent-browser tester/extractor suite ships with `yk-automation`, the `run-agent-browser` per-skill plugin, and `yk-everything`. A new agent file must be added to the matching list (or a new one) in `gen-marketplace.py` or it ships nowhere. Never rename `subagents/` back to `agents/`.
 
 **Versioning:** `VERSION` is the single source of truth; `gen-marketplace.py` stamps it onto every plugin entry, and `.github/workflows/version-bump.yml` patch-bumps it only after an explicit confirmed manual dispatch; routine pushes do nothing.
 
@@ -42,9 +42,9 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a 
 │   ├── gen-marketplace.py          # Generates .claude-plugin/marketplace.json from skills/
 │   └── bump-version.py             # Bumps VERSION patch + regenerates marketplace (CI)
 ├── VERSION                         # Single source of truth for plugin versions (CI-bumped)
-├── subagents/                      # Internet-researcher subagents (NOT auto-discovered)
-│   ├── claude/                     # Claude Code variants — shipped by yk-researchers/-research/-everything
-│   └── codex/                      # Codex variants — for ~/.codex/agents, not the marketplace
+├── subagents/                      # Subagent suites (NOT auto-discovered)
+│   ├── claude/                     # Claude Code variants — researcher + agent-browser suites, shipped via explicit agents lists
+│   └── codex/                      # Codex variants (researchers only) — for ~/.codex/agents, not the marketplace
 ├── .agents/plugins/
 │   └── marketplace.json            # Generated — Codex plugin marketplace catalog (do not hand-edit)
 ├── .claude-plugin/

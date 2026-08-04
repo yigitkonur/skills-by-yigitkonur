@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 47 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 47 skills plus the internet-researcher and agent-browser subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.51",
       "category": "bundle",
       "strict": false,
@@ -66,7 +66,14 @@
         "./skills/update-agent-config"
       ],
       "agents": [
-        "./subagents/claude/"
+        "./subagents/claude/internet-researcher-api-docs.md",
+        "./subagents/claude/internet-researcher-debug-stuck.md",
+        "./subagents/claude/internet-researcher-generic.md",
+        "./subagents/claude/internet-researcher-quick.md",
+        "./subagents/claude/internet-researcher-shipping-pattern.md",
+        "./subagents/claude/internet-researcher-tech-choice.md",
+        "./subagents/claude/agent-browser-tester.md",
+        "./subagents/claude/agent-browser-extractor.md"
       ]
     },
     {
@@ -81,7 +88,12 @@
       "strict": false,
       "skills": [],
       "agents": [
-        "./subagents/claude/"
+        "./subagents/claude/internet-researcher-api-docs.md",
+        "./subagents/claude/internet-researcher-debug-stuck.md",
+        "./subagents/claude/internet-researcher-generic.md",
+        "./subagents/claude/internet-researcher-quick.md",
+        "./subagents/claude/internet-researcher-shipping-pattern.md",
+        "./subagents/claude/internet-researcher-tech-choice.md"
       ]
     },
     {
@@ -193,13 +205,18 @@
         "./skills/run-github-scout"
       ],
       "agents": [
-        "./subagents/claude/"
+        "./subagents/claude/internet-researcher-api-docs.md",
+        "./subagents/claude/internet-researcher-debug-stuck.md",
+        "./subagents/claude/internet-researcher-generic.md",
+        "./subagents/claude/internet-researcher-quick.md",
+        "./subagents/claude/internet-researcher-shipping-pattern.md",
+        "./subagents/claude/internet-researcher-tech-choice.md"
       ]
     },
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing.",
+      "description": "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
       "version": "1.0.51",
       "category": "bundle",
       "tags": [
@@ -211,6 +228,10 @@
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
         "./skills/mobilerun-control"
+      ],
+      "agents": [
+        "./subagents/claude/agent-browser-tester.md",
+        "./subagents/claude/agent-browser-extractor.md"
       ]
     },
     {
@@ -660,6 +681,10 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-browser"
+      ],
+      "agents": [
+        "./subagents/claude/agent-browser-tester.md",
+        "./subagents/claude/agent-browser-extractor.md"
       ]
     },
     {

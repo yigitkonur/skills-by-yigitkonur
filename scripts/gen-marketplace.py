@@ -113,7 +113,7 @@ GROUPS = {
     ),
     "yk-automation": (
         "automation",
-        "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing.",
+        "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
         ["herdr", "run-agent-browser", "run-agent-device", "mobilerun-control"],
     ),
     "yk-config": (
@@ -144,9 +144,20 @@ GROUPS = {
     ),
 }
 
-# Bundles that also ship the internet-researcher subagents from subagents/claude/.
-AGENT_BUNDLES = {"yk-research"}
-CLAUDE_AGENTS = ["./subagents/claude/"]
+# Subagent suites in subagents/claude/. Explicit file lists — a bare folder
+# reference would leak every future agent into the researcher-only entries.
+RESEARCHER_AGENTS = [
+    f"./subagents/claude/internet-researcher-{k}.md"
+    for k in ["api-docs", "debug-stuck", "generic", "quick", "shipping-pattern", "tech-choice"]
+]
+BROWSER_AGENTS = [
+    "./subagents/claude/agent-browser-tester.md",
+    "./subagents/claude/agent-browser-extractor.md",
+]
+# bundle -> agent files it ships alongside its skills
+AGENT_BUNDLES = {"yk-research": RESEARCHER_AGENTS, "yk-automation": BROWSER_AGENTS}
+# skill -> agent files its per-skill plugin ships (agents that require the skill)
+SKILL_AGENTS = {"run-agent-browser": BROWSER_AGENTS}
 
 
 def load_validator():
@@ -205,6 +216,16 @@ def build_claude_marketplace():
         print("marketplace generation failed:\n  " + "\n  ".join(problems), file=sys.stderr)
         sys.exit(2)
 
+    # Every referenced agent file must exist — no dangling agents lists.
+    missing_agents = [
+        p
+        for p in RESEARCHER_AGENTS + BROWSER_AGENTS
+        if not os.path.isfile(os.path.join(REPO_ROOT, p))
+    ]
+    if missing_agents:
+        print(f"marketplace generation failed:\n  agent files missing: {missing_agents}", file=sys.stderr)
+        sys.exit(2)
+
     plugins = []
     ver = version()
 
@@ -213,14 +234,14 @@ def build_claude_marketplace():
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher and agent-browser subagents. Heaviest context cost; prefer a themed bundle or single skill.".format(
                 len(skills)
             ),
             "version": ver,
             "category": "bundle",
             "strict": False,
             "skills": [f"./skills/{s}" for s in skills],
-            "agents": CLAUDE_AGENTS,
+            "agents": RESEARCHER_AGENTS + BROWSER_AGENTS,
         }
     )
 
@@ -235,7 +256,7 @@ def build_claude_marketplace():
             "tags": ["agents"],
             "strict": False,
             "skills": [],
-            "agents": CLAUDE_AGENTS,
+            "agents": RESEARCHER_AGENTS,
         }
     )
 
@@ -252,23 +273,24 @@ def build_claude_marketplace():
             "skills": [f"./skills/{m}" for m in members],
         }
         if key in AGENT_BUNDLES:
-            entry["agents"] = CLAUDE_AGENTS
+            entry["agents"] = AGENT_BUNDLES[key]
         plugins.append(entry)
 
     # 4) one plugin per skill (fine-grained install/uninstall)
     skill_to_cat = skill_categories()
     for s in skills:
-        plugins.append(
-            {
-                "name": s,
-                "source": "./",
-                "description": skill_desc(v, s),
-                "version": ver,
-                "category": skill_to_cat[s],
-                "strict": False,
-                "skills": [f"./skills/{s}"],
-            }
-        )
+        entry = {
+            "name": s,
+            "source": "./",
+            "description": skill_desc(v, s),
+            "version": ver,
+            "category": skill_to_cat[s],
+            "strict": False,
+            "skills": [f"./skills/{s}"],
+        }
+        if s in SKILL_AGENTS:
+            entry["agents"] = SKILL_AGENTS[s]
+        plugins.append(entry)
 
     return {
         "name": MARKETPLACE_NAME,

@@ -1,6 +1,6 @@
-# Internet Researcher Agent Suite — Claude + Codex
+# Subagent Suites — Claude + Codex
 
-Six evidence-grounded research agents for developers and AI coding agents stuck on technical problems with public solutions. Ships in two runtime flavors — drop in to `~/.claude/agents/` or `~/.codex/agents/` for the matching CLI.
+Two suites live here. The **internet-researcher suite**: six evidence-grounded research agents for developers and AI coding agents stuck on technical problems with public solutions, shipped in two runtime flavors — drop in to `~/.claude/agents/` or `~/.codex/agents/` for the matching CLI. The **agent-browser operator suite**: two Claude-only agents that drive the `run-agent-browser` skill for browser testing and extraction (see their section below).
 
 ## Layout
 
@@ -13,9 +13,11 @@ subagents/
 │   ├── internet-researcher-tech-choice.md
 │   ├── internet-researcher-debug-stuck.md
 │   ├── internet-researcher-api-docs.md
-│   └── internet-researcher-shipping-pattern.md
+│   ├── internet-researcher-shipping-pattern.md
+│   ├── agent-browser-tester.md
+│   └── agent-browser-extractor.md
 └── codex/              Codex CLI runtime (frontmatter: name, description; <codex_agent_role> block)
-    └── internet-researcher-*.md  (same six, format adapted)
+    └── internet-researcher-*.md  (researchers only, format adapted)
 ```
 
 ## Why six, not twelve
@@ -41,6 +43,17 @@ Edge needs (license/ToS, CVE/security, RFC spec lookup, incident post-mortems, O
 | `internet-researcher-shipping-pattern` | You need real production examples — userscripts, extensions, leaked source, OSS code that ships X. |
 
 All descriptions are ≤25 words and follow the same "Use this agent if … See body for triggers" shape.
+
+## The two browser operator agents (Claude-only)
+
+| Agent | Use it if |
+|---|---|
+| `agent-browser-tester` | A real browser must test or verify a web app — Verify (prove a change works, with screenshot + console evidence), Journey (walk a plain-English scenario), or Audit (checklist sweep of pages). |
+| `agent-browser-extractor` | Content must come out of known pages that need rendering, login, scrolling, or clicks — structured scraping into tables/JSON, or reference UX walkthroughs with screenshots. |
+
+Both wrap the `run-agent-browser` skill: they invoke it as their first action, carry a self-contained distillation of its tier ladder (plain local → Steel CDP → cloud providers) and live-REPL discipline as fallback, and return evidence-based reports (tester: per-check pass/fail; extractor: dataset + per-fact provenance). They ship through the marketplace with `yk-automation`, the `run-agent-browser` per-skill plugin, and `yk-everything`.
+
+Unlike the researchers, their descriptions are long and trigger-phrase-rich by design — dispatch matches on literal user wording ("is prod healthy", "scrape X from this URL"), so the extra words buy triggering accuracy. No Codex variants: their bodies depend on the Claude Code Skill tool and host tier config, which the Codex `codex exec` agent format doesn't carry.
 
 ## Model assignments (Codex variant)
 
