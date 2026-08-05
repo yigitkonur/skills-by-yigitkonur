@@ -62,9 +62,10 @@ GROUPS = {
     ),
     "yk-frontend": (
         "frontend",
-        "Frontend rebuild & audit — pixel-faithful URL→Next.js, UI/UX/Laws-of-UX audits.",
+        "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, UI/UX/Laws-of-UX audits.",
         [
             "convert-url-to-nextjs",
+            "optimize-nextjs-fluidity",
             "audit-ux-laws",
             "audit-ui-and-save-files",
             "audit-ux-and-save-files",
@@ -154,10 +155,23 @@ BROWSER_AGENTS = [
     "./subagents/claude/agent-browser-tester.md",
     "./subagents/claude/agent-browser-extractor.md",
 ]
+NEXTJS_PERF_AGENTS = [
+    "./subagents/claude/nextjs-perf-auditor.md",
+    "./subagents/claude/nextjs-perf-fixer.md",
+]
+# every agent list that must exist on disk — extend this when adding a suite
+ALL_AGENT_LISTS = RESEARCHER_AGENTS + BROWSER_AGENTS + NEXTJS_PERF_AGENTS
 # bundle -> agent files it ships alongside its skills
-AGENT_BUNDLES = {"yk-research": RESEARCHER_AGENTS, "yk-automation": BROWSER_AGENTS}
+AGENT_BUNDLES = {
+    "yk-research": RESEARCHER_AGENTS,
+    "yk-automation": BROWSER_AGENTS,
+    "yk-frontend": NEXTJS_PERF_AGENTS,
+}
 # skill -> agent files its per-skill plugin ships (agents that require the skill)
-SKILL_AGENTS = {"run-agent-browser": BROWSER_AGENTS}
+SKILL_AGENTS = {
+    "run-agent-browser": BROWSER_AGENTS,
+    "optimize-nextjs-fluidity": NEXTJS_PERF_AGENTS,
+}
 
 
 def load_validator():
@@ -219,7 +233,7 @@ def build_claude_marketplace():
     # Every referenced agent file must exist — no dangling agents lists.
     missing_agents = [
         p
-        for p in RESEARCHER_AGENTS + BROWSER_AGENTS
+        for p in ALL_AGENT_LISTS
         if not os.path.isfile(os.path.join(REPO_ROOT, p))
     ]
     if missing_agents:
@@ -234,14 +248,14 @@ def build_claude_marketplace():
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher and agent-browser subagents. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.".format(
                 len(skills)
             ),
             "version": ver,
             "category": "bundle",
             "strict": False,
             "skills": [f"./skills/{s}" for s in skills],
-            "agents": RESEARCHER_AGENTS + BROWSER_AGENTS,
+            "agents": ALL_AGENT_LISTS,
         }
     )
 

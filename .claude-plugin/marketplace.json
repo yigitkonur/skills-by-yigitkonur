@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 47 skills plus the internet-researcher and agent-browser subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 48 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.52",
       "category": "bundle",
       "strict": false,
@@ -50,6 +50,7 @@
         "./skills/init-jean-json",
         "./skills/init-makefiles",
         "./skills/mobilerun-control",
+        "./skills/optimize-nextjs-fluidity",
         "./skills/publish-npm-package",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
@@ -73,7 +74,9 @@
         "./subagents/claude/internet-researcher-shipping-pattern.md",
         "./subagents/claude/internet-researcher-tech-choice.md",
         "./subagents/claude/agent-browser-tester.md",
-        "./subagents/claude/agent-browser-extractor.md"
+        "./subagents/claude/agent-browser-extractor.md",
+        "./subagents/claude/nextjs-perf-auditor.md",
+        "./subagents/claude/nextjs-perf-fixer.md"
       ]
     },
     {
@@ -115,7 +118,7 @@
     {
       "name": "yk-frontend",
       "source": "./",
-      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, UI/UX/Laws-of-UX audits.",
+      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, UI/UX/Laws-of-UX audits.",
       "version": "1.0.52",
       "category": "bundle",
       "tags": [
@@ -124,9 +127,14 @@
       "strict": false,
       "skills": [
         "./skills/convert-url-to-nextjs",
+        "./skills/optimize-nextjs-fluidity",
         "./skills/audit-ux-laws",
         "./skills/audit-ui-and-save-files",
         "./skills/audit-ux-and-save-files"
+      ],
+      "agents": [
+        "./subagents/claude/nextjs-perf-auditor.md",
+        "./subagents/claude/nextjs-perf-fixer.md"
       ]
     },
     {
@@ -659,6 +667,21 @@
       "strict": false,
       "skills": [
         "./skills/mobilerun-control"
+      ]
+    },
+    {
+      "name": "optimize-nextjs-fluidity",
+      "source": "./",
+      "description": "Use if auditing and optimizing a Next.js App Router repo for performance and fluidity, producing a version-gated task plan the agent then executes.",
+      "version": "1.0.52",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/optimize-nextjs-fluidity"
+      ],
+      "agents": [
+        "./subagents/claude/nextjs-perf-auditor.md",
+        "./subagents/claude/nextjs-perf-fixer.md"
       ]
     },
     {
