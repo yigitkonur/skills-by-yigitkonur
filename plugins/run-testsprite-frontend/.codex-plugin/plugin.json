@@ -1,6 +1,6 @@
 {
   "name": "run-testsprite-frontend",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use skill if you are creating, running, debugging, or release-gating TestSprite frontend browser tests, including public-target CLI or localhost MCP routing; not backend, load, security, or local-unit testing.",
   "author": {
     "name": "Yigit Konur",

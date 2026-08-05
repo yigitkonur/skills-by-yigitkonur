@@ -1,6 +1,6 @@
 {
   "name": "test-by-mcpc-cli",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
   "author": {
     "name": "Yigit Konur",

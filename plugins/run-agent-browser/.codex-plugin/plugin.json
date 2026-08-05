@@ -1,6 +1,6 @@
 {
   "name": "run-agent-browser",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use if driving agent-browser for webpage interaction, screenshots, @ref snapshots, tabs, UI verification, CDP attach, Steel Browser, or cloud providers (Browser Use, Browserbase, Browserless, Kernel).",
   "author": {
     "name": "Yigit Konur",

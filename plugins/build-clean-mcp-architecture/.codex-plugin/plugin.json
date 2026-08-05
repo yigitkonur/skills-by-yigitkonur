@@ -1,6 +1,6 @@
 {
   "name": "build-clean-mcp-architecture",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use if structuring or auditing TypeScript mcp-use/server code for Clean Architecture boundaries.",
   "author": {
     "name": "Yigit Konur",

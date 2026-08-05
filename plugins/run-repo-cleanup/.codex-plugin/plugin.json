@@ -1,6 +1,6 @@
 {
   "name": "run-repo-cleanup",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use if finishing a project — review and merge every branch/worktree into main, retire dead branches.",
   "author": {
     "name": "Yigit Konur",

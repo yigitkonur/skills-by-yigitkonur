@@ -1,6 +1,6 @@
 {
   "name": "optimize-nextjs-fluidity",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "Use if auditing and optimizing a Next.js App Router repo for performance and fluidity, producing a version-gated task plan the agent then executes.",
   "author": {
     "name": "Yigit Konur",
