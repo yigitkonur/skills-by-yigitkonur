@@ -1,0 +1,35 @@
+{
+  "name": "optimize-nextjs-fluidity",
+  "version": "1.0.52",
+  "description": "Use if auditing and optimizing a Next.js App Router repo for performance and fluidity, producing a version-gated task plan the agent then executes.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "optimize-nextjs-fluidity"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "optimize-nextjs-fluidity",
+    "shortDescription": "Use if auditing and optimizing a Next.js App Router repo for performance and fluidity, producing a version-gated task plan the agent then executes.",
+    "longDescription": "Install only the optimize-nextjs-fluidity workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the optimize-nextjs-fluidity skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

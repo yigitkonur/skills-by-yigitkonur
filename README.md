@@ -143,6 +143,7 @@ generate or refresh the config / instruction files another tool reads.
 rebuild a live site, rip its design, or audit a running ui/ux.
 
 - **[convert-url-to-nextjs](skills/convert-url-to-nextjs/)** — rebuild a deployed site as-is pixel-faithful as a next.js project from a live url — the "we lost the frontend repo" recovery. l0+l1 crawl + back-to-back agent-browser verification.
+- **[optimize-nextjs-fluidity](skills/optimize-nextjs-fluidity/)** — audit + optimize a next.js app router repo for performance and fluidity, gating every practice against the *installed* next version, planning one task per file in `nextjs-enhancement/`, then executing the reversible ones.
 - **[audit-ux-laws](skills/audit-ux-laws/)** — audit ui against the 30 laws of ux (fitts's, hick's, miller's, jakob's, gestalt, choice overload, cognitive load) with critical/minor severity + code fixes.
 - **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — visual ui audit across pages/viewports with browser screenshots, per-bug findings to `css-issues/[yy-mm-dd]/...`, ending with an approval-gated fix-subagent plan.
 - **[audit-ux-and-save-files](skills/audit-ux-and-save-files/)** — usability audit from real personas walking their journeys, per-issue findings to `ux-findings/[yy-mm-dd]/...`, ending with a prioritized recommendations report (reports, doesn't fix).

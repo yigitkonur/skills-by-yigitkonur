@@ -413,6 +413,18 @@
       "category": "Productivity"
     },
     {
+      "name": "optimize-nextjs-fluidity",
+      "source": {
+        "source": "local",
+        "path": "./plugins/optimize-nextjs-fluidity"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "publish-npm-package",
       "source": {
         "source": "local",
