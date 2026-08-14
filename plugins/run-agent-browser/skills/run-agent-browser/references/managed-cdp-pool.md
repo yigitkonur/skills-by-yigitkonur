@@ -8,7 +8,7 @@ Despite the historical filename, this service is **not a CDP pool for agent-brow
 
 | Property | Current value |
 |---|---|
-| Coolify project | `zeogen` |
+| Coolify project | `cloud-app` |
 | Coolify application/resource UUID | `uh4q7gub10k6ffbgawcsvxef` |
 | Container | `patchright-browserpool-uh4q7gub10k6ffbgawcsvxef-042104642940` |
 | Internal port | `8091` |

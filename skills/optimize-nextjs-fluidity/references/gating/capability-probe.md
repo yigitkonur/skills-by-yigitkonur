@@ -75,7 +75,7 @@ Probe these before any recommendation touching them. (Grouped by the domain that
 Absence of a key in this table is not permission to skip probing — probe any key a task
 would add or remove.
 
-## Worked example (real, `../zeo-website`, captured during design)
+## Worked example (real, `../marketing-site`, captured during design)
 
 ```
 installed next: 16.2.9        declared: 16.2.9        react: 19.2.7

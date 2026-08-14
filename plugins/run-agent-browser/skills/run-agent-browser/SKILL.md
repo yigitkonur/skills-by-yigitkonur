@@ -81,7 +81,7 @@ Read **`references/cdp-and-steel.md`** before changing endpoints or diagnosing a
 ```bash
 source "$HOME/.config/steel-browser-cdp.env"   # no-op if missing — then ask user / deploy
 # If STEEL_AGENT_BROWSER_CDP is empty: ask user for a CDP websocket URL, or offer to deploy Steel
-# (deploy path: Coolify compose in zeo-crawler-omniroute/deploy/steel-browser/ — use deploy-coolify-cloud skill)
+# (deploy path: Coolify compose in crawler-service/deploy/steel-browser/ — use deploy-coolify-cloud skill)
 
 SESSION="steel-$(agent-browser session id --scope cwd --prefix task)"
 

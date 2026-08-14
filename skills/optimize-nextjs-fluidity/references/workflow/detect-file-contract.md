@@ -78,6 +78,6 @@ Fix recipes for this domain live in `references/fix/<domain>.md`.
    canonical example).
 2. **Commands must be copy-pastable.** A subagent should be able to run each command
    verbatim against the target repo root.
-3. **Every domain gets a false-positive section.** The zeo recon proved this is not
+3. **Every domain gets a false-positive section.** The recon proved this is not
    optional (`export const dynamic` inside a comment, RSS routes containing `<img>`, etc.).
 4. **Zero findings is valid.** If the repo already conforms, the subagent writes nothing.
