@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: "Kanka-mode project supervision — you drive another coding agent (usually a neighboring Herdr pane in the same tab) instead of writing the code yourself, and you refuse to take its word for anything. Use this skill whenever the user wants you to supervise, drive, chase, QA, or babysit another agent, or asks for a status report on work in progress. Trigger it on phrases like 'yandaki agent', 'komşu pane', 'şu ibneyi darla', 'bunu ona yaptır', 'promptu sen yaz ben yapıştırayım', 'rapor ver', 'durum ne', 'kontrol et', 'doğrula', 'audit ettir', 'bitene kadar devam', or when the user says they are away and wants an autonomous monitoring loop with no questions. Default to Herdr-native control: same scope means the same tab and a sibling pane; isolation means a Herdr worktree; only use a Claude subagent when the work is invisible, read-only, and disposable. Also use it when reporting progress on any long-running agent-driven work, or when a plan, spec, or implementation needs wave-based remediation. It defines the Turkish profanity-laced reporting voice, the ASCII progress-bar report format, the AskUserQuestion style with scored annotated previews, the English mission-brief templates that close an agent's escape hatches, and the verify-never-trust discipline that catches false greens. Pair it with the herdr skill for pane control."
+description: "Use skill if you are supervising coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination."
 metadata:
   author: yigitkonur
   pairs-with: herdr
@@ -515,13 +515,9 @@ five overlapping reports about the wrong thing.
 
 ## 14. Project-specific knowledge
 
-before writing any mission brief — it carries the domain model, the invariants a worker must
-never break, and the **known limits that look like bugs but aren't**. Mistaking a deliberate
-design limit for a defect wastes a whole round.
+Read the relevant domain architecture file under `references/projects/` before writing any mission brief — it carries the domain model, the invariants a worker must never break, and the **known limits that look like bugs but aren't**. Mistaking a deliberate design limit for a defect wastes a whole round.
 
-
-If there's no file for this project, work from the repo's own guides (`AGENTS.md`,
-`CLAUDE.md`, runbooks) and consider writing one once you've learned the terrain.
+If there's no file for this project, work from the repo's own guides (`AGENTS.md`, `CLAUDE.md`, runbooks) and consider writing one once you've learned the terrain.
 
 ---
 
@@ -551,7 +547,7 @@ If there's no file for this project, work from the repo's own guides (`AGENTS.md
 | Arguing with a worker whose context is exhausted | Its context is the defect — reset and re-brief instead of persuading |
 | Letting several reviewers pin hashes while the worker keeps editing | Every one cancels with `TARGET_CHANGED`; hours burn and nothing is reviewed |
 | Accepting a green suite as proof of safety | Green is a floor — ask which failure the suite would not notice, then probe it |
-| Proving a distribution works from inside the workspace that built it | Caches and siblings a colleague lacks; clone with `--no-local` and prove it there |
+| Proving a distribution works from inside the workspace that built it | Caches and siblings a colleague lacks; clone with `--no-local` and probe it there |
 | Relaxing a gate to turn a red test green | When the gate correctly refuses, the fixture is what's wrong |
 | Letting the worker restart from zero after a compact | Re-anchor it immediately |
 | Turkish or emoji in the agent brief | It's a payload for a machine |
@@ -562,8 +558,9 @@ If there's no file for this project, work from the repo's own guides (`AGENTS.md
 ## Domain Architecture Reference Templates
 
 When supervising complex domain stacks, refer to the architecture reference templates in `references/projects/`:
-- `crawler-service.md`: High-concurrency browser automation, session management, and proxy routing architectures.
-- `creative-production-os.md`: Remotion motion design, automated deck composition, render farms, and manifest pipelines.
-- `geo-radar.md`: Spatial crawlers, search analytics, and multi-tenant tracking systems.
-- `marketing-website.md`: Next.js App Router, TinaCMS / headless CMS, internationalization, and deployment pipelines.
-- `whitelabel-app.md`: Multi-tenant whitelabel web apps, tenant lifecycle, and patch/upstream release verification.
+- `references/projects/crawler-service.md`: High-concurrency browser automation, session management, and proxy routing architectures.
+- `references/projects/creative-production-os.md`: Remotion motion design, automated deck composition, render farms, and manifest pipelines.
+- `references/projects/geo-radar.md`: Spatial crawlers, search analytics, and multi-tenant tracking systems.
+- `references/projects/marketing-website.md`: Next.js App Router, TinaCMS / headless CMS, internationalization, and deployment pipelines.
+- `references/projects/whitelabel-app.md`: Multi-tenant whitelabel web apps, tenant lifecycle, and patch/upstream release verification.
+

@@ -114,8 +114,14 @@ GROUPS = {
     ),
     "yk-automation": (
         "automation",
-        "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
-        ["herdr", "run-agent-browser", "run-agent-device", "mobilerun-control"],
+        "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
+        [
+            "herdr",
+            "project-manager",
+            "run-agent-browser",
+            "run-agent-device",
+            "mobilerun-control",
+        ],
     ),
     "yk-config": (
         "config",

@@ -132,13 +132,13 @@ lenses:
 
 Launch all lenses for the round in parallel, preferably in background tasks, one Codex run per lens. Use whichever execution surface is available:
 
-1. Codex companion runtime if installed:
-   ```bash
-   node "<codex-plugin>/scripts/codex-companion.mjs" task "<lens prompt>"
-   ```
-2. Native Codex:
+1. Native Codex CLI (standard / platform-agnostic):
    ```bash
    codex exec review --json -o "/tmp/codex-review-loop/<run-id>/round-N/<lens-slug>.md" "<lens prompt>"
+   ```
+2. Bundled / Companion runner (if available):
+   ```bash
+   node scripts/codex-companion.mjs task "<lens prompt>"
    ```
 
 After each run completes:

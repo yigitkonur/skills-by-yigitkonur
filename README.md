@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 47 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 49 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -69,7 +69,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-testing** | TestSprite frontend/browser and backend API verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
-| **yk-automation** | herdr terminal/agent control, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
+| **yk-automation** | herdr terminal/agent control, project manager supervision, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
@@ -181,9 +181,10 @@ answer questions and find things with real web evidence. ships the `internet-res
 drive a browser, a phone, or a terminal workspace mid-session.
 
 - **[herdr](skills/herdr/)** — control herdr panes, tabs, workspaces, worktrees, commands, and coding agents without stealing focus.
+- **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
+- **[project-manager](skills/project-manager/)** — supervise coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
 - **[run-agent-device](skills/run-agent-device/)** — agent-device cli for ios app testing: settle-first snapshot/press/fill loop, evidence capture, cross-layer bug triage, runtime-freshness + fresh-state discipline, fix-and-retest.
-- **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
 
 `/plugin install yk-automation@yigitkonur`
 

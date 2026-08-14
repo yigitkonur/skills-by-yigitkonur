@@ -237,7 +237,7 @@ See the DB-specific reference for additional errors to avoid per database type.
 Pass project, environment, and service IDs directly — no `railway link` needed:
 
 ```bash
-# From plugins/railway/skills/run-railway directory:
+# From the run-railway skill directory (skills/run-railway):
 # Use the script name from the "Database Type Detection" table above
 python3 scripts/analyze-postgres.py --service <name> --json \
   --project-id <project-id> --environment-id <env-id> --service-id <service-id>

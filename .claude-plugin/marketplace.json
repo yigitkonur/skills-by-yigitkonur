@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 48 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 49 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.53",
       "category": "bundle",
       "strict": false,
@@ -51,6 +51,7 @@
         "./skills/init-makefiles",
         "./skills/mobilerun-control",
         "./skills/optimize-nextjs-fluidity",
+        "./skills/project-manager",
         "./skills/publish-npm-package",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
@@ -224,7 +225,7 @@
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — Herdr terminal/agent control, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
+      "description": "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
       "version": "1.0.53",
       "category": "bundle",
       "tags": [
@@ -233,6 +234,7 @@
       "strict": false,
       "skills": [
         "./skills/herdr",
+        "./skills/project-manager",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
         "./skills/mobilerun-control"
@@ -682,6 +684,17 @@
       "agents": [
         "./subagents/claude/nextjs-perf-auditor.md",
         "./subagents/claude/nextjs-perf-fixer.md"
+      ]
+    },
+    {
+      "name": "project-manager",
+      "source": "./",
+      "description": "Use skill if you are supervising coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.",
+      "version": "1.0.53",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/project-manager"
       ]
     },
     {

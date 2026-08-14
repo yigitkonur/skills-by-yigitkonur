@@ -3,24 +3,30 @@
 Operational detail for `run-codex-review-loop` Mode C. Load when actually firing
 reviews, managing worktrees, or deciding when to stop.
 
-## Resolving and invoking the Codex companion
+## Invoking Codex reviews
 
-The Codex plugin ships a companion that wraps `adversarial-review` and writes a
-structured report. It is version-pinned under the plugin cache; resolve the
-newest rather than hardcoding a version:
+Invoke reviews using standard, platform-agnostic CLI execution or an available companion runner.
 
-```bash
-COMPANION=$(ls -t ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | head -1)
-[ -n "$COMPANION" ] || { echo "Codex companion not found — is the codex plugin installed?"; exit 1; }
-```
-
-Invoke one review (run each in the background so many run in parallel):
+### Method 1: Native Codex CLI (Standard)
+Invoke native Codex review directly:
 
 ```bash
-node "$COMPANION" adversarial-review "<PROMPT>"
+codex exec review --json -o "/tmp/codex-review-loop/<run-id>/round-N/<lens-slug>.md" "<lens prompt>"
 ```
 
-The review flags live **inside the prompt string**, not as separate CLI args:
+Or execute directly with model and effort flags:
+```bash
+codex exec --model gpt-5.5 --effort xhigh "Review focus: <PROMPT>" > output.log 2>&1 &
+```
+
+### Method 2: Companion Runner (If available)
+If using a companion wrapper (e.g. bundled in `scripts/codex-companion.mjs` or available in the environment):
+
+```bash
+node scripts/codex-companion.mjs adversarial-review "<PROMPT>"
+```
+
+The review flags live **inside the prompt string** when calling the wrapper:
 `--model gpt-5.5 --effort xhigh <the rest of the prompt>`.
 
 ### Model constraint (important)

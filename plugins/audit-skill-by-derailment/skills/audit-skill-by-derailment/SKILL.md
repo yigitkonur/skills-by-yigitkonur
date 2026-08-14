@@ -56,9 +56,11 @@ Use these inline tables for fast triage. Load the reference files for full crite
 
 **Local skill** (user says "test run-github-scout"):
 ```bash
-ls ~/.claude/skills/{name}/
-cat ~/.claude/skills/{name}/SKILL.md
-ls ~/.claude/skills/{name}/references/
+# Locate skill directory (e.g., skills/{name}/, ~/.agents/skills/{name}/, ~/.claude/skills/{name}/, ~/.codex/skills/{name}/)
+SKILL_PATH=$(find . ~/.agents/skills ~/.claude/skills ~/.codex/skills ~/.gemini/skills skills -maxdepth 2 -type d -name "{name}" 2>/dev/null | head -1)
+ls "$SKILL_PATH"/
+cat "$SKILL_PATH"/SKILL.md
+ls "$SKILL_PATH"/references/
 ```
 
 **Remote skill** (user provides `owner/repo` or GitHub URL):
