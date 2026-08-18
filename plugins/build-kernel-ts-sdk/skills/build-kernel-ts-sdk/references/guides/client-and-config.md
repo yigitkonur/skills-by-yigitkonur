@@ -27,11 +27,13 @@ Full options:
 ```ts
 new Kernel({
   apiKey: process.env.KERNEL_API_KEY,        // explicit value; if omitted, the SDK falls back to KERNEL_API_KEY env. Throws if both missing.
+  projectID: process.env.KERNEL_PROJECT,     // sets X-Kernel-Project-Id on every request
+  project: undefined,                        // sets X-Kernel-Project (name form)
   baseURL: undefined,                        // override the base URL outright
   environment: 'production',                 // 'production' | 'development'
   timeout: 60_000,                           // ms; default Kernel.DEFAULT_TIMEOUT
   maxRetries: 2,                             // default 2 with exponential backoff + jitter
-  defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT },
+  defaultHeaders: {},                        // extra headers; not needed for project scoping
   defaultQuery: {},
   fetch: customFetch,                        // bring your own fetch
   fetchOptions: { /* per-request RequestInit */ },
@@ -45,11 +47,12 @@ new Kernel({
 | Variable | Purpose |
 |---|---|
 | `KERNEL_API_KEY` | API key. Required if `apiKey:` option not set; throws `KernelError` otherwise. |
-| `KERNEL_BASE_URL` | Override base URL (overrides `environment:`). |
+| `KERNEL_BASE_URL` | Default for `baseURL`. **Mutually exclusive with `environment:`** — passing both throws `KernelError('Ambiguous URL…')`. Pass `baseURL: null` to use `environment` while this var is set. |
 | `KERNEL_LOG` | Log level (`debug` / `info` / `warn` (default) / `error` / `off`). |
 | `KERNEL_CUSTOM_HEADERS` | Newline-separated `Header: value` pairs added to every request. |
 | `KERNEL_SUPPRESS_BUN_WARNING` | Suppress Bun + Playwright CDP warning (set when intentional). |
-| `KERNEL_PROJECT` | **User convention only** — the SDK does not read this env var directly. Wire it through `defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT }` in the constructor (see "Project scoping" below). |
+| `KERNEL_BROWSER_ROUTING_SUBRESOURCES` | Comma-separated allowlist of `/browsers/{id}/<tail>` prefixes routed straight to the browser VM's `base_url` instead of the API. Default `curl,telemetry/stream`; set to an empty string to disable direct-to-VM routing. |
+| `KERNEL_PROJECT` | **Not read by the SDK** — wire it through the first-class `projectID:` client option (see "Project scoping" below). The `kernel` CLI's `--project` flag *does* read it, so this spelling keeps SDK and CLI consistent. |
 
 ## Environments
 
@@ -64,7 +67,7 @@ new Kernel({ environment: 'development', baseURL: null });
 
 ## Pagination
 
-`list()` methods return `PagePromise<…OffsetPagination, …>`. Two consumption styles:
+Most `list()` methods return `PagePromise<…OffsetPagination, …>` — `{ offset, limit }` in, `{ items, has_more, next_offset }` out. `kernel.auditLogs.list({ start, end })` is the exception: it returns a `PageTokenPagination` (`{ page_token, limit }` in, `{ items, has_more, next_page_token }` out), and its `start`/`end` timestamp bounds are required. Both support the same two consumption styles:
 
 ```ts
 // Auto-paginate
@@ -94,14 +97,26 @@ await kernel.browsers.create(
     headers: { 'X-Kernel-Project-Id': 'proj_…' },
     query: {},
     body: undefined,                        // override (rare)
-    idempotencyKey: 'my-key',               // SDK auto-sets on non-GET retries
+    idempotencyKey: 'my-key',               // accepted, but never sent — see note below
     signal: ac.signal,                      // AbortSignal
     fetchOptions: { keepalive: true },
   }
 );
 ```
 
-Idempotency keys are automatically attached on retried non-GET requests as `stainless-node-retry-${uuid4()}`.
+`idempotencyKey` is accepted by `RequestOptions`, but **the Kernel client never sends an idempotency header**. `buildHeaders` emits one only when `this.idempotencyHeader` is set, and `Kernel` declares `protected idempotencyHeader?: string` without ever assigning it (verified in v0.92.0) — so the key you pass is dropped, and the `stainless-node-retry-${uuid4()}` value from `defaultIdempotencyKey()` is never used either. The guard is `method !== 'get'`, not a retry check, so none of this is retry-specific.
+
+Consequence: automatic retries (`maxRetries`, default 2) of non-GET calls are **not** de-duplicated by the client. Treat `browsers.create` and `invocations.create` as at-least-once and reconcile yourself instead of assuming server-side de-dup:
+
+```ts
+const tags = { run_id: runId };
+await kernel.browsers.create({ stealth: true, tags });
+
+// After an ambiguous failure or retry, find what actually got created:
+const existing = await kernel.browsers.list({ tags, status: 'active' });
+```
+
+For invocations, narrow with `kernel.invocations.list({ app_name: 'my-agent', status: 'running' })`.
 
 ## Errors
 
@@ -193,18 +208,26 @@ The SDK sets `Accept: text/event-stream` and `stream: true` automatically.
 
 ## Project scoping
 
-Org-wide API keys see all projects unless you scope each request:
+Org-wide API keys see all projects unless you scope each request. Use the first-class client option — the SDK sets `X-Kernel-Project-Id` itself:
 
 ```ts
-const kernel = new Kernel({
-  defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT },
-});
+const kernel = new Kernel({ projectID: 'proj_…' });   // or project: 'my-project' → X-Kernel-Project
 ```
 
 Or per-request:
 
 ```ts
 await kernel.browsers.list({}, { headers: { 'X-Kernel-Project-Id': 'proj_…' } });
+```
+
+Hand-rolling `defaultHeaders: { 'X-Kernel-Project-Id': … }` still works but is the inferior idiom — it silently no-ops when the value is `undefined`.
+
+To check what a key is actually scoped to, read the auth context:
+
+```ts
+const ctx = await kernel.auth.context.retrieve();
+ctx.authorization.credential_scope.project_id;  // null = organization-wide
+ctx.authorization.effective_scope.project_id;   // scope selected for this request
 ```
 
 OAuth (CLI) is always org-wide; only API keys can be project-scoped.

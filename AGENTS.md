@@ -166,7 +166,7 @@ Rules:
 ```yaml
 ---
 name: verb-object
-description: Use skill if you are [concrete trigger in 30 words or fewer].
+description: Use if [concrete trigger, ideally under 100 characters].
 ---
 ```
 
@@ -175,8 +175,8 @@ description: Use skill if you are [concrete trigger in 30 words or fewer].
 | Rule | Detail |
 |---|---|
 | `name` | Must exactly match the directory name |
-| `description` starts with | `Use skill if you are` |
-| `description` word limit | 30 words or fewer |
+| `description` starts with | `Use if` — the current convention (39 of 49 skills). `Use skill if you are` is still accepted by the validator and survives on older entries; do not use it for new skills |
+| `description` length | Aim for ≤100 characters. The validator enforces a hard max of **30 words** |
 | `description` purpose | Describe **when** the skill should trigger — not what the body contains |
 | `description` content | Include concrete user intent, tools, file patterns, or workflows |
 | `description` specificity | Specific enough to avoid accidental overlap with neighboring skills |
@@ -184,23 +184,25 @@ description: Use skill if you are [concrete trigger in 30 words or fewer].
 | No `<` or `>` | Forbidden in frontmatter values |
 | No "claude" or "anthropic" | Forbidden in skill names |
 
+Commit `9d139cee` (2026-07-12) compressed every description to the `Use if` form. Skills added afterwards that still open with `Use skill if you are` are drift from this document's earlier wording, not a second sanctioned style — normalize them when you touch them.
+
 ### Good descriptions
 
+All three are live descriptions from this pack:
+
 ```
-Use skill if you are reviewing a GitHub pull request with a systematic, evidence-based
-workflow that clusters files, correlates existing comments, validates goals, and produces
-actionable findings.
+Use if building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts.
 ```
 
 ```
-Use skill if you are building or extending a Convex + Clerk SwiftUI app and need
-project-grounded patterns for reactive queries, auth, schema, or iOS/macOS integration.
+Use if rebuilding a live URL or .html snapshot as a pixel-faithful AS-IS Next.js project.
 ```
 
 ```
-Use skill if you are converting saved HTML snapshots into buildable Next.js pages with
-self-hosted assets and extracted styles.
+Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release.
 ```
+
+Note the shape: `Use if` + a present participle (`building`, `rebuilding`, `publishing`) + the concrete artifact + an em-dashed list of the specific tools or files that should fire the trigger.
 
 ### Bad descriptions
 
@@ -239,7 +241,7 @@ Every skill needs an `README.md` at its root (`skills/<skill-name>/README.md`) w
 ```markdown
 # <skill-name>
 
-<Description derived from SKILL.md frontmatter, with "Use skill if you are" prefix stripped>.
+<Description derived from SKILL.md frontmatter, with the "Use if" (or legacy "Use skill if you are") prefix stripped>.
 
 **Category:** <category>
 
@@ -353,7 +355,7 @@ Before finishing any skill work, verify **all** of the following:
 - [ ] Directory name is canonical `kebab-case`, starts with an intent verb, or is an approved compatibility exception in `NAMING.md`
 - [ ] SKILL.md is at `skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] Frontmatter `name` exactly matches the directory name
-- [ ] Frontmatter `description` starts with `Use skill if you are`
+- [ ] Frontmatter `description` starts with `Use if` (new skills) — `Use skill if you are` only survives on older entries
 - [ ] Frontmatter `description` is 30 words or fewer
 - [ ] Frontmatter `description` describes when to trigger, not body contents
 - [ ] Frontmatter `description` is wrapped in quotes if it contains colons

@@ -73,10 +73,18 @@ for pkg in "${packages[@]}"; do
 done
 printf '\n'
 
-if [ -f "node_modules/@onkernel/sdk/api.md" ]; then
-  printf 'api.md: found at node_modules/@onkernel/sdk/api.md\n'
+sdk_client="node_modules/@onkernel/sdk/client.d.ts"
+sdk_browsers="node_modules/@onkernel/sdk/resources/browsers/browsers.d.ts"
+if [ -f "$sdk_client" ]; then
+  printf 'type surface: %s (authoritative; the npm package does NOT ship api.md)\n' "$sdk_client"
+  printf 'top-level resources: %s\n' \
+    "$(grep -oE '^[[:space:]]{4}[a-zA-Z][a-zA-Z0-9_]*:[[:space:]]*API\.' "$sdk_client" | sed 's/[[:space:]]//g;s/:API\.//' | paste -sd, -)"
+  if [ -f "$sdk_browsers" ]; then
+    printf 'browsers methods: %s\n' \
+      "$(grep -oE '^[[:space:]]+[a-zA-Z][a-zA-Z0-9_]*\(' "$sdk_browsers" | tr -d ' (' | sort -u | paste -sd, -)"
+  fi
 else
-  warn "node_modules/@onkernel/sdk/api.md not found; install @onkernel/sdk before relying on generated method names"
+  warn "node_modules/@onkernel/sdk/client.d.ts not found; run 'npm install @onkernel/sdk' before relying on method names"
 fi
 
 if [ -n "${KERNEL_API_KEY:-}" ]; then

@@ -118,7 +118,8 @@ await kernel.browsers.replays.stop(r.replay_id, { id: session.session_id });
 
 const list = await kernel.browsers.replays.list(session.session_id);
 const dl = await kernel.browsers.replays.download(r.replay_id, { id: session.session_id });
-fs.writeFileSync('./replay.webm', Buffer.from(await dl.arrayBuffer()));
+// Replays are mp4 — the SDK sends `Accept: video/mp4` on this call.
+fs.writeFileSync(`./replay-${r.replay_id}.mp4`, Buffer.from(await dl.arrayBuffer()));
 ```
 
 ## Replay-specific issues
@@ -131,9 +132,22 @@ fs.writeFileSync('./replay.webm', Buffer.from(await dl.arrayBuffer()));
 
 ### `replays.download` returns nothing or 0 bytes
 
-**Cause:** Replay finalization is asynchronous. After `replays.stop`, the `.webm` is written to the VM's filesystem and uploaded — there can be multi-second finalization on long replays.
+**Cause:** Replay finalization is asynchronous. After `replays.stop`, the mp4 is still being processed and uploaded — there can be multi-second finalization on long replays.
 
-**Fix:** Sleep 2–5 seconds after `stop`, or poll `kernel.browsers.fs.listFiles` for the replay artifact path before downloading.
+**Fix:** Poll `kernel.browsers.replays.list(session_id)` until the entry for your `replay_id` has a non-null `finished_at`, then `download`. Fall back to a 2–5s sleep only if you cannot poll. Neither the SDK nor the Kernel docs document a replay artifact path on the browser VM filesystem, so don't try to use `fs.listFiles` as the readiness signal.
+
+```ts
+async function waitForReplay(sessionId: string, replayId: string, timeoutMs = 60_000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const replays = await kernel.browsers.replays.list(sessionId);  // bare array
+    const hit = replays.find(x => x.replay_id === replayId);
+    if (hit?.finished_at) return hit;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  throw new Error(`replay ${replayId} did not finalize within ${timeoutMs}ms`);
+}
+```
 
 ### Multiple replays per session
 

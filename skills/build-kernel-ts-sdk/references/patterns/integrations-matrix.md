@@ -1,18 +1,18 @@
 # Integrations matrix
 
-Most third-party agent libraries connect to a Kernel browser via the **CDP WebSocket URL** (`session.cdp_ws_url`) returned from `kernel.browsers.create`. WebDriver BiDi clients use `session.webdriver_ws_url` instead; vision-loop / VLM agents (Computer Use) bypass CDP entirely and go through `kernel.browsers.computer.*`. The matrix below names the right transport per integration. There is no vendor lock-in.
+Most third-party agent libraries connect to a Kernel browser via the **CDP WebSocket URL** (`session.cdp_ws_url`) returned from `kernel.browsers.create`. WebDriver BiDi clients use `session.webdriver_ws_url` instead; vision-loop / VLM agents (Computer Use) bypass CDP entirely and go through `kernel.browsers.computer.*`. The matrix below names the right transport per integration. It also lists a few entries that are **not** drivers (Laminar is instrumentation, 1Password is a credential provider) — those wrap or feed a driver rather than replacing one. There is no vendor lock-in.
 
 | Lib | Language | TS hookup |
 |---|---|---|
 | **Playwright** (`playwright`) | TS | `chromium.connectOverCDP(session.cdp_ws_url)` — see `references/patterns/playwright-stagehand-integration.md` |
-| **Stagehand** (`@browserbasehq/stagehand`) | TS | `new Stagehand({ env: 'LOCAL', localBrowserLaunchOptions: { cdpUrl: session.cdp_ws_url } })` — see `references/patterns/playwright-stagehand-integration.md` |
+| **Stagehand v4** (`@browserbasehq/stagehand`) | TS | v4 drives through a Chrome extension, so mirror it onto the browser first (`kernel.browsers.fs.uploadZip(session.session_id, { dest_path, zip_file })`), then `const browser = await localBrowser.connect({ cdpUrl: session.cdp_ws_url }); const sh = await Stagehand.create({ browser, model: { modelName: 'openai/gpt-4o', apiKey } })`. `new Stagehand({ env, localBrowserLaunchOptions })` is **v3-only** — v4's constructor is private and has no `env`. See `references/patterns/playwright-stagehand-integration.md` |
 | **Puppeteer** (`puppeteer`) | TS | `puppeteer.connect({ browserWSEndpoint: session.cdp_ws_url })` |
-| **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) | TS | Template-driven via `kernel create --template claude-agent-sdk`. Internally exposes an `execute_playwright` MCP tool that calls Kernel's Playwright Execution API (`kernel.browsers.playwright.execute`) against a stealth-mode browser. |
+| **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) | TS | Template-driven — see *Templates* below for the full non-interactive `kernel create` invocation. Internally exposes an `execute_playwright` MCP tool that calls Kernel's Playwright Execution API (`kernel.browsers.playwright.execute`) against a stealth-mode browser. |
 | **Browser Use** | Python only | No TS binding. Deploy a Python Kernel App that hosts Browser Use; invoke from TS via `kernel.invocations.create`. |
-| **Vibium** | TS | WebDriver BiDi — pass `session.webdriver_ws_url` instead of `cdp_ws_url`. |
+| **Vibium** (`vibium`) | TS | WebDriver BiDi — `browser.start(session.webdriver_ws_url)`, not `cdp_ws_url`. |
 | **Notte** | TS | CDP via `cdp_ws_url`. |
 | **Magnitude** | TS | CDP via `cdp_ws_url`. |
-| **Laminar** | TS | CDP via `cdp_ws_url`. |
+| **Laminar** (`@lmnr-ai/lmnr`) | TS | **Not a driver — observability.** Call `Laminar.initialize({ projectApiKey, instrumentModules: { playwright: { chromium }, kernel: Kernel } })` before your normal `chromium.connectOverCDP(session.cdp_ws_url)`; Playwright owns the CDP connection, Laminar traces it. |
 | **Val Town** | TS | Run a Val that calls `@onkernel/sdk` directly; CDP from the Val to the Kernel browser. |
 | **Vercel Agent Browser** | TS | `agent-browser -p kernel open <url>` reads `KERNEL_API_KEY`, `KERNEL_HEADLESS`, `KERNEL_STEALTH`, `KERNEL_TIMEOUT_SECONDS`, `KERNEL_PROFILE_NAME`. Programmatic: spawn `agent-browser connect "${session.cdp_ws_url}"`. |
 | **1Password** | TS | Credential provider — register via *Integrations → Connect 1Password* in the Kernel dashboard (recommended) or `kernel.credentialProviders.create({ name, provider_type: 'onepassword', token })`. Reference in `auth.connections.create({ credential: { provider: '<name>', auto: true } })`. See `references/patterns/profiles-pools-credentials.md`. |
@@ -38,10 +38,19 @@ Two rules carry across all of them:
 
 ## Vibium (WebDriver BiDi)
 
+`vibium` exports a `browser` object, not a `Vibium` class, and it has no `.connect()`. The entry point is `browser.start(<bidi ws url>)`.
+
 ```ts
+import { browser } from 'vibium';
+
 const session = await kernel.browsers.create({ stealth: true });
-// Vibium accepts a WebDriver BiDi WebSocket URL
-const driver = await Vibium.connect({ wsUrl: session.webdriver_ws_url });
+// browser.start(urlOrOptions?: string | StartOptions) — pass the BiDi URL, not the CDP one
+const bro = await browser.start(session.webdriver_ws_url);
+const page = await bro.page();          // default page; bro.newPage() would orphan one
+await page.go('https://example.com');   // `go`, not `goto`
+
+await bro.stop();
+await kernel.browsers.deleteByID(session.session_id);   // still the only real cleanup
 ```
 
 ## Browser Use over an invocation
@@ -68,12 +77,23 @@ This is the recommended pattern for any framework that doesn't have a TS port: w
 
 ## Templates
 
-`kernel create --template <name>` scaffolds a ready-to-deploy Kernel App for the integration:
+`kernel create` scaffolds a ready-to-deploy Kernel App for the integration. All three of `--name`, `--language`, `--template` are required in a non-interactive shell — the CLI fails fast instead of prompting when stdin is not a TTY:
 
-- `stagehand` — Stagehand-driven agent
-- `claude-agent-sdk` — Claude Agent SDK with computer-use MCP tool
-- `playwright` — vanilla Playwright app
-- `browser-use` — Python Browser Use app
-- `bare` — minimal `kernel.app('…').action('…', …)` skeleton
+```bash
+kernel create --name my-app --language typescript --template stagehand --yes
+```
 
-Run `kernel create --help` for the live list — templates are added regularly.
+The full list from `@onkernel/cli` 0.31.0 (`create --help`):
+
+- `stagehand` — Stagehand SDK [ts]
+- `magnitude` — Magnitude.run SDK [ts]
+- `browser-use` — Browser Use SDK [py]
+- `claude-agent-sdk` — Claude Agent SDK browser-automation agent; wires an in-process MCP server exposing an `execute_playwright` tool backed by `kernel.browsers.playwright.execute` [py, ts]
+- `anthropic-computer-use` / `gemini-computer-use` / `openai-computer-use` — computer-use agents [py, ts]
+- `openagi-computer-use` — OpenAGI computer-use agent [py]
+- `tzafon` — Tzafon Northstar CUA Fast computer-use agent [py, ts]
+- `yutori` — Yutori n1.5 computer-use agent [py, ts]
+- `captcha-solver` — auto-CAPTCHA solving demo [py, ts]
+- `sample-app` — minimal Kernel app skeleton [py, ts]
+
+There is **no** `playwright` template and **no** `bare` template — `sample-app` is the minimal skeleton. Run `kernel create --help` for the live list; templates are added regularly.

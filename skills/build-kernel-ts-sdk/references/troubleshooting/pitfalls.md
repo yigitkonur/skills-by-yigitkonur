@@ -16,13 +16,13 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Cause:** Default `timeout_seconds: 60`. Any pause (CAPTCHA solve, slow network, human handoff) eats the budget.
 
-**Fix:** Set `timeout_seconds: 300` minimum for real automation, up to `259200` (72h). The clock counts down only while the browser is idle (no CDP / live-view connection).
+**Fix:** Set `timeout_seconds: 300` minimum for real automation, up to `259200` (72h); the API minimum is `10`. The clock counts down only while the browser is idle — no CDP client, no WebDriver/BiDi client, no live-view viewer, and no computer-controls request in flight.
 
 ## 3. Standby starts the timeout countdown — don't expect open-but-idle to be free
 
 **Symptom:** A long-idle session is suddenly gone.
 
-**Cause:** After 5 seconds of no CDP / live-view connection, the browser enters standby (zero compute cost). The `timeout_seconds` countdown to deletion **begins at standby entry**; when a connection reattaches, the countdown resets. GPU browsers do not standby — they keep running and bill compute the whole time.
+**Cause:** A browser counts as active while **any** of four things is happening: a CDP client is connected, a WebDriver/BiDi client is connected, a live-view viewer is attached, or a computer-controls request is in flight. After 5 seconds with none of them, the browser enters standby (zero usage cost). The `timeout_seconds` countdown to deletion **begins at standby entry**; when a connection reattaches, the countdown resets. GPU browsers do not standby — they keep running and bill compute the whole time.
 
 **Fix:** Keep one connection open for "long idle" sessions, OR make `timeout_seconds` long enough to outlast the expected gap. For GPU browsers, accept the higher floor cost or terminate explicitly.
 
@@ -40,7 +40,7 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Cause:** Stealth adds a default ISP proxy and an automatic CAPTCHA solver. It does not defeat every detector — sophisticated sites combine IP reputation, fingerprinting, and behavioral heuristics.
 
-**Fix:** Layer signals — pair stealth with a residential proxy (`proxy_id`), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
+**Fix:** Layer signals — pair stealth with a residential proxy (`proxy: { id: p.id }` on `browsers.create`; the flat `proxy_id` is `@deprecated` in v0.92.0), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
 
 ## 6. CDP latency vs `playwright.execute`
 
@@ -74,29 +74,31 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Use Node 20+ if possible. If Bun is required, set `KERNEL_SUPPRESS_BUN_WARNING=true` and accept the risk.
 
-## 10. Project scoping is header-driven
+## 10. Project scoping is a client option
 
 **Symptom:** An org-wide API key sees browsers / apps from other projects.
 
 **Cause:** Org-wide API keys are not project-scoped by default. OAuth (CLI) is always org-wide.
 
-**Fix:** Pass `X-Kernel-Project-Id` on every request — the SDK does not auto-read any project env var. Wire it via `defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT }` in the constructor, or per-request `headers`.
+**Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override.
 
-## 11. `browsers.delete` (singular) is deprecated
+## 11. `invocations.create` without `version` does not compile
 
-**Symptom:** TypeScript flags `browsers.delete` as `@deprecated`.
+**Symptom:** `error TS2741: Property 'version' is missing in type '{ app_name: string; action_name: string; payload: string; }' but required in type 'InvocationCreateParams'.`
 
-**Cause:** The plural-shaped `delete({ persistent_id })` belongs to the deprecated persistence model (replaced by Profiles).
+**Cause:** `InvocationCreateParams` has **three** required fields — `app_name`, `action_name`, **and `version`**. Only `async`, `async_timeout_seconds`, and `payload` are optional. There is no "latest" default.
 
-**Fix:** Use `kernel.browsers.deleteByID(session_id)` instead.
+**Fix:** Always pass the deployed version label explicitly. Resolve it at runtime rather than hard-coding a string that drifts after the next deploy — `kernel.apps.list({ app_name })` is paginated and each item carries `app_name` + `version`.
+
+> While cleaning up, note that `deleteByID(idOrName)` is the **only** delete method on `kernel.browsers`. There is no `kernel.browsers.delete` — calling it throws `TypeError: kernel.browsers.delete is not a function`.
 
 ## 12. Replay download timing
 
 **Symptom:** `replays.download` returns nothing or a partial file.
 
-**Cause:** Replays finalize asynchronously after `replays.stop`. The download endpoint can be hit before the file is fully written.
+**Cause:** Replays finalize asynchronously after `replays.stop` — the API returns while the mp4 is still being processed and uploaded. The download endpoint can be hit before the file is ready.
 
-**Fix:** Poll `kernel.browsers.fs.listFiles` for the replay artifact, or wait a few seconds after `stop` before downloading. For large replays, expect multi-second finalization.
+**Fix:** Poll `kernel.browsers.replays.list(session_id)` (a bare array) until the entry for your `replay_id` has a non-null `finished_at`, then call `download`. Fall back to a 2–5s sleep only if you cannot poll. For large replays, expect multi-second finalization.
 
 ## 13. `type: 'module'` required for TS app deploys
 
@@ -110,9 +112,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** Confusion about pool billing — "is the idle pool charging me?"
 
-**Cause:** Per kernel.sh/docs/info/pricing, idle browsers in a pool incur **no disk charges**; you pay compute only when a browser is actively in use (i.e. acquired). Pools do require the Start-Up plan or higher (Developer/Hobbyist tiers cap reserved browsers at 0).
+**Cause:** Per kernel.sh/docs/info/pricing, idle browsers in a pool incur **no disk charges**; you pay compute only when a browser is actively in use (i.e. acquired). Pool plan availability is doc-conflicted: the pricing prose says "Browser pools are available on Start-Up and Enterprise plans," while the plan feature table on the same page marks Browser pools ✅ on all four tiers (Developer / Hobbyist / Start-Up / Enterprise). Verify against your own account before designing around pools.
 
-**Fix:** Don't oversize pools "just in case" — there is no idle disk cost, but the `size` cap consumes plan quota. Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and tune accordingly. Use `flush()` to reset after a config change.
+**Fix:** Don't oversize pools "just in case" — there is no idle disk cost, but reserved pool capacity counts against your **concurrency limit** whether or not the browsers are acquired (a pool sized to 40 uses 40 of your limit; Developer caps at 5 concurrent, Hobbyist at 10, Start-Up at 150). Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and tune accordingly. Use `flush()` to reset after a config change.
 
 ## 15. Payload limits are doc-conflicted
 

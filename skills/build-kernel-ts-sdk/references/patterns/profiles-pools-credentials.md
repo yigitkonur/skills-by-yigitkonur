@@ -89,6 +89,13 @@ Operations:
 - `kernel.browserPools.flush(name)` — destroy all idle browsers; the pool refills automatically.
 - `kernel.browserPools.update / delete / list` — standard.
 
+Pools and profiles:
+
+- `kernel.browserPools.create({ …, profile: { name }, refresh_on_profile_update: true })` attaches one profile to every browser in the pool. Provide either `id` or `name`; the profile must exist first.
+- **The pool loads that profile read-only and never persists changes back to it.** `save_changes` is not part of the pool profile shape, and any `save_changes` value sent on a pool profile is silently ignored rather than rejected. Re-auth writes must happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session.
+- `refresh_on_profile_update` flushes idle browsers when the pool's profile is updated so they pick up the latest data. It defaults to `true` when a profile is given at create, and requires a profile on the pool.
+- `browserPools.acquire` takes no `profile` — its params are exactly `acquire_timeout_seconds?`, `name?`, `start_url?`, `tags?`, `telemetry?`. Profile selection is pool-level only. Setting one after the fact means `browsers.update(session_id, { profile })`, which is allowed only if the session has no profile loaded.
+
 Acquired browsers are exempt from `flush`. Use `flush` to roll the pool after a config change or to invalidate session state across all idle instances.
 
 Cost guardrails:
@@ -112,7 +119,8 @@ const credential = await kernel.credentials.create({
     // arbitrary form fields are accepted
   },
   totp_secret: 'JBSWY3DPEHPK3PXP',  // Base32; used automatically for 2FA prompts
-  sso_provider: 'google',           // 'google' | 'github' | 'microsoft' | 'okta' | 'auth0'
+  sso_provider: 'google',           // open `string`, not a closed enum. SDK documents
+                                    // google / github / microsoft as examples.
 });
 
 // Use during a connection
@@ -178,7 +186,7 @@ await kernel.auth.connections.create({
 | Per-user login that survives sessions | Profile + Managed Auth (Hosted UI) |
 | Bulk warm-start automation, no auth | Browser pool with `stealth: true` |
 | Many users, same upstream SaaS | Profile-per-user + 1Password provider + auto-match |
-| Pool of pre-authenticated browsers | Pool + per-browser profile (acquire, set profile, run, release with `reuse: false` after sensitive flows) |
+| Pool of pre-authenticated browsers | Pool created with `profile: { name }` (loaded read-only) + `refresh_on_profile_update: true`; re-auth writes happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session, then flush/refresh the pool |
 | Headless re-auth without prompting | Pre-stored credential + `auth.connections.create({ credential: { name } })` then submit |
 
 ## Where to look next
