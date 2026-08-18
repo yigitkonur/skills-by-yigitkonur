@@ -252,8 +252,8 @@ def check_frontmatter(skill_name, skill_dir):
     accepted_prefixes = ("Use skill if you are ", "Use if ")
     if not description.startswith(accepted_prefixes):
         errors.append(
-            'description must start with "Use skill if you are " '
-            f'(legacy "Use if " is also accepted) — got: "{description[:60]}..."'
+            'description must start with "Use if " '
+            f'(older "Use skill if you are " is also accepted) — got: "{description[:60]}..."'
         )
 
     if len(description.split()) > 30:
