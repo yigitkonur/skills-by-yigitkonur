@@ -103,12 +103,15 @@ fs.writeFileSync('./shot.png', Buffer.from(await resp.arrayBuffer()));
 For navigation via computer-controls, type the URL into the address bar:
 
 ```ts
-// Kernel browsers run Linux Chromium — use Control+L (NOT Meta+L) to focus the address bar.
+// Kernel browsers run Linux Chromium — use Ctrl+L (NOT Meta+L) to focus the address bar.
+// `keys` items are X11/xdotool keysyms. A chord must be ONE combined string
+// (`'Ctrl+l'`); separate array items fire as independent sequential presses.
+// The submit keysym is `Return` — `Enter` is not one of the documented symbols.
 await kernel.browsers.computer.batch(session.session_id, {
   actions: [
-    { type: 'press_key', press_key: { keys: ['Control', 'l'] } },
+    { type: 'press_key', press_key: { keys: ['Ctrl+l'] } },
     { type: 'type_text', type_text: { text: 'https://example.com' } },
-    { type: 'press_key', press_key: { keys: ['Enter'] } },
+    { type: 'press_key', press_key: { keys: ['Return'] } },
   ],
 });
 ```

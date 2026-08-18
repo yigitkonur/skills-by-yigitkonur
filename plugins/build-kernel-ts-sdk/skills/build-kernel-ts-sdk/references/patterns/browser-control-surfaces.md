@@ -90,11 +90,14 @@ await kernel.browsers.computer.typeText(session.session_id, {
   text: 'hello world',
   delay: 30,                  // optional ms between keystrokes
 });
-// pressKey takes a `keys` array of keystrokes to emit in sequence. To send a
-// chord (e.g. Ctrl+L), pass the modifiers + key together in `keys`. Use
-// `hold_keys` ONLY when you want a separate set of keys held down across
-// the whole `keys` sequence (e.g. hold Shift while typing arrows).
-await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Control', 'l'] });
+// pressKey takes a `keys` array; each item is ONE press, emitted in sequence.
+// A chord must therefore be a SINGLE combined item in xdotool keysym syntax,
+// e.g. 'Ctrl+l' or 'Ctrl+Shift+Tab' — `keys: ['Ctrl', 'l']` taps Ctrl, then l.
+// Use `hold_keys` for a separate set of modifiers held across the whole `keys`
+// sequence (e.g. hold Shift while pressing arrows). `duration` holds each press.
+await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Ctrl+l'] });
+// A real sequence — two independent presses, in order:
+await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Ctrl+a', 'Delete'] });
 
 // Scroll requires anchor coordinates plus delta_x/delta_y
 await kernel.browsers.computer.scroll(session.session_id, {

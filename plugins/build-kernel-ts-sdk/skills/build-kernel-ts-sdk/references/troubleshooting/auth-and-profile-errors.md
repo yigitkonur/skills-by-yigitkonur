@@ -46,7 +46,7 @@ const conn = await kernel.auth.connections.create({ domain, profile_name });
 **Fix:**
 
 1. `kernel.auth.connections.retrieve(id)` and check `status` directly — if `NEEDS_AUTH`, re-run the flow.
-2. Switch to a residential proxy: `kernel.proxies.create({ type: 'residential', name: 'res-1' })` then pass `proxy_id` on `browsers.create`.
+2. Switch to a residential proxy: `const p = await kernel.proxies.create({ type: 'residential', name: 'res-1' })` then pass `proxy: { id: p.id }` on `browsers.create` (the flat `proxy_id` is `@deprecated` in v0.92.0).
 3. Use a long-lived profile so the next attempt builds on prior browsing history.
 4. Consider Programmatic flow if Hosted UI is being blocked by anti-iframe policies.
 
@@ -73,11 +73,22 @@ import { KernelManagedAuth } from '@onkernel/managed-auth-react';
 // …
 ```
 
-## React component CSP / iframe issues
+## React component blocked by your CSP
 
-**Symptom:** The component renders an iframe that fails to load due to CSP or X-Frame-Options.
+**Symptom:** `connect-src` CSP violations in the console on requests to `https://api.onkernel.com`, and the flow stalls at the consent or discovery step.
 
-**Fix:** Configure same-origin proxying with Next rewrites and pass `baseUrl=""` (relative) to the component so the iframe loads from your domain instead of Kernel's origin. Confirm with your CSP allow-list before shipping.
+**Cause:** `<KernelManagedAuth />` does **not** render an iframe — it renders native DOM on your own origin, so `X-Frame-Options` and `frame-ancestors` are never involved. It does call the Kernel API cross-origin by default (`baseUrl` defaults to `https://api.onkernel.com`), and your own `connect-src` policy can block that.
+
+**Fix — either:**
+
+1. Allow `https://api.onkernel.com` in your `connect-src` directive; or
+2. Keep auth traffic same-origin: pass `baseUrl=""` and proxy the endpoints the package hits through your framework's rewrites.
+
+```tsx
+<KernelManagedAuth sessionId={id} handoffCode={code} baseUrl="" {...rest} />
+```
+
+The `rewrites()` block in `node_modules/@onkernel/managed-auth-react/README.md` covers three endpoints — `POST /auth/connections/:id/exchange`, `GET /auth/connections/:id`, `POST /auth/connections/:id/submit`. Recommended: also proxy `GET /auth/connections/:id/events` (the SSE progress stream, `Accept: text/event-stream`), which the shipped `dist` calls but the README's block omits — a single-segment `:id` rewrite will not match it.
 
 ## Profile not found at `browsers.create`
 

@@ -21,11 +21,21 @@ EOF
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --mode)
-      mode="${2:-}"
+      if [ "$#" -lt 2 ]; then
+        printf 'Missing --mode value\n\n' >&2
+        usage >&2
+        exit 2
+      fi
+      mode="$2"
       shift 2
       ;;
     --dir)
-      target_dir="${2:-}"
+      if [ "$#" -lt 2 ]; then
+        printf 'Missing --dir value\n\n' >&2
+        usage >&2
+        exit 2
+      fi
+      target_dir="$2"
       shift 2
       ;;
     --force)
@@ -105,7 +115,9 @@ EOF
 
 cat > "$target_dir/.env.example" <<'EOF'
 KERNEL_API_KEY=replace_with_your_kernel_api_key
-# Optional project scoping:
+# Project scoping is a client option, NOT an env var the SDK reads:
+#   new Kernel({ projectID: 'proj_...' })  // sends X-Kernel-Project-Id
+# If you keep it in .env, read it yourself and pass it to the constructor.
 # KERNEL_PROJECT=proj_replace_me
 EOF
 

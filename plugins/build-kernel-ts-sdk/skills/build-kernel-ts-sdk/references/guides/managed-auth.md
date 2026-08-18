@@ -2,7 +2,7 @@
 
 Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on behalf of an end-user. Two flow shapes share the same `kernel.auth.connections.*` SDK surface; pick one early.
 
-Source note: Verified against Kernel docs, `@onkernel/sdk` npm metadata, and `@onkernel/managed-auth-react@0.1.0` package types on 2026-05-09.
+Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-auth-react@0.4.1` types (peer deps react/react-dom >= 18), and Kernel docs on 2026-08-19.
 
 ## Flow shapes
 
@@ -10,19 +10,24 @@ Source note: Verified against Kernel docs, `@onkernel/sdk` npm metadata, and `@o
 |---|---|---|
 | Where credentials are entered | Kernel-hosted page (or `<KernelManagedAuth />` embed on your domain) | Your own UI |
 | What you write | Backend `create` + `login`; frontend `redirect` (or embed) | Backend `create` + `login` + poll + `submit`; you build the input UI |
-| MFA / SSO support | Built in | You handle: detect from `mfa_options` / `pending_sso_buttons`, route the user, submit |
+| MFA / SSO support | Built in | You handle: detect from `choices` (canonical) or the legacy `mfa_options` / `pending_sso_buttons`, route the user, submit |
 | When to pick | Default — fastest to ship, covers SSO, 2FA, security keys | You need design control, headless flows, or you already have credentials and just want to drive submit |
 
 ## SDK surface
 
 | Method | Purpose |
 |---|---|
-| `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential? })` | Create a connection scoping a `domain` to a browser `profile_name`. |
+| `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential?, health_checks?, health_check_interval?, auto_reauth?, record_session?, browser? })` | Create a connection scoping a `domain` to a browser `profile_name`. See the cost note below — `health_checks` and `auto_reauth` both default to **true**. |
 | `kernel.auth.connections.login(id)` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, and `flow_expires_at`. |
-| `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, and (in programmatic mode) `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
-| `kernel.auth.connections.submit(id, { fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. Pick the single field that matches the current `flow_step` — for `AWAITING_INPUT` it's `fields`; for SSO it's `sso_provider` or `sso_button_selector`; for MFA it's `mfa_option_id`; for sign-in pickers it's `sign_in_option_id`. |
+| `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, `can_reauth` / `can_reauth_reason`, and (in programmatic mode) the canonical `choices` and `fields` plus their legacy counterparts `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
+| `kernel.auth.connections.submit(id, { field_values?, selected_choice_id?, fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. **Prefer the canonical pair** — `field_values` (keyed by `Field.id`) and `selected_choice_id` (a `Choice.id`). Fall back to the legacy params (`fields` keyed by field name, `sso_provider`/`sso_button_selector`, `mfa_option_id`, `sign_in_option_id`) only when `choices`/`fields` are absent; pick the one matching the current `flow_step`. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
 | `kernel.auth.connections.list()` / `delete(id)` / `follow(id)` | Standard list/delete plus an SSE feed for state. |
+| `kernel.auth.connections.timeline(id, { type?: 'login' \| 'reauth' \| 'health_check' })` | Paginated, newest-first history of login attempts, automatic re-auths, and health checks. First stop when a connection keeps flipping to `NEEDS_AUTH`. |
+
+`kernel.auth.context.retrieve()` is the other half of the `auth.*` surface — it reports the caller's principal, organization, and `authorization.credential_scope` / `effective_scope` project ids.
+
+**Cost and re-auth defaults.** `health_checks` defaults to **true**: Kernel runs a background browser session against the target site on `health_check_interval` (default 3600s or your plan minimum, whichever is larger — Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400) for the life of the connection. Budget for it, or pass `health_checks: false` for one-shot connections. `auto_reauth` also defaults to true but is a **no-op when `health_checks: false`**, because re-auth only fires after a failed scheduled health check. `browser` (`ManagedAuthBrowserConfig`) is where proxy and telemetry for login, re-auth, and health-check sessions now go; the top-level `proxy` and `browser_telemetry` params are deprecated.
 
 `auth.connections.create` returns 409 if a connection with the same `domain` + `profile_name` already exists. Either reuse the existing one (`retrieve`/`list`) or pick a different `profile_name`.
 
@@ -66,7 +71,8 @@ window.location.href = hostedUrl;           // simplest: redirect away
 
 // OR embed Kernel's hosted UI in your own page:
 //   import { KernelManagedAuth } from '@onkernel/managed-auth-react';
-//   Pass sessionId={connectionId} and handoffCode={handoffCode}.
+//   Required props: sessionId={connectionId} and handoffCode={handoffCode}.
+//   Optional: appearance, localization, onSuccess, onError, baseUrl, fetch.
 //   See `references/examples/managed-auth-flow.md` for the full embed pattern.
 ```
 
@@ -111,27 +117,44 @@ await kernel.auth.connections.login(conn.id);
 
 let state = await kernel.auth.connections.retrieve(conn.id);
 while (state.flow_status === 'IN_PROGRESS') {
-  if (state.flow_step === 'AWAITING_INPUT' && state.discovered_fields?.length) {
-    const fields = await collectFromUser(state.discovered_fields);
-    // discovered_fields: [{ name: 'username', type: 'text' }, { name: 'password', type: 'password' }]
+  // Canonical path — id-keyed, and the only shape that carries the newer choice
+  // types ('auth_method', 'identifier_method', 'account', 'other').
+  if (state.fields?.length) {
+    // Field: { id, ref, type: 'identifier'|'password'|'code'|'totp_code'|'totp_secret'|'text',
+    //          label?, hint?, required?, observed_selector?, replace_existing? }
+    const field_values = await collectFromUser(state.fields);   // Field.id -> value
+    await kernel.auth.connections.submit(conn.id, { field_values });
+  } else if (state.flow_step === 'AWAITING_INPUT' && state.discovered_fields?.length) {
+    // Legacy fallback — keyed by field *name*, not id.
+    const fields = await collectLegacyFromUser(state.discovered_fields);
     await kernel.auth.connections.submit(conn.id, { fields });
   }
+
+  if (state.choices?.length) {
+    // Choice: { id, label, type, mfa_type?, masked_destination?, description?, observed_selector? }
+    // Use `id` — two options can share a `type` (e.g. two SMS destinations).
+    const choice = await pickChoice(state.choices);
+    await kernel.auth.connections.submit(conn.id, { selected_choice_id: choice.id });
+  } else {
+    // Legacy fallbacks, used only when `choices` is absent.
+    if (state.pending_sso_buttons?.length) {
+      const sso = await pickSSO(state.pending_sso_buttons);      // [{ provider, label, selector }]
+      await kernel.auth.connections.submit(conn.id, { sso_provider: sso.provider });
+    }
+    if (state.mfa_options?.length) {
+      // Each option is { type, label, description?, target? } — pick by `type`
+      // and pass it as `mfa_option_id` (Kernel uses the type as the option id).
+      const mfa = await pickMfa(state.mfa_options);
+      await kernel.auth.connections.submit(conn.id, { mfa_option_id: mfa.type });
+    }
+    if (state.sign_in_options?.length) {
+      const account = await pickSignIn(state.sign_in_options);
+      await kernel.auth.connections.submit(conn.id, { sign_in_option_id: account.id });
+    }
+  }
+
   if (state.flow_step === 'AWAITING_EXTERNAL_ACTION') {
-    showUser('Approve the push on your phone…');
-  }
-  if (state.pending_sso_buttons?.length) {
-    const choice = await pickSSO(state.pending_sso_buttons); // [{ provider, label, selector }]
-    await kernel.auth.connections.submit(conn.id, { sso_provider: choice.provider });
-  }
-  if (state.mfa_options?.length) {
-    // Each option is { type, label, description?, target? } — pick by `type`
-    // and pass it as `mfa_option_id` (Kernel uses the type as the option id).
-    const choice = await pickMfa(state.mfa_options);
-    await kernel.auth.connections.submit(conn.id, { mfa_option_id: choice.type });
-  }
-  if (state.sign_in_options?.length) {
-    const account = await pickSignIn(state.sign_in_options);
-    await kernel.auth.connections.submit(conn.id, { sign_in_option_id: account.id });
+    showUser(state.external_action_message ?? 'Approve the push on your phone…');
   }
   await new Promise(r => setTimeout(r, 2000));
   state = await kernel.auth.connections.retrieve(conn.id);
@@ -184,6 +207,10 @@ await kernel.browsers.create({
 A single profile can carry multiple connections for different domains — log in once for each, and the browser is logged into all of them.
 
 Most authenticated sessions stay valid for days; Kernel auto-refreshes when possible. When `status === 'NEEDS_AUTH'`, run the flow again.
+
+Auto-refresh is driven by scheduled health checks, so both switches must be on: `health_checks` (default true) and `auto_reauth` (default true). `auto_reauth` is a **no-op when `health_checks: false`** — disabling health checks to save browser-seconds silently disables auto-refresh too. `health_check_interval` defaults to 3600s or your plan minimum, whichever is larger (Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400).
+
+Read `can_reauth` and `can_reauth_reason` on the connection to find out whether a human is actually required — e.g. `requires_totp_without_secret`, `requires_email_code`, `no_credential`, `no_viable_plans`. Use `kernel.auth.connections.timeline(id, { type: 'reauth' })` to see what the last attempts did.
 
 ## When to skip Managed Auth
 

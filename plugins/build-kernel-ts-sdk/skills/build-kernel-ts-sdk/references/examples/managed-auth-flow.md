@@ -2,9 +2,9 @@
 
 End-to-end Hosted UI with the embedded `@onkernel/managed-auth-react` component, a Next.js App Router page, the backend route, and a downstream browser launch.
 
-Stack assumptions: Next.js 14+ App Router, TypeScript, `@onkernel/sdk`, `@onkernel/managed-auth-react`.
+Stack assumptions: Next.js 15+ App Router, TypeScript, `@onkernel/sdk`, `@onkernel/managed-auth-react`. Route-handler `params` is a `Promise` from Next 15 onward and must be awaited; on Next 14 use the synchronous `{ params }: { params: { connectionId: string } }` form instead.
 
-Source note: Verified against Kernel docs, `@onkernel/sdk` npm metadata, and `@onkernel/managed-auth-react@0.1.0` package types on 2026-05-09.
+Source note: Verified against Kernel docs, `@onkernel/sdk@0.92.0`, and `@onkernel/managed-auth-react@0.4.1` package types on 2026-08-19.
 
 ## Backend route — start a connection
 
@@ -115,11 +115,12 @@ const kernel = new Kernel();
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { connectionId: string } }
+  { params }: { params: Promise<{ connectionId: string }> }
 ) {
-  const state = await kernel.auth.connections.retrieve(params.connectionId);
+  const { connectionId } = await params;
+  const state = await kernel.auth.connections.retrieve(connectionId);
   return NextResponse.json({
-    connectionId: params.connectionId,
+    connectionId,
     profileName: state.profile_name,
     flowStatus: state.flow_status,
     status: state.status,
@@ -182,7 +183,7 @@ Most sessions remain valid for days; Kernel auto-refreshes when possible.
 - The React component is a **client component**. Mark the file `'use client'` in App Router; it will not render server-side.
 - `auth.connections.create` returns 409 on duplicate `(domain, profile_name)`. Either reuse the existing connection or pick a new `profile_name`.
 - Treat `handoff_code` as short-lived. Re-`login` if the user lingers before completing.
-- Same-origin proxying via Next rewrites is supported via `baseUrl=""` on the component if you want the iframe to look like your domain.
+- To keep auth traffic same-origin (cookies, CSP, observability), set `baseUrl=""` on the component and proxy the four endpoints it hits — `POST /auth/connections/:id/exchange`, `GET /auth/connections/:id`, `POST /auth/connections/:id/submit`, `GET /auth/connections/:id/events` — through Next `rewrites()`. There is no iframe: the component renders on your origin as normal DOM, so `connect-src`/CORS is what matters, not `X-Frame-Options`.
 - Store only the auth connection id and profile name needed by your app; do not store handoff codes after exchange.
 - When finishing a Managed Auth task, report auth connection id, profile name, final `flow_status`/`status`, and whether a browser was launched with that profile.
 

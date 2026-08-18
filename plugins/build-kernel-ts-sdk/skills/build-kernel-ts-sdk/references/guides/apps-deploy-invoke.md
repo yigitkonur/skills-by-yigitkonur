@@ -73,7 +73,7 @@ kernel deploy github \
   --entrypoint app.ts
 ```
 
-Programmatic equivalent via the SDK:
+Programmatic equivalent via the SDK. Every field of `DeploymentCreateParams` is optional; `file` (zip upload) and `source` (GitHub) are the two alternatives:
 
 ```ts
 import fs from 'node:fs';
@@ -88,7 +88,27 @@ const deployment = await kernel.deployments.create({
   version: '1.0.0',
   force: true,                       // overwrite same version (false → fail if version exists)
 });
+```
 
+```ts
+// Same deploy, from GitHub — the programmatic form of `kernel deploy github`.
+// `source.entrypoint`, `ref`, `type`, and `url` are all required inside `source`.
+const fromRepo = await kernel.deployments.create({
+  source: {
+    type: 'github',
+    url: 'https://github.com/owner/repo',
+    ref: 'main',                     // branch, tag, or commit SHA
+    entrypoint: 'app.ts',
+    // path: 'services/agent',       // monorepo subdir; omit to use repo root
+    // auth: { … },                  // private repos
+  },
+  env_vars: { OPENAI_API_KEY: process.env.OPENAI_API_KEY! },
+  version: '1.0.0',
+  force: true,
+});
+```
+
+```ts
 // Stream the deployment build:
 for await (const evt of await kernel.deployments.follow(deployment.id)) {
   // evt.event: 'log' | 'deployment_state' | 'app_version_summary' | 'error' | 'sse_heartbeat'
@@ -229,15 +249,21 @@ Two paths:
 1. **Build-time env** — `--env`/`--env-file` at deploy or `env_vars` in `deployments.create`. Available in the action as `process.env.X`.
 2. **Per-invocation payload** — pass end-user keys in `payload`. Don't bake them into the deployment.
 
+Treat `KERNEL_API_KEY` as reserved and do not set it via `--env` / `--env-file` / `env_vars`. Kernel's own app templates read it from the deployment environment, so a bare `new Kernel()` inside an action is the expected idiom. If you need a specific org- or project-scoped key, give it a distinct name and pass it explicitly: `new Kernel({ apiKey: process.env.MY_KERNEL_API_KEY })`. The exact injection and override semantics are not documented — verify against `https://www.kernel.sh/docs/apps/secrets` before relying on one deployment's env winning over another's.
+
 There is no separate "secret store" SDK surface. `kernel.credentials.*` exists but it's the Managed Auth credential store (used by `auth.connections.*`), not a generic env vault.
 
 ## Logs
 
-Each invocation emits structured log events. Stream live with `invocations.follow` or fetch them after the fact:
+Invocation logs are delivered **only** as a stream. `kernel.invocations.retrieve(id)` returns no `logs` field at all — `InvocationRetrieveResponse` is exactly `id`, `action_name`, `app_name`, `started_at`, `status`, `version`, `finished_at?`, `output?`, `payload?`, `status_reason?`. There is no "fetch the logs after the fact" call; do not build a log collector on polling `retrieve`.
 
 ```ts
-const inv = await kernel.invocations.retrieve(id);
-// inv.logs is undefined for ongoing invocations; consume `follow` for live tails.
+// Logs arrive as `event: 'log'` items ({ event, message, timestamp }) on the SSE stream.
+// `since` takes an RFC timestamp or a duration like '5m' to start the stream earlier.
+const events = await kernel.invocations.follow(id, { since: '5m' });
+for await (const evt of events) {
+  if (evt.event === 'log') console.log(`[${evt.timestamp}] ${evt.message}`);
+}
 ```
 
 For VM-level logs (everything inside the browser VM, not just your action's `console.log`), use `kernel.browsers.logs.stream(session_id, { source: 'supervisor', follow: true })` (supervisor process logs) or `kernel.browsers.logs.stream(session_id, { source: 'path', path: '/var/log/…', follow: true })` (a specific file). `source` is required.
