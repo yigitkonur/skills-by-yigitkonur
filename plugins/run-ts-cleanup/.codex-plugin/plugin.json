@@ -1,6 +1,6 @@
 {
   "name": "run-ts-cleanup",
-  "version": "1.0.55",
+  "version": "1.0.56",
   "description": "Use if cleaning up a TypeScript codebase — dead code, unused deps, AI slop, weak types.",
   "author": {
     "name": "Yigit Konur",
