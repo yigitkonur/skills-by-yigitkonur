@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 49 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 50 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.55",
       "category": "bundle",
       "strict": false,
@@ -64,6 +64,7 @@
         "./skills/run-review",
         "./skills/run-testsprite-backend",
         "./skills/run-testsprite-frontend",
+        "./skills/run-ts-cleanup",
         "./skills/test-by-mcpc-cli",
         "./skills/update-agent-config"
       ],
@@ -264,7 +265,7 @@
     {
       "name": "yk-ops",
       "source": "./",
-      "description": "Ops & release — Railway, Coolify Cloud compose deploys, CI/CD optimization, repo cleanup, npm publishing.",
+      "description": "Ops & release — Railway, Coolify Cloud compose deploys, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
       "version": "1.0.55",
       "category": "bundle",
       "tags": [
@@ -276,6 +277,7 @@
         "./skills/deploy-coolify-cloud",
         "./skills/ci-cd-optimize",
         "./skills/run-repo-cleanup",
+        "./skills/run-ts-cleanup",
         "./skills/publish-npm-package"
       ]
     },
@@ -831,6 +833,17 @@
       "strict": false,
       "skills": [
         "./skills/run-testsprite-frontend"
+      ]
+    },
+    {
+      "name": "run-ts-cleanup",
+      "source": "./",
+      "description": "Use if cleaning up a TypeScript codebase — dead code, unused deps, AI slop, weak types.",
+      "version": "1.0.55",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/run-ts-cleanup"
       ]
     },
     {

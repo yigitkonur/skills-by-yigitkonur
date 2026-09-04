@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **47 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **50 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex and Claude Code both get the complete 47-skill pack.
+three ways in. Codex and Claude Code both get the complete 50-skill pack.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 49 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 50 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -71,7 +71,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, project manager supervision, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
-| **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
+| **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, typescript cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 | **yk-writing** | multilingual natural-writing diagnosis, rewrite, and publication review | `/plugin install yk-writing@yigitkonur` |
 
@@ -198,6 +198,7 @@ deploy, maintain, offload, publish.
 - **[deploy-coolify-cloud](skills/deploy-coolify-cloud/)** — deploy/update docker-compose services on coolify cloud via the api: verified create/patch/urls-domain/env-var contracts, base64 compose, custom domains + TLS, cross-service networking, and box-level deploy verification.
 - **[ci-cd-optimize](skills/ci-cd-optimize/)** — diagnose or optimize slow CI/CD by measured bottleneck — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, and exact-artifact verification.
 - **[run-repo-cleanup](skills/run-repo-cleanup/)** — finish a project: review + merge every live branch and worktree into main locally (no prs), retire dangling branches, sweep junk to a gitignored trash.
+- **[run-ts-cleanup](skills/run-ts-cleanup/)** — clean up a typescript codebase: dead code, unused deps, ai slop, weak types, tangled structure — knip + biome/oxlint/eslint + tsc, in reversible waves.
 - **[publish-npm-package](skills/publish-npm-package/)** — npm releases via github actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
 
 `/plugin install yk-ops@yigitkonur`

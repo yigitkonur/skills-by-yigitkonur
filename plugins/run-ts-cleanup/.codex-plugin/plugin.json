@@ -1,0 +1,35 @@
+{
+  "name": "run-ts-cleanup",
+  "version": "1.0.55",
+  "description": "Use if cleaning up a TypeScript codebase — dead code, unused deps, AI slop, weak types.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-ts-cleanup"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-ts-cleanup",
+    "shortDescription": "Use if cleaning up a TypeScript codebase — dead code, unused deps, AI slop, weak types.",
+    "longDescription": "Install only the run-ts-cleanup workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-ts-cleanup skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

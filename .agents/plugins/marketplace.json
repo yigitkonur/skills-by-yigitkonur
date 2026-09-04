@@ -581,6 +581,18 @@
       "category": "Productivity"
     },
     {
+      "name": "run-ts-cleanup",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-ts-cleanup"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "test-by-mcpc-cli",
       "source": {
         "source": "local",
