@@ -82,6 +82,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 write app code against a specific framework or sdk.
 
 - **[build-chrome-extension](skills/build-chrome-extension/)** — chrome mv3: manifest v3, service_worker, content_scripts, popup, side_panel, declarativenetrequest, web store packaging.
+- **[build-cloudflare-access-sso](skills/build-cloudflare-access-sso/)** — cloudflare access + google sso on a subdomain: reusable policies, google oauth client/consent-screen traps, proxied dns, origin ip lockdown + jwt validation so access can't be bypassed, four-check verification.
 - **[build-cloudflare-email-sending](skills/build-cloudflare-email-sending/)** — cloudflare email service: `send_email` worker binding, wrangler domain onboarding, migrate from resend/ses/postmark, replace supabase auth's mailer.
 - **[build-effect-ts-v3](skills/build-effect-ts-v3/)** — effect-ts v3: `Effect.gen`, `Layer`, `Schema`, typed errors, fibers, `Stream`.
 - **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — kernel sdk (`@onkernel/sdk`): browsers, apps, profiles, managed auth, pools, playwright/cdp.

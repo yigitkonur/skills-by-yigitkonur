@@ -125,6 +125,18 @@
       "category": "Productivity"
     },
     {
+      "name": "build-cloudflare-access-sso",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-cloudflare-access-sso"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "build-cloudflare-email-sending",
       "source": {
         "source": "local",

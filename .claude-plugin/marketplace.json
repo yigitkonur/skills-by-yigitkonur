@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 50 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 51 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.57",
       "category": "bundle",
       "strict": false,
@@ -26,6 +26,7 @@
         "./skills/audit-ux-laws",
         "./skills/build-chrome-extension",
         "./skills/build-clean-mcp-architecture",
+        "./skills/build-cloudflare-access-sso",
         "./skills/build-cloudflare-email-sending",
         "./skills/build-effect-ts-v3",
         "./skills/build-kernel-ts-sdk",
@@ -180,7 +181,7 @@
     {
       "name": "yk-build",
       "source": "./",
-      "description": "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
+      "description": "App & framework builders — Chrome MV3, Cloudflare Access SSO, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
       "version": "1.0.57",
       "category": "bundle",
       "tags": [
@@ -189,6 +190,7 @@
       "strict": false,
       "skills": [
         "./skills/build-chrome-extension",
+        "./skills/build-cloudflare-access-sso",
         "./skills/build-cloudflare-email-sending",
         "./skills/build-effect-ts-v3",
         "./skills/build-kernel-ts-sdk",
@@ -407,6 +409,17 @@
       "strict": false,
       "skills": [
         "./skills/build-clean-mcp-architecture"
+      ]
+    },
+    {
+      "name": "build-cloudflare-access-sso",
+      "source": "./",
+      "description": "Use if protecting a subdomain with Cloudflare Access + Google SSO, or locking an origin against Access bypass.",
+      "version": "1.0.57",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-cloudflare-access-sso"
       ]
     },
     {
