@@ -45,10 +45,8 @@ should start with `extract-evidence`; narrow lenses can start with
 
 Each agent may have a different MCP transport/conversation scope. Therefore:
 
-- each trace and `review-research` result applies only to that agent;
-- never expect one agent's plan/search/extraction events in another agent's
-  review;
-- do not use review as a shared project database;
+- each research session applies only to that agent;
+- do not share unverified search states across parallel agents;
 - do not hand one agent's extraction continuation to another agent; encrypted
   retrieval checkpoints are scoped to the originating conversation/session;
 - require findings and citation records in each agent's returned text;

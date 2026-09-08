@@ -68,9 +68,6 @@ non-negotiable for this brief.
      contradictions, and continuation state. Reddit permalinks
      auto-route through the Reddit API (full threaded post + comments)
      — put attribution in the requirement itself for sentiment work.
-   - `review-research`: no arguments; reviews this session's retained
-     trace and returns `ready` / `continue` / `blocked` plus ≤3
-     scored next calls. Advisory only.
 
 3. **Parallel dispatch**: fire two `web-search` calls in one
    turn when scopes differ (e.g. open web + a `site:reddit.com/

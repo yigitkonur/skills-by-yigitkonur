@@ -161,8 +161,8 @@ disagree:
   "does it work in practice"; trust docs for "how is it supposed
   to work".
 - **Planner reasoning vs verified facts.** Always trust an
-  `extract-evidence` quotation over `plan-research` or
-  `review-research` prose for a specific fact; planning and review
+  `extract-evidence` quotation over `plan-research`
+  prose for a specific fact; planning
   output are strategy, not evidence.
 - **Nobody agrees.** The answer is genuinely context-dependent.
   Do not force one recommendation; name the variables that
@@ -347,8 +347,7 @@ Before declaring the corpus complete:
 - [ ] Version-specific claims checked against changelog.
 - [ ] Sources actually independent (not citing each other).
 - [ ] Recency appropriate for the domain.
-- [ ] Any planner or review reasoning (from `plan-research` /
-      `review-research`) about specific facts verified against pages
+- [ ] Any planner reasoning (from `plan-research`) about specific facts verified against pages
       actually read via `extract-evidence`.
 - [ ] `not-found` requirements from Wave 2 are reflected in the
       pack's "insufficient evidence" entries.

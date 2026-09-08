@@ -163,7 +163,6 @@ Do not conflate the two state systems.
 | State | Purpose | Persistence | Contents |
 |---|---|---|---|
 | Evidence resume checkpoint | Continue unfinished retrieval/extraction without repeating accepted source retrieval | Redis-backed when available; encrypted, compressed, absolute one-hour TTL | Retrieval stage/outcomes, attempt metadata, warnings, fetch time, and bounded accepted cleaned content or a sparse block projection |
-| Research session ledger | Let `review-research` assess coverage, gaps, rounds, and stopping | Bounded `in-process-only`; lost on restart/replica movement | Privacy-projected plan/search/extraction observations, never page bodies |
 
 Resume checkpoints do **not** store evidence requirements, prompts, model
 outputs, extracted findings, citations, credentials, or ledger events.
@@ -195,8 +194,4 @@ trace. Never move a continuation into a parallel agent and assume state follows.
   rather than issuing concurrent duplicate retrieval.
 - A disconnected caller aborts work and does not receive an ordinary partial
   response. Start a fresh call only from state actually available to the host.
-- `review-research` is not a substitute for a required extraction continuation.
-  Pending required work must keep the trace from being treated as ready.
-- Review history can disappear even while a Redis retrieval checkpoint remains
-  reusable. Continue extraction from the exact returned call, then manage
-  coverage manually if review reports unavailable history.
+- An extraction continuation must be completed before treating findings as final.

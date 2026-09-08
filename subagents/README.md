@@ -1,6 +1,6 @@
-# Subagent Suites — Claude + Codex
+# Internet Researcher Agent Suite — Claude + Codex
 
-Two suites live here. The **internet-researcher suite**: six evidence-grounded research agents for developers and AI coding agents stuck on technical problems with public solutions, shipped in two runtime flavors — drop in to `~/.claude/agents/` or `~/.codex/agents/` for the matching CLI. The **agent-browser operator suite**: two Claude-only agents that drive the `run-agent-browser` skill for browser testing and extraction (see their section below).
+Six evidence-grounded research agents for developers and AI coding agents stuck on technical problems with public solutions. Ships in two runtime flavors — drop in to `~/.claude/agents/` or `~/.codex/agents/` for the matching CLI.
 
 ## Layout
 
@@ -13,11 +13,9 @@ subagents/
 │   ├── internet-researcher-tech-choice.md
 │   ├── internet-researcher-debug-stuck.md
 │   ├── internet-researcher-api-docs.md
-│   ├── internet-researcher-shipping-pattern.md
-│   ├── agent-browser-tester.md
-│   └── agent-browser-extractor.md
+│   └── internet-researcher-shipping-pattern.md
 └── codex/              Codex CLI runtime (frontmatter: name, description; <codex_agent_role> block)
-    └── internet-researcher-*.md  (researchers only, format adapted)
+    └── internet-researcher-*.md  (same six, format adapted)
 ```
 
 ## Why six, not twelve
@@ -43,17 +41,6 @@ Edge needs (license/ToS, CVE/security, RFC spec lookup, incident post-mortems, O
 | `internet-researcher-shipping-pattern` | You need real production examples — userscripts, extensions, leaked source, OSS code that ships X. |
 
 All descriptions are ≤25 words and follow the same "Use this agent if … See body for triggers" shape.
-
-## The two browser operator agents (Claude-only)
-
-| Agent | Use it if |
-|---|---|
-| `agent-browser-tester` | A real browser must test or verify a web app — Verify (prove a change works, with screenshot + console evidence), Journey (walk a plain-English scenario), or Audit (checklist sweep of pages). |
-| `agent-browser-extractor` | Content must come out of known pages that need rendering, login, scrolling, or clicks — structured scraping into tables/JSON, or reference UX walkthroughs with screenshots. |
-
-Both wrap the `run-agent-browser` skill: they invoke it as their first action, carry a self-contained distillation of its tier ladder (plain local → Steel CDP → cloud providers) and live-REPL discipline as fallback, and return evidence-based reports (tester: per-check pass/fail; extractor: dataset + per-fact provenance). They ship through the marketplace with `yk-automation`, the `run-agent-browser` per-skill plugin, and `yk-everything`.
-
-Unlike the researchers, their descriptions are long and trigger-phrase-rich by design — dispatch matches on literal user wording ("is prod healthy", "scrape X from this URL"), so the extra words buy triggering accuracy. No Codex variants: their bodies depend on the Claude Code Skill tool and host tier config, which the Codex `codex exec` agent format doesn't carry.
 
 ## Model assignments (Codex variant)
 
@@ -116,14 +103,13 @@ The entire suite is built on the Research Powerpack MCP server. Both runtimes (C
 
 Client-generated MCP prefixes depend on the alias each install registers (`mcp__mcp-researchpowerpack__web-search`, `mcp__research-mcp__web-search`, ...), so the agent bodies match on canonical tool names instead of hard-coding a namespace.
 
-Four tools, one ladder:
+Three tools, one ladder:
 
-- `plan-research` — the planner, worth calling first on anything non-trivial. One `objective` string in; decision-critical clusters, checkable evidence requirements, query ideas (100 global ceiling, never a quota), a first wave of at most 12, reserves, gaps, budgets, and stop conditions out. The single most under-used tool in the kit.
-- `web-search` — discovery. 1-50 *complete* `queries` in parallel; ranked, canonicalized sources with query lineage out. `evidence_status` is always `leads-only`, so titles and snippets never become citations. Reddit permalink hunting is a `site:reddit.com/r/<sub>/comments` query, not a separate mode.
-- `extract-evidence` — the only tool that produces evidence. Up to 20 `urls` against up to 20 checkable `evidence_requirements`; findings come back with exact quotations and code-derived locators, and a fetched source that genuinely lacks the answer returns `not-found` as useful negative evidence. Reddit permalinks auto-route through the Reddit API for full threaded comments, so attribution belongs inside a requirement rather than a facet string.
-- `review-research` — advisory checkpoint, no arguments. Reads only the server's retained same-session trace and returns `ready`, `continue`, or `blocked` plus at most three scored next calls. It cannot see the host conversation and never executes work.
+- `plan-research` — the planner. Generates decision-critical clusters, checkable evidence requirements, and a first search wave. Pass generated evidence requirements directly to `extract-evidence`.
+- `web-search` — discovery. 1-50 *complete* `queries` in parallel; returns ranked leads with query lineage, cluster metrics, and coverage stats. Titles and snippets are triage leads, never citations.
+- `extract-evidence` — the only tool that produces evidence. Up to 20 `urls` against up to 20 checkable `evidence_requirements`. Returns verified quotations with derived locators, status per requirement (`answered`, `partial`, `not-found`, `conflicting`), and retry continuations.
 
-Two behaviors apply across every agent: `structuredContent` is canonical (the Markdown beside it is a shortened rendering), and a `continuation.required: true` result from `extract-evidence` must be finished by invoking its exact `continuation.next_call` in the same session — pending sources are unfinished work, not `not-found`.
+When tool outputs are large, environments redirect them to `output.txt` on disk. Agents read the file to parse coverage metrics, ranked leads, and verified quotes. If `extract-evidence` returns `continuation.required: true`, invoke `continuation.next_call` in the same session. A `not-found` status is valid negative proof that the source lacks the requested fact — never endlessly re-read the same URL.
 
 If a Research Powerpack tool is unavailable in a session, agents return `blocked` with the missing tool name. No fallbacks to non-powerpack alternatives are permitted by the agent prompts.
 

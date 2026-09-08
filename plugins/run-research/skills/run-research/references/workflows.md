@@ -20,15 +20,11 @@ not call a pending requirement `not-found`. See `resumable-extraction.md`.
 Sequence:
 
 ```text
-extract-evidence -> required continuation loop -> optional review-research -> synthesize
+extract-evidence -> required continuation loop -> synthesize
 ```
 
 Call the URL directly with one to five checkable requirements. Skip planning
-and search. Review is useful only if the caller wants the server to assess this
-trace or suggest corroboration; it may reasonably say the single source is not
-independent enough.
-
-Stop after the source answers the narrow question, or report the explicit
+and search. Stop after the source answers the narrow question, or report the explicit
 not-found/gated/fetch limitation.
 
 ## 2. Quick current fact
@@ -57,8 +53,7 @@ plan-research
 -> first-round web-search
 -> authority-diverse extract-evidence calls
 -> required continuation loops
--> review-research
--> selected advisory next call or synthesis
+-> synthesize
 ```
 
 The objective should name user constraints and reversal conditions. Keep
@@ -66,7 +61,7 @@ official capability, pricing, failure/maintenance, and practitioner evidence in
 separate clusters. Execute at most the selected first wave, not all query ideas.
 
 Extract the same decision-critical fields across options, but do not force
-symmetry when a source genuinely lacks an answer. Review after the first
+symmetry when a source genuinely lacks an answer. Evaluate evidence after the first
 evidence round. Stop on complete high/medium coverage with no unresolved
 conflict, or state the critical blocked gap.
 
@@ -214,8 +209,6 @@ that may explain it.
 - sibling URL/query failures do not cancel successful work;
 - search zero-results are valid statuses, not automatic tool errors;
 - a planning outage returns a concise degraded plan;
-- a review-model outage uses deterministic review and only retained validated
-  continuation material;
 - a response-budget cutoff returns pending sources and an exact non-error
   extraction continuation;
 - total extraction failure is not raw-content success.
@@ -225,8 +218,7 @@ missing capability is required for a critical gap.
 
 ## 15. Stateless or expired session
 
-Primary tools still work. `review-research` returns unavailable history and no
-invented strategic next call. An extraction result can still contain its own
+Primary tools still work. Self-evaluate coverage against the stop conditions. An extraction result can still contain its own
 required `continuation.next_call`; execute it in the same available transport
 scope when affordable. If `resume_available` is false, the call is valid but
 may repeat retrieval. Continue manually from outputs in host context, or begin

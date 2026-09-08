@@ -15,7 +15,6 @@ Tool names vary by runtime. Verify the available tool names before Phase 1 and r
 | `plan-research` | Takes one `objective` string and returns a plan: decision-critical clusters, checkable evidence requirements, query ideas (≤100 global, ≤25 per cluster — ceilings, not quotas), a first wave of ≤12 queries, source-selection signals, reserves, gaps, budgets, and stop conditions. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
 | `web-search` | Takes `queries`: 1-50 complete retrieval queries. Returns up to 100 ranked, canonicalized sources with original/dispatched/relaxed lineage and cluster-capped consensus. `evidence_status` is always `leads-only`. Reddit discovery is a `site:reddit.com/r/.../comments` query, not a parameter. | Broad URL harvesting; Reddit permalink discovery; subagent triage; gap-driven follow-ups (expect multiple calls across 2-4 rounds) |
 | `extract-evidence` | Takes `urls` (≤20) and `evidence_requirements` (≤20 checkable questions). Returns per-requirement status (`answered`, `partial`, `not-found`, `conflicting`) with exact quotations and code-derived locators, plus coverage, contradictions, and continuation state. Reddit permalinks route through the Reddit API (full threaded fetch) automatically. | Docs/blog extraction; fact checks; source-backed synthesis; Reddit/practitioner capture |
-| `review-research` | No arguments. Reviews only the server's retained same-session trace and returns `ready`, `continue`, or `blocked` plus ≤3 scored next calls. | End-of-round check inside a single research task, before it reports back |
 
 Search and extraction are separate stages, and only extraction produces
 evidence. Use `web-search` when you need a ranked URL pool and haven't decided
@@ -41,7 +40,6 @@ When the MCP is unavailable:
 | `plan-research` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
 | `web-search` | `WebSearch` direct |
 | `extract-evidence` | `WebFetch` to the page + manual quoting, OR `curl` — and record that quotations are no longer server-verified |
-| `review-research` | Orchestrator reviews the round personally against the charter's stop conditions |
 
 State the fallback explicitly in the workflow. Do not silently degrade.
 
@@ -275,7 +273,7 @@ A typical Phase 4 sequence for one entity:
 3. extract-evidence → verify the selected URLs against the plan's requirements
 4. finish any continuation.next_call exactly, then read what came back and name the gaps
 5. web-search + extract-evidence → fill specific gaps (pricing scenario, Reddit signal)
-6. review-research → confirm coverage or take one scored next call
+6. evaluate coverage against stop conditions
 7. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
 8. Write or refine the entity-pack files
 ```
@@ -286,7 +284,7 @@ Before Phase 1, run a one-line probe:
 
 ```
 # Check MCP availability
-Probe: which Research Power Pack tools are available (`plan-research`, `web-search`, `extract-evidence`, `review-research`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
+Probe: which Research Power Pack tools are available (`plan-research`, `web-search`, `extract-evidence`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
 ```
 
 Capture the result in `_meta/methodology-and-source-policy.md` so the corpus records which tools were used (and which fallbacks).

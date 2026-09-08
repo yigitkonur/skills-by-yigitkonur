@@ -29,8 +29,7 @@ vocabulary and curated alternative lists, then map findings back to
 GitHub repo names — not to produce a shortlist yourself.
 
 Use the `run-research` skill if it is available. The skill drives the
-four-tool toolkit (`plan-research` + `web-search` + `extract-evidence` +
-`review-research`) with built-in discipline:
+three-tool toolkit (`plan-research` + `web-search` + `extract-evidence`) with built-in discipline:
 
 1. Route the first call: for a narrow naming question, start with
    `web-search`. If the category is genuinely fuzzy, invoke

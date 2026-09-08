@@ -1,7 +1,6 @@
 # Research Powerpack v9 tools
 
-Use the four public tools as deep modules. Their JSON `structuredContent` is
-canonical; the accompanying Markdown is intentionally shorter.
+Use the three public tools (`plan-research`, `web-search`, `extract-evidence`) as deep modules. When tool outputs exceed buffer limits, the host environment writes them to `output.txt` on disk. Inspect the file to read coverage metrics, ranked leads, and quotes.
 
 ## `plan-research`
 
@@ -155,51 +154,3 @@ Semantics:
 
 Read `resumable-extraction.md` for the exact schema-v2 continuation shape,
 T+34/T+35/T+55 cutoffs, cache contents, and research-ledger distinction.
-
-## `review-research`
-
-Input:
-
-```json
-{}
-```
-
-Pass no properties. Review sees only the bounded in-process trace retained for
-the current stateful MCP scope; it does not see the host conversation.
-
-Important output fields:
-
-- `mode`: model-assisted `full` or `deterministic-degraded`.
-- `history`: availability, scope, in-process persistence, timestamps, and an
-  honest unavailable reason.
-- `progress`: rounds, calls, in-flight work, coverage counts, and stale rounds.
-- `verdict`: `ready`, `continue`, or `blocked`.
-- `coverage`, `quality_issues`, `contradictions`, and `remaining_gaps`.
-- `next_calls[]`: at most three advisory options that already validate against
-  `web-search` or `extract-evidence`, each with value score, confidence,
-  purpose, and target gaps.
-- `stop_reason`: completion, diminishing returns, round cap, capability block,
-  unavailable history, or `null`.
-
-Only candidates with value score at least 60 and confidence at least 0.65 are
-exposed. Across all options there are at most eight proposed queries and five
-proposed URLs. `ready` always has no next calls.
-
-Do not call review repeatedly against unchanged state expecting a different
-answer; the server returns the cached identical result. When operations are in
-flight, wait rather than launch duplicate work.
-
-## State limits that affect callers
-
-- Review trace retention is in-process only: idle expiry one hour, absolute
-  expiry four hours. Restart or replica movement can lose it.
-- The separate retrieval checkpoint can be Redis-backed, encrypted, and reused
-  for one absolute hour. It stores accepted source content/stage metadata, not
-  requirements or extracted evidence. `resume_available` reports whether that
-  durability exists for the current continuation.
-- A plan selects one to four research rounds; the server never exceeds four.
-- Two consecutive zero-yield rounds trigger diminishing returns.
-- Stateless or expired history returns a non-throwing blocked review with no
-  invented guidance.
-- The trace is convenience state, not an authorization or durable workflow
-  store. Keep any facts needed for the final answer in the host context.

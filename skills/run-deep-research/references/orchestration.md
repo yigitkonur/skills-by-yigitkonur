@@ -234,7 +234,7 @@ Each Wave 2 subagent's run-research session:
 - Finish any `continuation.required` result by invoking its exact
   `continuation.next_call` before writing files.
 - Round 2: read `follow_up_signals` and unresolved requirements; fire
-  refined `web-search` queries, then `review-research` to decide
+  refined `web-search` queries, then evaluate against stop conditions to decide
   whether another round is worth it.
 
 The orchestrator's brief sets the dispatch shape (parallel scopes,

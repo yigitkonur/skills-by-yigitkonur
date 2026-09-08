@@ -224,7 +224,7 @@ research task executes it (a Claude run-research session, or a codex exec job).
 |---|---|---|
 | Find entities | 1A / Discovery | Parallel `web-search` calls with complete `queries` (open web + explicit `site:reddit.com/r/.../comments` probes) → optional `extract-evidence` on category indexes. Search returns leads only. |
 | Map axes / deep category pre-pass | 1B / Discovery | `web-search` to surface candidate analyses → `extract-evidence` on 2-3 authoritative analyses with requirements like "Which decision axes does this compare on?", "What are the native pricing units?", "Which practitioner channels are named?" |
-| Per-entity overview | 2 | `plan-research` with the entity's objective → parallel `web-search` (open web + reddit-scoped queries) → `extract-evidence` on docs and Reddit threads with one checkable requirement per template section → `review-research` before declaring the pack done |
+| Per-entity overview | 2 | `plan-research` with the entity's objective → parallel `web-search` (open web + reddit-scoped queries) → `extract-evidence` on docs and Reddit threads with one checkable requirement per template section → evaluate coverage against template before declaring the pack done |
 | Per-entity sentiment | 2 | `extract-evidence` on Reddit thread permalinks with attribution requirements ("Which comments endorse it, and with what author and score?", "Which dissent, and why?"); the Reddit API fetches the full threaded post + comments automatically |
 | Cross-entity synthesis | 3 | LOCAL-ONLY: read files, no web tools |
 | Profile pages | 4 / orch | LOCAL-ONLY: read pack, write profile |
@@ -443,7 +443,7 @@ exhausts context.
 | `references/industry/evidence-and-synthesis.md` | Wave 2-3 (industry framing) — source hierarchy, source-map and claims-ledger schemas, Reddit/practitioner rules, pricing/unit-economics standards, cross-category structure |
 | `references/industry/worked-example-cloud-browsers.md` | Any phase (industry framing) — annotated walkthrough of the cloud-browsers corpus including actual template artifacts. Mirror its *discipline*; do not copy slugs. |
 | `references/industry/mission-briefs.md` | Wave 1, 2, 3, 4 (industry framing) — prompts for discovery, entity-pack, cross-comparison, audience, source-verification, profile-writer tasks |
-| `references/industry/research-powerpack-and-explore.md` | Wave 1, 2, 3 (industry framing) — portable Research Power Pack API shapes (`plan-research`, `web-search`, `extract-evidence`, `review-research`) plus web-capable research and local-corpus Explore patterns (≤20 per wave) |
+| `references/industry/research-powerpack-and-explore.md` | Wave 1, 2, 3 (industry framing) — portable Research Power Pack API shapes (`plan-research`, `web-search`, `extract-evidence`) plus web-capable research and local-corpus Explore patterns (≤20 per wave) |
 | `scripts/init-corpus.sh` + `scripts/init-corpus.md` | Phase 0 or 3 — deterministic corpus scaffolding; root/meta starter files only, never entity evidence placeholders |
 
 ## Quick start

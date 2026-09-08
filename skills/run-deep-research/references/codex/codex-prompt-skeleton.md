@@ -131,8 +131,6 @@ Use the run-research discipline for every web/Reddit call.
      continuation state. Reddit permalinks are auto-detected and routed
      through the Reddit API (full threaded fetch), so put attribution
      in the requirement itself.
-   - review-research: no arguments; advisory `ready` / `continue` /
-     `blocked` on this session's retained trace.
 
 3. Parallel dispatch: fire two web-search calls in one turn when
    scopes differ (web + reddit). The reconnaissance round runs in

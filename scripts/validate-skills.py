@@ -27,14 +27,13 @@ JUNK_DIRS = {"evals", "__pycache__"}
 BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "CHANGELOG.md"}
 MAX_SKILL_MD_LINES = 1000
 
-# Research Powerpack v9 exposes exactly four public tools. Anything that teaches
+# Research Powerpack exposes exactly three public tools. Anything that teaches
 # an agent to call a retired name sends it at a tool the server no longer has,
 # so every research surface in this repo is scanned for the old vocabulary.
 RESEARCH_TOOL_NAMES = (
     "plan-research",
     "web-search",
     "extract-evidence",
-    "review-research",
 )
 RESEARCH_REMOVED_TOOL_NAMES = (
     "get-research-consultancy",
@@ -85,7 +84,6 @@ RUN_RESEARCH_REQUIRED_MARKERS_BY_FILE = (
             "| `plan-research` | `objective: string` |",
             "| `web-search` | `queries: string[]` |",
             "| `extract-evidence` | `urls: string[]`, `evidence_requirements: string[]` |",
-            "| `review-research` | no arguments |",
             "Known-URL work must not pay planning or search overhead.",
             'schema_version: "2"',
             "`continuation.required`",

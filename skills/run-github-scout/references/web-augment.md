@@ -17,7 +17,7 @@ replacement for filtering on GitHub.
 
 | Capability | What to do |
 |---|---|
-| `run-research` skill available | Preferred path. Invoke `run-research` with a tight objective scoped to "learn category vocabulary and curated lists for `<topic>`". The skill drives the four-tool toolkit (`plan-research` + `web-search` + `extract-evidence` + `review-research`) with built-in discipline. |
+| `run-research` skill available | Preferred path. Invoke `run-research` with a tight objective scoped to "learn category vocabulary and curated lists for `<topic>`". The skill drives the three-tool toolkit (`plan-research` + `web-search` + `extract-evidence`) with built-in discipline. |
 | Built-in `WebSearch` / `WebFetch` only | Lighter fallback. Search for category language, comparison posts, Reddit threads, and `site:github.com` results directly. |
 | No web tooling available | Stay GitHub-only. Widen the category phrasing instead, or accept the limitation explicitly. |
 

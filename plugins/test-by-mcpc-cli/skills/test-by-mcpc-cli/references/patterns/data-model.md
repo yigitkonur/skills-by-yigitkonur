@@ -69,7 +69,7 @@ Both return an extended MCP `InitializeResult` (2025-11-25 connections) or `Disc
   "serverInfo": { "name": "...", "version": "..." },
   "instructions": "...",
   "_meta": { "...": "..." },
-  "toolNames": ["plan-research", "web-search", "extract-evidence", "review-research"]
+  "toolNames": ["plan-research", "web-search", "extract-evidence"]
 }
 ```
 

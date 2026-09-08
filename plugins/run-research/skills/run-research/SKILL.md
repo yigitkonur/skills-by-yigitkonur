@@ -35,11 +35,8 @@ canonical tool names and inputs are:
 | `plan-research` | `objective: string` | Start a non-trivial research trace and receive bounded clusters, requirements, query ideas, first-round probes, reserves, and stop conditions. |
 | `web-search` | `queries: string[]` | Discover candidate URLs from complete retrieval queries. Results are leads only. |
 | `extract-evidence` | `urls: string[]`, `evidence_requirements: string[]` | Read known sources and return schema-v2 quotation-grounded results plus a resumable continuation when the 60-second response budget cannot finish every source. |
-| `review-research` | no arguments | Assess only this server's retained trace and return `ready`, `continue`, or `blocked` plus optional scored next calls. |
 
-Treat `structuredContent` as canonical. Markdown content is a concise human
-rendering and may omit lower-ranked records. Never reconstruct state by parsing
-Markdown.
+Treat `structuredContent` as canonical. When tool outputs exceed buffer limits, the host environment automatically writes them to `output.txt` on disk. Inspect the referenced file and read the Markdown summary: parse coverage metrics, ranked leads, and verified quotes.
 
 If the server is unavailable, preserve the same protocol with built-in search
 and page-reading tools. Do not pretend the session review ledger exists in a
@@ -58,7 +55,6 @@ Choose from the information already available:
 | Supplied public URLs can answer the entire narrow question | `extract-evidence` |
 | One quick current fact, likely two to five searches | `web-search` |
 | A comparison, migration, security question, ambiguous investigation, or broad synthesis | `plan-research` |
-| The user asks whether prior in-session research is sufficient | `review-research` |
 
 Known-URL work must not pay planning or search overhead. Quick facts usually do
 not need a plan. Planning is valuable when the completion standard, authority
@@ -99,10 +95,7 @@ as first-round extraction targets.
    reviewing or synthesizing. Do not rebuild, merge, or broaden its arguments.
    A pending response is a useful non-error partial result, not `not-found`.
 
-6. **Review after meaningful evidence.** Call `review-research` after at least
-   one extraction round or when progress stalls. Execute a recommended next
-   call only if it materially improves the research. The tool is advisory and
-   cannot see the host conversation.
+6. **Evaluate evidence coverage.** Assess evidence directly against the objective's stop conditions and coverage metrics after extraction rounds. Do not loop endlessly; stop as soon as critical requirements are answered by verified quotes.
 
 7. **Stop deliberately.** Stop on `ready`, on a justified blocked result, or
    when remaining low-priority limitations cannot change the answer. Do not
@@ -114,8 +107,7 @@ The normal substantive sequence is:
 ```text
 plan-research -> web-search -> extract-evidence
                                   |-- required --> exact next_call --> extract-evidence
-                                  |-- settled ---------------------> review-research
-                         web-search/extract-evidence <-- selected advice --|
+                                  |-- settled ---------------------> synthesize
 ```
 
 ## Resumable extraction
@@ -133,15 +125,13 @@ If `continuation.required` is true:
    conversation/session;
 4. repeat until `continuation.required` is false or the task budget forces an
    explicit partial-answer limitation;
-5. then use `review-research` for evidence coverage and next-round strategy.
+5. then evaluate evidence coverage against your stop conditions before synthesizing.
 
 `resume_available` describes checkpoint durability, not whether the current
 partial findings are valid. Redis-backed checkpoints retain encrypted accepted
 source content and retrieval-stage metadata for an absolute one hour so a
 continuation can avoid repeated provider work. They never retain requirements,
-prompts, extracted findings, or citations. The separate research ledger powers
-`review-research`, remains bounded and in-process-only, and can disappear on a
-restart or replica move.
+prompts, extracted findings, or citations.
 
 Read `references/resumable-extraction.md` for exact continuation fields,
 deadlines, cache scope, and failure semantics.
@@ -154,8 +144,8 @@ deadlines, cache scope, and failure semantics.
 - `blocked`: report the stated capability/history/critical-gap limitation. Do
   not invent a continuation.
 - history unavailable: expected for stateless calls, expired sessions,
-  restarts, or replica changes. Continue manually from outputs already in the
-  host context; never assume another session's trace.
+  in-process-only tracking, restarts, or replica changes. Continue manually from
+  outputs already in the host context; never assume another session's trace.
 - operations in flight: wait for those calls to finish before starting a
   duplicate round.
 - required extraction continuation: finish the exact continuation first when
