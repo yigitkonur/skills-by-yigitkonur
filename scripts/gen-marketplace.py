@@ -131,8 +131,9 @@ GROUPS = {
     ),
     "yk-ops": (
         "ops",
-        "Ops & observability — Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
+        "Ops & observability — Cloudflare Tunnel, Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
         [
+            "use-cloudflare-tunnel",
             "run-railway",
             "deploy-coolify-cloud",
             "ci-cd-optimize",

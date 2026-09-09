@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 52 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 53 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.60",
       "category": "bundle",
       "strict": false,
@@ -68,6 +68,7 @@
         "./skills/run-ts-cleanup",
         "./skills/test-by-mcpc-cli",
         "./skills/update-agent-config",
+        "./skills/use-cloudflare-tunnel",
         "./skills/use-sentry"
       ],
       "agents": [
@@ -268,7 +269,7 @@
     {
       "name": "yk-ops",
       "source": "./",
-      "description": "Ops & observability — Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
+      "description": "Ops & observability — Cloudflare Tunnel, Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
       "version": "1.0.60",
       "category": "bundle",
       "tags": [
@@ -276,6 +277,7 @@
       ],
       "strict": false,
       "skills": [
+        "./skills/use-cloudflare-tunnel",
         "./skills/run-railway",
         "./skills/deploy-coolify-cloud",
         "./skills/ci-cd-optimize",
@@ -881,6 +883,17 @@
       "strict": false,
       "skills": [
         "./skills/update-agent-config"
+      ]
+    },
+    {
+      "name": "use-cloudflare-tunnel",
+      "source": "./",
+      "description": "Expose localhost ports and multi-service apps (frontend SPA + backend APIs) to the internet via Cloudflare Tunnel. Use when you need public URLs for local development, remote browser testing (ego-browser), mobile viewport testing, external webhooks (Stripe/GitHub), or sharing live previews without port forwarding.",
+      "version": "1.0.60",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/use-cloudflare-tunnel"
       ]
     },
     {
