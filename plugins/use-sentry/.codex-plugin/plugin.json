@@ -1,6 +1,6 @@
 {
-  "name": "sentry",
-  "version": "1.0.59",
+  "name": "use-sentry",
+  "version": "1.0.60",
   "description": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
   "author": {
     "name": "Yigit Konur",
@@ -12,13 +12,13 @@
   "keywords": [
     "agent-skills",
     "codex",
-    "sentry"
+    "use-sentry"
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "sentry",
+    "displayName": "use-sentry",
     "shortDescription": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
-    "longDescription": "Install only the sentry workflow from Yigit Konur's curated skills pack.",
+    "longDescription": "Install only the use-sentry workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",
     "capabilities": [
@@ -28,7 +28,7 @@
     ],
     "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
     "defaultPrompt": [
-      "Use the sentry skill for this task."
+      "Use the use-sentry skill for this task."
     ],
     "brandColor": "#10A37F"
   }

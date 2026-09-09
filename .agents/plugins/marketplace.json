@@ -605,18 +605,6 @@
       "category": "Productivity"
     },
     {
-      "name": "sentry",
-      "source": {
-        "source": "local",
-        "path": "./plugins/sentry"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "test-by-mcpc-cli",
       "source": {
         "source": "local",
@@ -633,6 +621,18 @@
       "source": {
         "source": "local",
         "path": "./plugins/update-agent-config"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "use-sentry",
+      "source": {
+        "source": "local",
+        "path": "./plugins/use-sentry"
       },
       "policy": {
         "installation": "AVAILABLE",

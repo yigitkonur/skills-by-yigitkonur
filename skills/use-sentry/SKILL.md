@@ -1,5 +1,5 @@
 ---
-name: sentry
+name: use-sentry
 description: "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes."
 metadata:
   author: Yigit Konur

@@ -136,7 +136,7 @@ GROUPS = {
             "run-railway",
             "deploy-coolify-cloud",
             "ci-cd-optimize",
-            "sentry",
+            "use-sentry",
             "run-repo-cleanup",
             "run-ts-cleanup",
             "publish-npm-package",
