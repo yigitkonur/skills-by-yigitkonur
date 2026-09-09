@@ -71,7 +71,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, project manager supervision, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
-| **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, typescript cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
+| **yk-ops** | railway, coolify-cloud deploy, sentry observability, ci/cd optimization, repo-cleanup, typescript cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 | **yk-writing** | multilingual natural-writing diagnosis, rewrite, and publication review | `/plugin install yk-writing@yigitkonur` |
 
@@ -195,6 +195,7 @@ drive a browser, a phone, or a terminal workspace mid-session.
 
 deploy, maintain, offload, publish.
 
+- **[sentry](skills/sentry/)** — fullstack Sentry observability & operations: zero-to-one setup with research-mcp (max 20 keywords), 4-pillar enterprise feature audit, envelope tunneling for ISP DNS sinkholes, and token-efficient 4-rung CLI triage.
 - **[run-railway](skills/run-railway/)** — railway cli: deploys, logs, env vars, link, ssh, db shells, scaling, installed-vs-docs version-drift routing.
 - **[deploy-coolify-cloud](skills/deploy-coolify-cloud/)** — deploy/update docker-compose services on coolify cloud via the api: verified create/patch/urls-domain/env-var contracts, base64 compose, custom domains + TLS, cross-service networking, and box-level deploy verification.
 - **[ci-cd-optimize](skills/ci-cd-optimize/)** — diagnose or optimize slow CI/CD by measured bottleneck — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, and exact-artifact verification.

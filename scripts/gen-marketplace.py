@@ -131,11 +131,12 @@ GROUPS = {
     ),
     "yk-ops": (
         "ops",
-        "Ops & release — Railway, Coolify Cloud compose deploys, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
+        "Ops & observability — Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
         [
             "run-railway",
             "deploy-coolify-cloud",
             "ci-cd-optimize",
+            "sentry",
             "run-repo-cleanup",
             "run-ts-cleanup",
             "publish-npm-package",
