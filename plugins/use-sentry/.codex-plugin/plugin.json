@@ -1,6 +1,6 @@
 {
   "name": "use-sentry",
-  "version": "1.0.60",
+  "version": "1.0.61",
   "description": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
   "author": {
     "name": "Yigit Konur",
