@@ -1,8 +1,8 @@
-# update-agent-config
+# project-manager
 
-Auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: stale file:line refs, recounts, invalidated rules, folder-coverage maps, or deciding which gap folders earn a folder-scoped AGENTS.md.
+Supervising coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.
 
-**Category:** configuration
+**Category:** orchestration
 
 ## Install
 
@@ -10,7 +10,7 @@ Auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: st
 
 ```
 /plugin marketplace add yigitkonur/skills-by-yigitkonur
-/plugin install update-agent-config@yigitkonur
+/plugin install project-manager@yigitkonur
 ```
 
 **With the `skills` CLI:**
@@ -20,7 +20,7 @@ Auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: st
 
    ```bash
    # This skill only
-   npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/update-agent-config
+   npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/project-manager
 
    # Or the full pack
    npx -y skills add -y yigitkonur/skills-by-yigitkonur
@@ -31,7 +31,7 @@ Auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: st
 
    ```bash
    # This skill only
-   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/update-agent-config
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/project-manager
 
    # Or the full pack
    npx -y skills add -y -g yigitkonur/skills-by-yigitkonur

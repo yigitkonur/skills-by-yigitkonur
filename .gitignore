@@ -22,7 +22,7 @@ to-delete/
 
 # Local research corpora. Provenance archives for skill authoring — the distilled
 # skill ships, the raw corpus does not. Plugin consumers must not receive these.
-research/
+/research/
 
 # Session artifacts from AI coding tools.
 .continues-handoff.md

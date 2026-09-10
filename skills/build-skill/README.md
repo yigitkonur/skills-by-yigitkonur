@@ -13,14 +13,29 @@ Creating or substantially revising a Claude skill and need workspace-first evide
 /plugin install build-skill@yigitkonur
 ```
 
-**Or with the `skills` CLI — this skill only:**
+**With the `skills` CLI:**
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skill
-```
+1. **Project-level install (recommended):**
+   Omitting the `-g` flag installs the skill directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global agent conflicts.
 
-**Or the full pack:**
+   ```bash
+   # This skill only
+   npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/build-skill
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-```
+   # Or the full pack
+   npx -y skills add -y yigitkonur/skills-by-yigitkonur
+   ```
+
+2. **Global install (user-level):**
+   Installs across all supported global agents (`~/.agents/skills`).
+
+   ```bash
+   # This skill only
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skill
+
+   # Or the full pack
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+   ```
+
+   > [!NOTE]
+   > If global installation reports `PromptScript does not support global skill installation`, you can safely ignore it. PromptScript is project-scoped by design; the skill is already installed for all other agents. To avoid this warning completely, run the project-level command above without `-g`.

@@ -11,8 +11,8 @@ This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex 
 **Distribution model:**
 - Claude Code plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`. Codex-only skills are absent from all four Claude surfaces.
 - Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `<skill>@yigitkonur` or the all-pack `skills-by-yigitkonur@yigitkonur` from `/plugins`.
-- `skills` CLI full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
-- `skills` CLI single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
+- `skills` CLI project install (recommended): `npx -y skills add -y yigitkonur/skills-by-yigitkonur` (or `/skills/<skill-name>`)
+- `skills` CLI global install: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur` (or `/skills/<skill-name>`)
 
 The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
 - `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
@@ -254,17 +254,32 @@ Every skill needs an `README.md` at its root (`skills/<skill-name>/README.md`) w
 /plugin install <skill-name>@yigitkonur
 ​```
 
-**Or with the `skills` CLI — this skill only:**
+**With the `skills` CLI:**
 
-​```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
-​```
+1. **Project-level install (recommended):**
+   Omitting the `-g` flag installs the skill directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global agent conflicts.
 
-**Or the full pack:**
+   ​```bash
+   # This skill only
+   npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
-​```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-​```
+   # Or the full pack
+   npx -y skills add -y yigitkonur/skills-by-yigitkonur
+   ​```
+
+2. **Global install (user-level):**
+   Installs across all supported global agents (`~/.agents/skills`).
+
+   ​```bash
+   # This skill only
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
+
+   # Or the full pack
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+   ​```
+
+   > [!NOTE]
+   > If global installation reports `PromptScript does not support global skill installation`, you can safely ignore it. PromptScript is project-scoped by design; the skill is already installed for all other agents. To avoid this warning completely, run the project-level command above without `-g`.
 ```
 
 ### Category map
