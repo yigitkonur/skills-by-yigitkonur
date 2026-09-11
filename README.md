@@ -42,22 +42,24 @@ Codex offers the same per-skill choice: install `run-review@yigitkonur`, `build-
 
 ### with the `skills` cli
 
-**project install (recommended — installs locally to `./.agents/skills`, avoiding global agent warnings like PromptScript):**
+**project install (recommended & PromptScript-compatible — installs locally to `./.agents/skills`):**
 
 ```bash
-npx -y skills add -y yigitkonur/skills-by-yigitkonur                      # full pack
-npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/<skill-name>  # single skill
+npx -y skills add yigitkonur/skills-by-yigitkonur -y                      # full pack
+npx -y skills add yigitkonur/skills-by-yigitkonur/skills/<skill-name> -y  # single skill
 ```
 
-**global install (user-level — installs to `~/.agents/skills`):**
+PromptScript projects can also import skills directly via the `prs` CLI:
+```bash
+prs skills add github.com/yigitkonur/skills-by-yigitkonur/skills/<skill-name>/SKILL.md
+```
+
+**global install (user-level — installs cleanly to `~/.agents/skills` across universal agents):**
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur                      # full pack
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>  # single skill
+npx -y skills add yigitkonur/skills-by-yigitkonur -y -g -a universal                      # full pack
+npx -y skills add yigitkonur/skills-by-yigitkonur/skills/<skill-name> -y -g -a universal  # single skill
 ```
-
-> [!NOTE]
-> If global install outputs `PromptScript: PromptScript does not support global skill installation`, it is a harmless CLI notification. PromptScript is project-scoped by design; other agents are installed successfully. Omit `-g` to install at project level cleanly.
 
 per-skill one-liners live in each Claude-compatible skill's `README.md`; Codex-only skills document the Codex all-pack install instead.
 

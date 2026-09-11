@@ -26,30 +26,32 @@ Last reconciled against `agent-device 0.19.3`. Always refresh from `agent-device
 
 **With the `skills` CLI:**
 
-1. **Project-level install (recommended):**
-   Omitting the `-g` flag installs the skill directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global agent conflicts.
+1. **Project-level install (recommended & PromptScript-compatible):**
+   Installs directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global collisions. Fully compatible with project-scoped tools like PromptScript:
 
    ```bash
    # This skill only
-   npx -y skills add -y yigitkonur/skills-by-yigitkonur/skills/run-agent-device
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/run-agent-device -y
 
    # Or the full pack
-   npx -y skills add -y yigitkonur/skills-by-yigitkonur
+   npx -y skills add yigitkonur/skills-by-yigitkonur -y
+   ```
+
+   PromptScript projects can also import directly via `prs`:
+   ```bash
+   prs skills add github.com/yigitkonur/skills-by-yigitkonur/skills/run-agent-device/SKILL.md
    ```
 
 2. **Global install (user-level):**
-   Installs across all supported global agents (`~/.agents/skills`).
+   Installs globally into `~/.agents/skills` for all universal agents (Claude Code, Cursor, Codex, Antigravity, Amp, etc.) cleanly without triggering project-scoped agent warnings:
 
    ```bash
    # This skill only
-   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-device
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/run-agent-device -y -g -a universal
 
    # Or the full pack
-   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+   npx -y skills add yigitkonur/skills-by-yigitkonur -y -g -a universal
    ```
-
-   > [!NOTE]
-   > If global installation reports `PromptScript does not support global skill installation`, you can safely ignore it. PromptScript is project-scoped by design; the skill is already installed for all other agents. To avoid this warning completely, run the project-level command above without `-g`.
 
 ## First check
 
