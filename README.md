@@ -184,7 +184,7 @@ judge a change for merge-readiness, triage feedback, and verify "done".
 answer questions and find things with real web evidence. ships the `internet-researcher-*` subagents.
 
 - **[run-research](skills/run-research/)** — one technical question, current web + reddit practitioner evidence, source-backed synthesis, optionally fanned across subagents.
-- **[run-deep-research](skills/run-deep-research/)** — wave-based corpus research over 5+ entities or a market/category; evidence persisted to disk; claude subagents or `codex exec` executors.
+- **[run-deep-research](skills/run-deep-research/)** — wave-based multi-file corpus research over 5+ entities or a market/category; parallel subagent orchestration and evaluation.
 - **[run-github-scout](skills/run-github-scout/)** — adaptive github repo discovery, shortlisting for a concrete need, oss comparison with repo evidence.
 
 `/plugin install yk-research@yigitkonur` · agents only: `/plugin install yk-researchers@yigitkonur`
