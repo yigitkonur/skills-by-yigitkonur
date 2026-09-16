@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAX_EXTRACTED_LINES 4096
+#define BUF_SIZE 131072
 
 typedef struct {
     int stop_button_count;
@@ -17,11 +17,184 @@ typedef struct {
 } UIState;
 
 typedef struct {
-    char *lines[MAX_EXTRACTED_LINES];
-    int count;
-} ExtractedText;
+    char markdown[BUF_SIZE];
+    int len;
+    bool in_assistant;
+} MDBuilder;
 
-static void inspect_element(AXUIElementRef element, int depth, UIState *state) {
+static void md_append(MDBuilder *b, const char *str) {
+    int slen = strlen(str);
+    if (b->len + slen < BUF_SIZE - 2) {
+        memcpy(b->markdown + b->len, str, slen);
+        b->len += slen;
+        b->markdown[b->len] = '\0';
+    }
+}
+
+// Collect all text recursively within a single block, joining inline spans cleanly
+static void collect_block_text(AXUIElementRef el, int depth, char *buf, int *buf_len, int max_len) {
+    if (depth > 25 || *buf_len >= max_len - 1) return;
+
+    CFTypeRef role = NULL;
+    char role_str[64] = "";
+    if (AXUIElementCopyAttributeValue(el, kAXRoleAttribute, &role) == kAXErrorSuccess && role) {
+        if (CFGetTypeID(role) == CFStringGetTypeID()) {
+            CFStringGetCString((CFStringRef)role, role_str, sizeof(role_str), kCFStringEncodingUTF8);
+        }
+        CFRelease(role);
+    }
+
+    if (strcmp(role_str, "AXStaticText") == 0) {
+        CFTypeRef val = NULL;
+        if (AXUIElementCopyAttributeValue(el, kAXValueAttribute, &val) == kAXErrorSuccess && val) {
+            if (CFGetTypeID(val) == CFStringGetTypeID()) {
+                char str[4096];
+                if (CFStringGetCString((CFStringRef)val, str, sizeof(str), kCFStringEncodingUTF8)) {
+                    int slen = strlen(str);
+                    if (*buf_len + slen < max_len - 1) {
+                        memcpy(buf + *buf_len, str, slen);
+                        *buf_len += slen;
+                        buf[*buf_len] = '\0';
+                    }
+                }
+            }
+            CFRelease(val);
+        }
+        return;
+    }
+
+    CFArrayRef children = NULL;
+    if (AXUIElementCopyAttributeValue(el, kAXChildrenAttribute, (CFTypeRef *)&children) == kAXErrorSuccess && children) {
+        CFIndex count = CFArrayGetCount(children);
+        for (CFIndex i = 0; i < count; i++) {
+            AXUIElementRef child = (AXUIElementRef)CFArrayGetValueAtIndex(children, i);
+            collect_block_text(child, depth + 1, buf, buf_len, max_len);
+        }
+        CFRelease(children);
+    }
+}
+
+static void parse_message_blocks(AXUIElementRef el, int depth, MDBuilder *b) {
+    if (depth > 40) return;
+
+    CFTypeRef role = NULL;
+    char role_str[64] = "";
+    if (AXUIElementCopyAttributeValue(el, kAXRoleAttribute, &role) == kAXErrorSuccess && role) {
+        if (CFGetTypeID(role) == CFStringGetTypeID()) {
+            CFStringGetCString((CFStringRef)role, role_str, sizeof(role_str), kCFStringEncodingUTF8);
+        }
+        CFRelease(role);
+    }
+
+    CFTypeRef subrole = NULL;
+    char subrole_str[64] = "";
+    if (AXUIElementCopyAttributeValue(el, kAXSubroleAttribute, &subrole) == kAXErrorSuccess && subrole) {
+        if (CFGetTypeID(subrole) == CFStringGetTypeID()) {
+            CFStringGetCString((CFStringRef)subrole, subrole_str, sizeof(subrole_str), kCFStringEncodingUTF8);
+        }
+        CFRelease(subrole);
+    }
+
+    // Detect transition to assistant message
+    if (!b->in_assistant && strcmp(role_str, "AXStaticText") == 0) {
+        CFTypeRef val = NULL;
+        if (AXUIElementCopyAttributeValue(el, kAXValueAttribute, &val) == kAXErrorSuccess && val) {
+            if (CFGetTypeID(val) == CFStringGetTypeID()) {
+                char str[256];
+                if (CFStringGetCString((CFStringRef)val, str, sizeof(str), kCFStringEncodingUTF8)) {
+                    if (strcmp(str, "ChatGPT said:") == 0) {
+                        b->in_assistant = true;
+                        b->len = 0;
+                        b->markdown[0] = '\0';
+                        CFRelease(val);
+                        return;
+                    }
+                }
+            }
+            CFRelease(val);
+        }
+    }
+
+    if (!b->in_assistant) {
+        CFArrayRef children = NULL;
+        if (AXUIElementCopyAttributeValue(el, kAXChildrenAttribute, (CFTypeRef *)&children) == kAXErrorSuccess && children) {
+            CFIndex count = CFArrayGetCount(children);
+            for (CFIndex i = 0; i < count; i++) {
+                parse_message_blocks((AXUIElementRef)CFArrayGetValueAtIndex(children, i), depth + 1, b);
+            }
+            CFRelease(children);
+        }
+        return;
+    }
+
+    // Inside assistant response
+    if (strcmp(role_str, "AXHeading") == 0) {
+        char text[4096] = "";
+        int tlen = 0;
+        collect_block_text(el, 0, text, &tlen, sizeof(text));
+        if (tlen > 0) {
+            md_append(b, "### ");
+            md_append(b, text);
+            md_append(b, "\n\n");
+        }
+        return;
+    }
+
+    if (strcmp(subrole_str, "AXCodeStyleGroup") == 0) {
+        char text[8192] = "";
+        int tlen = 0;
+        collect_block_text(el, 0, text, &tlen, sizeof(text));
+        if (tlen > 0) {
+            md_append(b, "```\n");
+            md_append(b, text);
+            md_append(b, "\n```\n\n");
+        }
+        return;
+    }
+
+    if (strcmp(role_str, "AXList") == 0) {
+        CFArrayRef items = NULL;
+        if (AXUIElementCopyAttributeValue(el, kAXChildrenAttribute, (CFTypeRef *)&items) == kAXErrorSuccess && items) {
+            CFIndex n = CFArrayGetCount(items);
+            for (CFIndex i = 0; i < n; i++) {
+                AXUIElementRef item = (AXUIElementRef)CFArrayGetValueAtIndex(items, i);
+                char item_text[4096] = "";
+                int itlen = 0;
+                collect_block_text(item, 0, item_text, &itlen, sizeof(item_text));
+                if (itlen > 0) {
+                    md_append(b, "- ");
+                    md_append(b, item_text);
+                    md_append(b, "\n");
+                }
+            }
+            md_append(b, "\n");
+            CFRelease(items);
+        }
+        return;
+    }
+
+    if (strcmp(role_str, "AXParagraph") == 0) {
+        char text[4096] = "";
+        int tlen = 0;
+        collect_block_text(el, 0, text, &tlen, sizeof(text));
+        if (tlen > 0 && strcmp(text, "ChatGPT can make mistakes. Check important info.") != 0) {
+            md_append(b, text);
+            md_append(b, "\n\n");
+        }
+        return;
+    }
+
+    CFArrayRef children = NULL;
+    if (AXUIElementCopyAttributeValue(el, kAXChildrenAttribute, (CFTypeRef *)&children) == kAXErrorSuccess && children) {
+        CFIndex count = CFArrayGetCount(children);
+        for (CFIndex i = 0; i < count; i++) {
+            parse_message_blocks((AXUIElementRef)CFArrayGetValueAtIndex(children, i), depth + 1, b);
+        }
+        CFRelease(children);
+    }
+}
+
+static void inspect_status(AXUIElementRef element, int depth, UIState *state) {
     if (depth > 35) return;
     state->total_elements++;
 
@@ -62,7 +235,7 @@ static void inspect_element(AXUIElementRef element, int depth, UIState *state) {
         CFIndex count = CFArrayGetCount(children);
         for (CFIndex i = 0; i < count; i++) {
             AXUIElementRef child = (AXUIElementRef)CFArrayGetValueAtIndex(children, i);
-            inspect_element(child, depth + 1, state);
+            inspect_status(child, depth + 1, state);
         }
         CFRelease(children);
     }
@@ -93,53 +266,12 @@ static bool query_state(pid_t pid, UIState *out_state) {
         CFIndex win_count = CFArrayGetCount(windows);
         for (CFIndex i = 0; i < win_count; i++) {
             AXUIElementRef win = (AXUIElementRef)CFArrayGetValueAtIndex(windows, i);
-            inspect_element(win, 0, out_state);
+            inspect_status(win, 0, out_state);
         }
         CFRelease(windows);
     }
     CFRelease(app);
     return true;
-}
-
-static void collect_texts(AXUIElementRef element, int depth, ExtractedText *out) {
-    if (depth > 35 || out->count >= MAX_EXTRACTED_LINES) return;
-
-    CFTypeRef role_val = NULL;
-    char role_str[64] = "";
-    if (AXUIElementCopyAttributeValue(element, kAXRoleAttribute, &role_val) == kAXErrorSuccess && role_val) {
-        if (CFGetTypeID(role_val) == CFStringGetTypeID()) {
-            CFStringGetCString((CFStringRef)role_val, role_str, sizeof(role_str), kCFStringEncodingUTF8);
-        }
-        CFRelease(role_val);
-    }
-
-    if (strcmp(role_str, "AXStaticText") == 0) {
-        CFTypeRef val = NULL;
-        if (AXUIElementCopyAttributeValue(element, kAXValueAttribute, &val) == kAXErrorSuccess && val) {
-            if (CFGetTypeID(val) == CFStringGetTypeID()) {
-                char str[4096];
-                if (CFStringGetCString((CFStringRef)val, str, sizeof(str), kCFStringEncodingUTF8)) {
-                    if (strcmp(str, "ChatGPT can make mistakes. Check important info.") != 0 &&
-                        strcmp(str, "Message ChatGPT") != 0 &&
-                        strncmp(str, "Search", 6) != 0 &&
-                        strncmp(str, "Dragging was", 12) != 0) {
-                        out->lines[out->count++] = strdup(str);
-                    }
-                }
-            }
-            CFRelease(val);
-        }
-    }
-
-    CFArrayRef children = NULL;
-    if (AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, (CFTypeRef *)&children) == kAXErrorSuccess && children) {
-        CFIndex count = CFArrayGetCount(children);
-        for (CFIndex i = 0; i < count && out->count < MAX_EXTRACTED_LINES; i++) {
-            AXUIElementRef child = (AXUIElementRef)CFArrayGetValueAtIndex(children, i);
-            collect_texts(child, depth + 1, out);
-        }
-        CFRelease(children);
-    }
 }
 
 int main(int argc, char **argv) {
@@ -174,31 +306,19 @@ int main(int argc, char **argv) {
         CFBooleanRef true_val = kCFBooleanTrue;
         AXUIElementSetAttributeValue(app, CFSTR("AXEnhancedUserInterface"), true_val);
 
-        ExtractedText et = {0};
+        MDBuilder b = {0};
         CFArrayRef windows = NULL;
         if (AXUIElementCopyAttributeValue(app, kAXWindowsAttribute, (CFTypeRef *)&windows) == kAXErrorSuccess && windows) {
             CFIndex win_count = CFArrayGetCount(windows);
             for (CFIndex i = 0; i < win_count; i++) {
                 AXUIElementRef win = (AXUIElementRef)CFArrayGetValueAtIndex(windows, i);
-                collect_texts(win, 0, &et);
+                parse_message_blocks(win, 0, &b);
             }
             CFRelease(windows);
         }
         CFRelease(app);
 
-        // Find the start of the latest assistant message
-        int start_idx = 0;
-        for (int i = 0; i < et.count; i++) {
-            if (strcmp(et.lines[i], "ChatGPT said:") == 0) {
-                start_idx = i + 1; // start right after "ChatGPT said:"
-            }
-        }
-
-        // Print cleanly
-        for (int i = start_idx; i < et.count; i++) {
-            printf("%s\n", et.lines[i]);
-            free(et.lines[i]);
-        }
+        printf("%s\n", b.markdown);
         return 0;
     }
 
