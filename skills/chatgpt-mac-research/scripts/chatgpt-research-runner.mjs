@@ -3,12 +3,16 @@
  * chatgpt-research-runner.mjs
  * 
  * Reusable CLI utility to dispatch structured research queries to native macOS ChatGPT desktop app
- * locally or over SSH bridge (ssh macbook).
+ * locally or over SSH bridge (ssh macbook), monitor generation status, and extract responses.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const args = process.argv.slice(2);
 
@@ -17,11 +21,19 @@ function printHelp() {
 ChatGPT macOS Research Runner
 =============================
 Usage:
-  node chatgpt-research-runner.mjs --prompt "Your research query"
+  node chatgpt-research-runner.mjs --prompt "Your research query" [options]
   node chatgpt-research-runner.mjs --targets <targets.json> [options]
+  node chatgpt-research-runner.mjs --status
+  node chatgpt-research-runner.mjs --wait [timeout_seconds]
+  node chatgpt-research-runner.mjs --extract
   node chatgpt-research-runner.mjs --check-bridge
 
 Options:
+  --plugin=<mode>          Plugin to invoke: 'browser' (default), 'computer', 'both', or 'none'
+  --wait                   Wait for current research generation to complete
+  --extract                Extract latest research response from ChatGPT
+  --output=<file>          Save extracted research output to a markdown file
+  --timeout=<seconds>      Max seconds to wait for generation (default: 180)
   --ssh-host=<host>        SSH host alias (default: 'macbook')
   --batch-size=<n>         Number of queries per burst (default: 10)
   --wait-minutes=<n>       Minutes to wait between bursts (default: 5)
@@ -33,7 +45,7 @@ Options:
 `);
 }
 
-if (args.length === 0 || args.includes('--help')) {
+if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
   printHelp();
   process.exit(0);
 }
@@ -43,13 +55,53 @@ const dryRun = args.includes('--dry-run');
 const checkBridge = args.includes('--check-bridge');
 const oneBatch = args.includes('--one-batch');
 const resetState = args.includes('--reset');
+const doStatus = args.includes('--status');
+const doWait = args.includes('--wait');
+const doExtract = args.includes('--extract');
+const pluginMode = args.find(a => a.startsWith('--plugin='))?.split('=')[1]?.toLowerCase() || 'browser';
 const sshHost = args.find(a => a.startsWith('--ssh-host='))?.split('=')[1] || process.env.CHATGPT_SSH_HOST || 'macbook';
 const batchSize = parseInt(args.find(a => a.startsWith('--batch-size='))?.split('=')[1] || '10', 10);
 const waitMinutes = parseFloat(args.find(a => a.startsWith('--wait-minutes='))?.split('=')[1] || '5');
+const timeoutSec = parseInt(args.find(a => a.startsWith('--timeout='))?.split('=')[1] || '180', 10);
+const outputFile = args.find(a => a.startsWith('--output='))?.split('=')[1] || null;
 const stateFile = path.resolve(args.find(a => a.startsWith('--state-file='))?.split('=')[1] || '.chatgpt_state.json');
 
 // Check environment
 const isLocalMac = process.platform === 'darwin';
+
+function ensureStatusBinary() {
+  const binaryCheckCmd = isLocalMac
+    ? 'test -x ~/.local/bin/chatgpt_status && echo ~/.local/bin/chatgpt_status || (test -x /tmp/chatgpt_status && echo /tmp/chatgpt_status)'
+    : `ssh ${sshHost} "test -x ~/.local/bin/chatgpt_status && echo ~/.local/bin/chatgpt_status || (test -x /tmp/chatgpt_status && echo /tmp/chatgpt_status)"`;
+
+  try {
+    const existing = execSync(binaryCheckCmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (existing) return existing.split('\n')[0].trim();
+  } catch {}
+
+  // Compile on the fly
+  const cSourcePath = path.join(__dirname, 'chatgpt_status.c');
+  if (!fs.existsSync(cSourcePath)) {
+    throw new Error(`chatgpt_status.c not found at ${cSourcePath}`);
+  }
+
+  if (isLocalMac) {
+    execSync(`clang -O2 -framework ApplicationServices -framework CoreFoundation "${cSourcePath}" -o /tmp/chatgpt_status`);
+    return '/tmp/chatgpt_status';
+  } else {
+    execSync(`scp "${cSourcePath}" ${sshHost}:/tmp/chatgpt_status.c && ssh ${sshHost} "clang -O2 -framework ApplicationServices -framework CoreFoundation /tmp/chatgpt_status.c -o /tmp/chatgpt_status && mkdir -p ~/.local/bin && cp /tmp/chatgpt_status ~/.local/bin/chatgpt_status"`);
+    return '~/.local/bin/chatgpt_status';
+  }
+}
+
+function runStatusCommand(args = '') {
+  const bin = ensureStatusBinary();
+  const cmd = isLocalMac
+    ? `${bin} ${args}`
+    : `ssh ${sshHost} "${bin} ${args}"`;
+
+  return execSync(cmd, { encoding: 'utf8' }).trim();
+}
 
 function checkHostConnection() {
   if (isLocalMac) {
@@ -74,6 +126,10 @@ if (checkBridge) {
   const res = checkHostConnection();
   if (res.ok) {
     console.log(`✅ Bridge operational! Mode: ${res.mode} ${res.host ? `(${res.host})` : ''}`);
+    try {
+      const status = JSON.parse(runStatusCommand());
+      console.log(`ℹ️  ChatGPT state: ${status.state} (generating: ${status.generating}, ready: ${status.ready})`);
+    } catch {}
     process.exit(0);
   } else {
     console.error(`❌ Bridge check failed: ${res.error}`);
@@ -81,17 +137,67 @@ if (checkBridge) {
   }
 }
 
-function dispatchPrompt(promptText) {
-  // Format with browser plugin hook if not present
-  let formatted = promptText;
-  if (!formatted.includes('[@Browser](plugin://browser@openai-bundled)')) {
-    formatted = `[@Browser](plugin://browser@openai-bundled)\n\n${formatted}`;
+if (doStatus) {
+  const raw = runStatusCommand();
+  try {
+    const parsed = JSON.parse(raw);
+    console.log(JSON.stringify(parsed, null, 2));
+  } catch {
+    console.log(raw);
+  }
+  process.exit(0);
+}
+
+if (doWait && !args.some(a => a.startsWith('--prompt'))) {
+  console.log(`⏳ Waiting for active ChatGPT generation to complete (timeout: ${timeoutSec}s)...`);
+  const raw = runStatusCommand(`--wait ${timeoutSec}`);
+  console.log(raw);
+  process.exit(0);
+}
+
+if (doExtract && !args.some(a => a.startsWith('--prompt'))) {
+  const content = runStatusCommand('--extract');
+  if (outputFile) {
+    fs.writeFileSync(path.resolve(outputFile), content, 'utf8');
+    console.log(`✅ Extracted response saved to ${outputFile}`);
+  } else {
+    console.log(content);
+  }
+  process.exit(0);
+}
+
+const PLUGIN_BROWSER = '[@Browser](plugin://browser@openai-bundled)';
+const PLUGIN_COMPUTER = '[@Computer](plugin://computer-use@openai-bundled)';
+
+function formatPromptWithPlugins(promptText, mode = pluginMode) {
+  // If prompt already explicitly defines any plugin scheme, leave as-is
+  if (promptText.includes('plugin://')) {
+    return promptText;
   }
 
+  const prefixParts = [];
+  if (mode === 'browser' || mode === 'web') {
+    prefixParts.push(PLUGIN_BROWSER);
+  } else if (mode === 'computer' || mode === 'kompüter' || mode === 'komputer') {
+    prefixParts.push(PLUGIN_COMPUTER);
+  } else if (mode === 'both') {
+    prefixParts.push(PLUGIN_BROWSER, PLUGIN_COMPUTER);
+  } else if (mode === 'none') {
+    return promptText;
+  } else {
+    prefixParts.push(PLUGIN_BROWSER);
+  }
+
+  return `${prefixParts.join(' ')}\n\n${promptText}`;
+}
+
+function dispatchPrompt(promptText, mode = pluginMode) {
+  const formatted = formatPromptWithPlugins(promptText, mode);
+
   if (dryRun) {
-    console.log(`\n--- [DRY-RUN] PROMPT DISPATCH ---`);
+    console.log(`\n--- [DRY-RUN] PROMPT DISPATCH (plugin: ${mode}) ---`);
     console.log(formatted);
-    console.log(`---------------------------------\n`);
+    console.log(`----------------------------------------------------\n`);
     return;
   }
 
@@ -130,6 +236,35 @@ if (singleQuery) {
   console.log(`🚀 Dispatching single research prompt to ChatGPT...`);
   dispatchPrompt(singleQuery);
   if (!dryRun) console.log(`✅ Prompt successfully delivered to ChatGPT app.`);
+
+  if (doWait || doExtract) {
+    console.log(`⏳ Monitoring generation completion (timeout: ${timeoutSec}s)...`);
+    const waitRes = runStatusCommand(`--wait ${timeoutSec}`);
+    try {
+      const parsed = JSON.parse(waitRes);
+      if (parsed.state === 'idle') {
+        console.log(`✅ Research completed in ${parsed.elapsed_sec}s.`);
+      } else {
+        console.log(`⚠️ Generation status: ${parsed.state}`);
+      }
+    } catch {
+      console.log(waitRes);
+    }
+
+    if (doExtract) {
+      console.log(`📄 Extracting generated response...`);
+      const content = runStatusCommand('--extract');
+      if (outputFile) {
+        fs.writeFileSync(path.resolve(outputFile), content, 'utf8');
+        console.log(`✅ Response saved to ${outputFile}`);
+      } else {
+        console.log(`\n--- ChatGPT Research Response ---`);
+        console.log(content);
+        console.log(`---------------------------------\n`);
+      }
+    }
+  }
+
   process.exit(0);
 }
 
@@ -137,7 +272,7 @@ if (singleQuery) {
 const targetsArg = args.find(a => a.startsWith('--targets='))?.split('=')[1] || (args.indexOf('--targets') !== -1 ? args[args.indexOf('--targets') + 1] : null);
 
 if (!targetsArg) {
-  console.error(`❌ Error: Specify either --prompt "..." or --targets <file.json>`);
+  console.error(`❌ Error: Specify either --prompt "...", --targets <file.json>, --status, --wait, or --extract`);
   printHelp();
   process.exit(1);
 }

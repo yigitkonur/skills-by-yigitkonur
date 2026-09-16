@@ -1,22 +1,27 @@
-# Prompt Templates & Browser Plugin Hooks
+# Prompt Templates & Plugin Dispatch Framework
 
-This reference defines the prompt engineering standard when driving the native macOS ChatGPT desktop app for autonomous web research.
-
-## 1. The Critical `@Browser` Plugin Hook
-
-When pasting prompts into the ChatGPT desktop app, plain text like `@Browser` is frequently treated as literal prose rather than a functional tool invocation.
-
-To explicitly force ChatGPT desktop app to resolve and attach the built-in browsing tool, use the exact URI reference:
-
-```markdown
-[@Browser](plugin://browser@openai-bundled)
-```
-
-Placing this line at the very top of the prompt causes ChatGPT's internal markdown renderer to recognize the bundled browsing plugin and invoke live web search capabilities immediately upon receiving the user message.
+This reference defines the prompt engineering standards and plugin invocation matrix when driving the native macOS ChatGPT desktop app.
 
 ---
 
-## 2. Portrait & Face Verification Template
+## 1. Plugin Dispatch Decision Framework
+
+When interacting with ChatGPT desktop app, you can explicitly control which bundled tools ChatGPT attaches to the conversation. Plain text mentions (like `@Browser` or `@Computer`) are often interpreted as inert prose. Always use the exact markdown URI schemes:
+
+| Task Objective | Requirement | Plugin Tag to Prepend |
+|---|---|---|
+| **Live Web Research** | Search engines, online registries, news, verified current URLs, external citations | `[@Browser](plugin://browser@openai-bundled)` |
+| **Computer & OS Actions** | Desktop interaction, local app usage, filesystem tasks, running shell commands, screen review | `[@Computer](plugin://computer-use@openai-bundled)` |
+| **Hybrid Research & Local Execution** | Web search followed by local file generation or OS-level automation | Both tags prepended |
+| **Pure Reasoning / Coding** | Internal text synthesis, translation, code refactoring, math, formatting | *No plugin tag added* |
+
+### Plugin URI Reference
+- **Browser Plugin**: `[@Browser](plugin://browser@openai-bundled)`
+- **Computer Use Plugin**: `[@Computer](plugin://computer-use@openai-bundled)`
+
+---
+
+## 2. Portrait & Face Verification Template (Web Research)
 
 Used when researching individuals (clinicians, executives, contributors) to discover direct verified portrait URLs while eliminating stock photos, furniture, clinic logos, and colleagues.
 
@@ -43,29 +48,66 @@ Arama ve Doğrulama Kriterleri:
 
 ---
 
-## 3. General Entity & Company Research Template
+## 3. General Entity & Technical Research Template (Web Research)
 
-Used when investigating an organization, product, registry entry, or technical claim:
+Used when investigating an organization, product, registry entry, or technical specification:
 
 ```markdown
 [@Browser](plugin://browser@openai-bundled)
 
-Lütfen internette derinlemesine bir web araştırması yap ve aşağıdaki varlık hakkında doğrulanmış birincil kanıtları topla:
+Lütfen internette derinlemesine bir web araştırması yap ve aşağıdaki konu hakkında doğrulanmış birincil kanıtları topla:
 
-Hedef: {{ENTITY_NAME}}
-Konu / Araştırma Sorusu: {{RESEARCH_QUESTION}}
+Hedef / Konu: {{TARGET_OR_TOPIC}}
+Araştırma Sorusu: {{RESEARCH_QUESTION}}
 Bilinen Başlangıç URL'leri: {{KNOWN_URLS}}
 
 Gereksinimler:
-1. İddiaları yalnızca birincil kaynaklardan (resmi kayıtlar, sicil gazetesi, resmi şirket duyurusu, doğrulanmış haber kaynakları) doğrula.
+1. İddiaları yalnızca birincil kaynaklardan (resmi kayıtlar, resmi dokümantasyon, sicil gazetesi, doğrulanmış kaynaklar) doğrula.
 2. Karşılaştığın çelişkili veya güncelliğini yitirmiş bilgileri belirt.
 3. Alıntıladığın her bulgu için kaynak web sayfasının tam URL'sini ekle.
 ```
 
 ---
 
-## 4. Prompt Engineering Invariants
+## 4. Computer Use Template (Desktop & Local OS Automation)
 
-1. **No Internal File Paths:** Never expose internal project paths (e.g. `cities/almanya/...` or `repo/src/...`) in the prompt. Remote ChatGPT has no access to the caller's filesystem; internal paths add noise and confuse search queries.
+Used when prompting ChatGPT to perform actions directly on the macOS host (inspecting files, running local tools, navigating applications):
+
+```markdown
+[@Computer](plugin://computer-use@openai-bundled)
+
+Lütfen bilgisayardaki mevcut çalışma ortamını ve sistem durumunu inceleyerek şu görevi tamamla:
+
+Görev: {{TASK_DESCRIPTION}}
+Beklenen Çıktı: {{EXPECTED_OUTCOME}}
+
+Kısıtlamalar:
+1. Yalnızca belirtilen çalışma dizininde ve dosyalarda değişiklik yap.
+2. İşlem tamamlandığında çalıştırılan komutları ve sonuçları özetle.
+```
+
+---
+
+## 5. Pure Reasoning & Synthesis Template (No Plugins)
+
+Used when no external network access or computer manipulation is required:
+
+```markdown
+Aşağıdaki metni/kodu analiz et ve istenen formatta yeniden yapılandır:
+
+Girdi:
+{{INPUT_CONTENT}}
+
+Gereksinimler:
+1. {{REQUIREMENT_1}}
+2. {{REQUIREMENT_2}}
+```
+
+---
+
+## 6. Prompt Engineering Invariants
+
+1. **No Internal File Paths in Web Queries:** Never expose internal project paths (e.g. `cities/almanya/...` or `repo/src/...`) in web search prompts. Remote ChatGPT has no access to the caller's filesystem; internal paths add noise and confuse search queries.
 2. **Broad Search Scope:** Always specify that known URLs are merely starting hints, explicitly instructing ChatGPT to search across general search engines (Google, Bing) and professional databases.
 3. **Negative Constraints:** State what is *forbidden* (logos, furniture, stock images, multi-doctor colleague confusion). Large language models adhere far better to negative constraints when they are explicitly enumerated.
+4. **Clean Plugin Matching:** Only attach plugins that are actually needed for the task to conserve latency and prevent tool-call hallucinations.

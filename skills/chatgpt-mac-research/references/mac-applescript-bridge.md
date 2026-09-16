@@ -1,13 +1,13 @@
-# macOS AppleScript & SSH Bridge Architecture
+# macOS AppleScript, Accessibility & SSH Bridge Architecture
 
-This reference explains how to reliably dispatch research prompts from any Linux server, container, or local macOS terminal directly into the official macOS ChatGPT desktop application.
+This reference explains how to reliably dispatch research prompts, monitor generation progress, and extract completed research from the official macOS ChatGPT desktop application from Linux or macOS.
 
 ---
 
 ## 1. System Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph HostEnvironment [Calling Agent (Linux / Remote Host)]
         CLI[chatgpt-research-runner.mjs]
         B64[Base64 Encoding]
@@ -18,9 +18,10 @@ flowchart LR
     end
 
     subgraph TargetMac [User macOS Workstation]
-        PB[pbcopy Clipboard]
+        PB[pbcopy / pbpaste]
         OSA[osascript / System Events]
-        APP[ChatGPT.app Native Window]
+        AX[chatgpt_status Native C Bridge]
+        APP[ChatGPT.app Chromium Desktop Window]
     end
 
     CLI --> B64
@@ -28,6 +29,9 @@ flowchart LR
     SSH --> PB
     PB --> OSA
     OSA -->|Cmd+N, Cmd+V, Enter| APP
+    SSH --> AX
+    AX -->|AXEnhancedUserInterface| APP
+    AX -->|Real-Time Status & Text Extraction| CLI
 ```
 
 ---
@@ -53,7 +57,7 @@ To achieve 100% data integrity without character dropping:
 
 ## 3. AppleScript Execution Timing
 
-The ChatGPT desktop app requires specific micro-delays between keystrokes to ensure SwiftUI / Catalyst event handling succeeds:
+The ChatGPT desktop app requires specific micro-delays between keystrokes to ensure event handling succeeds:
 
 ```applescript
 tell application "ChatGPT" to activate
@@ -80,7 +84,41 @@ Total execution time per prompt is ~1.2 seconds, allowing rapid back-to-back dis
 
 ---
 
-## 4. SSH Host Configuration (`~/.ssh/config`)
+## 4. Native Accessibility Bridge (`chatgpt_status`)
+
+While AppleScript via `System Events` is suitable for firing keystrokes (`Cmd+N`, `Cmd+V`), traversing Chromium's accessibility DOM (3,000+ elements) using AppleScript IPC takes 60–120 seconds due to Mach IPC message overhead.
+
+To achieve real-time (0.3s) detection and extraction, `chatgpt_status.c` compiles directly with macOS `ApplicationServices.framework`:
+
+```bash
+clang -O2 -framework ApplicationServices -framework CoreFoundation chatgpt_status.c -o chatgpt_status
+```
+
+### Key Engineering Details
+1. **Chromium Accessibility Flag:** ChatGPT desktop uses Chromium under the hood. Setting `AXEnhancedUserInterface = true` on the application element unlocks the full DOM tree.
+2. **State Detection Signatures:**
+   - **Generating:** Presence of an `AXButton` whose description is `"Stop generating"`, `"Stop streaming"`, or `"Stop"`.
+   - **Idle / Ready:** Absence of stop buttons AND presence of an `AXButton` whose description is `"Send"` or `"Dictate"`.
+3. **Smart Text Extraction (`--extract`):**
+   - Recursively walks `AXStaticText` nodes.
+   - Automatically detects conversation boundaries by locating the latest `"ChatGPT said:"` marker.
+   - Filters out sidebar chat titles, system disclaimer notices, and UI drag events, outputting the clean research response with full citations and markdown tables.
+
+### CLI Usage
+```bash
+# Instant JSON status (0.3s)
+~/.local/bin/chatgpt_status
+
+# Polling wait until generation completes (exits 0 on completion, 1 on timeout)
+~/.local/bin/chatgpt_status --wait 180
+
+# Clean output extraction of the latest response
+~/.local/bin/chatgpt_status --extract
+```
+
+---
+
+## 5. SSH Host Configuration (`~/.ssh/config`)
 
 To allow seamless remote execution without hardcoded IP addresses or repeated password prompts:
 
@@ -95,21 +133,14 @@ Host macbook
 
 ### Health Check Recipe
 
-Before launching a research batch, verify the bridge:
-
 ```bash
 # Verify connection & osascript presence
 ssh -o ConnectTimeout=2 -o BatchMode=yes macbook "which osascript && pgrep -l -i chatgpt"
 ```
 
-If ChatGPT is not running, launch it remotely:
-```bash
-ssh macbook "open -a ChatGPT"
-```
-
 ---
 
-## 5. TCC Accessibility Permissions
+## 6. TCC Accessibility Permissions
 
 macOS requires that the process driving `System Events` has Accessibility permissions (*System Settings → Privacy & Security → Accessibility*).
 
