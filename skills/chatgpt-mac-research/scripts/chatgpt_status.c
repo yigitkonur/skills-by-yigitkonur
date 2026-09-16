@@ -132,7 +132,10 @@ static void parse_message_blocks(AXUIElementRef el, int depth, MDBuilder *b) {
         char text[4096] = "";
         int tlen = 0;
         collect_block_text(el, 0, text, &tlen, sizeof(text));
-        if (tlen > 0) {
+        if (tlen > 0 && 
+            strcmp(text, "Suspicious activity detected") != 0 &&
+            strncmp(text, "Security", 8) != 0 &&
+            strcmp(text, "ChatGPT can make mistakes. Check important info.") != 0) {
             md_append(b, "### ");
             md_append(b, text);
             md_append(b, "\n\n");

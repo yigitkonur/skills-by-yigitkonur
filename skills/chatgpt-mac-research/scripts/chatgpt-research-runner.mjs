@@ -29,12 +29,13 @@ Usage:
   node chatgpt-research-runner.mjs --check-bridge
 
 Options:
+  --local                  Force local macOS execution (default when running on macOS)
+  --ssh-host=<host>        SSH host alias or IP (default: $CHATGPT_SSH_HOST or 'macbook')
   --plugin=<mode>          Plugin to invoke: 'browser' (default), 'computer', 'both', or 'none'
   --wait                   Wait for current research generation to complete
   --extract                Extract latest research response from ChatGPT
   --output=<file>          Save extracted research output to a markdown file
   --timeout=<seconds>      Max seconds to wait for generation (default: 180)
-  --ssh-host=<host>        SSH host alias (default: 'macbook')
   --batch-size=<n>         Number of queries per burst (default: 10)
   --wait-minutes=<n>       Minutes to wait between bursts (default: 5)
   --state-file=<path>      JSON file to track progress (default: .chatgpt_state.json)
@@ -58,16 +59,90 @@ const resetState = args.includes('--reset');
 const doStatus = args.includes('--status');
 const doWait = args.includes('--wait');
 const doExtract = args.includes('--extract');
+const forceLocal = args.includes('--local');
 const pluginMode = args.find(a => a.startsWith('--plugin='))?.split('=')[1]?.toLowerCase() || 'browser';
-const sshHost = args.find(a => a.startsWith('--ssh-host='))?.split('=')[1] || process.env.CHATGPT_SSH_HOST || 'macbook';
+const explicitSshHost = args.find(a => a.startsWith('--ssh-host='))?.split('=')[1];
+const envSshHost = process.env.CHATGPT_SSH_HOST;
 const batchSize = parseInt(args.find(a => a.startsWith('--batch-size='))?.split('=')[1] || '10', 10);
 const waitMinutes = parseFloat(args.find(a => a.startsWith('--wait-minutes='))?.split('=')[1] || '5');
 const timeoutSec = parseInt(args.find(a => a.startsWith('--timeout='))?.split('=')[1] || '180', 10);
 const outputFile = args.find(a => a.startsWith('--output='))?.split('=')[1] || null;
 const stateFile = path.resolve(args.find(a => a.startsWith('--state-file='))?.split('=')[1] || '.chatgpt_state.json');
 
-// Check environment
-const isLocalMac = process.platform === 'darwin';
+// Determine Runtime Mode (Local vs Remote SSH)
+const isDarwin = process.platform === 'darwin';
+
+if (forceLocal && !isDarwin) {
+  console.error(`❌ Error: --local flag specified, but current operating system is '${process.platform}' (not macOS).`);
+  process.exit(1);
+}
+
+let isLocalMac = false;
+let sshHost = null;
+
+if (forceLocal) {
+  isLocalMac = true;
+} else if (explicitSshHost) {
+  isLocalMac = false;
+  sshHost = explicitSshHost;
+} else if (envSshHost) {
+  isLocalMac = false;
+  sshHost = envSshHost;
+} else if (isDarwin) {
+  // On macOS without explicit remote override, always default to local execution
+  isLocalMac = true;
+} else {
+  // On Linux / remote host, default to 'macbook' SSH alias
+  isLocalMac = false;
+  sshHost = 'macbook';
+}
+
+function printSetupInstructions(errorMsg, targetHost) {
+  console.error(`\n❌ Bridge Connection Failed: ${errorMsg}\n`);
+  console.error(`───────────────────────────────────────────────────────────────────`);
+  console.error(`🔧 HOW TO SET UP YOUR CHATGPT BRIDGE`);
+  console.error(`───────────────────────────────────────────────────────────────────`);
+  console.error(`If you are running directly on macOS:`);
+  console.error(`  • Launch /Applications/ChatGPT.app`);
+  console.error(`  • Run directly without SSH (automatic on macOS or pass --local)`);
+  console.error(`\nIf you are connecting from Linux / Remote to a Mac:`);
+  console.error(`  1. On your Mac Workstation:`);
+  console.error(`     • Open System Settings → General → Sharing.`);
+  console.error(`     • Turn ON "Remote Login" and note your username and IP/hostname.`);
+  console.error(`     • Open System Settings → Privacy & Security → Accessibility.`);
+  console.error(`     • Add and allow /usr/libexec/sshd-keygen-wrapper (for SSH automation).`);
+  console.error(`     • Recommended: Connect both machines via Tailscale (https://tailscale.com)`);
+  console.error(`\n  2. On this Linux machine:`);
+  console.error(`     • Add your Mac configuration to ~/.ssh/config:`);
+  console.error(`         Host ${targetHost || 'macbook'}`);
+  console.error(`             HostName <mac-tailscale-ip-or-lan-ip>`);
+  console.error(`             User <mac-username>`);
+  console.error(`             IdentityFile ~/.ssh/id_ed25519`);
+  console.error(`     • Copy key for passwordless login: ssh-copy-id <mac-user>@<mac-ip>`);
+  console.error(`     • Or set custom host via env: export CHATGPT_SSH_HOST=<hostname>`);
+  console.error(`\n  3. Re-test connection:`);
+  console.error(`     node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --check-bridge`);
+  console.error(`\n📘 Complete step-by-step setup guide: references/remote-mac-setup.md`);
+  console.error(`───────────────────────────────────────────────────────────────────\n`);
+}
+
+function checkHostConnection() {
+  if (isLocalMac) {
+    try {
+      execSync('which osascript && pgrep -l -i chatgpt', { stdio: 'ignore' });
+      return { ok: true, mode: 'local' };
+    } catch {
+      return { ok: false, error: 'Local macOS: osascript found, but ChatGPT app is not running. Launch /Applications/ChatGPT.app first.' };
+    }
+  }
+
+  try {
+    const out = execSync(`ssh -o ConnectTimeout=3 -o BatchMode=yes ${sshHost} "which osascript && pgrep -l -i chatgpt"`, { encoding: 'utf8' });
+    return { ok: true, mode: 'ssh', host: sshHost, details: out.trim() };
+  } catch (err) {
+    return { ok: false, error: `SSH host '${sshHost}' unreachable or ChatGPT app is not running on Mac.` };
+  }
+}
 
 function ensureStatusBinary() {
   const binaryCheckCmd = isLocalMac
@@ -86,7 +161,7 @@ function ensureStatusBinary() {
   }
 
   if (isLocalMac) {
-    execSync(`clang -O2 -framework ApplicationServices -framework CoreFoundation "${cSourcePath}" -o /tmp/chatgpt_status`);
+    execSync(`clang -O2 -framework ApplicationServices -framework CoreFoundation "${cSourcePath}" -o /tmp/chatgpt_status && mkdir -p ~/.local/bin && cp /tmp/chatgpt_status ~/.local/bin/chatgpt_status 2>/dev/null || true`);
     return '/tmp/chatgpt_status';
   } else {
     execSync(`scp "${cSourcePath}" ${sshHost}:/tmp/chatgpt_status.c && ssh ${sshHost} "clang -O2 -framework ApplicationServices -framework CoreFoundation /tmp/chatgpt_status.c -o /tmp/chatgpt_status && mkdir -p ~/.local/bin && cp /tmp/chatgpt_status ~/.local/bin/chatgpt_status"`);
@@ -94,45 +169,33 @@ function ensureStatusBinary() {
   }
 }
 
-function runStatusCommand(args = '') {
+function runStatusCommand(cmdArgs = '') {
+  const conn = checkHostConnection();
+  if (!conn.ok) {
+    printSetupInstructions(conn.error, sshHost);
+    process.exit(1);
+  }
+
   const bin = ensureStatusBinary();
   const cmd = isLocalMac
-    ? `${bin} ${args}`
-    : `ssh ${sshHost} "${bin} ${args}"`;
+    ? `${bin} ${cmdArgs}`
+    : `ssh ${sshHost} "${bin} ${cmdArgs}"`;
 
   return execSync(cmd, { encoding: 'utf8' }).trim();
-}
-
-function checkHostConnection() {
-  if (isLocalMac) {
-    try {
-      execSync('which osascript && pgrep -l -i chatgpt', { stdio: 'ignore' });
-      return { ok: true, mode: 'local' };
-    } catch {
-      return { ok: false, error: 'Local macOS: osascript found, but ChatGPT app is not running.' };
-    }
-  }
-
-  try {
-    const out = execSync(`ssh -o ConnectTimeout=3 -o BatchMode=yes ${sshHost} "which osascript && pgrep -l -i chatgpt"`, { encoding: 'utf8' });
-    return { ok: true, mode: 'ssh', host: sshHost, details: out.trim() };
-  } catch (err) {
-    return { ok: false, error: `SSH host '${sshHost}' unreachable or ChatGPT not running.` };
-  }
 }
 
 if (checkBridge) {
   console.log(`Checking ChatGPT bridge connection...`);
   const res = checkHostConnection();
   if (res.ok) {
-    console.log(`✅ Bridge operational! Mode: ${res.mode} ${res.host ? `(${res.host})` : ''}`);
+    console.log(`✅ Bridge operational! Mode: ${res.mode} ${res.host ? `(${res.host})` : '(local macOS)'}`);
     try {
       const status = JSON.parse(runStatusCommand());
       console.log(`ℹ️  ChatGPT state: ${status.state} (generating: ${status.generating}, ready: ${status.ready})`);
     } catch {}
     process.exit(0);
   } else {
-    console.error(`❌ Bridge check failed: ${res.error}`);
+    printSetupInstructions(res.error, sshHost);
     process.exit(1);
   }
 }
@@ -233,6 +296,14 @@ if (promptArg) {
 }
 
 if (singleQuery) {
+  if (!dryRun) {
+    const conn = checkHostConnection();
+    if (!conn.ok) {
+      printSetupInstructions(conn.error, sshHost);
+      process.exit(1);
+    }
+  }
+
   console.log(`🚀 Dispatching single research prompt to ChatGPT...`);
   dispatchPrompt(singleQuery);
   if (!dryRun) console.log(`✅ Prompt successfully delivered to ChatGPT app.`);

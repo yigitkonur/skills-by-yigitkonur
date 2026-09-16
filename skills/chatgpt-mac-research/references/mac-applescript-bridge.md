@@ -150,3 +150,10 @@ macOS requires that the process driving `System Events` has Accessibility permis
   ssh macbook "osascript -e 'tell application \"System Events\" to get name of first process whose frontmost is true'"
   ```
 - If it returns the frontmost app name (e.g. `ChatGPT` or `Finder`), Accessibility is fully authorized.
+
+---
+
+## 7. Complete Remote Onboarding
+
+For detailed instructions on configuring Tailscale VPN, generating passwordless SSH keys, and enabling macOS Remote Login, see the dedicated onboarding guide:
+👉 [Remote Mac Setup Guide](remote-mac-setup.md)
