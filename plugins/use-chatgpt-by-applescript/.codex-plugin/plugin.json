@@ -1,6 +1,6 @@
 {
   "name": "use-chatgpt-by-applescript",
-  "version": "1.0.64",
+  "version": "1.0.65",
   "description": "Use if driving macOS ChatGPT desktop app via AppleScript or SSH to run web research, computer actions, status checks, or markdown extraction.",
   "author": {
     "name": "Yigit Konur",
