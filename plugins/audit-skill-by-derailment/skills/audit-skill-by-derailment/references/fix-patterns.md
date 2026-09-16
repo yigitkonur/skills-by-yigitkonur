@@ -38,6 +38,21 @@ The executor should be judged against the skill, not against wrapper instruction
 If one sentence, example, or routing table caused the miss, rewrite or delete that source.
 Do not preserve bad text and add a warning beside it unless both are truly needed.
 
+## 12. Two-Tier Verification Enclosure (cures C1)
+Split verification into two distinct, mandatory tiers:
+- **Tier 1 (Hermetic Local Proof)**: Autonomous, zero-risk, executes locally in all sessions.
+- **Tier 2 (Remote Infrastructure Proof)**: Live PR probe, automated trigger binding, and operational checks.
+Forces the agent to achieve Tier 1 before considering Tier 2, eliminating premature completion illusions.
+
+## 13. Staged Deprecation & Safe Neutralization (cures C2)
+When modifying or deleting existing infrastructure (e.g. GitHub Actions workflows), prescribe a 4-step sequence: `Categorize` ➔ `Shadow` ➔ `Flip Required Check` ➔ `Neutralize Triggers`. Prevents agent hesitation over destructive actions.
+
+## 14. Actionable Pre-Flight Probe Injection (cures C3)
+Provide fast, non-blocking `--dry-run` or `probe` commands (<1s execution) for tools with long-running daemons. Prevents agents from running `--help` and skipping real health checks.
+
+## 15. Rigid Phase Gating & Canonical Layout Enforcement (cures C4, S3)
+Structure workflows into numbered phases with strict, checkable exit conditions. Mandate exact relative directory layouts (e.g. `scripts/dev/` vs `scripts/ci/`) to prevent path drift across multi-package repositories.
+
 ## Anti-pattern: Errata files
 Never create separate "errata", "known issues", output-summary, or mistake-notebook docs.
 Fixes go directly into the source.

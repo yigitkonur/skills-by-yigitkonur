@@ -1,7 +1,7 @@
 {
   "name": "audit-skill-by-derailment",
-  "version": "1.0.63",
-  "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags.",
+  "version": "1.0.64",
+  "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task or analyzing live Herdr agent pane execution scrollbacks across repositories.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "audit-skill-by-derailment",
-    "shortDescription": "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags.",
+    "shortDescription": "Use if hardening a SKILL.md by running a fresh subagent on a real task or analyzing live Herdr agent pane execution scrollbacks across repositories.",
     "longDescription": "Install only the audit-skill-by-derailment workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

@@ -36,6 +36,15 @@ Five symptoms can still come from one bad paragraph or one bad example.
 | O5 | Stale reference — docs reference tool version/flag that no longer exists | P1 |
 | O6 | Harness-induced drift — the test prompt or wrapper changed the task enough to create fake friction | P1 |
 
+## Cognitive & Behavioral causes (C) — *Herdr Session Audits*
+
+| Code | Root cause | Typical severity |
+|---|---|---|
+| C1 | Premature completion illusion — agent equates local edits with full task done, skipping remote/operational gates | P1 |
+| C2 | Destructive / mutation hesitation — agent fears breaking production, deleting workflows, or creating PRs without explicit permission | P1 |
+| C3 | Missing tooling & environment awareness — agent lacks knowledge of non-blocking probes (`probe`/`--dry-run`) or dashboard automation (`ego-browser`) | P1 |
+| C4 | Insufficient step stress / gate slack — workflow steps lack rigid checkable stop-conditions, allowing executor to slip past | P0-P1 |
+
 ## Root cause → fix pattern mapping
 
 | Root cause | Fix pattern |
@@ -49,3 +58,7 @@ Five symptoms can still come from one bad paragraph or one bad example.
 | M5 | Scaling Guidance or Prerequisite Surfacing |
 | O1 | Error Recovery Addition |
 | O6 | Harness Alignment |
+| C1 | Two-Tier Verification Enclosure |
+| C2 | Staged Deprecation & Safe Neutralization |
+| C3 | Actionable Pre-Flight Probe Injection |
+| C4 | Rigid Phase Gating & Canonical Layout Enforcement |

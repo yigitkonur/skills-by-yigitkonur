@@ -1,264 +1,175 @@
 ---
 name: audit-skill-by-derailment
-description: "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags."
+description: "Use if hardening a SKILL.md by running a fresh subagent on a real task or analyzing live Herdr agent pane execution scrollbacks across repositories."
 ---
 
 # Enhance Skill by Derailment
 
-Improve a skill by making a subagent use it on a real task, reading the execution trace for friction, and fixing the skill text where it broke.
+Improve a skill by analyzing friction traces—either by launching a **fresh synthetic subagent** on a realistic task (Mode A) or by inspecting **live Herdr agent pane scrollbacks** across multi-repo fleets (Mode B)—diagnosing the root causes, and directly fixing the skill text where it broke.
 
 ## When to use
 
 Use this skill if you are:
 
 - *testing whether a SKILL.md actually holds up when an agent uses it* ("test my skill", "is this skill any good", "does this skill work")
+- *evaluating live agent execution traces across Herdr panes* ("audit these herdr panes: wJ:p2, wH:p4, wK:p2", "why did the agents stop early?")
 - *hardening an existing skill before publishing it or relying on it*
-- *diagnosing why an agent keeps drifting, guessing, or stalling on a skill that "should" work*
+- *diagnosing why agents drift, guess, skip operational gates, or stall on a skill that 'should' work*
 - *running a derailment / friction-trace pass on a draft skill*
 - *post-edit verifying that a fix to a skill actually closed the friction it was meant to close*
-- *deciding which lines, examples, or routing cues in a skill are load-bearing vs dead weight*
 
 Do NOT use this skill if you are:
 
 - creating a new skill from scratch — use `build-skill`
-- rewriting a one-off task prompt for an agent (not a skill) — that is out of scope for this pack
-- doing a tiny copy-edit where running a subagent would not change the result
-- judging output quality of a skill, rather than the skill text itself
+- rewriting a one-off task prompt for an agent (not a skill)
+- doing a tiny copy-edit where running an agent would not change the result
+
+---
 
 ## Non-negotiable rules
 
-1. **Fix the skill text, not the executor.** Every remedy is an edit to skill files. Never "use a smarter agent."
-2. **Subagent uses; you diagnose.** The executor follows the skill. You read the trace, find the source defect, and fix that text.
-3. **No output files.** No reports, errata, mistake notebooks. The fixed skill files ARE the deliverable.
-4. **Real task, real user energy.** The subagent prompt sounds like an everyday user request, not a clinical test case.
-5. **Different domain each round.** Same task twice proves nothing about generalization.
-6. **No fake constraints.** If the skill does not require a wrapper, shell convention, or extra ritual, do not add one in the test harness.
-7. **Root-cause before fixing.** Cluster repeated symptoms. Three tags from one workflow step usually collapse into one bad paragraph.
+1. **Fix the skill text, not the executor.** Every remedy is an edit to skill files. Never blame the model or say "use a smarter agent."
+2. **Read the trace / scrollback; you diagnose.** The executor attempts to follow the skill. You read the raw trace, find the source defect or gating slack, and fix that text.
+3. **No output files.** No separate errata, mistake notebooks, or post-mortem summaries. The fixed skill files ARE the deliverable.
+4. **Different domain each test round.** Same task twice proves nothing about generalization.
+5. **No fake constraints.** If the skill does not require a wrapper or shell ritual, do not add one in the test harness.
+6. **Root-cause before fixing.** Cluster repeated symptoms. Three tags from one workflow step usually collapse into one bad paragraph or missing gate.
 
-## Severity and root-cause cheat sheet
+---
 
-Use these inline tables for fast triage. Load the reference files for full criteria.
+## Severity & Root-Cause Cheat Sheet
 
-| Symptom in trace | Severity | Typical root cause | Fix family |
+| Symptom in Trace / Scrollback | Severity | Typical Root Cause | Fix Family |
 |---|---|---|---|
-| `[STUCK]` — executor cannot continue | P0 | S1 missing prerequisite, S2 contradiction, M2 unstated location | Prerequisite Surfacing, Workflow Path Reconciliation, Output Location Specification |
+| `[STUCK]` — executor cannot continue | P0 | S1 missing prerequisite, S2 contradiction, M2 unstated location | Prerequisite Surfacing, Workflow Path Reconciliation, Output Location |
 | `[BROKE]` — command from skill failed | P0 / P1 | O1 silent failure, O5 stale flag/version | Error Recovery Addition, Format Alignment |
 | `[GUESSED]` — subagent invented a decision | P1 | M1 ambiguous threshold, M5 assumed knowledge | Threshold Concretization, Scaling Guidance |
-| Re-read same file 2+ times | P1 | S3 scattered info, M3 format inconsistency | Schema Duplication at Point of Use |
-| Skipped a step | P1 | M4 missing execution method, M6 vague verb | Execution Method Specification |
+| Premature completion — skipped remote/E2E gates | P1 | C1 premature completion illusion, C4 gate slack | Two-Tier Verification Enclosure, Rigid Phase Gating |
+| Skipped existing CI cleanup or destructive step | P1 | C2 destructive mutation hesitation | Staged Deprecation & Safe Neutralization |
+| Ran `--help` instead of real health probe | P1 | C3 missing tooling awareness, M4 missing method | Actionable Pre-Flight Probe Injection |
+| Re-read same file 2+ times / path drift | P1 | S3 scattered info, M3 format inconsistency | Canonical Layout Enforcement, Schema Duplication |
 | `[NICE]` — skill prevented a mistake | Keep | Load-bearing line | Do not weaken or rewrite this text |
 
-3+ P1s in one workflow step = compound P0. Fix the source paragraph first; do not pile warnings beside bad text.
+---
 
-## Workflow
+## Dual Ingestion Routing
 
-### 1. Get the skill
+Determine the evaluation mode based on user intent and input handles:
 
-**Local skill** (user says "test run-github-scout"):
-```bash
-# Locate skill directory (e.g., skills/{name}/, ~/.agents/skills/{name}/, ~/.claude/skills/{name}/, ~/.codex/skills/{name}/)
-SKILL_PATH=$(find . ~/.agents/skills ~/.claude/skills ~/.codex/skills ~/.gemini/skills skills -maxdepth 2 -type d -name "{name}" 2>/dev/null | head -1)
-ls "$SKILL_PATH"/
-cat "$SKILL_PATH"/SKILL.md
-ls "$SKILL_PATH"/references/
+```
+Did the user provide Herdr pane IDs (e.g. wJ:p2, wH:p4) or point to active fleet sessions?
+├── YES ──► MODE B: Live Herdr Multi-Pane Fleet Audit
+│           (Inspect live scrollbacks, reverse-engineer mental models, prompt agents, fix skill)
+│
+└── NO  ──► MODE A: Synthetic Subagent Execution
+            (Launch fresh subagent with [STUCK]/[GUESSED] markers, parse JSONL trace, fix skill)
 ```
 
-**Remote skill** (user provides `owner/repo` or GitHub URL):
-```bash
-mkdir -p /tmp/skill-test/references
-gh api repos/{owner}/{repo}/contents/SKILL.md --jq '.content' | base64 -d > /tmp/skill-test/SKILL.md
-gh api repos/{owner}/{repo}/contents/references --jq '.[].name' | while read f; do
-  gh api repos/{owner}/{repo}/contents/references/$f --jq '.content' | base64 -d > /tmp/skill-test/references/$f
-done
-```
+---
 
-**No name given:** Ask the user which skill to test before touching anything.
+## Mode A: Synthetic Subagent Execution
 
-### 2. Read everything; design the realistic task
+### 1. Get the target skill
+Locate the skill directory (`skills/{name}/`, `~/.agents/skills/{name}/`, `~/.gemini/config/skills/{name}/`) and read all files.
 
-Read SKILL.md and every reference file. While reading, hold these in mind:
-
-- **What would a real user actually ask this skill to do?** Not "test case #1" — a sentence someone would type at 4pm on a Tuesday.
-- **Where will the executor trip?** Note ambiguous thresholds, missing prerequisites, scattered routing.
-- **Which reference files are routed cleanly vs orphaned?**
-
-| Skill type | Bad test (clinical) | Good test (real user energy) |
-|---|---|---|
-| Code search | "Search for repos matching 'react'" | "Find me all the self-hosted Notion alternatives with real-time collab" |
-| Code review | "Review file X" | "I just rewrote our auth middleware, can you check it before I merge?" |
-| Deployment | "Deploy service A" | "Push this to staging, but our Redis is on a separate VPC so watch for that" |
-
-**Pick the nastiest realistic task:**
-
-- Use a domain DIFFERENT from the skill's own examples (tests generalization, not memorization).
-- Include 2-3 implicit constraints a naive executor might miss.
-- Touch ALL workflow branches the skill defines (if there's an "if >3 repos" path AND a "<=3" path, hit the more complex one).
-- Require at least one reference file to be consulted (tests routing).
-
-Read like an editor, not just an operator. Find the paragraph, example, missing precondition, or routing cue that would send the executor down the wrong path.
+### 2. Design the realistic task
+Create a realistic prompt with everyday user energy, 2-3 implicit constraints, and a different domain from the skill's own examples.
 
 ### 3. Launch the subagent
+Launch a fresh-context subagent with the standard friction markers:
+- `[STUCK]` if unable to continue; name the missing/conflicting instruction.
+- `[GUESSED]` if inventing a decision the skill should have made explicit.
+- `[BROKE]` if a documented command failed.
+- `[NICE]` if a specific sentence or routing cue saved from a mistake.
 
-Launch one fresh-context subagent. The prompt reads like a real user request, not an experiment.
+### 4. Parse the trace & diagnose
+Extract markers with `bash scripts/parse-derailment-trace.sh <trace-path>` and tag root causes using [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md).
 
-**Prompt template:**
+---
 
+## Mode B: Live Herdr Multi-Pane Fleet Audit
+
+Read [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) for full Herdr CLI commands and coordination recipes.
+
+### 1. Discover and resolve target panes
+```bash
+herdr workspace list
+herdr agent list
 ```
-I need help with: {TASK_IN_PLAIN_LANGUAGE}
+Identify the target workspace IDs and pane handles (e.g. `wJ:p2`, `wH:p4`, `wK:p2`, `wV:p2`, `wG:p6`).
 
-There's a skill for this at {SKILL_PATH}. Read the SKILL.md and the
-reference files it points to, then follow the workflow to do what I asked.
-
-As you work, only flag moments where the skill text changes your path:
-- [STUCK] if the skill leaves you unable to continue; name the missing or conflicting instruction
-- [GUESSED] if you had to invent a decision the skill should have made explicit; point to the section that should have answered it
-- [BROKE] if following the skill led you to a command or pattern that failed; include the command and the instruction that led you there
-- [NICE] if a specific sentence, example, or routing cue saved you from a mistake
-```
-
-**Valid marker shapes the subagent should produce:**
-
-| Marker | Example shape |
-|---|---|
-| `[STUCK]` | `[STUCK] references/fix-patterns.md says to run X, but no install step or fallback exists.` |
-| `[GUESSED]` | `[GUESSED] Step 2 says "large skill" but gives no threshold; I chose 10 files.` |
-| `[BROKE]` | `[BROKE] Command from Step 4 failed: ...; the documented output path did not exist.` |
-| `[NICE]` | `[NICE] The routing table sent me to friction-classification.md before editing.` |
-
-**Dispatch protocol:**
-
-- Use a fresh-context Sonnet-class or equivalent capable general-purpose subagent by default.
-- Use a stronger model only when the target task itself is high-risk or repeated P0s remain after a normal pass.
-- Do not "fix" a weak skill by escalating the model; fix the skill text.
-- Keep subagent permissions aligned with the real task.
-- Do not leak the expected answer, suspected bug, or intended fix into the prompt.
-- Preserve the trace path before editing — it is the only evidence you have.
-
-**Optional helper:** `scripts/launch-derailment.sh` renders this prompt, optionally pipes it to a runtime-neutral agent command, and tees output to a trace file. See `scripts/launch-derailment.sh.md` for arguments and exit codes.
-
-### 4. Read the execution trace
-
-When the subagent completes, its output is at the path shown in the launch response (typically JSONL).
-
-**Preferred extraction:**
+### 2. Extract scrollback and cognitive thought traces
+Read raw terminal scrollback from target panes using `read-herdr-panes.sh` or direct Herdr commands:
 
 ```bash
-bash {SKILL_PATH}/scripts/parse-derailment-trace.sh AGENT_OUTPUT_PATH
+# Read recent unwrapped scrollback (joins soft wraps for clean parsing)
+bash scripts/read-herdr-panes.sh wJ:p2 wH:p4 wK:p2 wV:p2 --lines 400
+
+# Or extract reasoning blocks directly
+bash scripts/read-herdr-panes.sh wJ:p2 wH:p4 --thoughts
 ```
 
-See `scripts/parse-derailment-trace.sh.md` for output format and `--context N` flag.
+### 3. Reverse-engineer agent mental models
+Analyze where and why agents derailed in real sessions:
+- **C1 (Premature Completion)**: Did the agent stop after local edits because Step 9 felt like an optional recommendation? ➔ Apply **Two-Tier Verification Enclosure**.
+- **C2 (Mutation Hesitation)**: Did the agent leave 30KB GitHub Actions workflows untouched out of fear of breaking required checks? ➔ Apply **Staged Deprecation Protocol**.
+- **C3 (Tooling Ignorance)**: Did the agent run `--help` on a tunnel script to avoid blocking the session with a background daemon? ➔ Apply **Actionable Pre-Flight Probe Injection**.
+- **C4 / S3 (Structural Drift)**: Did monorepos create scripts in mismatched folders? ➔ Apply **Canonical Layout Enforcement**.
 
-**Fallback extraction (if the script is unavailable):**
+### 4. Live agent fleet coordination (if sessions are active)
+If agents are still active and waiting in idle states, dispatch specific corrective prompts to enforce 100% compliance:
 
 ```bash
-python3 -c "
-import json
-with open('AGENT_OUTPUT_PATH') as f:
-    for line in f:
-        if not line.strip(): continue
-        obj = json.loads(line)
-        if obj.get('type') != 'assistant': continue
-        for c in obj.get('message',{}).get('content',[]):
-            if c.get('type') == 'text':
-                print(c['text'][:500]); print('---')
-            elif c.get('type') == 'tool_use':
-                print(f'TOOL: {c[\"name\"]} | {str(c.get(\"input\",{}))[:120]}')
-" 2>/dev/null | head -200
+herdr agent prompt <pane-id> "Please complete Golden Workflow compliance by implementing <missing-step> and running <verification-command>."
 ```
 
-**What the trace shows:**
+---
 
-| Signal | What it means | Where to look |
-|---|---|---|
-| `[STUCK]` tag | Subagent hit a wall — P0 | Source paragraph the tag points to |
-| `[GUESSED]` tag | Skill didn't say; subagent improvised — P1 | The decision the skill should have made |
-| `[BROKE]` tag | Command from skill failed — P0/P1 | The exact command + the instruction that led there |
-| `[NICE]` tag | Skill prevented a mistake | Mark as load-bearing — do not break |
-| Re-read same file 2+ times | Confusing instructions — P1 | The file the executor kept reopening |
-| Tried, errored, switched approach | Silent failure — P1 | The first command and what it returned |
-| Skipped a step | Step seemed optional or unclear — P1 | Step heading, conditional gating |
+## Universal Hardening & Fix Workflow (Modes A & B)
 
-For each cluster, use `references/friction-classification.md` to assign severity, then `references/root-cause-taxonomy.md` to tag the WHY (S/M/O code).
+### 1. Fix the skill text directly
+Match root causes to fix patterns in [`references/fix-patterns.md`](references/fix-patterns.md):
+- Highest severity first (P0 before P1).
+- Rewrite or delete the source paragraph that caused the miss.
+- Keep fixes in-place, self-contained, and minimal.
+- **Never create errata or mistake summary docs.** The fixed skill text is the deliverable.
 
-### 5. Fix the skill directly
-
-For each root-cause cluster, highest severity first:
-
-1. Match to a fix pattern from `references/fix-patterns.md`.
-2. Rewrite or delete the source text that caused the miss.
-3. Update the paired example, checklist item, or routing table if the old wording taught the same wrong move.
-4. Add a new note only when the root cause is *genuinely missing context*, not when the old sentence can simply be fixed.
-5. Keep fixes in-place, self-contained, and minimal.
-
-**No output files.** Edit the skill. That is the deliverable.
-
-**Do not** preserve bad text and add a warning beside it. **Do not** weaken `[NICE]` lines while fixing — they're load-bearing. **Do not** let test-harness constraints become product docs (see Harness Alignment in `references/fix-patterns.md`).
-
-### 6. Verify
-
+### 2. Validate skill integrity
 ```bash
-# Every reference file must be linked from SKILL.md
-for f in $(find {SKILL_PATH}/references -name '*.md' -type f); do
-  grep -q "$(basename $f)" {SKILL_PATH}/SKILL.md || echo "ORPHAN: $f"
+# Verify no orphan reference files
+for f in $(find references -name '*.md' -type f); do
+  grep -q "$(basename "$f")" SKILL.md || echo "ORPHAN: $f"
 done
 
-# SKILL.md must stay under 500 lines
-wc -l {SKILL_PATH}/SKILL.md
+# Ensure SKILL.md remains concise and router-driven
+wc -l SKILL.md
 ```
 
-Run the repo's validator if the skill lives in this repo:
+### 3. Report findings
+Report in chat:
+1. Audited panes / traces and classification breakdown.
+2. Root causes identified with taxonomy codes (S/M/O/C).
+3. Skill files edited with one-line rationales.
+4. Corrective actions dispatched to running agents.
+5. Verification results.
 
-```bash
-python3 scripts/validate-skills.py
-```
+---
 
-### 7. Re-test if any P0 was found
+## Available Scripts
 
-If round 1 found any P0, launch another subagent with a **different task in a different domain**.
-
-Decision rule:
-
-- Round 2 is required after any P0.
-- Round 3 is allowed only if friction decreased after round 2.
-- Max 3 rounds. If friction does not decrease after 3 rounds, stop and route to `build-skill` for redesign — do not keep piling warnings into a structurally weak skill.
-
-### 8. Tell the user what happened
-
-The report is chat output, not a repo artifact. Report in this order:
-
-1. Marker counts by severity: `[STUCK]`, `[GUESSED]`, `[BROKE]`, `[NICE]`.
-2. Root-cause clusters and taxonomy codes used (S/M/O).
-3. Skill files edited, with one-line rationale per change.
-4. Validation run and result.
-5. Re-test result if any P0 was found.
-6. Any companion-skill issue intentionally left for a separate pass.
-
-## Available scripts
-
-Scripts are resolved relative to the skill directory root.
-
-| Script | Use |
+| Script | Purpose |
 |---|---|
-| `scripts/launch-derailment.sh` | Render the Step 3 prompt, optionally pipe it to a runtime-neutral agent command, and tee output to a trace. See `scripts/launch-derailment.sh.md`. |
-| `scripts/parse-derailment-trace.sh` | Parse a saved JSONL or plain-text trace into marker counts, marker context, and tool/failure snippets. See `scripts/parse-derailment-trace.sh.md`. |
+| `scripts/read-herdr-panes.sh` | Read, format, and extract thought blocks and tool invocations from one or more Herdr panes. |
+| `scripts/launch-derailment.sh` | Render Step 3 prompt and launch synthetic subagent trace. |
+| `scripts/parse-derailment-trace.sh` | Parse JSONL traces into marker counts and snippets. |
 
-## Reference routing
+---
 
-Load only what the current step needs.
+## Reference Routing
 
-| File | Read when |
+| Reference | Read When |
 |---|---|
-| `references/friction-classification.md` | Step 4 — assigning P0/P1/P2 severity to trace symptoms |
-| `references/root-cause-taxonomy.md` | Step 4 — tagging WHY each cluster broke (S/M/O codes) |
-| `references/fix-patterns.md` | Step 5 — matching root cause to a proven fix pattern |
-
-## Guardrails
-
-- Read the full skill before generating the test case.
-- Root-cause before fixing. Fixes without root-cause analysis recur.
-- No output files. Only the skill's own files get edited.
-- The trace is disposable. Never preserve it as a summary, errata, or mistake notebook.
-- Rewrite the controlling paragraph or example before adding warning bullets about it.
-- Do not let test-harness constraints become product docs.
-- Do not weaken `[NICE]` moments while fixing.
-- Do not re-test with the same task — different domain each round.
+| [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) | Mode B: Discovering Herdr panes, reading scrollback, and prompting active agents. |
+| [`references/friction-classification.md`](references/friction-classification.md) | Classifying trace symptoms into P0/P1/P2 severities and compound P0s. |
+| [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md) | Tagging root causes across Structural (S), Semantic (M), Operational (O), and Cognitive (C) codes. |
+| [`references/fix-patterns.md`](references/fix-patterns.md) | Applying proven fix patterns (Two-Tier Enclosure, Staged Deprecation, Pre-Flight Probes, Canonical Layouts). |
