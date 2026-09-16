@@ -122,6 +122,7 @@ GROUPS = {
             "run-agent-browser",
             "run-agent-device",
             "mobilerun-control",
+            "use-chatgpt-by-applescript",
         ],
     ),
     "yk-config": (

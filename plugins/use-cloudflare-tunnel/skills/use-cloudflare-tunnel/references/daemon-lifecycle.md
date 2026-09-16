@@ -1,33 +1,36 @@
 # Background Daemon Lifecycle & Process Management
 
-Running `cloudflared` inside agentic workflows, subagents, or automated CI systems requires predictable process controls to prevent orphaned daemons and port conflicts.
+Running `cloudflared` inside agentic workflows, subagents, or automated CI systems requires predictable process controls to prevent orphaned daemons, process group termination, and port conflicts.
 
 ---
 
-## 1. Background Execution Pattern for AI Agents
+## 1. Process Group Isolation for AI Agents (`setsid`)
 
-When an AI coding agent starts a tunnel, the process must run asynchronously while the agent captures its output and proceeds with testing.
+When an AI coding agent executes bash commands via tools (e.g. `run_command`), each tool invocation creates a subshell. Standard background commands (`cmd &` or `nohup cmd &`) remain bound to the tool process group and standard input.
 
-### The Robust Background Recipe:
-1. Ensure no previous instance is holding the target log/port.
-2. Launch with explicit `--logfile` and `--pidfile`.
-3. Disable autoupdates (`--no-autoupdate`) to avoid background restarts.
-4. Extract the assigned URL using a bounded polling loop.
+When the tool invocation finishes:
+* The subshell sends `SIGHUP` and `SIGTERM` to all child processes in the process group.
+* Standard `cloudflared &` background processes terminate immediately upon tool exit.
+
+### The Agent-Safe Background Recipe
+
+To ensure the tunnel persists across tool calls, agents **must** use `setsid` with detached `stdio`:
 
 ```bash
 PORT=8099
 LOGFILE="/tmp/cloudflared-${PORT}.log"
 PIDFILE="/tmp/cloudflared-${PORT}.pid"
 
-# 1. Clean previous state
-rm -f "$LOGFILE" "$PIDFILE"
+# 1. Clean previous state & session tokens
+rm -rf "$LOGFILE" "$PIDFILE" ~/.cloudflared/
 
-# 2. Launch background daemon
-cloudflared tunnel \
+# 2. Launch detached daemon with process group isolation
+setsid nohup cloudflared tunnel \
   --url "http://127.0.0.1:${PORT}" \
   --logfile "$LOGFILE" \
   --pidfile "$PIDFILE" \
-  --no-autoupdate >/dev/null 2>&1 &
+  --no-autoupdate \
+  --protocol quic </dev/null >/dev/null 2>&1 &
 
 DAEMON_PID=$!
 
@@ -38,7 +41,7 @@ URL=""
 
 while [[ $(( $(date +%s) - START )) -lt $TIMEOUT ]]; do
   if [[ -f "$LOGFILE" ]]; then
-    URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$LOGFILE" | head -n 1 || true)
+    URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$LOGFILE" | tail -n 1 || true)
     if [[ -n "$URL" ]]; then break; fi
   fi
   sleep 0.5
@@ -50,7 +53,7 @@ if [[ -z "$URL" ]]; then
   exit 1
 fi
 
-echo "Active Tunnel URL: $URL"
+echo "Active Persistent Tunnel URL: $URL"
 ```
 
 ---
@@ -76,7 +79,7 @@ cloudflared tunnel --metrics 127.0.0.1:20241 --url http://127.0.0.1:8080 ...
 
 ---
 
-## 3. Deterministic Teardown & Zombie Cleanup
+## 3. Deterministic Teardown & Session Reset
 
 Never leave orphaned `cloudflared` processes running in the background when a task ends.
 
@@ -89,11 +92,14 @@ if [[ -f /tmp/cloudflared-8099.pid ]]; then
 fi
 ```
 
-### Aggressive Process Reaper:
+### Complete Cleanup (Processes + Session Cache):
 ```bash
 # Terminate any running cloudflared quick tunnels
-pkill -f "cloudflared tunnel --url" || true
+pkill -f "cloudflared tunnel" || true
 
-# Free a hung origin port
+# Free hung origin port
 fuser -k 8099/tcp 2>/dev/null || true
+
+# Remove stale session tokens to guarantee fresh subdomain on next run
+rm -rf /tmp/cloudflared* ~/.cloudflared/
 ```

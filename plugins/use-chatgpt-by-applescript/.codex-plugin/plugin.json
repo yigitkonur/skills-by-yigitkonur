@@ -1,0 +1,35 @@
+{
+  "name": "use-chatgpt-by-applescript",
+  "version": "1.0.62",
+  "description": "Use if driving macOS ChatGPT desktop app via AppleScript or SSH to run web research, computer actions, status checks, or markdown extraction.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "use-chatgpt-by-applescript"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "use-chatgpt-by-applescript",
+    "shortDescription": "Use if driving macOS ChatGPT desktop app via AppleScript or SSH to run web research, computer actions, status checks, or markdown extraction.",
+    "longDescription": "Install only the use-chatgpt-by-applescript workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the use-chatgpt-by-applescript skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

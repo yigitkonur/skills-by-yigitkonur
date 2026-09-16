@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **50 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **54 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex and Claude Code both get the complete 50-skill pack.
+three ways in. Codex and Claude Code both get the complete 54-skill pack.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -75,7 +75,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 50 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 54 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -200,6 +200,7 @@ drive a browser, a phone, or a terminal workspace mid-session.
 - **[project-manager](skills/project-manager/)** — supervise coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
 - **[run-agent-device](skills/run-agent-device/)** — agent-device cli for ios app testing: settle-first snapshot/press/fill loop, evidence capture, cross-layer bug triage, runtime-freshness + fresh-state discipline, fix-and-retest.
+- **[use-chatgpt-by-applescript](skills/use-chatgpt-by-applescript/)** — drive macOS ChatGPT desktop app via AppleScript or remote SSH: automated web research (`@Browser`), computer actions (`@Computer`), instant 0.3s AX status monitoring, and clipboard-free Markdown AST extraction.
 
 `/plugin install yk-automation@yigitkonur`
 

@@ -21,7 +21,7 @@ This guide walks through connecting a Linux server, container, or remote worksta
 3. Toggle **Remote Login** to **ON**.
 4. Under the info icon (ℹ️) next to Remote Login:
    - Allow access for: **All users** (or specify your macOS user account).
-   - Note the provided username and network name (e.g. `mac@192.168.1.50` or `mac@macs-macbook-pro.local`).
+   - Note the provided username and network name (e.g. `<username>@192.168.1.x` or `<username>@<mac-hostname>.local`).
 
 ### B. Grant Accessibility Permissions
 macOS requires Accessibility permissions for applications or background SSH daemons to control the GUI via System Events and query the UI element tree.
@@ -90,7 +90,7 @@ Edit or create `~/.ssh/config` on your Linux machine:
 ```sshconfig
 Host macbook
     HostName 100.x.y.z               # Replace with your Mac's Tailscale IP or hostname
-    User mac                         # Replace with your macOS username
+    User <mac_username>              # Replace with your macOS username
     IdentityFile ~/.ssh/id_ed25519
     ServerAliveInterval 60
     ServerAliveCountMax 3
@@ -114,7 +114,7 @@ export CHATGPT_SSH_HOST=my-work-mac
 
 Or pass it per command:
 ```bash
-node scripts/chatgpt-research-runner.mjs --ssh-host=my-work-mac --check-bridge
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs --ssh-host=my-work-mac --check-bridge
 ```
 
 ---
@@ -124,7 +124,7 @@ node scripts/chatgpt-research-runner.mjs --ssh-host=my-work-mac --check-bridge
 Run the diagnostic tool from your Linux terminal:
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --check-bridge
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs --check-bridge
 ```
 
 Expected output:

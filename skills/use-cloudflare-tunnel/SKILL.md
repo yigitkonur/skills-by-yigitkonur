@@ -17,6 +17,27 @@ Cloudflare Tunnel establishes an outbound encrypted connection (QUIC or HTTP/2) 
 2. **Named Tunnels (Production):** Persistent, authenticated tunnels tied to custom domains and Cloudflare Zero Trust.
 3. **Same-Origin Unified Proxy Pattern:** When testing Single Page Applications (React, Expo Web, Vite) that consume local APIs (Supabase, Express, FastAPI), running a lightweight unified reverse proxy on one port eliminates browser **Mixed Content** (`https` -> `http`) and CORS blocks.
 
+### The Mandatory 3-Gate Verification Rule
+
+Never report a tunnel URL to a user or open a browser on a remote machine until all 3 gates pass:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ Gate 1: Local Origin Health                                            │
+│ curl -s -f http://127.0.0.1:<PORT>/<path>  ──> Must return HTTP 200    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Gate 2: Global DNS Publication                                         │
+│ dig @1.1.1.1 +short <subdomain>            ──> Must return Edge IPs    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Gate 3: Target Client Reachability (Zero False Positives)              │
+│ ssh <client> "curl -s -o /dev/null -w '%{http_code}' <URL>"  ──> 200 OK│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Decision Tree
@@ -25,22 +46,31 @@ Cloudflare Tunnel establishes an outbound encrypted connection (QUIC or HTTP/2) 
 flowchart TD
     Start["Task: Expose local service"] --> NeedAuth{"Requires custom domain or auth?"}
     
-    NeedAuth -->|No: Ad-hoc / Testing| IsFullStack{"Is it a frontend SPA calling a local backend API?"}
+    NeedAuth -->|No: Ad-hoc / Testing| TargetOrigin{"Origin Type?"}
     NeedAuth -->|Yes: Persistent / Production| NamedTunnel["Read references/named-tunnels.md
 Use cloudflared tunnel run --token"]
     
+    TargetOrigin -->|UI Design / Theme / Hydration Fidelity| BuiltInstance["Build production local instance
+(e.g., pnpm preview on 8788)"]
+    TargetOrigin -->|Rapid Loop / API Debugging| DevInstance["Run dev server (e.g., 4321 / 3000)"]
+
+    BuiltInstance --> IsFullStack{"SPA calling local backend API?"}
+    DevInstance --> IsFullStack
+
     IsFullStack -->|Yes: Web + API| Unified["Read references/same-origin-proxy.md
 Run scripts/unified-proxy.mjs
 Then tunnel proxy port"]
     IsFullStack -->|No: Single Port Service| QuickTunnel["Read references/quick-tunnels.md
 Run scripts/quick-tunnel.sh --port <P>"]
 
-    QuickTunnel --> Verify{"Remote testing needed?"}
-    Unified --> Verify
+    QuickTunnel --> VerifyTarget{"Client / Remote Target?"}
+    Unified --> VerifyTarget
     
-    Verify -->|ego-browser / Mobile| Remote["Read references/remote-testing.md
+    VerifyTarget -->|MacBook / Remote Host| TargetProbe["Read references/remote-testing.md
+Execute Gate 3: Target Client Probe"]
+    VerifyTarget -->|ego-browser / Mobile| Remote["Read references/remote-testing.md
 Drive CDP with 390x844 viewport"]
-    Verify -->|Standard browser / Webhook| Done["Inspect public trycloudflare.com URL"]
+    VerifyTarget -->|Standard webhook| Done["Inspect public trycloudflare.com URL"]
 ```
 
 ---
@@ -53,32 +83,67 @@ Load only the reference files required for your specific path:
 |---|---|---|
 | **Quick ad-hoc tunnel for single port** | `references/quick-tunnels.md` | `references/daemon-lifecycle.md` |
 | **Frontend SPA + Backend API (Expo, React, Supabase)** | `references/same-origin-proxy.md` | `references/quick-tunnels.md` |
-| **Remote browser testing (ego-browser) & mobile viewports** | `references/remote-testing.md` | `references/same-origin-proxy.md` |
+| **Remote browser testing (MacBook `open`, ego-browser, mobile)** | `references/remote-testing.md` | `references/daemon-lifecycle.md` |
 | **Production named tunnel with custom domain & DNS** | `references/named-tunnels.md` | `references/ingress-rules.md` |
-| **Tunnel fails to connect, 502 Bad Gateway, or UDP blocked** | `references/troubleshooting.md` | `references/networking-protocols.md` |
+| **Tunnel fails, 502, NXDOMAIN lock, or UDP blocked** | `references/troubleshooting.md` | `references/networking-protocols.md` |
 
 ---
 
 ## Quick Starts
 
-### 1. Expose a Single Local Port in One Command
+### 1. Expose a Single Local Port with Process Group Isolation
 Using the bundled automated script:
 
 ```bash
-# Starts tunnel in background, extracts URL, verifies connectivity
+# Starts tunnel detached with setsid, extracts URL, verifies DNS
 bash scripts/quick-tunnel.sh --port 8080 --out /tmp/tunnel-url.txt
 ```
 
-Or via raw CLI:
+Or via raw CLI with agent-safe process isolation:
 ```bash
-cloudflared tunnel --url http://127.0.0.1:8080 --logfile /tmp/cf-8080.log --no-autoupdate &
-sleep 4
-grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/cf-8080.log | tail -n 1
+# 1. Clean previous state
+rm -rf /tmp/cloudflared-8080.log /tmp/cloudflared-8080.pid ~/.cloudflared/
+
+# 2. Launch detached daemon (never dies on subshell/tool exit)
+setsid nohup cloudflared tunnel \
+  --url http://127.0.0.1:8080 \
+  --logfile /tmp/cloudflared-8080.log \
+  --pidfile /tmp/cloudflared-8080.pid \
+  --no-autoupdate \
+  --protocol quic </dev/null >/dev/null 2>&1 &
+
+# 3. Extract URL
+sleep 3
+TUNNEL_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/cloudflared-8080.log | tail -n 1)
 ```
 
 ---
 
-### 2. Full-Stack Web + API (Unified Same-Origin Proxy)
+### 2. The 2-Step DNS Handshake (Preventing 5-Min NXDOMAIN Locks)
+
+When a new `*.trycloudflare.com` subdomain is assigned, public authoritative edge DNS requires 1–3s to propagate. Quering client/local DNS (e.g. Tailscale MagicDNS `100.100.100.100`) prematurely causes an immediate **300-second NXDOMAIN negative-cache lock**.
+
+```bash
+HOST_ONLY=$(echo "$TUNNEL_URL" | sed -E 's#^https?://##')
+
+# Step A: Wait for global authoritative DNS (1.1.1.1 & 8.8.8.8)
+for i in {1..15}; do
+  IP1=$(dig @1.1.1.1 +short "$HOST_ONLY" 2>/dev/null | tail -n 1)
+  IP2=$(dig @8.8.8.8 +short "$HOST_ONLY" 2>/dev/null | tail -n 1)
+  if [[ -n "$IP1" && -n "$IP2" ]]; then break; fi
+  sleep 1
+done
+
+# Step B: Flush client DNS cache before first query
+ssh macbook "dscacheutil -flushcache 2>/dev/null || true"
+
+# Step C: Verify directly from client machine (Target Perspective Gate)
+ssh macbook "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" # Must return 200
+```
+
+---
+
+### 3. Full-Stack Web + API (Unified Same-Origin Proxy)
 Solves the browser **Mixed Content** block where an HTTPS tunnel cannot talk to `http://127.0.0.1:<api-port>`:
 
 ```bash
@@ -89,45 +154,18 @@ node scripts/unified-proxy.mjs \
   --api-port 55721 \
   --api-prefixes /api/,/auth/,/rest/,/functions/ &
 
-# 2. Expose the unified proxy
+# 2. Expose the unified proxy with isolated daemon
 bash scripts/quick-tunnel.sh --port 8099 --out /tmp/public-app.txt
-```
-
----
-
-### 3. Remote Verification with ego-browser (iPhone Dimensions)
-Connect a remote Chromium browser running on the host OS to the containerized tunnel:
-
-```javascript
-ego-browser nodejs <<'SCRIPT'
-const task = await useOrCreateTaskSpace('tunnel-verification');
-
-// Set iPhone mobile viewport (390 x 844)
-await cdp('Emulation.setDeviceMetricsOverride', {
-  width: 390,
-  height: 844,
-  deviceScaleFactor: 3,
-  mobile: true
-});
-
-await openOrReuseTab('https://your-subdomain.trycloudflare.com', { wait: true, timeout: 20 });
-await wait(3);
-
-cliLog('Page Text: ' + await snapshotText());
-
-// Keep session open for user inspection
-await completeTaskSpace(task.id, { keep: true });
-SCRIPT
 ```
 
 ---
 
 ## Key Patterns
 
-### Pattern A: Regex URL Extraction
-Always parse the assigned subdomain deterministically from the logfile:
+### Pattern A: Process-Isolated Daemon Spawning (`setsid`)
+Always decouple the tunnel daemon from the tool invocation process group:
 ```bash
-TUNNEL_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/cloudflared.log | head -n 1)
+setsid nohup cloudflared tunnel --url "http://127.0.0.1:${PORT}" --logfile "$LOGFILE" </dev/null >/dev/null 2>&1 &
 ```
 
 ### Pattern B: Forcing HTTP/2 Fallback
@@ -136,10 +174,11 @@ If corporate firewalls or cloud security groups block UDP port 7844 (QUIC):
 cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080
 ```
 
-### Pattern C: Clean Teardown
-Never leave orphaned tunnel processes:
+### Pattern C: Clean Teardown & Session Reset
+Never leave orphaned tunnel processes or stale token caches:
 ```bash
-bash scripts/tunnel-ctl.sh kill all
+pkill -f "cloudflared tunnel" || true
+rm -rf /tmp/cloudflared* ~/.cloudflared/
 ```
 
 ---
@@ -148,11 +187,12 @@ bash scripts/tunnel-ctl.sh kill all
 
 | Pitfall | Impact | Fix |
 |---|---|---|
+| **Launching background job without `setsid`** | Tunnel dies as soon as agent tool / subshell finishes. | Use `setsid nohup ... </dev/null >/dev/null 2>&1 &`. See `references/daemon-lifecycle.md`. |
+| **Probing tunnel from origin container only** | False-positive 200 OK while remote user gets connection failure or DNS error. | Mandate **Target Client Perspective Probe** (`ssh <client> curl == 200`). See `references/remote-testing.md`. |
+| **Early DNS query before edge propagation** | MagicDNS / router caches NXDOMAIN for 300s, locking user out for 5 minutes. | Wait for `1.1.1.1` & `8.8.8.8` `NOERROR` first, then flush client DNS. See `references/quick-tunnels.md`. |
 | **Tunneling only frontend SPA port** | Browser blocks API calls as **Mixed Content** or `ERR_CONNECTION_REFUSED`. | Use `references/same-origin-proxy.md` and `scripts/unified-proxy.mjs`. |
 | **Missing `--no-autoupdate`** | `cloudflared` hangs or restarts during agent tool execution. | Always include `--no-autoupdate` on startup. |
-| **Port binding to external IP only** | `cloudflared` fails with `502 Bad Gateway` connecting to origin. | Bind local service to `127.0.0.1` or `0.0.0.0`. |
-| **Assuming quick tunnel URLs are persistent** | Hardcoded URLs break when daemon restarts. | Re-extract URL from log or switch to `references/named-tunnels.md`. |
-| **Orphaned daemons holding ports** | New tunnel runs fail or output old URLs. | Run `bash scripts/tunnel-ctl.sh kill all` before fresh runs. |
+| **Tunneling raw dev server for UI review** | Flaky Vite reloads, missing static theme scripts, or uncompiled headers. | Build local instance and tunnel `pnpm preview` (`wrangler dev`). |
 
 ---
 
@@ -162,14 +202,14 @@ Every topic has an exhaustive reference document. Read the relevant file when pe
 
 | Reference File | Read When |
 |---|---|
-| [`references/quick-tunnels.md`](references/quick-tunnels.md) | Setting up ephemeral development tunnels on `trycloudflare.com`, configuring CLI flags, and parsing assigned URLs. |
+| [`references/quick-tunnels.md`](references/quick-tunnels.md) | Setting up ephemeral development tunnels on `trycloudflare.com`, DNS propagation timings, and CLI flags. |
 | [`references/named-tunnels.md`](references/named-tunnels.md) | Setting up persistent production tunnels with Cloudflare Zero Trust, tokens, custom domains, and systemd services. |
 | [`references/ingress-rules.md`](references/ingress-rules.md) | Writing `config.yml` ingress rules, path-based routing, `originRequest` timeouts, TLS verification, and validation commands. |
 | [`references/same-origin-proxy.md`](references/same-origin-proxy.md) | Resolving Mixed Content and CORS errors when exposing full-stack SPA + API architectures (React, Expo Web, Supabase). |
-| [`references/remote-testing.md`](references/remote-testing.md) | Driving `ego-browser`, configuring CDP iPhone viewports, exfiltrating screenshots, and testing external webhooks (Stripe/GitHub). |
+| [`references/remote-testing.md`](references/remote-testing.md) | Driving `ego-browser`, target client verification gates (`ssh macbook "open"`), and external webhook testing. |
 | [`references/networking-protocols.md`](references/networking-protocols.md) | Resolving QUIC/UDP packet loss, configuring HTTP/2 fallback (`--protocol http2`), and adjusting firewall egress rules. |
-| [`references/daemon-lifecycle.md`](references/daemon-lifecycle.md) | Managing background `cloudflared` processes in agent workflows, metrics endpoints (`/ready`, `/metrics`), and graceful teardown. |
-| [`references/troubleshooting.md`](references/troubleshooting.md) | Diagnosing `502 Bad Gateway`, `1033 Argo Tunnel error`, loopback connection refused, and cleaning up zombie processes. |
+| [`references/daemon-lifecycle.md`](references/daemon-lifecycle.md) | Managing background `cloudflared` daemons (`setsid`), PID tracking, metrics endpoints, and deterministic teardown. |
+| [`references/troubleshooting.md`](references/troubleshooting.md) | Diagnosing `502 Bad Gateway`, `1033 Argo Tunnel error`, 5-min NXDOMAIN locks, and false-positive probe failures. |
 
 ---
 
@@ -178,6 +218,6 @@ Every topic has an exhaustive reference document. Read the relevant file when pe
 Validate that the skill follows the `build-skill` specification:
 
 ```bash
-cd /root/.agents/skills/use-cloudflare-tunnel && for f in $(find references -name '*.md' -type f); do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done
+cd /root/dev/skills-by-yigitkonur/skills/use-cloudflare-tunnel && for f in $(find references -name '*.md' -type f); do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done
 ```
 Must return 0 orphans.

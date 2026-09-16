@@ -15,23 +15,23 @@ Quick Tunnels (`trycloudflare.com`) provide instant, zero-authentication, epheme
 
 ---
 
-## 1. Starting a Quick Tunnel
+## 1. Starting a Quick Tunnel (Agent-Safe Recipe)
 
-### Basic Command
-```bash
-cloudflared tunnel --url http://127.0.0.1:8080
-```
-
-### Recommended Agentic Execution
-When running from an AI coding agent or automated script, always capture logs, record the PID, and disable autoupdates:
+When running from an AI coding agent or automated script, always use `setsid` process group isolation, capture logs, record the PID, and disable autoupdates:
 
 ```bash
-cloudflared tunnel \
+# 1. Clean previous state
+rm -rf /tmp/cloudflared-8080.log /tmp/cloudflared-8080.pid ~/.cloudflared/
+
+# 2. Launch detached daemon (never dies on subshell exit)
+setsid nohup cloudflared tunnel \
   --url http://127.0.0.1:8080 \
   --logfile /tmp/cloudflared-8080.log \
   --pidfile /tmp/cloudflared-8080.pid \
   --no-autoupdate \
-  --protocol quic &
+  --protocol quic </dev/null >/dev/null 2>&1 &
+
+DAEMON_PID=$!
 ```
 
 ---
@@ -40,7 +40,6 @@ cloudflared tunnel \
 
 Cloudflared logs the assigned public URL during startup. The URL matches the pattern `https://[-a-z0-9.]*trycloudflare.com`.
 
-### Regex Extraction via Bash
 ```bash
 # Wait up to 15 seconds for the tunnel to establish
 TIMEOUT=15
@@ -49,7 +48,7 @@ URL=""
 
 while [[ $(( $(date +%s) - START )) -lt $TIMEOUT ]]; do
   if [[ -f /tmp/cloudflared-8080.log ]]; then
-    URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/cloudflared-8080.log | head -n 1 || true)
+    URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/cloudflared-8080.log | tail -n 1 || true)
     if [[ -n "$URL" ]]; then break; fi
   fi
   sleep 0.5
@@ -65,7 +64,41 @@ echo "Tunnel URL: $URL"
 
 ---
 
-## 3. Essential CLI Flags
+## 3. The DNS Propagation & 5-Minute NXDOMAIN Negative-Cache Trap
+
+When Cloudflare registers a new random `*.trycloudflare.com` subdomain, global DNS propagation takes 1–3 seconds.
+
+### The Failure Mechanism:
+1. If the client machine (or local resolver like Tailscale MagicDNS `100.100.100.100`) sends a DNS query **before** Cloudflare edge nameservers publish the record, the resolver receives an `NXDOMAIN` response.
+2. The resolver caches this `NXDOMAIN` with Cloudflare's SOA negative TTL (**300 seconds / 5 minutes**).
+3. Even though the tunnel is healthy and working on the edge, the client machine is **locked out of resolving the domain for 5 minutes**.
+
+### The Prevention Algorithm (2-Step Handshake):
+Always wait for global authoritative DNS before making the first client query:
+
+```bash
+HOST_ONLY=$(echo "$URL" | sed -E 's#^https?://##')
+
+# Step 1: Wait until 1.1.1.1 and 8.8.8.8 resolve the record
+for i in {1..15}; do
+  IP1=$(dig @1.1.1.1 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+  IP2=$(dig @8.8.8.8 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+  if [[ -n "$IP1" && -n "$IP2" ]]; then
+    echo "✓ Global DNS published: 1.1.1.1=$IP1, 8.8.8.8=$IP2"
+    break
+  fi
+  sleep 1
+done
+
+# Step 2: Flush client DNS cache before first query
+if command -v dscacheutil &>/dev/null; then
+  dscacheutil -flushcache 2>/dev/null || true
+fi
+```
+
+---
+
+## 4. Essential CLI Flags
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
@@ -79,31 +112,14 @@ echo "Tunnel URL: $URL"
 
 ---
 
-## 4. Lifecycle Management & Teardown
+## 5. Lifecycle Management & Teardown
 
-Because Quick Tunnels terminate as soon as the `cloudflared` process dies, managing background processes properly is critical.
+Never leave orphaned tunnel processes or stale session tokens:
 
-### Graceful Shutdown
 ```bash
-# Using recorded PID file
-if [[ -f /tmp/cloudflared-8080.pid ]]; then
-  kill -SIGINT "$(cat /tmp/cloudflared-8080.pid)" 2>/dev/null || true
-  rm -f /tmp/cloudflared-8080.pid
-fi
+# Terminate running quick tunnels
+pkill -f "cloudflared tunnel" || true
 
-# Fallback: process pattern kill
-pkill -f "cloudflared tunnel --url http://127.0.0.1:8080" || true
+# Clean up session state
+rm -rf /tmp/cloudflared* ~/.cloudflared/
 ```
-
-### Verifying Termination
-```bash
-pgrep -f "cloudflared tunnel" || echo "All tunnels clean"
-```
-
----
-
-## 5. Security & Availability Boundaries
-
-1. **No SLA / Ephemeral:** Quick tunnels have no uptime guarantees and subdomains are randomized upon every launch. Never use them as hardcoded production URLs.
-2. **Publicly Reachable:** Any user on the internet with the `trycloudflare.com` URL can access the exposed endpoint. If the service lacks internal authentication, add application-layer credentials or IP checks.
-3. **Bandwidth & Rate Limits:** Cloudflare reserves the right to rate-limit excessive traffic or abuse on the free `trycloudflare.com` domain.

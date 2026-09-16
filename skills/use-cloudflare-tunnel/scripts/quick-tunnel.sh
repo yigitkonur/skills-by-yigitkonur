@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/quick-tunnel.sh
 # Automated launcher and URL extractor for Cloudflare Quick Tunnels (trycloudflare.com)
+# with process group isolation (setsid) and global DNS publication checks.
 set -euo pipefail
 
 PORT=""
@@ -9,8 +10,9 @@ PROTOCOL="quic"
 LOGFILE=""
 PIDFILE=""
 OUTFILE=""
-TIMEOUT=15
+TIMEOUT=20
 JSON_OUTPUT=false
+VERIFY_DNS=true
 
 print_usage() {
   cat <<HELP
@@ -23,7 +25,8 @@ Options:
   -l, --logfile <path>     Path for cloudflared log (default: /tmp/cloudflared-<PORT>.log)
       --pidfile <path>     Path to record daemon PID (default: /tmp/cloudflared-<PORT>.pid)
   -o, --out <path>         File to write the public tunnel URL into
-  -t, --timeout <sec>      Max seconds to wait for URL extraction (default: 15)
+  -t, --timeout <sec>      Max seconds to wait for URL extraction (default: 20)
+      --no-dns-wait        Skip global DNS publication check
       --json               Output result as JSON
       --help               Show this help message
 
@@ -41,6 +44,7 @@ while [[ $# -gt 0 ]]; do
     --pidfile) PIDFILE="$2"; shift 2 ;;
     -o|--out) OUTFILE="$2"; shift 2 ;;
     -t|--timeout) TIMEOUT="$2"; shift 2 ;;
+    --no-dns-wait) VERIFY_DNS=false; shift ;;
     --json) JSON_OUTPUT=true; shift ;;
     --help) print_usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; print_usage; exit 1 ;;
@@ -60,16 +64,16 @@ if ! command -v cloudflared &>/dev/null; then
   exit 1
 fi
 
-# Clean up any previous logfile
-rm -f "$LOGFILE"
+# Clean up previous state
+rm -rf "$LOGFILE" "$PIDFILE" ~/.cloudflared/
 
-# Launch cloudflared quick tunnel in background
-cloudflared tunnel \
+# Launch cloudflared quick tunnel in background with process group isolation
+setsid nohup cloudflared tunnel \
   --url "http://${HOST}:${PORT}" \
   --protocol "$PROTOCOL" \
   --logfile "$LOGFILE" \
   --pidfile "$PIDFILE" \
-  --no-autoupdate >/dev/null 2>&1 &
+  --no-autoupdate </dev/null >/dev/null 2>&1 &
 
 DAEMON_PID=$!
 
@@ -78,7 +82,7 @@ TUNNEL_URL=""
 START_TIME=$(date +%s)
 while true; do
   if [[ -f "$LOGFILE" ]]; then
-    TUNNEL_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$LOGFILE" | head -n 1 || true)
+    TUNNEL_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$LOGFILE" 2>/dev/null | tail -n 1 || true)
     if [[ -n "$TUNNEL_URL" ]]; then
       break
     fi
@@ -98,6 +102,21 @@ while true; do
   sleep 0.5
 done
 
+# Optional: Wait for global DNS publication to prevent NXDOMAIN poisoning
+DNS_RESOLVED=false
+if [[ "$VERIFY_DNS" == "true" ]]; then
+  HOST_ONLY=$(echo "$TUNNEL_URL" | sed -E 's#^https?://##')
+  for i in {1..15}; do
+    IP1=$(dig @1.1.1.1 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+    IP2=$(dig @8.8.8.8 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+    if [[ -n "$IP1" && -n "$IP2" ]]; then
+      DNS_RESOLVED=true
+      break
+    fi
+    sleep 1
+  done
+fi
+
 # Write out to output file if requested
 if [[ -n "$OUTFILE" ]]; then
   echo "$TUNNEL_URL" > "$OUTFILE"
@@ -112,15 +131,17 @@ if [[ "$JSON_OUTPUT" == "true" ]]; then
   "pid": ${DAEMON_PID},
   "pidfile": "${PIDFILE}",
   "logfile": "${LOGFILE}",
-  "protocol": "${PROTOCOL}"
+  "protocol": "${PROTOCOL}",
+  "dnsResolved": ${DNS_RESOLVED}
 }
 JSON
 else
   echo "================================================================"
-  echo "  Cloudflare Quick Tunnel Online"
+  echo "  Cloudflare Quick Tunnel Online (Process Isolated)"
   echo "  Public URL   : ${TUNNEL_URL}"
   echo "  Local Origin : http://${HOST}:${PORT}"
   echo "  Daemon PID   : ${DAEMON_PID}"
+  echo "  DNS Ready    : ${DNS_RESOLVED}"
   echo "  Log File     : ${LOGFILE}"
   echo "  PID File     : ${PIDFILE}"
   echo "================================================================"

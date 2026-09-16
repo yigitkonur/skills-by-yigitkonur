@@ -1,10 +1,50 @@
-# Remote Testing, Ego-Browser & Webhooks via Tunnel
+# Remote Testing, Client Delivery & Webhooks via Tunnel
 
 Cloudflare Tunnel bridges isolated execution environments (containers, remote cloud VMs, WSL) with real user browsers, automated mobile emulators, and external third-party webhooks.
 
 ---
 
-## 1. Remote Browser Automation with ego-browser
+## 1. The Target Client Verification Gate (Zero False Positives)
+
+When an agent develops inside a Linux container and delivers a preview to a user's machine (e.g. MacBook via SSH) or automated browser, **probing from inside the container is not proof of external reachability**.
+
+### The False-Positive Trap:
+* `curl -Is <URL>` inside the container can connect to Cloudflare edge IPs while the remote user's operating system still has DNS unresolved or cached as NXDOMAIN.
+* Triggering `ssh macbook "open '<URL>'"` prematurely causes the user to see `DNS_PROBE_FINISHED_NXDOMAIN` or connection failures.
+
+### The Mandatory Target-Perspective Probe:
+Before triggering any browser `open` command on the remote machine:
+
+```bash
+# 1. Flush remote DNS cache
+ssh macbook "dscacheutil -flushcache 2>/dev/null || true"
+
+# 2. Probe HTTP status directly from the remote client's OS network stack
+PROBE_OK=false
+for attempt in {1..20}; do
+  STATUS=$(ssh macbook "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" 2>/dev/null || echo "000")
+  if [[ "$STATUS" == "200" ]]; then
+    PROBE_OK=true
+    break
+  fi
+  if (( attempt % 3 == 0 )); then
+    ssh macbook "dscacheutil -flushcache 2>/dev/null || true"
+  fi
+  sleep 1.5
+done
+
+if [[ "$PROBE_OK" != "true" ]]; then
+  echo "Error: Target machine could not reach tunnel (HTTP status: $STATUS)" >&2
+  exit 1
+fi
+
+# 3. ONLY after remote 200 OK, trigger browser
+ssh macbook "open '$TUNNEL_URL'"
+```
+
+---
+
+## 2. Remote Browser Automation with ego-browser
 
 In modern agentic setups, coding agents frequently run inside Linux Docker containers while human users (and ego-browser Chromium sessions) run on the host machine (e.g. macOS).
 
@@ -19,7 +59,7 @@ Using a quick tunnel, the container exposes its port to an official public HTTPS
 
 ---
 
-## 2. Setting Mobile Viewports (iPhone / Android) via CDP
+## 3. Setting Mobile Viewports (iPhone / Android) via CDP
 
 When testing responsive web and Expo Web apps, drive the browser via Chrome DevTools Protocol (`cdp`):
 
@@ -45,7 +85,7 @@ SCRIPT
 
 ---
 
-## 3. Bi-Directional Screenshot & Artifact Exfiltration
+## 4. Bi-Directional Screenshot & Artifact Exfiltration
 
 When ego-browser runs on the host OS, standard `captureScreenshot()` saves images to the host temporary directory (e.g. `/var/folders/.../ego-shot.png`), which is not directly readable from inside the container.
 
@@ -76,7 +116,7 @@ await serverFetch('https://xyz.trycloudflare.com/api/save-screenshot', {
 
 ---
 
-## 4. Testing External Webhooks (Stripe, GitHub, Supabase)
+## 5. Testing External Webhooks (Stripe, GitHub, Supabase)
 
 Quick tunnels are ideal for testing third-party webhooks locally without setting up dedicated DNS records:
 
@@ -84,30 +124,10 @@ Quick tunnels are ideal for testing third-party webhooks locally without setting
 # 1. Start webhook consumer locally on port 4000
 python3 server.py &
 
-# 2. Expose via tunnel
-cloudflared tunnel --url http://127.0.0.1:4000 --logfile /tmp/webhook-cf.log &
-sleep 4
-WEBHOOK_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/webhook-cf.log | head -n 1)
+# 2. Expose via tunnel with isolated daemon
+setsid nohup cloudflared tunnel --url http://127.0.0.1:4000 --logfile /tmp/webhook-cf.log </dev/null >/dev/null 2>&1 &
+sleep 3
+WEBHOOK_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/webhook-cf.log | tail -n 1)
 
 echo "Register this Webhook URL in dashboard: ${WEBHOOK_URL}/webhooks/stripe"
-```
-
-### Supported Webhook Services:
-* **Stripe:** Set Endpoint URL to `https://xyz.trycloudflare.com/stripe/webhook`
-* **GitHub Apps:** Webhook URL for `push`, `pull_request`, and `issues` events
-* **Supabase:** Database webhooks (`POST /functions/v1/...`)
-* **Shopify / Slack / Twilio:** Inbound SMS & interactivity callbacks
-
----
-
-## 5. Preserving Browser Sessions for the User
-
-When an automated verification task finishes in ego-browser, agents should follow the ownership rules:
-
-```javascript
-// If the user wants to continue inspecting the page interactively:
-await completeTaskSpace(taskId, { keep: true });
-
-// If automated test is finished and no further user inspection needed:
-await completeTaskSpace(taskId, { keep: false });
 ```

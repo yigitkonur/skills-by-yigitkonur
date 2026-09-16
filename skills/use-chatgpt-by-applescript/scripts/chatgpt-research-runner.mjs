@@ -120,10 +120,11 @@ function printSetupInstructions(errorMsg, targetHost) {
   console.error(`             IdentityFile ~/.ssh/id_ed25519`);
   console.error(`     • Copy key for passwordless login: ssh-copy-id <mac-user>@<mac-ip>`);
   console.error(`     • Or set custom host via env: export CHATGPT_SSH_HOST=<hostname>`);
-  console.error(`\n  3. Re-test connection:`);
-  console.error(`     node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --check-bridge`);
-  console.error(`\n📘 Complete step-by-step setup guide: references/remote-mac-setup.md`);
-  console.error(`───────────────────────────────────────────────────────────────────\n`);
+  console.error(`\n  3. Re-test connection:
+     node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs --check-bridge
+
+📘 Complete step-by-step setup guide: references/remote-mac-setup.md
+────────────────────────────────────────────────────────────────────────────────────\n`);
 }
 
 function checkHostConnection() {

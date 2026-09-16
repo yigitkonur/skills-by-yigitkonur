@@ -1,9 +1,9 @@
 ---
-name: chatgpt-mac-research
-description: "Use this skill when automating web research, computer/OS actions, entity investigations, person/specialist portrait hunting, or evidence gathering using the native macOS ChatGPT desktop app via AppleScript or SSH bridge (ssh macbook). Triggers include ChatGPT automation, Mac ChatGPT research, batch research with @Browser plugin, computer actions with @Computer plugin, or inspecting ChatGPT generation status."
+name: use-chatgpt-by-applescript
+description: "Use if driving macOS ChatGPT desktop app via AppleScript or SSH to run web research, computer actions, status checks, or markdown extraction."
 ---
 
-# ChatGPT macOS Research & Automation Bridge
+# Use ChatGPT by AppleScript
 
 Drive the native macOS **ChatGPT desktop app** (`/Applications/ChatGPT.app`) as an autonomous web research and OS automation engine. Dispatch structured prompts, trigger live browsing via `@Browser` or desktop automation via `@Computer`, monitor generation completion via real-time macOS accessibility hooks, extract synthesized results, and manage high-volume batch campaigns.
 
@@ -93,7 +93,7 @@ When interacting with ChatGPT desktop app, select the appropriate plugin scheme 
 Inspect connection and ChatGPT state (works locally or remotely):
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --check-bridge
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs --check-bridge
 ```
 
 ### 2. Inspect Live Generation Status
@@ -101,7 +101,7 @@ node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --check-bri
 Check whether ChatGPT is currently generating or idle:
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --status
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs --status
 ```
 
 ### 3. Single Research Query with Automated Wait & Extraction
@@ -109,7 +109,7 @@ node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs --status
 Dispatch a query, wait for completion, and automatically print the synthesized response:
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs \
   --prompt "Research the discovery and CT scan findings of the Antikythera mechanism." \
   --wait \
   --extract
@@ -118,7 +118,7 @@ node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
 Save directly to a markdown file:
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs \
   --prompt "Summarize SQLite WAL index architecture with citations." \
   --wait \
   --extract \
@@ -130,7 +130,7 @@ node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
 Invoke the `@Computer` plugin for desktop/workstation operations:
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs \
   --prompt "Inspect the Downloads folder for newly downloaded PDF files and summarize their names." \
   --plugin=computer \
   --wait
@@ -141,7 +141,7 @@ node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
 Given a JSON file of research items (`[ { "id": "target-1", "query": "..." } ]`):
 
 ```bash
-node skills/chatgpt-mac-research/scripts/chatgpt-research-runner.mjs \
+node skills/use-chatgpt-by-applescript/scripts/chatgpt-research-runner.mjs \
   --targets targets.json \
   --batch-size=10 \
   --wait-minutes=5 \
