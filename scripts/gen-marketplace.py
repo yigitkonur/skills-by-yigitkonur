@@ -141,6 +141,7 @@ GROUPS = {
             "use-sentry",
             "run-repo-cleanup",
             "run-ts-cleanup",
+            "upgrade-typescript-go",
             "publish-npm-package",
         ],
     ),

@@ -629,6 +629,18 @@
       "category": "Productivity"
     },
     {
+      "name": "upgrade-typescript-go",
+      "source": {
+        "source": "local",
+        "path": "./plugins/upgrade-typescript-go"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "use-chatgpt-by-applescript",
       "source": {
         "source": "local",

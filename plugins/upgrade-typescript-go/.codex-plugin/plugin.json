@@ -1,0 +1,35 @@
+{
+  "name": "upgrade-typescript-go",
+  "version": "1.0.64",
+  "description": "Use if upgrading a TypeScript project to the native Go compiler (TypeScript 7.0+ / tsgo) — preflight audit, tsconfig modernization, Compiler API bridging, and post-migration verification.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "upgrade-typescript-go"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "upgrade-typescript-go",
+    "shortDescription": "Use if upgrading a TypeScript project to the native Go compiler (TypeScript 7.0+ / tsgo) — preflight audit, tsconfig modernization, Compiler API bridging, and post-migration verification.",
+    "longDescription": "Install only the upgrade-typescript-go workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the upgrade-typescript-go skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

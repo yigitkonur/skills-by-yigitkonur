@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 54 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 55 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.64",
       "category": "bundle",
       "strict": false,
@@ -68,6 +68,7 @@
         "./skills/run-ts-cleanup",
         "./skills/test-by-mcpc-cli",
         "./skills/update-agent-config",
+        "./skills/upgrade-typescript-go",
         "./skills/use-chatgpt-by-applescript",
         "./skills/use-cloudflare-tunnel",
         "./skills/use-sentry"
@@ -286,6 +287,7 @@
         "./skills/use-sentry",
         "./skills/run-repo-cleanup",
         "./skills/run-ts-cleanup",
+        "./skills/upgrade-typescript-go",
         "./skills/publish-npm-package"
       ]
     },
@@ -885,6 +887,17 @@
       "strict": false,
       "skills": [
         "./skills/update-agent-config"
+      ]
+    },
+    {
+      "name": "upgrade-typescript-go",
+      "source": "./",
+      "description": "Use if upgrading a TypeScript project to the native Go compiler (TypeScript 7.0+ / tsgo) — preflight audit, tsconfig modernization, Compiler API bridging, and post-migration verification.",
+      "version": "1.0.64",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/upgrade-typescript-go"
       ]
     },
     {
