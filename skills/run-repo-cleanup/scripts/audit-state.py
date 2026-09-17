@@ -159,7 +159,7 @@ def remote_only_branches(root: Path, locals_: set[str]) -> list[str]:
     result = []
     for b in out.splitlines():
         b = b.strip()
-        if not b or b == "origin/HEAD" or b.endswith("/HEAD"):
+        if not b or b == "origin" or b == "origin/HEAD" or b.endswith("/HEAD") or not b.startswith("origin/"):
             continue
         short = b[len("origin/"):]
         if short in locals_:
