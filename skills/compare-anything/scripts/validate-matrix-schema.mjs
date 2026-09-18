@@ -49,6 +49,38 @@ const criteriaGroupSchema = z.object({
   parentGroupId: z.string().optional(),
 });
 
+const confidenceDetailSchema = z.object({
+  score: z.number().min(0).max(1),
+  level: z.enum(['high', 'medium', 'low']).optional(),
+  tier: z.enum(['verified', 'vendor-claimed', 'community', 'unverified']).default('unverified'),
+});
+
+const uncertaintyDetailSchema = z.object({
+  isUncertain: z.boolean().default(false),
+  reason: z.string().optional(),
+  conflictingSources: z.array(z.string()).optional(),
+});
+
+const predictionDetailSchema = z.object({
+  isEstimate: z.boolean().default(false),
+  range: z.tuple([z.number(), z.number()]).optional(),
+  rationale: z.string().optional(),
+});
+
+const evidenceDetailSchema = z.object({
+  quote: z.string().optional(),
+  sourceUrl: z.string().url().optional(),
+  verifiedAt: z.string().optional(),
+  verifierAgent: z.string().optional(),
+});
+
+const verificationAuditSchema = z.object({
+  status: z.enum(['confirmed', 'corrected', 'unresolvable']).default('confirmed'),
+  notes: z.string().optional(),
+  auditedAt: z.string().optional(),
+  verifierAgent: z.string().optional(),
+});
+
 const comparisonItemSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]+$/),
   name: z.string(),
@@ -57,7 +89,7 @@ const comparisonItemSchema = z.object({
   icon: z.string().optional(),
   summary: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  values: z.record(z.unknown()),
+  values: z.record(z.string(), z.unknown()),
 });
 
 const comparisonMatrixSchema = z.object({
@@ -71,7 +103,7 @@ const comparisonMatrixSchema = z.object({
   scoring: z
     .object({
       algorithm: z.enum(['linear-normalized', 'weighted-sum']).default('linear-normalized'),
-      defaultWeights: z.record(z.number()).optional(),
+      defaultWeights: z.record(z.string(), z.number()).optional(),
     })
     .optional(),
   metadata: z
@@ -81,6 +113,14 @@ const comparisonMatrixSchema = z.object({
       curator: z.string().optional(),
       sourceDocumentCount: z.number().optional(),
       methodologyUrl: z.string().optional(),
+      waveStats: z
+        .object({
+          discoveredCandidates: z.number().optional(),
+          expandedCriteriaCount: z.number().optional(),
+          verifiedEvidenceRatio: z.number().optional(),
+          uncertaintyCount: z.number().optional(),
+        })
+        .optional(),
     })
     .optional(),
 });
@@ -128,10 +168,19 @@ function main() {
     }
   }
 
+  let totalCells = 0;
+  let evidencedCells = 0;
+  let uncertainCells = 0;
+
   for (const item of data.items) {
-    for (const key of Object.keys(item.values)) {
+    for (const [key, val] of Object.entries(item.values)) {
       if (!criteriaKeys.has(key)) {
         console.warn(`⚠️ Warning: Item "${item.id}" defines unknown value key "${key}" not in criteria`);
+      }
+      totalCells++;
+      if (typeof val === 'object' && val !== null) {
+        if ('evidence' in val || 'sourceUrl' in val) evidencedCells++;
+        if ('uncertainty' in val && val.uncertainty?.isUncertain) uncertainCells++;
       }
     }
   }
@@ -141,10 +190,12 @@ function main() {
   }
 
   console.log(`✅ Matrix schema VALID!`);
-  console.log(`   Title    : ${data.title}`);
-  console.log(`   Items    : ${data.items.length}`);
-  console.log(`   Groups   : ${data.groups.length}`);
-  console.log(`   Criteria : ${data.criteria.length}`);
+  console.log(`   Title          : ${data.title}`);
+  console.log(`   Items          : ${data.items.length}`);
+  console.log(`   Groups         : ${data.groups.length}`);
+  console.log(`   Criteria       : ${data.criteria.length}`);
+  console.log(`   Evidenced Cells: ${evidencedCells}/${totalCells} (${totalCells > 0 ? ((evidencedCells / totalCells) * 100).toFixed(1) : 0}%)`);
+  console.log(`   Uncertain Cells: ${uncertainCells}`);
 }
 
 main();

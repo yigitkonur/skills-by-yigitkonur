@@ -103,6 +103,21 @@ KEEP_GLOBS = [
     "public",
     "static",
     "assets",
+    "packages",
+    "apps",
+    "e2e",
+    "locales",
+    "scripts",
+    "plugins",
+    "patches",
+    "droid-wiki",
+    ".agent-docs",
+    ".agents",
+    ".claude",
+    "*.example",
+    "*.example.*",
+    ".env*.example",
+    ".env*.example.*",
 ]
 
 # SWEEP globs -> to-delete/. Matched at repo root by name.
