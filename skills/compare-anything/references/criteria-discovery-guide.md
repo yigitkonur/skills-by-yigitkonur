@@ -23,8 +23,8 @@ When comparing anything—from developer tools and database engines to cloud pro
 List every distinct claim, feature, or metric mentioned across the documents into an unstructured table:
 - e.g. "supports MCP", "p99 latency < 50ms", "MIT license", "costs $20/user/mo", "requires cloud signup", "local model support".
 
-### Phase 3: Orthogonal Clustering (The Rule of 5 Groups)
-Consolidate the raw feature pool into **3 to 6 logical groups**. Avoid overlapping criteria. A well-designed matrix spans:
+### Phase 3: Orthogonal Clustering (Expand to Domain Depth)
+Consolidate the raw feature pool into **3 to 20 logical groups**, depending on domain complexity. Shallow domains (e.g. simple CLI tools) may need only 3–5 groups; deep technical domains (e.g. databases, AI platforms, cloud runtimes) justify 10–20 groups to capture architecture, performance, security, developer experience, economics, and operational dimensions. Avoid overlapping criteria. A well-designed matrix typically spans at least these core areas:
 
 1. **General & Architecture** (Foundations)
    - Runtime, framework, open-source status, license, host environment, platforms.

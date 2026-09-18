@@ -68,15 +68,16 @@ Transform arbitrary document lists, technical notes, URLs, or product collection
 
 ### Wave 2: Pipelined Anti-Hallucination Research (Max 10 Workers)
 1. For each discovered candidate tool, dispatch a research subagent using `invoke_subagent`:
-   - Inject the frozen `criteria-contract.json`.
+   - **Inline Injection**: Embed the full `criteria-contract.json` content directly in the subagent's `Prompt` string (not as a file path reference). This guarantees the frozen schema is in the subagent's context window and prevents stale reads.
    - Apply the prompt from [`references/prompts/wave2-tool-researcher.md`](references/prompts/wave2-tool-researcher.md).
    - Instruct the agent to save output to `.tmp/matrix-<slug>/tools/<id>-research.json`.
-2. **Self-Healing Validation Gate**:
+2. **Self-Healing Validation Gate** (max 2 retries per tool):
    - As each agent reports completion, immediately validate:
      ```bash
      node scripts/validate-wave2-research.mjs --tool-data .tmp/matrix-<slug>/tools/<id>-research.json --criteria .tmp/matrix-<slug>/criteria-contract.json
      ```
-   - **On Validation Failure**: Send the exact error messages back to the subagent using `send_message` requesting a corrected JSON.
+   - **On Validation Failure (retries remaining)**: Send the exact error messages back to the subagent using `send_message` requesting a corrected JSON.
+   - **On Validation Failure (retries exhausted)**: After 2 correction attempts, mark all still-failing criteria as `value: null, uncertainty: { isUncertain: true, reason: "Failed validation after 2 correction attempts" }` and advance to Wave 3.
    - **On Validation Pass**: Immediately advance this tool to Wave 3!
 
 ### Wave 3: Pipelined Verification & Ambiguity Resolution

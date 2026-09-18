@@ -80,13 +80,35 @@ The candidate entity being evaluated:
 | `values` | `Record<string, unknown>` | Maps criterion `key` to its typed value or `CellDetail` object |
 
 ### CellDetail Object Format (Optional Rich Cell)
-Instead of a primitive value, `values[key]` may contain:
+Instead of a primitive value, `values[key]` may contain a structured audit object with confidence tracking, evidence citations, uncertainty flags, and verification audit stamps:
 ```json
 {
   "value": 142,
-  "secondary": "p95 latency",
-  "evidence": "Tested across 1,000 synthetic requests on AWS us-east-1",
-  "sourceUrl": "https://example.com/benchmark-run",
-  "confidence": "verified"
+  "secondary": "p95 latency under 500 QPS load",
+  "confidence": {
+    "score": 0.92,
+    "level": "high",
+    "tier": "verified"
+  },
+  "prediction": {
+    "isEstimate": true,
+    "range": [120, 160],
+    "rationale": "Empirical benchmark on AWS c6i.4xlarge"
+  },
+  "evidence": {
+    "quote": "Average p99 latency observed at 142ms under standard benchmark suite",
+    "sourceUrl": "https://example.com/benchmark-run",
+    "verifiedAt": "2026-09-18T12:00:00Z",
+    "verifierAgent": "verifier-agent-alpha"
+  },
+  "uncertainty": {
+    "isUncertain": false
+  },
+  "verificationAudit": {
+    "status": "confirmed",
+    "notes": "Verified against official benchmark repository commit history."
+  }
 }
 ```
+
+The `confidence` field also accepts legacy string values (`"verified"`, `"vendor-claimed"`, `"community"`, `"unverified"`) for backwards compatibility, but new data should always use the structured `{ score, level, tier }` object.

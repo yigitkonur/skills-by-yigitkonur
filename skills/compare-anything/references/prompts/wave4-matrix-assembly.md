@@ -20,3 +20,6 @@ You are the Lead Synthesis Architect. All candidate tools have completed their W
      ```bash
      node scripts/validate-matrix-schema.mjs content/matrix/<slug>.json
      ```
+5. **Astro Route**:
+   - The dynamic route `frontend/src/pages/compare/[slug].astro` automatically picks up all `content/matrix/*.json` files at build time. No page creation is needed for new matrix slugs.
+   - If the route file is missing (e.g. on a fresh checkout), refer to `references/executable-template-guide.md` for the recipe.

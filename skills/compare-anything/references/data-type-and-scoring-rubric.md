@@ -42,6 +42,15 @@ The comparison matrix translates heterogeneous candidate attributes into compara
 - Values: descriptive strings.
 - Non-scoreable by default (`scoreable: false`). Renders with interactive popup for detailed reading.
 
+### `select-text`
+- Values: `string` — a free-form text value displayed as-is in the cell.
+- Behaves like `select` visually but allows arbitrary text values that don't need to match a predefined option list.
+- Scoring: Non-scoreable by default (`scoreable: false`). If scoring is needed, define `options` with `rank` values and treat like `select`.
+
+### `computed`
+- Values: derived at render time from other criteria (e.g. composite scores, ratios).
+- Non-scoreable (`scoreable: false`). The compute logic lives in the frontend model layer, not in the JSON dataset.
+
 ---
 
 ## 2. Dynamic Weighting Formula

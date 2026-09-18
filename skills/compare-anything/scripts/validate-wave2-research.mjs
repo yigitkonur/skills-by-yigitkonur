@@ -68,9 +68,9 @@ export function validateToolResearch(toolData, criteriaList, options = {}) {
 
     if (value === null || value === undefined) {
       if (!uncertainty?.isUncertain && !options.allowUnknown) {
-        warnings.push({
+        issues.push({
           path: `values.${criterion.key}`,
-          message: `Value is unknown or null without explicit uncertainty flag`,
+          message: `Value is null/unknown but missing required uncertainty flag (uncertainty.isUncertain must be true with a reason)`,
         });
       }
       continue;
