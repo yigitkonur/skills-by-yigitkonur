@@ -84,17 +84,78 @@ curl -X PUT "https://<host>/api/0/projects/<org>/<project>/" \
 2. Scroll to **Filter out errors with specific messages**.
 3. Add the exact string or glob wildcard pattern (e.g., `*TypeError: Cannot read properties of undefined*`).
 
+> [!NOTE]
+> **Plan Tier Constraint**: Sentry locks server-side Custom Rate Limits (`count` & `window`) and custom error message/release inbound filters behind the **Business Plan**. On Developer and Team plans (including Sponsored Team plans), these UI inputs are disabled (`countDisabled: true`).
+>
+> On non-Business plans, **Client-Side Sliding-Window Deduplication in `beforeSend`** is the primary defense against runaway loops and repetitive bug floods.
+
+## Client-Side Sliding-Window Deduplicator (`beforeSend`)
+
+To prevent repeating bugs from logging "over and over" and exhausting your monthly quota:
+
+```typescript
+import * as Sentry from '@sentry/node'; // or @sentry/nextjs, @sentry/browser
+
+// Track error occurrences in a 1-hour sliding window
+interface ErrorRateEntry {
+  count: number;
+  resetAt: number;
+}
+const errorRateMap = new Map<string, ErrorRateEntry>();
+
+const MAX_REPEATED_ERRORS_PER_HOUR = 5; // Accept at most 5 occurrences per bug per hour
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+export function rateLimitedBeforeSend(
+  event: Sentry.ErrorEvent,
+  hint?: Sentry.EventHint,
+): Sentry.ErrorEvent | null {
+  // Generate a fingerprint key from exception or message
+  const exception = hint?.originalException as Error | undefined;
+  const key =
+    event.fingerprint?.join(':') ||
+    exception?.message ||
+    event.message ||
+    event.exception?.values?.[0]?.value ||
+    'unknown-error';
+
+  const now = Date.now();
+  const entry = errorRateMap.get(key) || { count: 0, resetAt: now + WINDOW_MS };
+
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + WINDOW_MS;
+  }
+
+  entry.count += 1;
+  errorRateMap.set(key, entry);
+
+  // If this specific error has occurred more than the threshold in the window, DROP IT
+  if (entry.count > MAX_REPEATED_ERRORS_PER_HOUR) {
+    return null; // Dropped client-side: 0 network calls, 0 quota spent!
+  }
+
+  return event;
+}
+
+// In Sentry.init:
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  beforeSend: rateLimitedBeforeSend,
+});
+```
+
 ## Client Key (DSN) Rate Limiting & Emergency Circuit Breaker
 
-When an application has a runaway retry storm (such as a queue or workflow retrying every 500ms), you can halt or throttle ingest at the DSN level immediately:
+When an application has a runaway retry storm, you can halt or throttle ingest at the DSN level:
 
-### Option A: Set DSN Rate Limit
+### Option A: Set DSN Rate Limit (Business Plan Only)
 In **Project Settings -> Client Keys (DSN)** -> Edit Key:
 - Set **Rate Limit** to a ceiling (e.g. `100 events per 1 hour`).
 - Excess events are dropped at Sentry's edge with HTTP 429 and **do NOT consume quota**.
 
-### Option B: Deactivate Key
-Toggle **Active** to **Off** (`isActive: false` via API):
+### Option B: Deactivate Key (All Plans)
+Toggle **Active** to **Off** (`isActive: false` via API or UI):
 ```bash
 curl -X PUT "https://<host>/api/0/projects/<org>/<project>/keys/<key_id>/" \
   -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
