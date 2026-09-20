@@ -106,8 +106,12 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
   4. Worker inspects candidate `SKILL.md` to compute exact candidate binding metadata:
      ```bash
      CANDIDATE_SKILL_PATH="$WORKER_CWD/skills/herdr/SKILL.md"
+     test -f "$CANDIDATE_SKILL_PATH" || { echo "ERROR: Candidate skill missing at $CANDIDATE_SKILL_PATH" >&2; exit 1; }
+     CANDIDATE_WORKTREE=$(git -C "$(dirname "$CANDIDATE_SKILL_PATH")" rev-parse --show-toplevel 2>/dev/null)
+     test -n "$CANDIDATE_WORKTREE" || { echo "ERROR: $CANDIDATE_SKILL_PATH not inside a git repository" >&2; exit 1; }
      CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
-     CANDIDATE_HEAD=$(git -C "$WORKER_CWD" rev-parse HEAD)
+     CANDIDATE_HEAD=$(git -C "$CANDIDATE_WORKTREE" rev-parse HEAD)
+     test -n "$CANDIDATE_HEAD" || { echo "ERROR: Failed to resolve candidate HEAD from $CANDIDATE_WORKTREE" >&2; exit 1; }
      ```
   5. Worker submits registration notice to Manager pane (`$MANAGER_PANE_ID`) without `--wait`, explicitly declaring role and candidate binding:
      ```bash
@@ -488,11 +492,11 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
      ```
   4. Reviewer publishes review report: `review-candidate-SHA_1.yaml` (`verdict: approved`).
   5. **Invalidation Test**:
-     - Implementer makes an additional commit `SHA_2` on `lane/feature-x`.
-     - Manager checks current branch HEAD: `git rev-parse HEAD` returns `SHA_2`.
-     - Manager compares current HEAD against reviewed SHA (`SHA_1`).
+     - Implementer (AGY) makes an additional commit `SHA_2` on `lane/feature-x` and submits candidate notice with `candidate_head: SHA_2`.
+     - Manager (Codex) inspects candidate notice from implementer specifying `candidate_head: SHA_2`.
+     - Manager compares reported candidate HEAD (`SHA_2`) against reviewed SHA (`SHA_1`).
      - Because `SHA_2 != SHA_1`, manager marks previous review **stale/invalidated**.
-     - Manager dispatches fresh review on `SHA_2`.
+     - Manager dispatches fresh AGY review on `SHA_2`.
 - **Pass/Fail & Observable Signals**:
   - **Pass**: Reviewer executes in clean context without access to implementer conversational bloat; review is explicitly bound to `SHA_1`; commit `SHA_2` successfully invalidates review and blocks integration until re-reviewed.
   - **Fail**: Review conducted in dirty implementer pane; stale review accepted after branch HEAD advances; PR merged without binding exact SHA.
@@ -672,15 +676,32 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 
 When the native forward-test lane is activated, the testing controller must execute these scenarios following this protocol:
 
-1. **Controller Identity**: The forward-test lane is driven by a fresh native Codex controller session, communicating with native AGY workers as executors.
+1. **Controller Supervisory Identity & Execution Seam**:
+   - The forward-test lane is supervised by the native controller session (Codex supervisory lane).
+   - **Strict Execution Authority Invariant**: All Git operations, workspace checkout inspections, test suite runs, and candidate artifact verifications are strictly performed by **AGY execution agents** (`agy` workers/executors). Scenario instructions must **never quietly direct Codex to perform engineering Git/test operations**. The supervisory controller dispatches prompts to AGY executor panes, which run the shell commands, git inspections, and verifications in their isolated environments.
 2. **Candidate Artifact Binding (Zero Globally Mounted Fallback)**:
-   - Before executing any scenario, the controller must identify and record the exact candidate skill artifact:
+   - Before executing any scenario, the AGY executor (under controller coordination) must identify and record the exact candidate skill artifact and verify its owning candidate git worktree:
      ```bash
+     # Explicit candidate skill path inside candidate worktree checkout
      CANDIDATE_SKILL_PATH="/Users/mac/docs/superpowers/worktrees/herdr-codex-first-20260920/integration/skills/herdr/SKILL.md"
+
+     # Assert skill file exists at path; fail immediately on missing path
+     test -f "$CANDIDATE_SKILL_PATH" || { echo "ERROR: Missing candidate skill at $CANDIDATE_SKILL_PATH" >&2; exit 1; }
+
+     # Bind owning candidate repository/worktree explicitly (fail if detached or not in git repo)
+     CANDIDATE_WORKTREE=$(git -C "$(dirname "$CANDIDATE_SKILL_PATH")" rev-parse --show-toplevel 2>/dev/null)
+     test -n "$CANDIDATE_WORKTREE" || { echo "ERROR: Candidate skill path $CANDIDATE_SKILL_PATH is not in a git repository" >&2; exit 1; }
+
+     # Compute candidate content digest
      CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
-     CANDIDATE_HEAD=$(git rev-parse HEAD)
+
+     # Query exact candidate HEAD commit SHA directly from the owning candidate worktree (never from controller CWD!)
+     CANDIDATE_HEAD=$(git -C "$CANDIDATE_WORKTREE" rev-parse HEAD)
+
+     # Fail immediately on path, digest, or repository mismatch
+     test -n "$CANDIDATE_HEAD" || { echo "ERROR: Failed to resolve candidate HEAD from $CANDIDATE_WORKTREE" >&2; exit 1; }
      ```
-   - The controller and all participating AGY workers must strictly bind to this `CANDIDATE_SKILL_PATH` and verify matching `CANDIDATE_SKILL_SHA256`.
+   - The controller and all participating AGY workers must strictly bind to this `CANDIDATE_SKILL_PATH` and verify matching `CANDIDATE_SKILL_SHA256` and `CANDIDATE_HEAD`.
    - **Strict Invariant**: A globally mounted skill (such as `~/.codex/skills/herdr/SKILL.md` or `~/.agents/skills/herdr/SKILL.md`) must **never** be passed off as the tested candidate. Any run where worker execution resolves to an unverified global skill is classified as an immediate test abort (`abort: unverified_global_skill_mounted`).
 3. **Deterministic Sequence**:
    - *Wave 1 (Role, Leadership Topology & Discovery)*: Execute SCEN-13 (Role Selection & Authority), SCEN-14 (Leadership Split Layout, Safe Move & Dynamic Metadata), and SCEN-01 (Launch, Coordinates, Registration & Candidate Binding).
