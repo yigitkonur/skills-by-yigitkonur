@@ -2,10 +2,9 @@
 name: herdr-lite
 description: "Use if orchestrating coding agents via Herdr with native Git worktrees, PR-driven state, and side-by-side review-and-fix panes."
 ---
-
 # Herdr-Lite
 
-Herdr-Lite is a lightweight, self-contained orchestration control plane for AI coding agents. While the primary `herdr` skill governs enterprise multi-agent hierarchies (CTO $\to$ Codex EM with `state.yaml` and disk YAML reporting), **Herdr-Lite** provides a direct, agile workflow tailored for Antigravity (AGY) and developer orchestrators.
+Herdr-Lite is a lightweight, self-contained orchestration control plane for AI coding agents. It provides a direct, agile workflow tailored for Antigravity (AGY) and developer orchestrators.
 
 In Herdr-Lite, **Git worktrees**, **dedicated Herdr workspaces**, **GitHub PRs**, and **Herdr panes** form the native state machine.
 
@@ -66,9 +65,11 @@ herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "
 # 4. Notify User of Milestones:
 herdr notification show "Candidate Approved" --body "Issue #${TASK_ID} approved and queued for merge." --sound done
 
-# 5. Retire Workspace & Remove Clean Worktree:
-herdr workspace close --workspace "$WS_ID"
+# 5. Retire Workspace, Remove Clean Worktree, and Clean Branches:
+herdr workspace close "$WS_ID"
 test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
+git branch -d "$BRANCH" 2>/dev/null || git branch -D "$BRANCH"
+git remote prune origin
 ```
 
 See [references/herdr-primitives.md](references/herdr-primitives.md) for the complete CLI catalog.

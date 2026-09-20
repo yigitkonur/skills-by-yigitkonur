@@ -6,7 +6,7 @@ Orchestrate coding agents with native Git worktrees, PR-driven state tracking, a
 
 ## Core Capabilities
 
-- **AGY-First Direct Orchestration**: Run lightweight, agile multi-agent workflows without requiring a Codex CTO/EM hierarchy, `state.yaml` checkpointing, or disk-based YAML reporting.
+- **AGY-First Direct Orchestration**: Run lightweight, agile multi-agent workflows with direct coordinate capture, event-driven streaming reviews, and native Git worktree isolation.
 - **Automatic Ticket Intake & Multi-Wave Scheduling**: When invoked without existing issues, automatically decomposes discussions or bugs into vertical tracer-bullet tickets (`gh issue create`) and schedules up to 5 waves based on blocking dependencies.
 - **Native Worktree Workspace Topology**: Each task receives an isolated workspace via `herdr worktree create` containing Tab 1 (`impl`) for the implementer and Tab 2 (`review`) for the reviewer.
 - **Continuous "Write Back to Me" Callback Loop**: Implementers and reviewers report completion directly to the orchestrator, advancing tasks and triggering successive waves without stalling.
@@ -14,7 +14,7 @@ Orchestrate coding agents with native Git worktrees, PR-driven state tracking, a
 - **Deep Review-and-Fix with Domain Skills**: Pairs each implementer with an independent reviewer (`gemini-3.8-flash-high`) who audits exact candidate commit SHAs using domain skills (`code-review`, `tdd`, `audit-completion`), directly authors test/bug patches, and posts GitHub PR approvals.
 - **Serial Merge & Conflict Integration**: Lands approved candidates serially onto moving `main`, applying `resolving-merge-conflicts` skill principles to resolve rebasing conflicts cleanly.
 - **Full Primitives Exposure**: Directly leverages Herdr's entire CLI surface (`worktree`, `workspace`, `tab`, `pane`, `agent`, `notification`).
-- **Strict Invariant Safeguards**: Preserves PR #88 engineering physics—exact-SHA review binding, 2-round failure bounds, mandatory `idle` waiting before AGY prompt injection, modal bridge handling, and clean-only worktree removal gates.
+- **Strict Invariant Safeguards**: Enforces strict engineering physics—exact-SHA review binding, 2-round failure bounds, mandatory `idle` waiting before AGY prompt injection, modal bridge handling, and clean-only worktree removal gates.
 
 ## Requirements
 

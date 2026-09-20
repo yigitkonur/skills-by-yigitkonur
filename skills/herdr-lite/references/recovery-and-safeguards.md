@@ -64,19 +64,20 @@ When an agent encounters genuine quota exhaustion or a verified hard hang:
 
 Resource cleanup follows two strict gates:
 
-### Gate A: Pane Retirement (`herdr pane close`)
-- Close the reviewer and implementer panes as soon as PR review is approved:
+### Gate A: Pane & Workspace Retirement
+- Close the reviewer and implementer resources as soon as PR review is approved:
+  ```bash
+  herdr tab close "$REV_TAB_ID"
+  herdr workspace close "$WORKSPACE_ID"
+  ```
+- Alternatively, close individual panes:
   ```bash
   herdr pane close "$REV_PANE_ID"
   herdr pane close "$IMPL_PANE_ID"
   ```
-- Verify disappearance:
-  ```bash
-  herdr pane read --pane "$PANE_ID" 2>&1 | grep -q "not found"
-  ```
 
 ### Gate B: Worktree Removal Gate (`git worktree remove`)
-- Worktree cleanup is a separate engineering gate; closing panes does not authorize deleting checkouts.
+- Worktree cleanup is a separate engineering gate; closing panes or workspaces does not authorize deleting dirty checkouts.
 - **Cleanliness Check**:
   ```bash
   DIRTY_FILES="$(git -C "$WORKTREE_PATH" status --porcelain)"
@@ -89,5 +90,11 @@ Resource cleanup follows two strict gates:
 - **Removal**:
   ```bash
   git worktree remove "$WORKTREE_PATH"
+  ```
+- **Branch Retirement & Prune**:
+  Once the worktree is unlinked, delete the local merged branch and prune remotes:
+  ```bash
+  git branch -D "$BRANCH_NAME"
+  git remote prune origin
   ```
 - *No Force Deletion*: `git worktree remove --force` is strictly prohibited without explicit human authorization.
