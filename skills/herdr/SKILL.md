@@ -7,7 +7,9 @@ description: "Use if orchestrating coding agents, parallel subagents, isolated G
 
 Herdr is a multiplexer and supervisor control plane for AI coding agents. It decouples topology (`workspace` → `tab` → `pane`), OS processes (`pty`), and cognitive agents.
 
-Orchestration follows an explicit chain: **CTO** → **Engineering Manager (EM)** → **AGY Executors**.
+Two execution strategies are supported:
+- **Enterprise Leadership (Default)**: Strategic CTO paired with a Codex Engineering Manager (EM) orchestrating native AGY executors via `state.yaml` checkpoints and immutable YAML reports.
+- **Lite Execution (AGY-First)**: Direct AGY-led orchestration using native worktrees, PRs, and side-by-side review-and-fix panes without central `state.yaml` bureaucracy. See [references/lite-execution.md](references/lite-execution.md).
 
 ---
 
@@ -19,6 +21,7 @@ Every cold reader identifies its assigned role first. Read only the sections and
 |---|---|---|---|
 | **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. | §1, §2 (CTO path) | §3–§7 execution (delegate to EM) |
 | **Engineering Manager (EM)** | Central orchestration: `state.yaml`, task dispatch, report intake, reviewer scheduling, milestone publication, terminal retirement. | §1–§7 | Direct feature code authoring; pushing to `main` |
+| **Lite Orchestrator (AGY)** | Direct AGY supervisor: worktree provisioning, implementer/reviewer dispatch, PR checks, prompt teardown. | §1, §2, references/lite-execution.md | §3 (`state.yaml` EM-loop); formal YAML reports |
 | **Implementer** | Feature implementation, local commits, atomic report publication in assigned worktree. | §1, §2, §4, references/report-contract.md | §3 (EM-only); editing `state.yaml` |
 | **Fresh Reviewer** | Independent read-only audit of exact candidate commit SHA in clean context. | §1, §2, §5, references/report-contract.md | §3, §4, §6; editing production code |
 | **Integration/Recovery**| Worktree integration or bounded diagnostic probes/recovery. | §1, §2, §6, §7, references/stopped-agent-recovery.md | §3–§5 |
@@ -153,3 +156,4 @@ Publish final immutable YAML report to the run root with exact HEAD, check resul
 | [references/stopped-agent-recovery.md](references/stopped-agent-recovery.md) | Unblocking stalled, modal-blocked, hung, or crashed sessions. | Diagnosis matrix, modal resolution, targeted `esc`/`ctrl+c`, Git lock reconciliation, safe TUI restart, quota recovery (§4.6). |
 | [references/mission-briefs.md](references/mission-briefs.md) | Dispatching tasks or receiving assignments. | Common authority block, role additions (implementer/reviewer/integrator), coordinate discovery, callback mandate. |
 | [references/parallel-capacity.md](references/parallel-capacity.md) | Planning concurrency waves or managing worktrees. | Disjoint parallelism, early candidate path, finite review bounds, failure budget rules, retrospective pane retirement, worktree cleanup gate. |
+| [references/lite-execution.md](references/lite-execution.md) | Running lightweight AGY-led orchestration without Codex EM/state.yaml. | Worktree create, implementer PR workflow, sibling reviewer (review-and-fix), invariant safeguards. |
