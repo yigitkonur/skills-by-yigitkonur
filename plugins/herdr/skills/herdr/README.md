@@ -1,21 +1,22 @@
 # herdr
 
-Orchestrate coding tasks, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.
+Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.
 
 **Category:** orchestration
 
-## Core Architecture & Key Capabilities
+## Core Capabilities
 
-- **Single-Model Multi-Agent Fleet**: Orchestrate subagents running on the same model in dedicated worktree tabs and split panes.
-- **Bidirectional Push-Notification Callback**: Eliminates passive polling across all agent runtimes (Claude Code, Antigravity CLI, Codex, Gemini, Cursor). Workers push completion notices directly back to the orchestrator pane (`herdr agent prompt <CALLER_PANE_ID>`).
-- **Clean-Context PR Reviews**: Implementer opens Draft PR → Fresh Reviewer agent in a clean pane/tab audits the diff (`gh pr diff`) with zero context pollution → Feedback applied → Promoted to Ready (`gh pr ready`) → Merged serially.
-- **Merge Conflict Resolution**: Rebase on target (`git rebase origin/main`), resolve conflict markers, verify tests, and push with lease (`git push --force-with-lease`).
-- **The Interactive Modal Bridge**: Handles `agent_blocked` via `herdr agent read --source visible` and sends atomic pre-validated keystrokes (`herdr agent send-keys <target> down enter`).
-- **4 Memory Buffers**: Resolves Alternate Screen Buffer limitations via `recent-unwrapped` and filesystem handbacks.
+- **Role-First Multi-Agent Router**: CTO, Engineering Manager (EM), and native AGY implementers, reviewers, integration executors, and recovery executors all read the same skill — role selection determines which sections to execute. Runtime is not role.
+- **Verified Registration**: Workers verify actual TUI runtime and model, register with the manager, and await acknowledgment before beginning engineering work.
+- **Bidirectional Push Notification**: Workers push completion notices directly to the manager return pane (`herdr agent prompt`). No passive polling. Bounded observation and report reconciliation serve as fallback.
+- **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD automatically invalidates stale reviews.
+- **Parallel Writers, Serial Integration**: Disjoint writers execute in parallel across isolated worktrees. The Integration Executor combines verified candidates serially into a moving baseline.
+- **Canonical Reporting Contract**: Two durable artifact kinds — mutable manager checkpoint (`state.yaml`) and immutable YAML producer reports — published atomically via a single canonical contract.
+- **Evidence-Preserving Cleanup**: Only owned, completed, clean resources are removed. Evidence is archived before teardown. No force removal without inventory.
 
 ## Requirements
 
-Install Herdr first and run the agent inside a Herdr-managed pane (`HERDR_ENV=1`):
+Install Herdr and run agents inside Herdr-managed panes (`HERDR_ENV=1`):
 
 ```bash
 brew install herdr
@@ -34,23 +35,40 @@ Herdr documentation: [herdr.dev/docs](https://herdr.dev/docs/)
 /plugin install herdr@yigitkonur
 ```
 
-**Or with the `skills` CLI — this skill only:**
+**With the `skills` CLI:**
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/herdr
-```
+1. **Project-level install (recommended & PromptScript-compatible):**
+   Installs directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global collisions. Fully compatible with project-scoped tools like PromptScript:
 
-**Or the full pack:**
+   ```bash
+   # This skill only
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/herdr -y
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-```
+   # Or the full pack
+   npx -y skills add yigitkonur/skills-by-yigitkonur -y
+   ```
+
+   PromptScript projects can also import directly via `prs`:
+   ```bash
+   prs skills add github.com/yigitkonur/skills-by-yigitkonur/skills/herdr/SKILL.md
+   ```
+
+2. **Global install (user-level):**
+   Installs globally into `~/.agents/skills` for all universal agents (Claude Code, Cursor, Codex, Antigravity, Amp, etc.) cleanly without triggering project-scoped agent warnings:
+
+   ```bash
+   # This skill only
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/herdr -y -g -a universal
+
+   # Or the full pack
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+   ```
 
 ## Use
 
 Invoke `/herdr`, or ask naturally:
 
-- "Use Herdr to spin up 3 parallel workers in isolated worktrees for these issues."
-- "Open a draft PR for this feature, review it in a clean context with a reviewer agent, and merge it."
+- "Use Herdr to dispatch parallel AGY workers across isolated worktrees for these tasks."
+- "Orchestrate an exact-SHA clean-context review of this candidate branch with a fresh reviewer agent."
 - "Inspect the agent in the neighboring Herdr pane and resolve its blocked question."
-- "Coordinate this multi-step refactor across Herdr tabs with push callbacks."
+- "Coordinate this multi-step refactor across Herdr tabs with push callbacks and atomic YAML reports."
