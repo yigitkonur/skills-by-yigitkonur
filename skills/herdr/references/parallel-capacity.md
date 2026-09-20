@@ -1,149 +1,200 @@
-# Parallel Capacity, Clean Review & Serial PR Integration
+# Parallel Capacity, Clean Review & Serial Delivery
 
-Use this guide when coordinating multiple concurrent tasks, managing multi-worktree capacity, or running a multi-PR integration wave.
+Read this reference when managing concurrent agent lanes, allocating worktree capacity, scheduling clean-context technical reviews, and executing serial integration.
 
 ---
 
-## 1. The Fundamental Law of Multi-Agent Swarms
+## 1. Fundamental Swarm Axioms & Role Architecture
 
+### 1.1 The Law of Swarms
 > **Code synthesis is embarrassingly parallel ($O(1)$ scaling), but software integration is strictly serial ($O(N^2)$ interaction space).**
 
-- **Parallelize Synthesis**: Multiple agents can plan, write unit tests, and draft feature code concurrently in isolated Git worktrees without interference.
-- **Serialize Integration**: Merging multiple branches cannot be done in parallel without risking semantic interaction hazards. PRs must be audited in a clean context and integrated one by one into a moving, verified baseline.
+- **Parallelize Synthesis**: Multiple agents write tests, documentation, and feature code concurrently in isolated Git worktrees without interference.
+- **Serialize Integration**: Merging multiple branches cannot be done concurrently without risking semantic collision, compile race conditions, or broken invariants. Changes must be audited independently and merged serially into a moving, verified baseline.
+
+### 1.2 Role-First Architecture & Runtime Decoupling
+Herdr operates on a decoupled multi-agent topology where **runtime is distinct from role**:
+- **Codex CTO**: Owns strategic direction, high-level scope, architectural decisions, and candidate gate approvals.
+- **Codex Engineering Manager (EM)**: Owns daily orchestration, dependency waves, task graph dispatch, capacity monitoring, report intake, and checkpointing.
+- **AGY Implementers**: Focused synthesis and unit testing in isolated checkouts.
+- **Fresh AGY Reviewers**: Independent technical audits of exact candidate SHAs in clean context windows.
+- **AGY Integration Executor**: Repository preparation, worktree provisioning, serial rebase, packaging validation, PR mechanics, and clean teardown.
+- **Recovery Executor**: Diagnostic inspection and state reconciliation for stalled agents.
+
+> [!IMPORTANT]
+> **No Autonomous Management Bootstrapping**: Workers and reviewers execute bounded tasks under explicit briefs. A worker must never bootstrap a nested management hierarchy or inherit CTO duties.
 
 ---
 
-## 2. Resource Allocation & Capacity Budget
+## 2. Dynamic Capacity Budget & Resource Thresholds
 
-Before launching parallel lanes, establish a capacity budget:
+### 2.1 Initial 2-Worker Calibration & Dynamic Refill
+When launching a multi-agent wave where host resources, token limits, or PTY stability are uncalibrated:
+1. **Initial Calibration Wave**: Begin by dispatching **2 concurrent workers** to observe CPU, memory, and PTY response.
+2. **Dynamic Capacity Refill**: As soon as an active worker completes its assignment, publishes its handback report, and settles, immediately unblock and dispatch ready disjoint downstream lanes.
+3. **No Unconditional 2-Worker Cap**: The 2-worker limit is strictly a calibration starting point, never a permanent ceiling. Expand concurrency dynamically to match available host resources and token capacity.
 
-| Resource | Limits & Invariants |
-|---|---|
-| **Worktrees** | 1:1 mapping: each concurrent task gets exactly one dedicated worktree checkout under `.worktrees/<task>`. Never share working checkouts. |
-| **Model Fleet** | Single-model strictness: orchestrator, workers, and reviewers all execute on the **same model** (`--model <model>`). |
-| **Compiler / Test Leases** | Parallel native compilation (e.g. `xcodebuild`, heavy Rust builds) exhausts CPU and RAM, causing system freezes or OOM panics. Enforce a **Build Lease**: serialize heavy test runs and compilation passes while parallelizing text/code generation. |
-| **Reviewers** | Reviewers run in clean context windows. They do not need dedicated write checkouts; they audit the pull request diff via GitHub CLI (`gh pr diff <PR_NUMBER>`). |
+### 2.2 Resource Invariants
+
+| Resource | Limits & Invariants | Operational Rule |
+|---|---|---|
+| **Worktrees** | Dedicated 1:1 mapping: each concurrent task gets its own checkout under `.worktrees/<task>` or a task-owned external root. | **Never share working checkouts.** Concurrent builds clobber `.git/index.lock` and untracked files. |
+| **Runtimes & Models** | Heterogeneous runtime capability: orchestrator and workers execute on model tiers suited to their role (e.g., Codex `gpt-6-astra` for EM; AGY `gemini-3.8-flash-high` for executors). | Runtime is not role. Pin model choices per mission; do not force artificial single-model fleet constraints. |
+| **Compiler / Test Leases** | Heavy native compilers (`cargo`, `xcodebuild`, comprehensive test runners) saturate CPU and memory, triggering system lockups or OOM aborts. | **Enforce Build Leases**: Serialize heavy compilation passes and full test suites while parallelizing text/code drafting and static checks. |
+| **Reviewers** | Reviewers run in fresh, clean context panes. | Read-only checkouts at exact candidate commit SHAs; zero file mutations. |
 
 ---
 
-## 3. The 6-Stage PR Delivery Lifecycle
+## 3. Dependency Waves & Parallel Dispatch
 
-Every feature follows this progression:
+### 3.1 Task Graph Decomposition
+Decompose complex missions into a directed acyclic graph (DAG) based on two criteria:
+1. **Independent Verifiable Outcomes**: Each lane produces a self-contained, testable deliverable.
+2. **Disjoint Writable Surfaces**: No two concurrent lanes may own or write to the same files.
 
-```
-[Worktree Isolated] 
-       │
-       ▼
-[TDD Implementation (Red -> Green)]
-       │
-       ▼
-[Open Draft PR (gh pr create --draft)]
-       │
-       ▼
-[Worker Pushes Callback to Orchestrator Pane]
-       │
-       ▼
-[Clean-Context Reviewer Audits Diff]
-       ├── (Changes Requested) ──> [Worker Fixes in Worktree]
-       └── (Approved)
-               │
-               ▼
-[Promote to Ready (gh pr ready)]
-       │
-       ▼
-[Serial Rebase on origin/main & Verification]
-       │
-       ▼
-[Squash Merge & Container Cleanup]
+### 3.2 Dispatching Disjoint Lanes in Parallel
+All ready tasks whose dependencies are satisfied must be dispatched in the same wave. For example, once the canonical contract is verified, independent reference writers and native scenario authors run concurrently in separate worktrees.
+
+### 3.3 Continuous Review While Writing Continues
+When a worker finishes and publishes its handback report, immediately spawn a fresh reviewer in a dedicated pane to audit the candidate. **Never pause remaining writers to wait for a review.** Drafting and technical review proceed in parallel.
+
+---
+
+## 4. The 6-Stage Delivery Lifecycle
+
+Every feature lane progresses through this standardized lifecycle:
+
+```mermaid
+flowchart TD
+    A["Task Assigned in Dependency Wave"] --> B["Stage 1: Worktree & Tab Allocation<br/>(Dedicated External/Ignored Path)"]
+    B --> C["Stage 2: TDD Implementation & Local Commit<br/>(Red -> Green -> Commit)"]
+    C --> D["Stage 3: Candidate Handback<br/>(Atomic YAML Report + No-Wait Notice)"]
+    D --> E["Stage 4: Clean-Context Exact-SHA Review<br/>(Fresh Pane, Exact Commit Checkout)"]
+    E --> F{"Review Verdict"}
+    F -->|Changes Requested| G["Worker Fixes in Worktree<br/>(Re-test & New Commit SHA)"]
+    G --> H["Stage 5: Review Invalidation Protocol<br/>(Changed HEAD Invalidates Prior Review)"]
+    H --> E
+    F -->|Approved| I["Stage 6: Serial Integration & Delivery<br/>(Rebase, Verification, PR Mechanics)"]
+    I --> J["Sequential Teardown<br/>(Clean Worktree Removed, Tab Closed)"]
 ```
 
 ### Stage 1: Dedicated Worktree Allocation
+Allocate an isolated Git worktree and open a Herdr tab without stealing user focus:
 ```bash
-git worktree add -b feature/<task> .worktrees/<task> origin/main
-herdr tab create --workspace "$CALLER_WS_ID" --cwd "$PWD/.worktrees/<task>" --label "<task>" --no-focus
+git worktree add -b "lane/<task-name>" "<worktree-path>" origin/main
+herdr tab create --workspace "$CALLER_WS_ID" --cwd "$PWD/<worktree-path>" --label "<task-name>" --no-focus
 ```
 
-### Stage 2: TDD & Implementation
-The worker implements unit tests demonstrating the missing functionality (Red), writes the minimal code to satisfy the tests (Green), and commits changes.
+### Stage 2: TDD Implementation & Local Commit
+The implementer executes focused test-driven development:
+1. Write a failing test demonstrating the required behavior (Red).
+2. Implement minimal production code to pass the test (Green).
+3. Commit changes locally to the feature branch with a conventional commit message:
+   ```bash
+   git add <owned-files>
+   git commit -m "feat(<scope>): <description>"
+   ```
+*(Note: In unified multi-lane missions, lane writers commit locally without opening individual PRs. The integration executor combines commits into the single delivery candidate).*
 
-### Stage 3: Draft Pull Request
-The worker pushes its branch and opens a Draft PR:
-```bash
-git push origin feature/<task>
-gh pr create --draft --title "feat: <task>" --body "$(cat .agent-runs/report.md)"
-```
+### Stage 3: Candidate Handback
+The implementer publishes an immutable YAML report to `$RUN_ROOT` outside the worktree following the atomic publication pipeline in [report-contract.md](report-contract.md):
+1. Write `.partial` via `apply_patch`.
+2. Validate syntax and calculate SHA-256 digest.
+3. Atomically rename to `.yaml`.
+4. Notify the manager via `herdr agent prompt` **without `--wait`**.
 
-### Stage 4: Worker Callback Notification
-The worker notifies the orchestrator pane directly:
-```bash
-herdr agent prompt "$CALLER_PANE_ID" \
-  "I'm the herdr agent in pane $WORKER_PANE_ID. I've finished feature/<task>. PR #$PR_NUM is open in Draft. Tests pass. Read my report: herdr agent read $WORKER_PANE_ID --source recent-unwrapped --lines 100"
-herdr notification show "Task Finished" --body "Draft PR #$PR_NUM open" --sound done
-```
-
-### Stage 5: Clean-Context PR Review
-**Never review code in the implementer agent's pane.**
-1. Spawn a clean reviewer agent on the same model in a new split pane:
+### Stage 4: Clean-Context Exact-SHA Review
+**Never review code in the implementer's active pane.** Implementer panes carry conversational drift and confirmation bias.
+1. Spawn a fresh reviewer agent in a separate pane or tab:
    ```bash
    herdr pane split --pane "$CALLER_PANE_ID" --direction right --no-focus
-   herdr agent start "reviewer-$PR_NUM" --kind codex --pane "$REVIEWER_PANE_ID" -- --model "$CURRENT_MODEL"
+   herdr agent start "reviewer-<task>" --kind agy --pane "$REVIEWER_PANE_ID" -- --model gemini-3.8-flash-high
    ```
-2. The reviewer inspects `gh pr diff $PR_NUM` and tests against specifications and quality standards.
-3. If issues are found: reviewer submits comments (`gh pr review $PR_NUM --request-changes`). Orchestrator instructs worker to fix.
-4. If approved: reviewer submits approval (`gh pr review $PR_NUM --approve`).
+2. Reviewer checks out the candidate at its exact commit SHA:
+   ```bash
+   git checkout "$CANDIDATE_HEAD_SHA"
+   ```
+3. Reviewer inspects specification conformance, code standards, and the exact diff (`git diff $BASE_SHA...$CANDIDATE_HEAD_SHA`), and executes test suites directly, recording true observed exits.
 
-### Stage 6: Promotion & Serial Rebase Integration
-1. Promote PR to ready:
+### Stage 5: Review Invalidation Protocol
+> [!WARNING]
+> **Load-Bearing Invariant: Changed HEAD Invalidates Prior Review**
+> Technical review binds strictly to an exact commit SHA. Any subsequent commit, rebase, or fix pushes the branch HEAD to a new SHA ($SHA_2 \neq SHA_1$). When branch HEAD advances, any prior approval is automatically **stale and invalidated**. The new SHA must undergo fresh technical verification before integration.
+
+### Stage 6: Serial Integration & Delivery
+Integration proceeds serially under the direction of the AGY Integration Executor:
+
+#### Scenario A: Single Integrated PR Delivery (e.g. Mission `herdr-codex-first-20260920`)
+When a mission is authorized to deliver an unmerged candidate PR:
+1. Combine verified lane commits onto the candidate branch.
+2. Run repository generators (`python3 scripts/gen-marketplace.py`), validation scripts (`python3 scripts/validate-skills.py`), and `git diff --check`.
+3. Push candidate branch: `git push origin <candidate-branch>`.
+4. Open single integrated draft PR:
    ```bash
-   gh pr ready $PR_NUM
+   gh pr create --draft --title "<Title>" --body "<Body>"
    ```
-2. Rebase onto current `origin/main` to resolve any semantic or syntactic drift:
+5. Hand back unmerged PR to CTO/EM. **Do not push directly to main or merge.**
+
+#### Scenario B: Authorized Merge Delivery (Standard Future Workflow)
+When authorized to merge into main:
+1. Rebase candidate cleanly onto latest `origin/main`.
+2. Run verification test suites on the rebased tree.
+3. Push with lease: `git push --force-with-lease`.
+4. Promote PR to ready (`gh pr ready <PR_NUM>`) and squash merge (`gh pr merge <PR_NUM> --squash --delete-branch`), respecting branch protections and same-account approval limits.
+
+---
+
+## 5. Merge Conflict Ownership & Serial Rebase
+
+When multiple lanes integrate, downstream branches may encounter merge conflicts against the advancing `main`. Treat conflict resolution as standard engineering execution, not an escalation barrier:
+
+1. **Detect Conflict Early**:
+   `gh pr view <PR_NUM> --json mergeable` or attempt `git rebase origin/main`.
+2. **Rebase in the Isolated Worktree**:
    ```bash
-   git -C .worktrees/<task> fetch origin main
-   git -C .worktrees/<task> rebase origin/main
+   git -C <worktree-path> fetch origin main
+   git -C <worktree-path> rebase origin/main
    ```
-3. Run verification tests on the rebased branch:
+3. **Resolve Conflict Markers with Integrity**:
+   - Inspect conflicting files via `git status`.
+   - Preserve both upstream fixes and branch feature logic. Never blindly accept "ours" or "theirs".
+   - Stage resolved files: `git add <resolved-file>`.
+   - Continue rebase: `git rebase --continue`.
+4. **Re-Verify with Tests**:
+   Never assume conflict resolution succeeded simply because Git markers cleared. Re-run complete test suites:
    ```bash
-   npm test / pytest / cargo test
+   npm test / cargo test / python3 scripts/validate-skills.py
    ```
-4. Push rebased commits:
+5. **Force-Push with Lease**:
    ```bash
-   git -C .worktrees/<task> push --force-with-lease
-   ```
-5. Merge serially:
-   ```bash
-   gh pr merge $PR_NUM --squash --delete-branch
-   ```
-6. Cleanup:
-   ```bash
-   herdr tab close "$WORKER_TAB_ID"
-   git worktree remove .worktrees/<task> --force
+   git -C <worktree-path> push --force-with-lease
    ```
 
 ---
 
-## 4. Handling Merge Conflicts with Ownership Mindset
+## 6. Safe Sequential Teardown & Evidence Preservation
 
-When multiple PRs merge into `main`, downstream branches will inevitably encounter merge conflicts. Treat conflict resolution as standard engineering execution, not an escalation barrier:
+Follow the mandatory lifecycle sequence:
+**WAIT/NOTIFY $\longrightarrow$ READ $\longrightarrow$ verify handback $\longrightarrow$ integrate/PR $\longrightarrow$ close tab/pane $\longrightarrow$ remove worktree.**
 
-1. **Detect Conflict Early**:
-   `gh pr view $PR_NUM --json mergeable` reports `CONFLICTING`.
-2. **Rebase in the Worker's Worktree**:
-   ```bash
-   git -C .worktrees/<task> fetch origin main
-   git -C .worktrees/<task> rebase origin/main
-   ```
-3. **Resolve Conflict Markers**:
-   - Inspect each conflicting file: `git status`.
-   - Preserve both upstream bug fixes and branch feature logic.
-   - Stage resolved files: `git add <file>`.
-   - Continue rebase: `git rebase --continue`.
-4. **Re-Verify with Tests**:
-   Never assume a conflict resolution works simply because Git markers disappeared. Run the test suite:
-   ```bash
-   npm test / cargo test
-   ```
-5. **Force-Push with Lease**:
-   ```bash
-   git -C .worktrees/<task> push --force-with-lease
-   ```
+### 6.1 Clean Worktree Verification
+Before removing any worktree, verify that the working tree is completely clean:
+```bash
+git -C "<worktree-path>" status --porcelain
+```
+If untracked or uncommitted files exist, investigate and archive before proceeding.
+
+### 6.2 Protection Against Blind Force Deletion
+> [!CAUTION]
+> **No Default Force Cleanup**: Never execute `git worktree remove --force` on a dirty worktree or unverified directory. Force-deleting checkouts risks nonrecoverable data loss. Close containers only after all changes are committed and verified.
+
+```bash
+# 1. Close Herdr tab
+herdr tab close "$WORKER_TAB_ID"
+
+# 2. Remove clean worktree
+git worktree remove "<worktree-path>"
+```
+
+### 6.3 Host Evidence Invariant
+All immutable YAML reports, execution transcripts, and validation logs must reside in `report_root` on the host filesystem (outside disposable worktrees). Removing ephemeral worktrees leaves durable mission evidence intact.
