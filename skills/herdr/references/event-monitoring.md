@@ -80,6 +80,7 @@ eq$ Worker Failure**: When `herdr agent wait` hits a deadline, the worker is not
 2. **Idle Worker $
 eq$ Completed Task**: An agent resting at an idle prompt may have failed a test, crashed a subshell, or halted mid-turn. Settlement only grants permission to read evidence.
 3. **Unknown Remains Unknown**: If an observer handle disconnects or an agent status reports `unknown`, the state is unverified. Never assume failure or success without reading screen and filesystem evidence.
+4. **Quota Stalls Are Neither Dead Nor Idle**: Visible API rate limits or quota exhaustion (HTTP 429, `ResourceExhausted`) are neither dead worker processes nor successful idle completions. Observers must preserve owned pending effects, cease blind same-model retries, and route to the quota protocol in [stopped-agent-recovery.md](stopped-agent-recovery.md).
 
 ---
 

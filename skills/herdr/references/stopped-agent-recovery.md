@@ -44,6 +44,7 @@ herdr pane process-info --pane <PANE_ID>
 | **Agent prompt resting idle (`? for shortcuts`, `>`)** | Agent finished its turn but did not send notification. | Inspect filesystem for `.partial` or `.yaml` reports. If absent, issue a continuation prompt. |
 | **Shell prompt resting idle (`$`, `%`)** | Agent CLI process crashed or exited cleanly. | Reconcile background processes, then restart agent session (Phase 4). |
 | **Terminal frozen on subshell command** | Tool execution hung or caught in infinite loop. | Send targeted `ctrl+c` interrupt (Phase 2). |
+| **Visible quota / rate limit (429, ResourceExhausted)** | Model quota exhausted; neither dead worker nor successful idle. | **Do NOT retry blindly on same model.** Preserve partial artifacts and owned pending effects. Route to Quota & Rate-Limit Protocol (Section 3.5). |
 | **`error.code: pane_not_found`** | Pane was closed or workspace corrupted. | Check `herdr pane list`; verify if pane was relocated. |
 
 ---
@@ -95,6 +96,23 @@ If the agent CLI is alive and sitting at its interactive prompt after an error o
 herdr agent prompt <TARGET> \
   "Your previous operation paused or encountered an error. Review terminal history, check git status, and resume from the last valid checkpoint."
 ```
+
+### 5. Quota & Rate-Limit Recovery Protocol
+When an agent pane encounters visible API rate limits or quota exhaustion (e.g. HTTP 429, `ResourceExhausted`):
+1. **Neither Dead Worker Nor Successful Idle**:
+   - The underlying agent process has not crashed back to a shell prompt, nor has it cleanly finished its turn or task.
+   - Never treat a quota stall as clean task completion or idle settlement.
+2. **Preserve Artifacts & Owned Pending Effects**:
+   - Preserve unfinalized `.partial` reports under `report_root` and all in-progress worktree modifications.
+   - Do not discard partial files or revert uncommitted working tree progress without inspection.
+3. **Cease Blind Same-Model Retries**:
+   - Repeatedly submitting continuation prompts (`herdr agent prompt`) or restarting the agent with the same exhausted model compounds rate limits and wastes mission time. Stop blind retries immediately upon observing quota exhaustion evidence.
+4. **Authorized Available Model Re-registration Gate**:
+   - Switching models is permitted **only** if an alternative model is explicitly authorized by mission policy and capacity allocations.
+   - Model replacement requires verified native AGY explicit re-registration: relaunching or re-configuring the agent with the authorized `--model <AUTHORIZED_MODEL>` flag, updating the registered model in `state.yaml`, and adhering to the manager-owned `attempt` policy.
+5. **Escalate Capacity Blocker**:
+   - If no alternative model is authorized or available in the project capacity pool, publish an immutable blocker report (`requested_action: unblock_decision` / capacity blocker) with qualified screen evidence.
+   - **Strictly Prohibited**: Making billing modifications, editing platform configuration files, or altering underlying agent frameworks.
 
 ---
 
