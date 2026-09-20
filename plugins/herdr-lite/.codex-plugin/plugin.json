@@ -1,0 +1,35 @@
+{
+  "name": "herdr-lite",
+  "version": "1.0.67",
+  "description": "Use if orchestrating coding agents via Herdr with native Git worktrees, PR-driven state, and side-by-side review-and-fix panes.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "herdr-lite"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "herdr-lite",
+    "shortDescription": "Use if orchestrating coding agents via Herdr with native Git worktrees, PR-driven state, and side-by-side review-and-fix panes.",
+    "longDescription": "Install only the herdr-lite workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the herdr-lite skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}
