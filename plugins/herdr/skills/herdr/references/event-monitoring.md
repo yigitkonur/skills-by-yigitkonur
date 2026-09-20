@@ -51,4 +51,4 @@ When Herdr detection reports `unknown` for a known AGY process:
 ## 7. Discovery, Bootstrap & Model Verification
 All panes identify live topology via `herdr pane current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
 
-The 10-Minute Silent Boundary: If an agent operates without an external notification for ten minutes, it must generate a checkpoint report at its next safe tool boundary.
+The 10-Minute Silent Boundary: If an agent operates without an external notification for ten minutes, the supervisor or agent performs ONE status check at the next safe tool boundary—not a mandatory checkpoint report, timer, heartbeat loop, or endless wait.

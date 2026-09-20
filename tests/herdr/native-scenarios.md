@@ -12,13 +12,17 @@
 | **K6 — Selective checkpoint resume** | Checkpoint + old report + one new valid report | Current ownership and pending effects preserved; only relevant history opened | Re-dispatching all work or requiring all past reports re-read |
 | **K7 — Bounded native full loop** | Verified candidate skill, two-pane leadership, small AGY doc task | Task/feedback/manager-decision/independent-review/CTO-handback observed from TUI | CTO taking over engineering, infinite wait after missed notice, using globally mounted skill as candidate |
 
-K4's duplicate behaviour can be measured in a small native flow by resending one notice; no new fan-in fleet required. K5–K6 are evaluated against read-only examples/fixtures first; no live process killing or real quota consumption. Recovery-behaviour changes are validated only via relevant existing SCENs selected by risk.
+*Evaluation Notes*:
+- K4 duplicate behaviour is evaluated in a small native flow by resending one notice; no new fan-in fleet required.
+- K5–K6 evidence is evaluated against read-only examples and fixtures first; **no live process termination, crash simulation, or real quota consumption**. Static K5/K6 checks are not live crash/quota tests.
+- Recovery behaviour changes are validated only via relevant existing SCENs selected by risk.
+- Scenario and test specifications in this document define procedures and acceptance bars; **they are not claimed execution evidence**.
 
 ## 2. Small Smoke Test
 
 Prerequisite bindings (verify before running):
 ```bash
-CANDIDATE_SKILL_PATH="/Users/mac/docs/superpowers/worktrees/herdr-codex-first-20260920/integration/skills/herdr/SKILL.md"
+CANDIDATE_SKILL_PATH="/path/to/worktree/skills/herdr/SKILL.md"
 test -f "$CANDIDATE_SKILL_PATH" || { echo "ERROR: Missing candidate skill"; exit 1; }
 CANDIDATE_WORKTREE=$(git -C "$(dirname "$CANDIDATE_SKILL_PATH")" rev-parse --show-toplevel)
 CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
@@ -29,13 +33,13 @@ A globally mounted skill (`~/.codex/skills/herdr/SKILL.md`, `~/.agents/skills/he
 
 ### Smoke Flow
 
-1. **EM dispatches a small AGY doc-change task** to a worker in a dedicated tab with the candidate path, HEAD, and SHA-256 bound above.
-2. **Worker makes the doc change**, commits locally, publishes a handback report via the 4-step publication pipeline, and sends a notice to the manager without `--wait`.
-3. **EM applies identity/evidence gate**: Verifies producer identity matches registered assignment before advancing the graph. Reads the report from disk (not from PTY scrape). Dispatches an independent reviewer.
-4. **Independent reviewer** audits the candidate in a fresh pane at the exact commit SHA. Publishes a review report and notifies manager.
-5. **EM relays the review outcome** and publishes a manager milestone report to the CTO.
-6. **Fixture constraint**: No public PR or merge. The smoke task uses an isolated fixture that does not touch `main`.
-7. **Idempotent duplicate check**: Resend the worker's original handback notice. Verify the manager records no second dispatch or Git effect (K4).
+1. **EM dispatches small AGY doc task** to a dedicated tab with the candidate path, HEAD, and SHA-256 bound above.
+2. **Worker makes doc change**, commits locally, publishes handback report via verified 4-step pipeline, and sends notice to manager without `--wait`.
+3. **EM applies identity/evidence gate**: Verifies producer identity matches registered assignment before advancing graph. Reads report from disk. Dispatches an independent reviewer in a dedicated pane.
+4. **Independent reviewer** audits candidate in fresh pane at exact commit SHA in clean context. Publishes review report and notifies manager without `--wait`.
+5. **EM relays review outcome** and publishes manager milestone report to CTO.
+6. **Idempotent duplicate check (K4)**: Resend worker's original handback notice once. Verify manager records no second dispatch, no Git effect, and no ACK chain.
+7. **Fixture constraint**: No public PR or merge. The smoke flow runs on an isolated test fixture and does not push to `main`.
 
 ## 3. Optional Risk Catalogue — Original 14 SCEN Scenarios
 

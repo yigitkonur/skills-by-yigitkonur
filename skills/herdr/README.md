@@ -7,11 +7,12 @@ Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean
 ## Core Capabilities
 
 - **Role-First Multi-Agent Router**: CTO, Engineering Manager (EM), and native AGY implementers, reviewers, integration executors, and recovery executors all read the same skill — role selection determines which sections to execute. Runtime is not role.
-- **Verified Registration**: Workers verify actual TUI runtime and model, then register with the manager. Proceed without ACK when preflight fully matches; preserve explicit acknowledgment on mismatch, restart, or unclear authority.
-- **Bidirectional Push Notification**: Workers push completion notices directly to the manager return pane (`herdr agent prompt`). No passive polling. Bounded observation and report reconciliation serve as fallback.
-- **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD automatically invalidates stale reviews.
-- **Parallel Writers, Serial Integration**: Disjoint writers execute in parallel across isolated worktrees. The Integration Executor combines verified candidates serially into a moving baseline.
-- **Canonical Reporting Contract**: Two durable artifact kinds — mutable manager checkpoint (`state.yaml`) and immutable YAML producer reports — published atomically via a single canonical contract.
+- **Two-Pane Leadership Topology**: CTO (left) and EM (right) share exactly one leadership tab. Workers and reviewers operate in separate, task-specific tabs.
+- **Small Coupled Work Default**: Default to 1 whole-change writer and 1 independent reviewer for cohesive tasks; parallelize across isolated worktrees only for genuinely independent deliverables.
+- **Conditional Registration**: Workers verify actual TUI runtime and model, then register with the manager. Proceed without waiting for ACK when preflight fully matches; preserve explicit acknowledgment on mismatch, restart, or unclear authority.
+- **Cheap Communication & Durable Evidence**: Routine progress and technical questions use short native messages; durable immutable YAML reports are reserved for handback candidates, review decisions, and material blockers.
+- **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD invalidates stale reviews; same reviewer may issue new-HEAD delta decisions.
+- **Early Coherent Candidate & Serial Integration**: Designated writer composes whole-candidate changes locally for unified checks without per-file approval bottlenecks; Integration Executor combines verified candidates serially into a moving baseline.
 - **Evidence-Preserving Cleanup**: Only owned, completed, clean resources are removed. Evidence is archived before teardown. No force removal without inventory.
 
 ## Requirements
