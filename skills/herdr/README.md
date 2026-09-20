@@ -4,19 +4,19 @@ Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean
 
 **Category:** orchestration
 
-## Core Architecture & Key Capabilities
+## Core Capabilities
 
-- **Role-First Multi-Agent Architecture**: Codex CTO and Engineering Manager (EM) orchestrate native AGY implementers, fresh technical reviewers, and integration executors across dedicated worktrees and panes (runtime != role).
-- **Bidirectional Push-Notification Callback**: Eliminates passive polling across agent runtimes (OpenAI Codex, Google Antigravity CLI, Claude Code). Workers push completion notices directly back to the manager return pane (`herdr agent prompt <CALLER_PANE_ID>`).
-- **Clean-Context Exact-SHA Reviews**: Dedicated fresh reviewer agents in clean context panes audit exact candidate commit diffs (`git checkout <SHA>`) with zero memory pollution. Any changed branch HEAD automatically invalidates stale reviews.
-- **Two Durable Artifact Kinds**: Mutable manager checkpoint (`state.yaml` alone) and immutable YAML producer reports published outside disposable worktrees via a verified 4-step atomic publication pipeline.
-- **Interactive Modal Bridge**: Resolves `agent_blocked` states mechanically via `herdr agent read --source visible` and pre-validated atomic keystrokes (`herdr agent send-keys <target> down enter`).
-- **4 Screen Inspection Buffers & Degraded Mode**: Alternate Screen Buffer navigation via `recent-unwrapped`, `visible`, `recent`, and `detection`, plus verified native `herdr pane run` fallback for degraded AGY mode.
-- **Dynamic Swarm Scaling**: Calibrates with 2 initial workers before dynamically expanding capacity; serializes heavy compilation and git integration while parallelizing code synthesis.
+- **Role-First Multi-Agent Router**: CTO, Engineering Manager (EM), and native AGY implementers, reviewers, integration executors, and recovery executors all read the same skill — role selection determines which sections to execute. Runtime is not role.
+- **Verified Registration**: Workers verify actual TUI runtime and model, register with the manager, and await acknowledgment before beginning engineering work.
+- **Bidirectional Push Notification**: Workers push completion notices directly to the manager return pane (`herdr agent prompt`). No passive polling. Bounded observation and report reconciliation serve as fallback.
+- **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD automatically invalidates stale reviews.
+- **Parallel Writers, Serial Integration**: Disjoint writers execute in parallel across isolated worktrees. The Integration Executor combines verified candidates serially into a moving baseline.
+- **Canonical Reporting Contract**: Two durable artifact kinds — mutable manager checkpoint (`state.yaml`) and immutable YAML producer reports — published atomically via a single canonical contract.
+- **Evidence-Preserving Cleanup**: Only owned, completed, clean resources are removed. Evidence is archived before teardown. No force removal without inventory.
 
 ## Requirements
 
-Install Herdr first and run the agent inside a Herdr-managed pane (`HERDR_ENV=1`):
+Install Herdr and run agents inside Herdr-managed panes (`HERDR_ENV=1`):
 
 ```bash
 brew install herdr
