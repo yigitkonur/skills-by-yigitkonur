@@ -1,67 +1,50 @@
 ---
 name: herdr
-description: "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents."
+description: Use if explicitly asked to orchestrate or control Herdr agents, panes, tabs, or worktrees.
 ---
 
-# herdr
+# Herdr
 
-Control a live Herdr session without stealing focus or guessing terminal state. Herdr supplies the terminals and lifecycle signals; you remain the decision-maker. Inspect, choose the smallest correct primitive, act once, read the result, and verify the intended state.
+Own each assigned outcome until its evidence and next owner are recorded. Herdr
+supplies terminal controls and lifecycle signals; it does not decide whether a
+mission succeeded. Use direct CLI commands and the host's resumable sessions.
 
-## Scope and prerequisite
+## Enter and route
 
-Use this skill only when the user explicitly mentions Herdr or asks to inspect or control a Herdr pane, tab, workspace, worktree, command, or agent. Do not invoke it merely because another pane, delegation, or parallel work might be useful.
-
-Before any control command:
+Use this skill for an explicit Herdr request. Editing this skill does not start
+or resume unrelated project work. Before controlling a live session:
 
 ```bash
 test "${HERDR_ENV:-}" = 1
 ```
 
-If this fails, do not inspect or control the user's focused Herdr session from outside it. Explain that the agent must run inside a Herdr-managed pane. You may help with installation or startup, but do not run bare `herdr` as an automated discovery command: it launches or attaches the interactive TUI.
+If this fails, explain that control must run inside a Herdr-managed pane. Do
+not attach to whichever session happens to be focused. Bare `herdr` launches
+the interactive TUI; use `herdr --version` and relevant group/subcommand help
+for discovery. The installed CLI wins over examples here. Never probe a
+mutating command by omitting arguments: some execute with defaults.
 
-## Let the installed CLI lead
+Read only the branch that applies. These files own their respective rules:
 
-Herdr evolves quickly. The installed binary is the authority:
-
-```bash
-herdr --version
-herdr --help
-herdr agent
-herdr pane
-herdr workspace
-herdr tab
-herdr worktree
-```
-
-Print only the command group relevant to the task. Do not probe a mutating nested command by omitting arguments; commands such as `workspace create` can execute with defaults. When the CLI and this skill disagree, follow current help and report the drift.
-
-Most commands return JSON. Parse IDs and state from the response instead of predicting them. For deeper protocol questions, inspect `herdr api schema --json` before inventing a socket request.
-
-## Mental model
-
-- **Session** — an independent Herdr server namespace.
-- **Workspace** — a project or task boundary.
-- **Tab** — one terminal layout within a workspace.
-- **Pane** — one persistent terminal process.
-- **Agent** — a recognized coding-agent process occupying a pane.
-
-Choose the surface that matches the job:
-
-| Need | Use |
+| Branch | Read before acting |
 |---|---|
-| Create, move, resize, focus, or close terminal layout | `workspace`, `tab`, or `pane` |
-| Run or inspect an ordinary shell command | `pane` |
-| Prompt, wait for, read, or send keys to a recognized coding agent | `agent` |
-| Create or open isolated Git checkouts | `worktree` |
-| Inspect protocol capabilities or stream long-running events | `api` / socket API |
+| Task submission, WAIT, READ, observer failures, PR discovery | [event-monitoring.md](references/event-monitoring.md) |
+| Parallel issues, worktree capacity, mission briefs, PR review or integration | [parallel-capacity.md](references/parallel-capacity.md) |
+| Writing standalone delegated assignments | [mission-briefs.md](references/mission-briefs.md) |
+| Confirmed unfinished worker stopped or lost its conversation | [stopped-agent-recovery.md](references/stopped-agent-recovery.md) |
 
-`agent start` needs an existing available shell pane. It starts an agent; it does not create layout.
+This skill works as a single-skill install. If the project or installed skill
+catalog provides `dispatch`, read it for mission decomposition; Herdr owns
+terminal supervision. For issue implementation, also read the project's or
+installed `implement` skill when available. Carry its bounded spec → code →
+focused checks → review → commit philosophy into PR handoffs. When companions
+are absent, use the mission and delivery references here; do not assume sibling
+directories exist. Repository testing restrictions override generic full-suite
+advice. Ordinary terminal inspection does not activate implementation.
 
-## The control loop
+## 1. Ground and record the mission
 
-### 1. Orient
-
-Read caller context and the smallest useful live snapshot:
+Resolve the caller and assigned targets without changing focus:
 
 ```bash
 printf '%s\n' "$HERDR_WORKSPACE_ID" "$HERDR_TAB_ID" "$HERDR_PANE_ID"
@@ -70,96 +53,164 @@ herdr pane layout --pane "$HERDR_PANE_ID"
 herdr agent list
 ```
 
-Add `workspace list`, `tab list`, or `pane list` only when the task spans them. Prefer `--current`, an explicit opaque ID, or a unique agent name. Omitting a target can act on another client's focused pane.
+Add broader inventories only when scope requires them. Use returned opaque
+IDs, never sidebar positions, "latest pane," or another client's focused
+target. Record actual checkout/foreground cwd and conversation identity.
 
-### 2. Decide the topology
+**Create the task table before dispatch.** Reuse the existing run ledger and
+show the initial table to the user. Keep one current table at its top, with
+short dated history below; appended old status rows are not current state.
+For a single task, use one row.
 
-Default to a sibling pane in the current tab and current working directory. Preserve focus with `--no-focus`. Create a workspace, tab, worktree, or different cwd only when the request needs that boundary.
+| Task / attempt / outcome | Dependencies; checkout / writer | Workspace / tab / pane / terminal / conversation | Worker; observer / typed handle; delivery | PR / base / head; evidence / gap | Last observed / result; next action / owner |
+|---|---|---|---|---|---|
+| A / 1 / bounded outcome | none; checkout and owned paths | caller workspace; returned IDs pending | not started; none; implementation | required artifact/check | timestamp; launch / controller |
 
-For an unspecified split direction, inspect the current rectangle: split a wide pane right; split a narrow or tall pane down. Avoid repeated splits that leave unusable columns or rows.
+Keep three independent axes; never compress them into a single "done":
 
-### 3. Act through the highest-level surface
+- **Worker:** not started, working, needs input, stopped, handed off, terminal closed.
+- **Observer:** none, waiting, settled, timed out, disconnected. Store the host
+  tool type and handle, target identity/attempt, and last consumed result.
+- **Delivery:** implementation, verification, ready for review, changes requested,
+  merge pending, merged with acceptance reconciled; or a named blocker.
 
-Create a background pane and capture its returned ID:
+An idle worker may have an incomplete draft. A broken observer may be watching
+a healthy worker. A ready PR still needs review/integration. Every unfinished
+delivery has one next owner and action, including drafts whose author exited.
+Store resource grants, recovery attempts and pending user decisions with the
+row. Use links to long evidence instead of copying transcripts into the table.
+
+Before resuming after compaction, reconcile the table against live inventory,
+Git/PR state and available host sessions. Old handles and mergeability are
+historical evidence. Recover the observer before restarting a worker.
+
+When the user explicitly requests a tracked goal and goal tools exist, inspect
+and reuse the applicable goal before creating one. Follow that tool's lifecycle
+rules; ordinary tasks do not create goals. Neither a goal nor a ledger wakes
+the controller after its turn ends.
+
+## 2. Create only the needed containers
+
+Stay in the caller's workspace unless the user explicitly overrides this.
+
+- **Independent outcome:** a new tab in that workspace.
+- **Related subtask/review:** a new pane in the owning task's live tab.
+- **Concurrent writers:** isolated checkouts and explicit contract ownership;
+  a shared tab does not authorize concurrent writes to one tree.
+
+Use `--no-focus`. Record creation responses immediately. `agent start` needs an
+available shell pane; it does not create layout. Use the user's requested agent
+kind/model through installed, supported options.
+
+**Worker agents run interactively in their visible pane by default.** The user
+must be able to watch progress, inspect the conversation and take over. Prefer
+`agent start` plus `agent prompt`; for an unrecognized CLI, launch its documented
+interactive mode through `pane run`. Keep its live output in the terminal and
+save a separate final report when needed. The controller's short-yield WAIT
+session is separate from the worker's interactive session.
+
+**Blacklisted shortcuts:** headless/print-mode workers (such as `agy --print`
+or `-p`), redirecting all worker output to files, and backgrounding/detaching a
+worker to make monitoring easier. Use these only when the user explicitly asks
+for a noninteractive/batch worker; an ordinary shell command or a controller
+WAIT is not a worker. A report file supplements visible progress, never replaces
+it. If an accidental headless worker is already running, preserve its session
+and artifacts, stop only that owned process, confirm it exited, then resume
+interactively; never launch a second writer alongside it.
 
 ```bash
-herdr pane split --current --direction right --cwd "$PWD" --no-focus
+# Independent task, using an already prepared checkout:
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" \
+  --cwd /absolute/path/to/task-checkout --label "Task name" --no-focus
+
+# Related work; use the recorded owner, not the focused pane:
+herdr pane split --pane <owning-task-pane-id> --direction down \
+  --cwd /absolute/path/to/task-checkout --no-focus
 ```
 
-For an ordinary command:
+Choose split direction from the current rectangle: wide → right, narrow/tall →
+down. When the installed `worktree create/open` creates another workspace,
+prepare isolation with Git, then open the checkout as a tab above:
 
 ```bash
-herdr pane run <pane-id> "just test"
-herdr pane wait-output <pane-id> --match "test result" --timeout 120000
-herdr pane read <pane-id> --source recent-unwrapped --lines 120
+git -C /absolute/path/to/repo worktree add \
+  -b feature/task-name /absolute/path/to/task-checkout <verified-base-ref>
 ```
 
-For a coding agent:
+## 3. Dispatch, observe, consume, advance
+
+1. Dispatch ready independent rows within the capacity plan. Preserve any
+   existing composer text. Prefer `agent prompt` for recognized agents; use
+   `pane run` only for intentional raw input. A submitted/queued message is not
+   proof of pickup; confirm current-turn activity before relying on it.
+2. Attach one bounded WAIT per active target attempt through a separate
+   controller tool session. Record its handle immediately. Keep the worker's
+   input terminal available. The exact commands and result decision table live
+   in [event-monitoring.md](references/event-monitoring.md).
+3. Between host yields, process user steering, ready dispatches, finished waits
+   and PR candidates. Writing a plan or editing a skill does not suspend
+   already-owned work. Reconcile settled observers before claiming a worker is
+   still active; keep status statements dated when a fresh check is unavailable.
+4. **Every settled WAIT → explicit short READ → classify → next action.**
+   An embedded WAIT snapshot or idle footer is insufficient. Renew normal
+   timeouts after reading; diagnose observer errors separately. Release a
+   dependent lane only from the evidence its prerequisite requires.
+5. Preserve a completed worker's handback and the next delivery owner, then
+   close its terminal immediately under the rule below. Advance other ready
+   work without waiting for unrelated siblings.
+
+Use native CLI/tools, static mission files and finite metadata queries. Do not
+write Python/Node/custom socket clients or shell loops to schedule agents, poll
+panes, renew waits or decide completion. Product scripts and finite validation
+tools are unaffected. A missing native capability is a limitation to report,
+not a reason to invent a detached daemon.
+
+Continue until the authorized outcome is complete, remaining work has specific
+blockers, or the user pauses/cancels/requests handoff. Do not end an active
+orchestration with only "WAIT is running." Do not invent busywork to keep an
+agent active. User stops, real limits and host execution boundaries outrank
+"never stop" wording. If the host cannot sustain supervision, save exact
+handoff state and say so; no skill text can guarantee autonomous wakeups.
+
+## 4. Close finished terminals; preserve integration work
+
+Mandatory sequence for a task-owned terminal:
+
+**WAIT → READ → verify its assigned handback → record remaining ownership →
+preserve artifacts → close the smallest finished container → read inventory.**
+
+Do this as soon as that worker's assignment is complete. A pending PR review or
+merge alone does not justify keeping its finished terminal open. A draft with
+unowned work does not qualify for closure as a completed mission.
 
 ```bash
-herdr agent start reviewer --kind claude --pane <pane-id>
-herdr agent prompt reviewer "Review the current diff and report actionable findings only."
+# Sibling work continues:
+herdr pane close <completed-subtask-pane-id>
+# All work in the independent task tab is finished:
+herdr tab close <completed-task-tab-id>
 ```
 
-Use the kind the user requested. Run `herdr agent` to see currently supported kinds and exact options. Pass native agent arguments only after `--`.
+Verify the ID is gone. Check for active background jobs and unrelated panes
+before closing a larger container. Never close the parent orchestration tab or
+caller workspace. An existing task-owned auxiliary workspace may be closed
+once all its work is finished; this does not authorize creating new workspaces.
+If related work arrives after the owning tab closed, recreate a task tab and
+update its IDs; do not target stale panes or retain idle shells as spare slots.
 
-Prefer `agent prompt` over raw pane text: it validates the target and submits text with Enter using the pane's live bracketed-paste mode. Use pane input only when raw terminal control is intentional.
+Terminal close, worktree removal, merge and issue closure are separate actions.
+Never infer auto-merge from close/remove. Retain the checkout for unfinished
+review/integration and record why. Before removal, inspect unique commits,
+dirty/untracked/valuable ignored files and active processes; preserve what is
+needed. A branch does not back up uncommitted files. Investigate removal refusal
+rather than forcing it. Use the integration procedure for PR/issue settlement.
 
-### 4. Wait for state, then read evidence
+Close only task-owned or explicitly authorized resources. Never stop the Herdr
+server to recover one worker. After an authorized pane move, use the returned
+pane identity rather than assuming the old ID survived.
 
-For a submitted turn, wait as part of the prompt:
+## Handoff
 
-```bash
-herdr agent prompt reviewer "Run the focused review." --wait --timeout 120000
-```
-
-If the prompt was submitted separately and you specifically need the next approval/question state, wait for that state instead:
-
-```bash
-herdr agent wait reviewer --until blocked --timeout 120000
-```
-
-These are alternatives, not a sequence. Without `--until`, `agent wait` settles on `idle`, `done`, or `blocked`.
-
-- `idle` — ready for input after its tab has been seen.
-- `done` — background work settled before the tab was seen.
-- `blocked` — approval or question UI detected.
-- `working` — active.
-- `unknown` — classification is uncertain; it does not prove completion.
-
-For long-running agents or multiple transitions, use the push-event workflow in `references/event-monitoring.md`, not an `agent get` polling loop.
-
-Read the actual output after a transition:
-
-```bash
-herdr agent get reviewer
-herdr agent read reviewer --source recent-unwrapped --lines 120
-```
-
-A lifecycle event proves state changed, not that the task succeeded. An agent report is still a claim; verify the evidence the task requires.
-
-### 5. Recover from what Herdr actually reports
-
-| Signal | Response |
-|---|---|
-| `blocked` | Read the visible pane; surface the exact approval or question. |
-| `unknown` | Use `agent explain <target> --json`, inspect output, and check integrations. |
-| Wait timed out | Read current state/output; distinguish a long command from a stalled agent. |
-| `agent_prompt_stalled` | Confirm the agent was ready and the prompt produced lifecycle activity. |
-| Command or flag rejected | Re-open that command group's help; do not retry a guess. |
-| Output is missing from large reads | The agent may use the terminal alternate screen; ask it to save its full report to a temporary Markdown file and return only the path. |
-| Socket/event shape rejected | Re-read `herdr api schema --json`; wire enums may differ from CLI spellings. |
-
-## Ownership and safety
-
-- Use `--no-focus` for background work unless the user asked to switch context.
-- Save IDs from creation responses; never rely on sidebar order, "latest pane," or guessed IDs.
-- After moving a pane, continue with `.result.move_result.pane.pane_id`; cross-workspace moves can change the ID.
-- Close only panes, tabs, worktrees, or workspaces created for this task unless the user explicitly authorizes otherwise.
-- Do not run `herdr server stop` unless the user explicitly intends to stop the server and its pane processes.
-- Do not kill the main Herdr process. Use a named session for experiments that require isolation.
-- CLI server failures are JSON on stderr with exit status 1; CLI syntax errors exit 2.
-
-## Finish
-
-Report the workspace/tab/pane or agent IDs used, commands or prompts submitted, final lifecycle state, evidence read back, resources created, and cleanup performed. Mention anything intentionally left running.
+Report delivered outcomes and evidence, current draft/ready/merged counts when
+relevant, retained blockers with owners, and resources closed or still active.
+Record the latest successful observation and next action before compaction.
+An unconsumed observer or ownerless candidate is unfinished orchestration.

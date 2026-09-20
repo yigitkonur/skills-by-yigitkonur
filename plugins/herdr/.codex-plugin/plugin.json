@@ -1,7 +1,7 @@
 {
   "name": "herdr",
   "version": "1.0.65",
-  "description": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
+  "description": "Use if explicitly asked to orchestrate or control Herdr agents, panes, tabs, or worktrees.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "herdr",
-    "shortDescription": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
+    "shortDescription": "Use if explicitly asked to orchestrate or control Herdr agents, panes, tabs, or worktrees.",
     "longDescription": "Install only the herdr workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

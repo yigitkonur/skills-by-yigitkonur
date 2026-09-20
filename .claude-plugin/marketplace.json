@@ -642,7 +642,7 @@
     {
       "name": "herdr",
       "source": "./",
-      "description": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
+      "description": "Use if explicitly asked to orchestrate or control Herdr agents, panes, tabs, or worktrees.",
       "version": "1.0.65",
       "category": "automation",
       "strict": false,

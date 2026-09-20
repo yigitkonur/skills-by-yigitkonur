@@ -1,6 +1,6 @@
 # herdr
 
-Control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents when Herdr is explicitly requested.
+Orchestrate or control Herdr agents, panes, tabs, and worktrees when explicitly requested.
 
 **Category:** orchestration
 
@@ -63,4 +63,25 @@ Invoke `/herdr`, or ask naturally:
 - “Use Herdr to run the tests in a new pane without changing my focus.”
 - “Monitor these Herdr agents and notify me when one settles.”
 
-The skill is intentionally prose-first: the agent discovers the installed CLI, selects the appropriate workspace/tab/pane/agent primitive, and verifies state after every action. Long-running monitoring uses Herdr’s socket event subscriptions rather than polling.
+The skill discovers the installed CLI and keeps one current task table. Independent
+work runs in separate tabs and worktrees; related reviews use panes in the same
+tab. Workers stay interactive so you can follow their progress and take over.
+
+Monitoring uses bounded native WAIT commands followed by a short READ, with
+separate handling for host yields, timeouts, lost observers and stopped workers.
+It does not create custom polling daemons or promise background wakeups that
+your host cannot provide.
+
+For issue-driven projects, the workflow covers shared-contract ownership,
+separate worker/build/install budgets, standalone mission briefs, PR discovery,
+draft-to-ready handoffs, proportionate review, serial integration and prompt
+terminal cleanup. Closing a terminal never substitutes for merging its work.
+
+Install this skill on its own or with the pack. Local `dispatch`, `implement`
+and merge-conflict skills are optional companions; the core workflow is included
+here. Agent kind/model, test commands and delivery authority come from your
+request and project, rather than a fixed provider or approval policy.
+
+Try: “Use Herdr to group the confirmed issues into up to 20 independent
+worktrees, keep the agents interactive, and deliver each outcome through a
+reviewed PR. Show the dependency and resource plan first.”
