@@ -36,11 +36,11 @@ Workspaces are the top-level grouping containers in Herdr (analogous to multi-wi
 | Command | Syntax | Description |
 |---|---|---|
 | `list` | `herdr workspace list` | Lists all workspaces with active tab counts. |
-| `get` | `herdr workspace get --workspace <WS_ID>` | Inspects workspace details, tabs, and layout. |
-| `focus` | `herdr workspace focus --workspace <WS_ID>` | Switches active TUI view to the target workspace. |
-| `rename` | `herdr workspace rename --workspace <WS_ID> <LABEL>` | Sets human-readable workspace title. |
+| `get` | `herdr workspace get <WS_ID>` | Inspects workspace details, tabs, and layout. |
+| `focus` | `herdr workspace focus <WS_ID>` | Switches active TUI view to the target workspace. |
+| `rename` | `herdr workspace rename <WS_ID> <LABEL>` | Sets human-readable workspace title. |
 | `report-metadata` | `herdr workspace report-metadata --source <ID> <WS_ID> --token <KEY=VAL>` | Sets badge tokens or visual status in TUI sidebar. |
-| `close` | `herdr workspace close --workspace <WS_ID>` | Closes the workspace and all contained tabs. |
+| `close` | `herdr workspace close <WS_ID>` | Closes the workspace and all contained tabs. |
 
 ---
 
@@ -75,18 +75,18 @@ Terminal PTY execution surfaces.
 |---|---|---|
 | `current` | `herdr pane current` | Returns caller's live coordinates (`pane_id`, `tab_id`, `workspace_id`, `cwd`). |
 | `list` | `herdr pane list` | Returns JSON array of all active terminal panes. |
-| `get` | `herdr pane get --pane <PANE_ID>` | Inspects pane details, session metadata, scrollback. |
-| `layout` | `herdr pane layout --pane <PANE_ID>` | Shows tree layout coordinates ($x, y, w, h$). |
-| `process-info` | `herdr pane process-info --pane <PANE_ID>` | Inspects foreground and child OS process tree. |
+| `get` | `herdr pane get <PANE_ID>` | Inspects pane details, session metadata, scrollback. |
+| `layout` | `herdr pane layout [--pane <PANE_ID>]` | Shows tree layout coordinates ($x, y, w, h$). |
+| `process-info` | `herdr pane process-info [--pane <PANE_ID>]` | Inspects foreground and child OS process tree. |
 | `split` | `herdr pane split --pane <PANE_ID> --direction <right\|down> --cwd <DIR> [--no-focus]` | Splits an existing pane horizontally or vertically. |
-| `focus` | `herdr pane focus --pane <PANE_ID>` | Sets active cursor focus to target pane. |
+| `focus` | `herdr pane focus --direction <left\|right\|up\|down> [--pane <PANE_ID>]` | Sets active cursor focus to target pane. |
 | `resize` | `herdr pane resize --pane <PANE_ID> --direction <left\|right\|up\|down> --cells <N>` | Adjusts split boundary. |
 | `zoom` | `herdr pane zoom --pane <PANE_ID>` | Toggles full-tab maximization of the pane. |
-| `read` | `herdr pane read --pane <PANE_ID> [--source <visible\|recent\|recent-unwrapped>] [--lines <N>]` | Captures raw terminal screen buffer. |
-| `send-keys` | `herdr pane send-keys --pane <PANE_ID> <KEYS...>` | Sends key events (`enter`, `esc`, `ctrl+c`, etc.). |
-| `send-text` | `herdr pane send-text --pane <PANE_ID> "<TEXT>"` | Injects raw text into the PTY. |
+| `read` | `herdr pane read <PANE_ID> [--source <visible\|recent\|recent-unwrapped>] [--lines <N>]` | Captures raw terminal screen buffer. |
+| `send-keys` | `herdr pane send-keys <PANE_ID> <KEYS...>` | Sends key events (`enter`, `esc`, `ctrl+c`, etc.). |
+| `send-text` | `herdr pane send-text <PANE_ID> "<TEXT>"` | Injects raw text into the PTY. |
 | `run` | `herdr pane run <PANE_ID> "<CMD>"` | Injects text followed by Enter into the pane. |
-| `wait-output` | `herdr pane wait-output --pane <PANE_ID> --pattern "<REGEX>" [--timeout <MS>]` | Blocks until matching terminal output appears. |
+| `wait-output` | `herdr pane wait-output <--match <TEXT>\|--regex <PATTERN>> <PANE_ID> [--timeout <MS>]` | Blocks until matching terminal output appears. |
 | `close` | `herdr pane close <PANE_ID>` | Terminates PTY session and destroys pane. |
 
 ---

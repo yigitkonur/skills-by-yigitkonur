@@ -139,10 +139,10 @@ Instructions:
 ## 6. Step 4: Serial Merge & Conflict Resolution
 
 Follow [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md):
-1. Serially rebase approved candidate PRs onto moving `main`.
-2. If conflict markers occur, apply `resolving-merge-conflicts` principles to reconcile markers with semantic integrity and push with lease (`git push --force-with-lease`).
-3. Merge candidate into `main` (`gh pr merge --squash --delete-branch`).
-4. Retire workspace (`herdr workspace close`) and remove clean worktree (`git worktree remove`).
+1. Serially rebase approved candidate PRs onto moving `main`, using non-interactive continuation (`GIT_EDITOR=true git rebase --continue`).
+2. If conflict markers occur, reconcile markers with semantic integrity—never blindly choosing `--ours` or `--theirs`—and push with lease (`git push --force-with-lease -u origin "$BRANCH_NAME"`).
+3. Merge candidate into `main` (`gh pr merge "$PR_URL" --squash --delete-branch`). If reviewer and PR author share the same token, submit a review comment instead of self-approval before merging.
+4. Execute clean teardown: verify clean worktree, close Herdr tabs and workspace (`herdr workspace close "$WORKSPACE_ID"`), remove worktree (`git worktree remove "$WORKTREE_PATH"`), delete local branch (`git branch -D "$BRANCH_NAME"`), and prune remotes (`git remote prune origin`).
 
 ---
 
