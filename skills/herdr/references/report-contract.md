@@ -2,18 +2,40 @@
 
 Read this reference to understand the durable artifact contract, publication mechanics, consumption semantics, and native notification protocol for Herdr orchestration missions.
 
-This document is the **single canonical source of truth** for:
-1. Durable artifact kinds and schema definitions.
-2. Atomic report publication pipeline (`.partial` → verify → atomic rename → native notice).
-3. Concise native notice format and field parity.
-4. Manager consumption semantics (idempotency, digest checking, obsolete attempt pruning, receipt vs. approval).
-5. Reviewer Q/A and explicit return coordinate protocols.
+This document is the **single canonical source of truth** across all mission participants for:
+1. Upfront role-first triage and authority boundaries (CTO, EM, implementer, reviewer, integrator, recovery executor).
+2. Exactly two durable artifact kinds (mutable manager checkpoint `state.yaml`, immutable reports).
+3. Canonical producer report schema (explicit `role`, runtime, verified terminal, optional session, mounted skill path/revision).
+4. Atomic publication pipeline (write `.partial` → validate content → pre-flight collision check → atomic rename → native prompt notice).
+5. Concise native notice format with strict 1:1 field parity.
+6. Manager consumption semantics (registered identity matching, exact attempt matching, future attempt quarantine, obsolete attempt pruning, idempotent digest checks, mutation rejection, receipt vs. approval).
+7. Reviewer Q/A protocol and explicit return coordinates using portable placeholders.
 
 Other references (`event-monitoring.md`, `mission-briefs.md`, `parallel-capacity.md`, `stopped-agent-recovery.md`) route to this contract rather than duplicating its schemas.
 
 ---
 
-## 1. Architectural Core: Exactly Two Durable Artifact Kinds
+## 1. Role-First Triage Matrix: Runtime Is Not Role
+
+The same `SKILL.md` and reference graph are consumed by all participants. **Execution runtime (`agy`, `codex`, `claude`) is NOT role authority.**
+
+Before executing any instructions, cold readers must locate their assigned role in the matrix below to determine their exact operational boundaries, required sections, and forbidden duties:
+
+| Role | Runtime Host | Primary Authority | Permitted Sections | Strictly Out of Scope |
+|---|---|---|---|---|
+| **CTO** | Codex / Root PTY | Mission strategy, architectural boundaries, final candidate gate authority. | Sections 2, 6.5 (Receipt vs Approval Gate). | Daily task dispatch, PTY monitoring, worktree editing. |
+| **Engineering Manager (EM)** | Codex | Global task graph dispatch, checkpointing, report intake, reviewer Q/A relay. | Sections 2, 5 (Notice Intake), 6 (Consumption Semantics). | Direct production code editing, unassigned task execution. |
+| **Implementer** | AGY | Feature implementation, tests, local commits, report handback in assigned worktree. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 7, 8. | Modifying `state.yaml`, consuming peer reports, managing other workers. |
+| **Fresh Reviewer** | AGY | Clean-context evaluation of spec, code, tests, and diffs on assigned branch/head. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 8 (Q/A). | Editing implementation files, approving own work, managing task graph. |
+| **Integration Executor** | AGY | Serial Git/GitHub gating, draft PR lifecycle, packaging generation, cleanup. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice). | Parallel drafting, direct push to main without gate approval. |
+| **Recovery Executor** | AGY | Bounded diagnostic probes, process reconciliation, orphaned resource audit. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 7. | Re-launching live TUIs, executing production tasks without brief. |
+
+> [!IMPORTANT]
+> **No Management Hierarchy Bootstrapping**: Assigned AGY executors and reviewers must **never** initialize a secondary manager, create sub-managers, or modify `state.yaml`. All coordination flows through the designated Engineering Manager.
+
+---
+
+## 2. Architectural Core: Exactly Two Durable Artifact Kinds
 
 To eliminate split-brain state, race conditions, and unstructured log scraping, Herdr orchestration missions use **exactly two durable artifact kinds**:
 
@@ -21,31 +43,32 @@ To eliminate split-brain state, race conditions, and unstructured log scraping, 
 +---------------------------------------------------------------------------------------+
 | DURABLE MISSION ARTIFACT TOPOLOGY                                                     |
 +---------------------------------------------------------------------------------------+
-| KIND 1: MANAGER-OWNED CHECKPOINT (state.yaml & manager-m<N>-<purpose>.yaml)          |
-| - Location: Absolute mission run root outside disposable worktrees.                   |
+| KIND 1: MUTABLE MANAGER CHECKPOINT (state.yaml alone)                                 |
+| - Location: Absolute mission run root outside disposable worktrees (<REPORT_ROOT>).   |
 | - Owner: Codex Engineering Manager (EM) alone.                                        |
-| - Contents: Global task graph (dependencies, states, owners), active assignments,    |
-|   consumed producer report IDs & SHA-256 digests, decisions log, action log,          |
-|   pending unknown effects, recovery resume instructions.                              |
+| - Invariant: Sole mutable checkpoint file. Updated in place on task state transitions.|
+| - Contents: Global task graph, active assignments, registered identities, consumed    |
+|   report IDs and SHA-256 digests, decisions log, action log, recovery instructions.   |
 +---------------------------------------------------------------------------------------+
-| KIND 2: PRODUCER-OWNED IMMUTABLE YAML REPORTS (<task>-a<attempt>-<purpose>.yaml)       |
-| - Location: Absolute mission run root outside disposable worktrees.                   |
-| - Owner: Individual producer agent (AGY implementer, fresh reviewer, integrator).     |
-| - Contents: Strict YAML contract declaring identity, actual runtime/terminal, status, |
-|   truthful summary, evidence commands & exit codes, exact Git base/head, blockers,    |
+| KIND 2: IMMUTABLE YAML REPORTS (<task>-a<attempt>-<purpose>.yaml & manager-m<N>.yaml) |
+| - Location: Absolute mission run root outside disposable worktrees (<REPORT_ROOT>).   |
+| - Owners: Producer agents (implementer, reviewer, integrator) & Manager milestone logs.|
+| - Invariant: Strictly immutable once published. Never modified or overwritten in place|
+| - Contents: Strict YAML contract declaring task/attempt identity, assigned role,      |
+|   truthful status, evidence commands/results/exits, Git base/head, blockers,          |
 |   requested action, pending operations with unknown effects.                          |
-| - Invariant: Immutable once published. Never edited or overwritten in place.          |
 +---------------------------------------------------------------------------------------+
 ```
 
 ### Run Root Invariant
-Both artifact kinds reside in a single shared, absolute directory on the host filesystem (`report_root`, e.g., `/Users/mac/docs/superpowers/runs/<mission_id>`).
+Both artifact kinds reside in a single shared, absolute directory on the host filesystem (`<REPORT_ROOT>`, e.g., `/Users/mac/docs/superpowers/runs/<mission_id>`).
 - **Never write mission reports inside Git worktrees**: Worktrees are disposable ephemeral checkouts that may be reset, switched, or pruned upon task completion.
 - **Never communicate mission state via untyped raw terminal chat**: State changes must be anchored to an immutable YAML report.
+- **Manager Milestones are Kind 2**: Reports published by the manager (such as `manager-m1-bootstrap.yaml`) are immutable Kind 2 reports documenting checkpoints for the CTO; `state.yaml` alone is mutable.
 
 ---
 
-## 2. Canonical Producer Report Schema
+## 3. Canonical Producer Report Schema
 
 Every producer report must conform to this complete YAML schema:
 
@@ -53,28 +76,30 @@ Every producer report must conform to this complete YAML schema:
 schema_version: 1                        # Integer contract version (currently 1)
 mission_id: <string>                     # Unique mission identifier (e.g. herdr-codex-first-20260920)
 task_id: <string>                        # Task identifier from manager task graph (e.g. report_contract)
-attempt: <integer>                       # 1-indexed attempt counter (e.g. 1)
+attempt: <integer>                       # 1-indexed attempt counter assigned by EM (e.g. 1)
 report_id: <string>                      # Unique canonical ID: <task_id>-a<attempt>-<purpose>
 event_id: <string>                       # Optional fine-grained event tracker: <task_id>.<purpose>.<seq>
 
 producer:
-  runtime: <string>                      # Runtime binary name: agy | codex | claude
+  runtime: <string>                      # Runtime binary: agy | codex | claude
   model: <string>                        # Specific model identifier: gemini-3.8-flash-high | gpt-6-astra
-  pane_id: <string>                      # Herdr pane identifier: e.g. w3H:pA
-  tab_id: <string>                       # Herdr tab identifier: e.g. w3H:t8
-  terminal_id: <string>                  # Underlying PTY terminal ID: e.g. term_65beaae4006d89a
-  session_id: <string>                   # Unique agent session UUID
-  skill_revision: <string>               # Optional SHA or git revision of loaded skill
+  role: <string>                         # Assigned role: implementer | reviewer | integrator | recovery_executor
+  pane_id: <string>                      # Herdr pane identifier: e.g. <PRODUCER_PANE_ID>
+  tab_id: <string>                       # Herdr tab identifier: e.g. <PRODUCER_TAB_ID>
+  terminal_id: <string>                  # Underlying PTY terminal ID: e.g. <PRODUCER_TERM_ID>
+  session_id: <string|null>              # Agent session UUID; if unexposed/unavailable, record null or "unavailable"
+  skill_path: <string>                   # Absolute path to mounted skill: e.g. /path/to/skills/herdr/SKILL.md
+  skill_revision: <string>               # Git commit SHA or version of loaded skill
 
 manager:
-  pane_id: <string>                      # Manager return pane: e.g. w3H:p8
-  tab_id: <string>                       # Manager return tab: e.g. w3H:t6
+  pane_id: <string>                      # Manager return pane: e.g. <MANAGER_PANE_ID>
+  tab_id: <string>                       # Manager return tab: e.g. <MANAGER_TAB_ID>
 
 cto:
-  pane_id: <string>                      # Root CTO return pane: e.g. w3H:p3
-  tab_id: <string>                       # Root CTO return tab: e.g. w3H:t3
+  pane_id: <string>                      # Root CTO return pane: e.g. <CTO_PANE_ID>
+  tab_id: <string>                       # Root CTO return tab: e.g. <CTO_TAB_ID>
 
-status: <string>                         # Enum: in_progress | completed | blocked | failed | milestone
+status: <string>                         # Enum: in_progress | completed | blocked | failed | milestone | registered
 summary: <string>                        # Concise, truthful executive summary of progress or findings
 
 evidence:                                # Structured log of every verification check executed
@@ -112,23 +137,26 @@ pending_operations:                      # Operations initiated whose side effec
 
 ---
 
-## 3. Atomic Publication Pipeline
+## 4. Atomic Publication Pipeline (No-Clobber & Verified)
 
-To prevent the manager or automated observers from reading partially written or corrupted YAML files, all producers must adhere strictly to the **4-step publication pipeline**:
+To prevent the manager or automated observers from reading partially written, corrupted, or clobbered YAML files, all producers must adhere strictly to the **4-step publication pipeline**:
 
 ```
 [ Step 1: Write .partial ]
        │  Producer generates report via apply_patch to:
-       │  <report_root>/<report_id>.partial
+       │  <REPORT_ROOT>/<report_id>.partial
        ▼
-[ Step 2: Validate Content ]
-       │  Producer executes syntax and schema check:
-       │  python3 -c "import yaml; yaml.safe_load(open('<report_id>.partial'))"
-       │  and calculates SHA-256 digest.
+[ Step 2: Validate Content & Compute SHA-256 ]
+       │  Producer executes syntax validation and computes SHA-256 digest:
+       │  python3 -c "import yaml; yaml.safe_load(open('<REPORT_ROOT>/<report_id>.partial'))"
+       │  (or standard library Python validation where PyYAML is not installed)
        ▼
-[ Step 3: Same-Filesystem Atomic Rename ]
-       │  Producer executes POSIX atomic replace:
-       │  mv <report_root>/<report_id>.partial <report_root>/<report_id>.yaml
+[ Step 3: Collision Pre-Flight & Atomic Rename ]
+       │  Producer verifies destination does NOT exist:
+       │  test ! -e <REPORT_ROOT>/<report_id>.yaml || { echo 'Destination exists!'; exit 1; }
+       │  Then POSIX atomic replace without clobber:
+       │  mv -n <REPORT_ROOT>/<report_id>.partial <REPORT_ROOT>/<report_id>.yaml
+       │  Verify file exists post-rename: test -f <REPORT_ROOT>/<report_id>.yaml
        ▼
 [ Step 4: Native Prompt Notice (No-Wait) ]
           Producer alerts manager via Herdr PTY prompt without blocking:
@@ -136,17 +164,18 @@ To prevent the manager or automated observers from reading partially written or 
 ```
 
 ### Publication Rules
-1. **Command-Capable AGY Requirement**: Google Antigravity CLI (AGY) workers have full tool execution capabilities (`run_command`, `apply_patch`, git, python). Never use non-atomic file writes, raw string redirection (`>`), or file-only fallbacks that weaken this publication sequence.
-2. **Same-Filesystem Invariant**: The `.partial` file must be written in the same directory as the final `.yaml` destination so that `mv` executes a POSIX atomic rename (`rename(2)`), avoiding cross-device copy tearing.
-3. **Immutable After Rename**: Once a report is renamed to `.yaml`, it is immutable. A producer must never edit an existing report. If additional progress occurs or corrections are needed, publish a new report with an incremented attempt number or distinct purpose suffix (e.g. `report_contract-a1-checkpoint2`).
+1. **Command-Capable AGY Requirement**: Google Antigravity CLI (AGY) workers have full tool execution capabilities (`apply_patch`, git, python). Never use non-atomic file writes, raw string redirection (`>`), or file-only fallbacks that weaken this publication sequence.
+2. **No-Overwrite Invariant**: A published report is immutable. The pre-flight check in Step 3 ensures that if a destination file `<REPORT_ROOT>/<report_id>.yaml` already exists, publication aborts with an error rather than silently overwriting evidence.
+3. **No Producer Attempt Increments**: The Engineering Manager alone owns incrementing `attempt` numbers. If a producer needs to publish corrections, progress updates, or revisions within an assigned attempt, it must generate a **new unique `report_id`** with a descriptive purpose suffix (e.g. `report_contract-a1-revision1.yaml`), leaving prior published reports untouched.
+4. **No Undeclared Dependencies**: Validation in Step 2 uses available system tooling. In Python environments where PyYAML is present, `yaml.safe_load` may be used on YAML files; where absent, Python standard-library parsing (`json`, token checks, or structured field inspection) provides clean validation without installing new packages. Do not implement a fake or non-standard YAML parser.
 
 ---
 
-## 4. Concise Native Notice Contract
+## 5. Concise Native Notice Contract
 
 Immediately after renaming the report file, the producer notifies the manager using `herdr agent prompt` **without `--wait`**.
 
-### Notice Fields
+### Notice Fields (1:1 Parity)
 The notice uses **identical field names** to the report identity to ensure mechanical, unambiguous parsing by the manager:
 
 ```text
@@ -162,10 +191,10 @@ requested_action: <requested_action>
 ```
 
 ### Standard Single-Line Format
-For maximum terminal compatibility and conciseness across agent runtimes, format the notification as a single structured line:
+For maximum terminal compatibility across agent runtimes, format the notification as a single structured line using discovered coordinates:
 
 ```text
-REPORT NOTICE: mission_id=herdr-codex-first-20260920 task_id=report_contract attempt=1 report_id=report_contract-a1-handback pane_id=w3H:pA tab_id=w3H:t8 report_path=/Users/mac/docs/superpowers/runs/herdr-codex-first-20260920/report_contract-a1-handback.yaml status=completed requested_action=review_candidate
+REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<REPORT_ID> pane_id=<ORIGIN_PANE_ID> tab_id=<ORIGIN_TAB_ID> report_path=<REPORT_PATH> status=<STATUS> requested_action=<REQUESTED_ACTION>
 ```
 
 ### Why `--wait` Is Prohibited in Worker Notices
@@ -176,9 +205,9 @@ REPORT NOTICE: mission_id=herdr-codex-first-20260920 task_id=report_contract att
 
 ---
 
-## 5. Manager Consumption Semantics
+## 6. Manager Consumption Semantics
 
-When the Engineering Manager receives a report notification (or discovers a report during state reconciliation), it applies the following consumption semantics:
+When the Engineering Manager receives a report notification (or discovers an unconsumed report during state reconciliation), it executes the following strict consumption sequence:
 
 ```
                         [ Notice Received / Discovered ]
@@ -186,42 +215,58 @@ When the Engineering Manager receives a report notification (or discovers a repo
                                        ▼
                          [ Read & Calculate SHA-256 ]
                                        │
+                  Does producer match registered assignment?
+                   (pane_id, tab_id, role, runtime match?)
+                                ├─── No ───► [ REJECT UNREGISTERED PRODUCER ]
+                               Yes
+                                │
+                                ▼
+              Does attempt match current_assigned_attempt?
+                                ├─── attempt > current ──► [ QUARANTINE FUTURE ATTEMPT ]
+                                ├─── attempt < current ──► [ REJECT OBSOLETE ATTEMPT ]
+                                │                          (Record evidence; do not advance)
+                     attempt == current
+                                │
+                                ▼
                         Does report_id already exist?
-                                ├─── No ───► [ Record Digest in state.yaml ]
-                                │                        │
-                               Yes                       ▼
-                                │              Is attempt >= current?
-                                ▼                        ├─── Yes ──► [ Consume & Advance Task ]
-                     Does digest match existing?         │
-                        ├─── Yes ──► [ Idempotent No-Op ] No
-                        │                                │
-                        No                               ▼
-                        │                      [ Log Obsolete Attempt; Ignore ]
+                                ├─── No ───► [ Record in state.yaml & Advance Task ]
+                               Yes
+                                │
+                                ▼
+                     Does digest match existing?
+                        ├─── Yes ──► [ Idempotent Duplicate; No-Op ]
+                        No
+                        │
                         ▼
-             [ REJECT MUTATED REPORT ]
+             [ REJECT MUTATED REPORT (MUTATED_REPORT_REJECTED) ]
 ```
 
-### 1. Idempotent Digest Consumption
+### 1. Registered Producer Matching
+The manager verifies that the report's `producer` fields (`pane_id`, `tab_id`, `role`, `runtime`) match the exact registered agent assigned to that task in `state.yaml`. Unregistered origins are rejected.
+
+### 2. Strict Attempt Matching & Future Quarantine
+- **Exact Match (`attempt == current`)**: Normal processing path.
+- **Future Attempt (`attempt > current`)**: **Quarantined**. An unassigned future attempt cannot advance the task graph without prior manager dispatch.
+- **Obsolete Attempt (`attempt < current`)**: **Rejected from advancing state**. Logged as historical audit evidence only.
+
+### 3. Idempotent Digest Consumption
 - The manager calculates the SHA-256 digest of the target report file.
-- If the `report_id` has already been recorded in `state.yaml` with the identical SHA-256 digest, the notice is treated as an **idempotent duplicate**. The manager acknowledges receipt without re-executing task graph transitions.
+- If the `report_id` has already been recorded in `state.yaml` with an **identical SHA-256 digest**, the notice is consumed as an **idempotent duplicate**. The manager acknowledges receipt without re-executing task graph transitions.
 
-### 2. Mutated Same-ID Rejection
+### 4. Mutated Same-ID Rejection
 - If an incoming report matches an existing `report_id` in `state.yaml` but has a **different SHA-256 digest**, the manager flags a critical protocol violation: `MUTATED_REPORT_REJECTED`.
-- The modified file is rejected, and the manager alerts the producer to republish under a fresh `attempt` or `report_id`.
+- The file is rejected, and the manager alerts the producer to publish under a fresh `report_id`.
 
-### 3. Obsolete-Attempt Pruning
-- If a report arrives for an attempt lower than the currently recorded attempt (`attempt < current_task_attempt`), it is logged as historical evidence but **cannot advance or revert the task state**.
-
-### 4. Report Receipt vs. Approval
-- **Receipt is NOT Approval**: Acknowledging receipt of a producer report only confirms that evidence has been captured.
-- **Approval Gate**: Advancing a task to `approved`, `ready_for_review`, or `integrated` requires independent technical verification (e.g. fresh AGY review, check execution, or CTO candidate sign-off).
+### 5. Report Receipt vs. Candidate Approval
+- **Receipt is NOT Approval**: Acknowledging receipt of a producer report only registers evidence in `state.yaml`.
+- **Approval Gate**: Advancing a task to `approved`, `ready_for_review`, or `integrated` requires independent technical verification (fresh AGY review, check execution, or CTO candidate sign-off).
 
 ---
 
-## 6. Checkpoint Cadence & Timeouts
+## 7. Checkpoint Cadence & Timeouts
 
 ### Meaningful Transition Checkpoints
-Producers and managers must publish checkpoints at meaningful state boundaries:
+Producers and managers publish checkpoints at meaningful state boundaries:
 1. **Registration**: Discovery of actual pane/tab coordinates and runtime confirmation.
 2. **Baseline Reconciliation**: Verification of remote base SHA, worktree provisioning, and tool check.
 3. **Blocker Encountered**: Unresolvable dependency mismatch, tool failure, or architectural seam.
@@ -231,11 +276,11 @@ Producers and managers must publish checkpoints at meaningful state boundaries:
 ### The 10-Minute Silent Boundary Rule
 - Multi-agent operations must never rely on fictional cron schedulers, hidden background daemons, or unverified background wake promises.
 - If an agent operates silently without an external notification or state transition for **ten minutes**, the agent must generate a checkpoint report at its **next safe tool boundary**.
-- The checkpoint records current progress, active processes, and any pending operations with unknown effects, ensuring that if context compaction or interruption occurs, the mission can resume deterministically.
+- The checkpoint records current progress, active processes, and any pending operations with unknown effects.
 
 ---
 
-## 7. Reviewer Q/A Protocol & Return Coordinates
+## 8. Reviewer Q/A Protocol & Return Coordinates
 
 When an independent AGY reviewer or manager requires clarification on a candidate, communication must be structured to prevent informal, untracked chatter:
 
@@ -245,10 +290,10 @@ Every question submitted to a peer or manager must include:
 ```text
 QUESTION NOTICE:
 question_id: <task_id>-q<seq>
-target_pane: <target_pane_id>
-target_tab: <target_tab_id>
-reply_pane: <origin_pane_id>
-reply_tab: <origin_tab_id>
+target_pane: <TARGET_PANE_ID>
+target_tab: <TARGET_TAB_ID>
+reply_pane: <ORIGIN_PANE_ID>
+reply_tab: <ORIGIN_TAB_ID>
 finding_evidence: <file_path_and_line_or_command_output>
 options:
   1. <option_1>
@@ -258,55 +303,58 @@ recommendation: <recommended_option>
 
 ### Manager Visibility Invariant
 - Peer-to-peer inquiries must remain visible to the Engineering Manager.
-- If the target agent's runtime does not support direct interactive prompt reception, the question is routed directly to the manager (`w3H:p8`), who logs the question in `state.yaml` and relays it to the appropriate worker.
+- If the target agent's runtime does not support direct interactive prompt reception, the question is routed directly to the manager (`<MANAGER_PANE_ID>`), who logs the question in `state.yaml` and relays it to the appropriate worker.
 
 ---
 
-## 8. Complete Concrete Example
+## 9. Concrete Portable Example (Synthetic Example Labeled)
 
-### Valid Producer YAML Report (`report_contract-a1-handback.yaml`)
+*The following is a synthetic example demonstrating valid field relationships, portable placeholders, and executable evidence check commands.*
+
+### Synthetic Producer YAML Report (`<task_id>-a1-handback.yaml`)
 
 ```yaml
 schema_version: 1
-mission_id: herdr-codex-first-20260920
-task_id: report_contract
+mission_id: sample-mission-20260920
+task_id: sample_feature
 attempt: 1
-report_id: report_contract-a1-handback
-event_id: report_contract.handback.1
+report_id: sample_feature-a1-handback
+event_id: sample_feature.handback.1
 producer:
   runtime: agy
   model: gemini-3.8-flash-high
-  pane_id: w3H:pA
-  tab_id: w3H:t8
-  terminal_id: term_65beaae4006d89a
-  session_id: ccc084c9-608c-43da-9a12-660f17d888fd
+  role: implementer
+  pane_id: <PRODUCER_PANE_ID>
+  tab_id: <PRODUCER_TAB_ID>
+  terminal_id: <PRODUCER_TERM_ID>
+  session_id: null                       # Recorded as null when runtime does not expose session UUID
+  skill_path: /path/to/skills/herdr/SKILL.md
   skill_revision: ce4dc7325241f8a3269047934c31131274019c7c
 manager:
-  pane_id: w3H:p8
-  tab_id: w3H:t6
+  pane_id: <MANAGER_PANE_ID>
+  tab_id: <MANAGER_TAB_ID>
 cto:
-  pane_id: w3H:p3
-  tab_id: w3H:t3
+  pane_id: <CTO_PANE_ID>
+  tab_id: <CTO_TAB_ID>
 status: completed
 summary: >-
-  Implemented the single canonical report contract reference at skills/herdr/references/report-contract.md.
-  Defines the two durable artifact kinds, atomic publication pipeline, concise notice format,
-  idempotent manager consumption rules, reviewer Q/A protocol, and return coordinates.
+  Implemented feature logic in assigned worktree. Verified all unit tests and diff checks pass.
+  Report published following atomic 4-step pipeline.
 evidence:
-  - command: git diff --check
+  - command: "git diff --check"
     exit_code: 0
-    result: "Clean git diff check; no trailing whitespaces or syntax issues."
-  - command: python3 -c "import yaml; yaml.safe_load(open('skills/herdr/references/report-contract.md'))"
+    result: "Clean diff check; zero whitespace or formatting defects."
+  - command: "python3 -c \"import yaml; data = yaml.safe_load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\""
     exit_code: 0
-    result: "Embedded YAML schemas and examples verified valid."
+    result: "Target YAML report file verified structurally valid."
 git:
   base: ce4dc7325241f8a3269047934c31131274019c7c
   head: 8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b
-  branch: lane/report-contract
-  worktree: /Users/mac/docs/superpowers/worktrees/herdr-codex-first-20260920/report-contract
+  branch: lane/sample-feature
+  worktree: <WORKTREE_ROOT>/sample-feature
   pr: null
 files:
-  - skills/herdr/references/report-contract.md
+  - src/feature.ts
 blockers: []
 requested_action: review_candidate
 pending_operations: []
@@ -316,7 +364,7 @@ pending_operations: []
 The producer executes this shell command to notify the manager:
 
 ```bash
-herdr agent prompt w3H:p8 'REPORT NOTICE: mission_id=herdr-codex-first-20260920 task_id=report_contract attempt=1 report_id=report_contract-a1-handback pane_id=w3H:pA tab_id=w3H:t8 report_path=/Users/mac/docs/superpowers/runs/herdr-codex-first-20260920/report_contract-a1-handback.yaml status=completed requested_action=review_candidate'
+herdr agent prompt <MANAGER_PANE_ID> 'REPORT NOTICE: mission_id=sample-mission-20260920 task_id=sample_feature attempt=1 report_id=sample_feature-a1-handback pane_id=<PRODUCER_PANE_ID> tab_id=<PRODUCER_TAB_ID> report_path=<REPORT_ROOT>/sample_feature-a1-handback.yaml status=completed requested_action=review_candidate'
 ```
 
-Notice that **every identity field matches identically** between the YAML report and the native notice string.
+All identity fields match identically between the YAML report and the native notice string.
