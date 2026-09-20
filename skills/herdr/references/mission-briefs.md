@@ -213,11 +213,11 @@ Read only these references:
    - Rebase candidate branch serially onto current `origin/main`:
      `git -C <WORKTREE_PATH> rebase origin/main`
    - Run complete test suite and linters on rebased code: `<test_command>`.
-2. **Packaging & Marketplace Generation**:
-   - Run repository generator: `python3 scripts/gen-marketplace.py`
-   - Run validation suite: `python3 scripts/validate-skills.py`
+2. **Packaging & Repository Generation**:
+   - Run task-supplied repository generator: `<repo_generator_command>` (e.g., `python3 scripts/gen-marketplace.py` in packaging repos, or omit if none).
+   - Run repository validation suite: `<validation_command>` (e.g., `python3 scripts/validate-skills.py` or project test suite).
    - Run diff hygiene check: `git diff --check`
-   - Ensure zero unlinked references or packaging discrepancies.
+   - Ensure zero unlinked references, syntax errors, or packaging discrepancies.
 3. **PR & Delivery Handling**:
    - **Unmerged PR Delivery** (for missions ending at unmerged draft PR):
      Push verified candidate branch: `git push origin <BRANCH_NAME>`
