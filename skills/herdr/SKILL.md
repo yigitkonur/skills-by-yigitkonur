@@ -17,7 +17,7 @@ Every cold reader identifies its assigned role first. The same skill and referen
 
 | Assigned Role | Authority & Scope | Execute | Skip |
 |---|---|---|---|
-| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. Bounded observation of EM checkpoint and worker evidence via report files on disk. When outside a Herdr pane, CTO reads reports manually and queries EM — native pane controls and callbacks are unavailable. | §1, §2 (CTO path), Canonical References | §3–§6 execution (delegate to EM) |
+| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. Bounded observation of EM checkpoint and worker evidence via report files on disk. When outside a Herdr pane, CTO reads reports manually and queries EM — explicit-target CLI is available, but native callback address is absent. | §1, §2 (CTO path), Canonical References | §3–§6 execution (delegate to EM) |
 | **Engineering Manager (EM)** | Central orchestration: `state.yaml`, task dispatch, capacity, report intake, reviewer Q/A relay, milestone publication. | §1–§7 | Direct feature code authoring; pushing to `main` |
 | **Implementer** | Feature implementation, TDD, local commits, atomic report publication in assigned worktree. | §1, §2, §4, Canonical References | §3 (EM-only); editing `state.yaml`; managing peers; bootstrapping management |
 | **Fresh Reviewer** | Independent read-only audit of exact candidate commit SHA in clean context. Receives review pane ID and candidate SHA in EM brief; does not spawn topology. | §1, §2 (own coordinates only), §5 (review steps), Canonical References | §3, §4, §6; editing production code; advancing branches; spawning subagents |
@@ -61,7 +61,7 @@ When the CTO operates outside a Herdr pane (no `HERDR_ENV`), step 1 uses explici
 test "${HERDR_ENV:-}" = 1 || echo "WARNING: Not inside a Herdr-managed pane"
 ```
 
-CTO may operate outside a Herdr pane (e.g., terminal session or API). When `HERDR_ENV` is unset, the CTO cannot receive native `herdr agent prompt` callbacks or use pane-based controls. The CTO reads EM milestone reports and `state.yaml` from the shared run root on disk, and queries the EM through whatever channel is available (e.g., direct terminal access, `herdr agent prompt` if CLI-reachable, or manual observation). This is the degraded CTO boundary — do not promise controls that require an active pane.
+CTO may operate outside a Herdr pane (e.g., terminal session or API). When `HERDR_ENV` is unset, explicit-target CLI commands (such as `herdr agent read`) remain available, but native `herdr agent prompt` callbacks targeting the CTO are absent. The CTO reads EM milestone reports and `state.yaml` from the shared run root on disk, and queries the EM through whatever channel is available (e.g., direct terminal access, `herdr agent prompt` targeting the EM pane if CLI-reachable, or manual observation). This is the degraded CTO boundary — do not promise controls that require a native callback address.
 
 ### 2b. Discover Own Coordinates (Pane Roles Only)
 
@@ -230,7 +230,8 @@ When an agent is `blocked` on interactive confirmation, Herdr rejects `herdr age
 When Herdr detection reports `unknown` for a known AGY process:
 
 1. Confirm foreground AGY via `herdr pane process-info --pane <PANE_ID>`.
-2. Use `herdr pane run <PANE_ID> <TEXT>...` as verified fallback. This injects the literal text into the pane followed by Enter — it is keystroke injection, not OS shell execution. Never use on an unverified foreground program or relaunch over a live TUI.
+2. Inspect `herdr pane read <PANE_ID> --source visible` to verify an input-ready composer and confirm no modal is active before injecting input. Foreground process alone is insufficient for safe input.
+3. Use `herdr pane run <PANE_ID> <TEXT>...` as verified fallback. This injects the literal text into the pane followed by Enter — it is keystroke injection, not OS shell execution. Never use on an unverified foreground program or relaunch over a live TUI.
 
 ### Targeted Intervention
 
