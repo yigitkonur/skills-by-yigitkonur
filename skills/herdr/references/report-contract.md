@@ -23,7 +23,7 @@ Before executing any instructions, cold readers must locate their assigned role 
 
 | Role | Runtime Host | Primary Authority | Permitted Sections | Strictly Out of Scope |
 |---|---|---|---|---|
-| **CTO** | Codex / Root PTY | Mission strategy, architectural boundaries, final candidate gate authority, bounded native observation. | Sections 2, 6.5 (Receipt vs Approval Gate). | Daily task dispatch, worktree editing. |
+| **CTO** | Codex / Root PTY | Mission strategy, architectural boundaries, final candidate gate authority, CLI control of explicit targets, bounded native observation. | Sections 2, 6.5 (Receipt vs Approval Gate). | Daily task dispatch, worktree editing. |
 | **Engineering Manager (EM)** | Codex | Global task graph dispatch, checkpointing, report intake, milestone publication, reviewer Q/A relay. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice Intake), 6 (Consumption Semantics). | Direct production code editing, unassigned task execution. |
 | **Implementer** | AGY | Feature implementation, tests, local commits, report handback in assigned worktree. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 7, 8. | Modifying `state.yaml`, consuming peer reports, managing other workers. |
 | **Fresh Reviewer** | AGY | Clean-context evaluation of spec, code, tests, and diffs on assigned branch/head. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 8 (Q/A). | Editing implementation files, approving own work, managing task graph. |
@@ -32,6 +32,9 @@ Before executing any instructions, cold readers must locate their assigned role 
 
 > [!IMPORTANT]
 > **No Management Hierarchy Bootstrapping**: Assigned AGY executors and reviewers must **never** initialize a secondary manager, create sub-managers, or modify `state.yaml`. All coordination flows through the designated Engineering Manager.
+
+> [!NOTE]
+> **Non-Pane CTO Boundary**: When operating from a Root PTY outside Herdr, the CTO retains full CLI control over explicit known pane targets (`herdr agent read`, `herdr agent prompt`, etc.) and performs manual observation of shared run root artifacts. Because a non-pane CTO lacks a native Herdr callback pane, reports truthfully record `cto.pane_id: null` and `cto.tab_id: null`. Workers never fabricate CTO callback coordinates; all worker notices route to the Engineering Manager.
 
 ---
 
@@ -61,7 +64,7 @@ To eliminate split-brain state, race conditions, and unstructured log scraping, 
 ```
 
 ### Run Root Invariant
-Both artifact kinds reside in a single shared, absolute directory on the host filesystem (`<REPORT_ROOT>`, e.g., `/Users/mac/docs/superpowers/runs/<mission_id>`).
+Both artifact kinds reside in a single shared, absolute directory on the host filesystem (`<REPORT_ROOT>`, e.g., `<RUNS_DIR>/<mission_id>`).
 - **Never write mission reports inside Git worktrees**: Worktrees are disposable ephemeral checkouts that may be reset, switched, or pruned upon task completion.
 - **Never communicate mission state via untyped raw terminal chat**: State changes must be anchored to an immutable YAML report.
 - **Manager Milestones are Kind 2**: Reports published by the manager (such as `manager-m1-bootstrap.yaml`) are immutable Kind 2 reports documenting checkpoints for the CTO; `state.yaml` alone is mutable.
@@ -96,14 +99,14 @@ manager:
   tab_id: <string>                       # Manager return tab: e.g. <MANAGER_TAB_ID>
 
 cto:
-  pane_id: <string>                      # Root CTO return pane: e.g. <CTO_PANE_ID>
-  tab_id: <string>                       # Root CTO return tab: e.g. <CTO_TAB_ID>
+  pane_id: <string|null>                 # Root CTO return pane; null if CTO operates outside Herdr (Root PTY) without callback pane
+  tab_id: <string|null>                  # Root CTO return tab; null if CTO has no Herdr tab
 
 status: <string>                         # Enum: in_progress | completed | blocked | failed | milestone | registered
 summary: <string>                        # Concise, truthful executive summary of progress or findings
 
 evidence:                                # Structured log of every verification check executed
-  - command: <string>                    # Exact shell command executed
+  - command: <string>                    # Exact shell command executed (e.g. git diff --check, sentry-cli --version, pytest)
     exit_code: <integer>                 # Observed return code (0 = success)
     result: <string>                     # Observed output snippet, test counts, or error diagnostic
 
@@ -229,8 +232,9 @@ When the Engineering Manager receives a report notification (or discovers an unc
                                        ▼
                          [ Read & Calculate SHA-256 ]
                                        │
-                  Does producer match registered assignment?
-                   (pane_id, tab_id, role, runtime match?)
+                  Does report match registered assignment?
+                (mission_id, task_id, pane_id, tab_id, terminal_id,
+                 role, runtime; session_id if registered)
                                 ├─── No ───► [ REJECT UNREGISTERED PRODUCER ]
                                Yes
                                 │
@@ -255,8 +259,22 @@ When the Engineering Manager receives a report notification (or discovers an unc
              [ REJECT MUTATED REPORT (MUTATED_REPORT_REJECTED) ]
 ```
 
-### 1. Registered Producer Matching
-The manager verifies that the report's `producer` fields (`pane_id`, `tab_id`, `role`, `runtime`) match the exact registered agent assigned to that task in `state.yaml`. Unregistered origins are rejected.
+### 1. Registered Producer Matching & Provenance Verification
+The manager verifies that the incoming report's top-level `mission_id` and `task_id` match the current mission and assigned task, and that the `producer` identity fields match the active registered assignment in `state.yaml`:
+- **Required registered matches**: `pane_id`, `tab_id`, `terminal_id`, `role`, `runtime`.
+- **Exposed session metadata**: When `session_id` (or session kind/source/value) is exposed by the runtime and recorded during registration, it must match. When unexposed or unavailable, it is recorded honestly as `null` or `"unavailable"`.
+- **Identity semantics and limitations**:
+  - PTY `terminal_id` may persist across agent process/CLI restarts in the same pane; it is not a guaranteed unique runtime generation identifier.
+  - Native `session_id` may be resumed or compacted across restarts; it is not a universal guarantee of per-instance uniqueness.
+  - No identity field or combination thereof cryptographically proves author identity; Herdr does not invent a synthetic identity generation service.
+- **Manager-owned attempts and ambiguous report quarantine**:
+  - Disambiguation and lifecycle governance are strictly owned by the Engineering Manager via `state.yaml` assignment records and explicit attempt progression.
+  - If an unexpected report arrives with ambiguous provenance (e.g. after a crash, unannounced restart, or mismatched attempt), the manager **quarantines the report** and requires explicit re-registration before evaluating evidence.
+- **Verified native pane move**:
+  - When the CTO or EM moves a pane across tabs via `herdr pane move` (e.g. moving a manager pane to a new tab), the `tab_id` updates while `pane_id`, `terminal_id`, and `session_id` remain stable.
+  - The manager records legitimate old and new `tab_id` history in `state.yaml` and updates peer return coordinates.
+  - Historical published reports retain their original `tab_id` at the time of publication without retroactive modification.
+  - Unexplained identity drift (e.g. unregistered tab or pane changes) is rejected.
 
 ### 2. Strict Attempt Matching & Future Quarantine
 - **Exact Match (`attempt == current`)**: Normal processing path.
@@ -328,56 +346,70 @@ recommendation: <recommended_option>
 ### Synthetic Producer YAML Report (`<task_id>-a1-handback.yaml`)
 
 ```yaml
-schema_version: 1
-mission_id: sample-mission-20260920
-task_id: sample_feature
-attempt: 1
-report_id: sample_feature-a1-handback
-event_id: sample_feature.handback.1
-producer:
-  runtime: agy
-  model: gemini-3.8-flash-high
-  role: implementer
-  pane_id: <PRODUCER_PANE_ID>
-  tab_id: <PRODUCER_TAB_ID>
-  terminal_id: <PRODUCER_TERM_ID>
-  session_id: null                       # Recorded as null when runtime does not expose session UUID
-  skill_path: /path/to/skills/herdr/SKILL.md
-  skill_revision: ce4dc7325241f8a3269047934c31131274019c7c
-manager:
-  pane_id: <MANAGER_PANE_ID>
-  tab_id: <MANAGER_TAB_ID>
-cto:
-  pane_id: <CTO_PANE_ID>
-  tab_id: <CTO_TAB_ID>
-status: completed
-summary: >-
-  Implemented feature logic in assigned worktree. Verified all unit tests and diff checks pass.
-  Report published following atomic 4-step pipeline.
-evidence:
-  - command: "git diff --check"
-    exit_code: 0
-    result: "Clean diff check; zero whitespace or formatting defects."
-  - command: "python3 -c \"import json; data = json.load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\""
-    exit_code: 0
-    result: "JSON-formatted YAML report validated via stdlib json.load."
-  - command: "python3 -c \"import json; json.load(open('standard-yaml-report.yaml'))\""
-    exit_code: 1
-    result: "json.decoder.JSONDecodeError — json.load cannot parse standard (non-JSON) YAML. Use yaml.safe_load when PyYAML is available, or author reports as JSON-formatted YAML for stdlib validation."
-  - command: "shasum -a 256 <REPORT_ROOT>/sample_feature-a1-handback.yaml"
-    exit_code: 0
-    result: "<EXPECTED_DIGEST>  <REPORT_ROOT>/sample_feature-a1-handback.yaml (matches Step 2c digest)"
-git:
-  base: ce4dc7325241f8a3269047934c31131274019c7c
-  head: 8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b
-  branch: lane/sample-feature
-  worktree: <WORKTREE_ROOT>/sample-feature
-  pr: null
-files:
-  - src/feature.ts
-blockers: []
-requested_action: review_candidate
-pending_operations: []
+{
+  "schema_version": 1,
+  "mission_id": "sample-mission-20260920",
+  "task_id": "sample_feature",
+  "attempt": 1,
+  "report_id": "sample_feature-a1-handback",
+  "event_id": "sample_feature.handback.1",
+  "producer": {
+    "runtime": "agy",
+    "model": "gemini-3.8-flash-high",
+    "role": "implementer",
+    "pane_id": "<PRODUCER_PANE_ID>",
+    "tab_id": "<PRODUCER_TAB_ID>",
+    "terminal_id": "<PRODUCER_TERM_ID>",
+    "session_id": null,
+    "skill_path": "/path/to/skills/herdr/SKILL.md",
+    "skill_revision": "ce4dc7325241f8a3269047934c31131274019c7c"
+  },
+  "manager": {
+    "pane_id": "<MANAGER_PANE_ID>",
+    "tab_id": "<MANAGER_TAB_ID>"
+  },
+  "cto": {
+    "pane_id": "<CTO_PANE_ID>",
+    "tab_id": "<CTO_TAB_ID>"
+  },
+  "status": "completed",
+  "summary": "Implemented feature logic in assigned worktree. Verified all unit tests, error telemetry checks, and diff checks pass. Report published following atomic 4-step pipeline.",
+  "evidence": [
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "Clean diff check; zero whitespace or formatting defects."
+    },
+    {
+      "command": "python3 -c \"import json; data = json.load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\"",
+      "exit_code": 0,
+      "result": "JSON-formatted YAML report validated via stdlib json.load."
+    },
+    {
+      "command": "sentry-cli --version",
+      "exit_code": 0,
+      "result": "sentry-cli 3.8.0"
+    },
+    {
+      "command": "shasum -a 256 <REPORT_ROOT>/sample_feature-a1-handback.yaml",
+      "exit_code": 0,
+      "result": "<EXPECTED_DIGEST>  <REPORT_ROOT>/sample_feature-a1-handback.yaml (matches Step 2c digest)"
+    }
+  ],
+  "git": {
+    "base": "ce4dc7325241f8a3269047934c31131274019c7c",
+    "head": "8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b",
+    "branch": "lane/sample-feature",
+    "worktree": "<WORKTREE_ROOT>/sample-feature",
+    "pr": null
+  },
+  "files": [
+    "src/feature.ts"
+  ],
+  "blockers": [],
+  "requested_action": "review_candidate",
+  "pending_operations": []
+}
 ```
 
 ### Matching Native Notice Prompt
