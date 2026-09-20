@@ -655,7 +655,7 @@
     {
       "name": "herdr",
       "source": "./",
-      "description": "Use if orchestrating coding tasks, parallel subagents, isolated Git worktrees, and clean-context PR reviews using Herdr multiplexer.",
+      "description": "Use if orchestrating coding agents, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.",
       "version": "1.0.66",
       "category": "automation",
       "strict": false,

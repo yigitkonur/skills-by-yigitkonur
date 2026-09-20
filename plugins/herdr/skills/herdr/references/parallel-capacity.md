@@ -1,149 +1,56 @@
-# Parallel Capacity, Clean Review & Serial PR Integration
+# Parallel Capacity, Candidate Composition & Finite Review
 
-Use this guide when coordinating multiple concurrent tasks, managing multi-worktree capacity, or running a multi-PR integration wave.
+## 1. Disjoint Parallelism vs. Small Coupled Work
 
----
+- **Small Coupled Work (Default)**: For interdependent files or coupled refactors within a skill or module, assign **one whole-change AGY writer** and **one independent reviewer**. Do not artificially fragment cohesive work into multiple lanes or spawn superfluous bootstrap/recovery agents merely because files differ.
+- **Genuine Independence**: Where tasks produce separate verifiable outcomes, have stable interfaces, and touch disjoint writable surfaces, dispatch lanes concurrently in the same wave. Refill capacity as workers publish handbacks.
 
-## 1. The Fundamental Law of Multi-Agent Swarms
+## 2. Early Coherent Local Candidate Path
 
-> **Code synthesis is embarrassingly parallel ($O(1)$ scaling), but software integration is strictly serial ($O(N^2)$ interaction space).**
+To avoid unnecessary approval bottlenecks during multi-part tasks:
+- **Local Scoped Composition**: A single designated AGY writer with whole-change ownership may sequentially prepare, implement, generate/package, and execute authorized repository/PR mechanics to produce a single integrated candidate for whole-candidate verification.
+- **Composition is NOT Release Approval**: Composing a candidate locally bypasses redundant per-file lane gates, but does not waive final candidate evidence gates.
+- **Clean Independent Review**: Independent review remains strictly separate from writing. The candidate undergoes fresh technical review by an independent reviewer.
 
-- **Parallelize Synthesis**: Multiple agents can plan, write unit tests, and draft feature code concurrently in isolated Git worktrees without interference.
-- **Serialize Integration**: Merging multiple branches cannot be done in parallel without risking semantic interaction hazards. PRs must be audited in a clean context and integrated one by one into a moving, verified baseline.
+## 3. Review Invalidation & Delta Decisions
 
----
+- **Exact-SHA Review**: Technical review binds strictly to an exact commit SHA. Any subsequent commit, rebase, or fix pushes the branch HEAD to a new SHA ($SHA_2 \neq SHA_1$), automatically invalidating prior approvals.
+- **New-HEAD Delta Decision**: When an implementer corrects a candidate and produces a new SHA, the same independent reviewer may evaluate the new HEAD via a focused delta and impact check on the changed diff, issuing an explicit decision for the new SHA. Automatic approval on commit advance is prohibited, but a full reset to an unfamiliar reviewer is not required.
 
-## 2. Resource Allocation & Capacity Budget
+## 4. Finite Review Bounds & Failure Budget Rules
 
-Before launching parallel lanes, establish a capacity budget:
+To prevent infinite review-and-fix loops and ensure integrity of findings:
+- **Two-Failure / Two-Round Limit**: If two consecutive correction rounds or review attempts fail to resolve a blocker or achieve candidate approval, **stop blind automated retries**. A third attempt without an architectural change or explicit management unblock is prohibited.
+- **No Reset of Failure Budget**: Read-only tool movement, changing error IDs, switching model tiers, or receiving new user prompt iterations **do not reset** equivalent-failure budgets. Meaningful progress must advance the deliverable or resolve its blocker.
+- **Material Findings Cannot Be Waived**: Material findings cannot be reclassified as advisory or waived merely to reach an approval. An approval requires all mandatory criteria to be satisfied. Hitting the two-round boundary mandates a concrete escalation with options, not an artificial approval.
+- **Cosmetic Invariant**: Minor non-functional or cosmetic comments do not reopen a correction cycle once functional criteria and check gates are satisfied.
 
-| Resource | Limits & Invariants |
-|---|---|
-| **Worktrees** | 1:1 mapping: each concurrent task gets exactly one dedicated worktree checkout under `.worktrees/<task>`. Never share working checkouts. |
-| **Model Fleet** | Single-model strictness: orchestrator, workers, and reviewers all execute on the **same model** (`--model <model>`). |
-| **Compiler / Test Leases** | Parallel native compilation (e.g. `xcodebuild`, heavy Rust builds) exhausts CPU and RAM, causing system freezes or OOM panics. Enforce a **Build Lease**: serialize heavy test runs and compilation passes while parallelizing text/code generation. |
-| **Reviewers** | Reviewers run in clean context windows. They do not need dedicated write checkouts; they audit the pull request diff via GitHub CLI (`gh pr diff <PR_NUMBER>`). |
+## 5. Retrospective Lifecycle & Teardown Gates
 
----
+Resource lifecycle follows two explicit, separate cleanup gates:
 
-## 3. The 6-Stage PR Delivery Lifecycle
+### 5a. Prompt Terminal & Pane Retirement (Codex EM Control)
+- **Prompt Retirement**: Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`). Terminal release does NOT wait for PR merge or mission completion.
+- **Session Retention Rule**: Retaining a session (e.g. for follow-up debugging) requires recording an explicit retention reason and release trigger in `state.yaml`. Conversation resume identity and artifacts must be preserved outside the process before closing.
+- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close leadership panes (CTO/EM), user-owned panes, or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
+- **Disappearance & State Checkpoint**: Verify pane disappearance (`herdr pane process-info` returns not found) and update compact resource entries in `state.yaml`.
+- **Late/Duplicate Notices**: Late or duplicate notices from a retired worker do not respawn the terminal, repeat dispatch, or trigger Git actions.
 
-Every feature follows this progression:
+### 5b. Worktree Removal Gate (AGY Integration Authority)
+- Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
+- Removal gate: verify checkout is owned, `git status --porcelain` is strictly clean, references/evidence/reports are retained outside the checkout, and zero unresolved operations exist (`git worktree remove <PATH>`).
+- Dirty, modified, or ambiguous checkouts are **retained with a recorded reason**; no default force removal (`git worktree remove --force` is prohibited without explicit authorization).
 
-```
-[Worktree Isolated] 
-       │
-       ▼
-[TDD Implementation (Red -> Green)]
-       │
-       ▼
-[Open Draft PR (gh pr create --draft)]
-       │
-       ▼
-[Worker Pushes Callback to Orchestrator Pane]
-       │
-       ▼
-[Clean-Context Reviewer Audits Diff]
-       ├── (Changes Requested) ──> [Worker Fixes in Worktree]
-       └── (Approved)
-               │
-               ▼
-[Promote to Ready (gh pr ready)]
-       │
-       ▼
-[Serial Rebase on origin/main & Verification]
-       │
-       ▼
-[Squash Merge & Container Cleanup]
-```
+## 6. Serial Integration & Delivery Lifecycle
 
-### Stage 1: Dedicated Worktree Allocation
-```bash
-git worktree add -b feature/<task> .worktrees/<task> origin/main
-herdr tab create --workspace "$CALLER_WS_ID" --cwd "$PWD/.worktrees/<task>" --label "<task>" --no-focus
-```
+1. **Rebase**: Serially rebase verified candidate commits onto current baseline.
+2. **Repository Checks**: Run complete project generator, validation, and test suites.
+3. **Verification**: Verify exact rebased HEAD with passing check exits.
+4. **Authorized Delivery**: Execute delivery actions authorized by the mission brief (e.g. unmerged draft PR hold, or authorized merge to main). General delivery follows actual mission authority and branch protections; draft/unmerged holds apply only when specified by the brief.
 
-### Stage 2: TDD & Implementation
-The worker implements unit tests demonstrating the missing functionality (Red), writes the minimal code to satisfy the tests (Green), and commits changes.
-
-### Stage 3: Draft Pull Request
-The worker pushes its branch and opens a Draft PR:
-```bash
-git push origin feature/<task>
-gh pr create --draft --title "feat: <task>" --body "$(cat .agent-runs/report.md)"
-```
-
-### Stage 4: Worker Callback Notification
-The worker notifies the orchestrator pane directly:
-```bash
-herdr agent prompt "$CALLER_PANE_ID" \
-  "I'm the herdr agent in pane $WORKER_PANE_ID. I've finished feature/<task>. PR #$PR_NUM is open in Draft. Tests pass. Read my report: herdr agent read $WORKER_PANE_ID --source recent-unwrapped --lines 100"
-herdr notification show "Task Finished" --body "Draft PR #$PR_NUM open" --sound done
-```
-
-### Stage 5: Clean-Context PR Review
-**Never review code in the implementer agent's pane.**
-1. Spawn a clean reviewer agent on the same model in a new split pane:
-   ```bash
-   herdr pane split --pane "$CALLER_PANE_ID" --direction right --no-focus
-   herdr agent start "reviewer-$PR_NUM" --kind codex --pane "$REVIEWER_PANE_ID" -- --model "$CURRENT_MODEL"
-   ```
-2. The reviewer inspects `gh pr diff $PR_NUM` and tests against specifications and quality standards.
-3. If issues are found: reviewer submits comments (`gh pr review $PR_NUM --request-changes`). Orchestrator instructs worker to fix.
-4. If approved: reviewer submits approval (`gh pr review $PR_NUM --approve`).
-
-### Stage 6: Promotion & Serial Rebase Integration
-1. Promote PR to ready:
-   ```bash
-   gh pr ready $PR_NUM
-   ```
-2. Rebase onto current `origin/main` to resolve any semantic or syntactic drift:
-   ```bash
-   git -C .worktrees/<task> fetch origin main
-   git -C .worktrees/<task> rebase origin/main
-   ```
-3. Run verification tests on the rebased branch:
-   ```bash
-   npm test / pytest / cargo test
-   ```
-4. Push rebased commits:
-   ```bash
-   git -C .worktrees/<task> push --force-with-lease
-   ```
-5. Merge serially:
-   ```bash
-   gh pr merge $PR_NUM --squash --delete-branch
-   ```
-6. Cleanup:
-   ```bash
-   herdr tab close "$WORKER_TAB_ID"
-   git worktree remove .worktrees/<task> --force
-   ```
-
----
-
-## 4. Handling Merge Conflicts with Ownership Mindset
-
-When multiple PRs merge into `main`, downstream branches will inevitably encounter merge conflicts. Treat conflict resolution as standard engineering execution, not an escalation barrier:
-
-1. **Detect Conflict Early**:
-   `gh pr view $PR_NUM --json mergeable` reports `CONFLICTING`.
-2. **Rebase in the Worker's Worktree**:
-   ```bash
-   git -C .worktrees/<task> fetch origin main
-   git -C .worktrees/<task> rebase origin/main
-   ```
-3. **Resolve Conflict Markers**:
-   - Inspect each conflicting file: `git status`.
-   - Preserve both upstream bug fixes and branch feature logic.
-   - Stage resolved files: `git add <file>`.
-   - Continue rebase: `git rebase --continue`.
-4. **Re-Verify with Tests**:
-   Never assume a conflict resolution works simply because Git markers disappeared. Run the test suite:
-   ```bash
-   npm test / cargo test
-   ```
-5. **Force-Push with Lease**:
-   ```bash
-   git -C .worktrees/<task> push --force-with-lease
-   ```
+### Merge Conflict Ownership
+Treat conflict resolution as standard engineering execution:
+1. Rebase in the isolated worktree cleanly onto target baseline.
+2. Resolve conflict markers with integrity, preserving upstream intent.
+3. Re-verify with full test and validation suites.
+4. Force-push with lease (`git push --force-with-lease`).
