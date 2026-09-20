@@ -76,15 +76,17 @@ herdr agent send-keys <TARGET> esc
 > Always inspect the native task inventory and process tree (`herdr pane process-info --pane <PANE_ID>`) after `esc` to verify whether background side effects persist.
 
 ### 3. Hung Tool Call Recovery (`ctrl+c`)
-If an agent CLI is deadlocked on an unresponsive child process:
-1. Send `ctrl+c` to issue a SIGINT interrupt:
+If an agent CLI is deadlocked on an unresponsive child process or long-running tool:
+1. Send `ctrl+c` via Herdr key tokens:
    ```bash
    herdr agent send-keys <TARGET> ctrl+c
    ```
 > [!WARNING]
-> **Signal Semantics**: `ctrl+c` transmits `SIGINT`, which child processes may catch, defer, or ignore. Sending `ctrl+c` does not prove immediate termination of child processes or completion of background side effects.
+> **TTY Raw-Mode & Application Semantics**:
+> In interactive terminal sessions running in raw mode, `ctrl+c` transmits the ASCII byte `\x03` across the PTY. Unlike canonical (cooked) terminal mode where the TTY line discipline automatically signals the foreground process group with OS `SIGINT`, raw-mode byte delivery is consumed directly by the application's event loop.
+> The application may handle, defer, or ignore `\x03`, and may or may not forward `SIGINT` to child processes running in subshells. Sending `ctrl+c` does not guarantee POSIX signal dispatch, does not prove child process termination, and leaves background child side effects (partial writes, file descriptor holds, lock acquisition) unknown.
 2. Verify process state and terminal status:
-   Inspect `herdr pane process-info --pane <PANE_ID>` and read the visible screen (`herdr agent read <TARGET> --source visible --lines 15`) to confirm that the child process has actually terminated and the agent has returned to an interactive prompt before sending further input.
+   Never assume child termination. Always inspect `herdr pane process-info --pane <PANE_ID>` and read the visible screen (`herdr agent read <TARGET> --source visible --lines 15`) to confirm that child processes have actually exited and the agent has returned to a clean interactive prompt before sending further input.
 3. If returned to prompt, issue a targeted continuation prompt.
 
 ### 4. Interactive Continuation Prompt
@@ -169,11 +171,15 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    - **Writer vs. Reviewer Topology & Sole-Writer Invariant**: Distinguish write-enabled assignments (implementers, integration executors) from read-only reviewers. Every active writing assignment must have sole-writer ownership over its isolated checkout and designated writer pane. Read-only review assignments (auditing candidates via exact-SHA or detached snapshots) must be clearly designated as non-writers, ensuring no competing writers exist on the same surface while permitting concurrent reviewer checkouts.
    - **Decisions List**: Verify `decisions` remains an explicit sequence of entries and has not been absorbed by adjacent multiline scalar blocks.
    - **No New Parser/Framework**: Perform these checks using standard structural inspection; coordinate report schemas by pointer to [report-contract.md](report-contract.md) without introducing new artifact kinds or external parsing frameworks.
-4. **Carry Valid Work Forward**:
+4. **Leadership Tab Topology & Invariants**:
+   - The Engineering Manager (EM) shares the dedicated leadership tab with the CTO (two panes only: CTO on the left, EM on the right, sharing `tab_id`). Worker and reviewer lanes operate in separate tabs.
+   - When recovering or resuming a manager session, preserve existing session identities; the CTO alone migrates live panes (such as moving live `p8`), and agents must never move, split, or restart live panes autonomously.
+   - Cold bootstrap creates the EM pane via a right horizontal split from the CTO pane (`herdr pane split --direction right ...`) and verifies the shared `tab_id` and horizontal layout (CTO at x=0, EM to the right at x>0 via `herdr tab get` and `herdr pane layout`).
+5. **Carry Valid Work Forward**:
    - Reconcile active assignments and consumed report digests.
    - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
    - Re-establish observer handles on existing worker panes.
-5. **Resumed Notice to CTO**:
+6. **Resumed Notice to CTO**:
    Check CTO registration in `state.yaml` / mission brief:
    - If the CTO is registered in a native Herdr pane (e.g. `$CTO_PANE_ID`, such as pane `w3H:p3`), dispatch a native notice prompt without `--wait`.
    - If the CTO is operating on a non-pane host, record the resumed milestone in `state.yaml` and publish a structured manager report for manual observation via the manual-observation boundary.
