@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 55 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 56 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.65",
       "category": "bundle",
       "strict": false,
@@ -42,6 +42,7 @@
         "./skills/build-skill",
         "./skills/build-tinacms-nextjs",
         "./skills/ci-cd-optimize",
+        "./skills/compare-anything",
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
@@ -218,7 +219,8 @@
       "skills": [
         "./skills/run-research",
         "./skills/run-deep-research",
-        "./skills/run-github-scout"
+        "./skills/run-github-scout",
+        "./skills/compare-anything"
       ],
       "agents": [
         "./subagents/claude/internet-researcher-api-docs.md",
@@ -596,6 +598,17 @@
       ]
     },
     {
+      "name": "compare-anything",
+      "source": "./",
+      "description": "Use if turning documents, tools, or candidates into an interactive, weighted comparison matrix and executable Astro canvas comparison page.",
+      "version": "1.0.65",
+      "category": "research",
+      "strict": false,
+      "skills": [
+        "./skills/compare-anything"
+      ]
+    },
+    {
       "name": "convert-mcp-sdk-v1-to-v2",
       "source": "./",
       "description": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
@@ -642,7 +655,7 @@
     {
       "name": "herdr",
       "source": "./",
-      "description": "Use if explicitly asked to orchestrate or control Herdr agents, panes, tabs, or worktrees.",
+      "description": "Use if orchestrating coding tasks, parallel subagents, isolated Git worktrees, and clean-context PR reviews using Herdr multiplexer.",
       "version": "1.0.65",
       "category": "automation",
       "strict": false,

@@ -1,81 +1,71 @@
-# Standalone mission briefs
+# Standalone Mission Briefs
 
-Read before handing work to an agent without the controller's conversation.
-The mission must carry enough context to decide what to do, what not to change,
-what proves completion and where an unfinished result goes. Prefer a static
-brief file submitted through the observation reference's safe quoting pattern.
+Read this before delegating work to an agent in an isolated Herdr pane. The mission brief must carry sufficient context for the worker to decide what to do, what not to modify, what proves completion, and how to report back to the orchestrator.
 
-## Decide the boundary first
+---
 
-Give one agent an independently verifiable outcome. Split discovery from
-implementation when an unresolved contract would otherwise force a guess.
-Independent ready work belongs in the same wave; shared mutable contracts need
-one owner. A review can run alongside unrelated writing, but its own candidate
-must stay frozen. The controller owns topology, resource grants and integration.
+## 1. Scope & Isolation First
 
-Distinguish confirmed user decisions, observations and hypotheses. Preserve
-accepted exclusions and rejected ideas so they do not return as "improvements."
-A research result can recommend a choice without authorizing its implementation.
-If the exact task is already fully specified, delegate execution explicitly;
-otherwise define the problem and let the agent investigate the solution.
+1. **One Agent, One Worktree**: Never delegate implementation without a dedicated checkout (`git worktree add -b feature/<name> .worktrees/<name> origin/main`).
+2. **Single-Model Fleet**: Ensure the worker agent executes on the exact same model as the orchestrator (`herdr agent start worker-<name> --kind <kind> --pane <id> -- --model <model>`).
+3. **Independent Outcome**: Assign an independently verifiable task. Split research from implementation when an architectural seam is unresolved.
+4. **Contract Seams**: If a worker needs changes to a shared composition root (`AppDelegate`, global routes, database schemas), the worker must mock the dependency locally and request contract integration rather than editing the root directly.
 
-## Brief contents
+---
 
-Include these fields in the order that makes the specific task easiest to act on:
+## 2. Standard Mission Brief Template
 
-- **Relevant skills/tools:** only those needed for this mission and when to use
-  each. State the requested model/effort and tool constraints when applicable.
-- **Context and objective:** why the work matters, the accepted user outcome,
-  existing behavior, verified baseline and what is already done. Give exact
-  issue/PR links and source pointers; label unverified assumptions.
-- **Ownership:** checkout, branch/base, allowed edits, exclusions, contract
-  producer and dependent consumers. Name any external surface the agent may
-  mutate; use existing authority rather than inventing an approval gate.
-- **Investigation space:** the unresolved question and extraction fields needed
-  for the next decision. Starting points are guidance, not permission to ignore
-  evidence elsewhere. Keep discovery within the authorized surface.
-- **Completion evidence:** observable acceptance criteria, focused check
-  commands or evidence methods, actual resource grants and the requested PR
-  state. Describe what each check proves and what it cannot establish.
-- **Failure path:** exact blocker reporting, bounded recovery and escalation to
-  the controller. Two equivalent infrastructure failures require a changed
-  approach or handback before a third identical retry. A product failure calls
-  for diagnosis, not a success claim with a caveat.
-- **Handback:** outcome; files/artifacts; base/head and PR; commands/results;
-  accepted-criteria coverage; decisions/assumptions; remaining gaps with next
-  owner/action. A report is a claim to verify against the candidate.
+Every mission brief submitted via `herdr agent prompt` should follow this structured markdown schema:
 
-Use the user's language for deliverables and requested language for prompts.
-Keep long specs in linked files, but include the decisions essential to
-execution in the brief. Do not make a worker reconstruct the assignment from a
-chat transcript or an unexplained collection of issue IDs.
+```markdown
+# Mission Brief: <Task Title>
 
-## Make the finish line honest
+## 1. Context & Objective
+- **Problem**: Why this work is necessary.
+- **Accepted Outcome**: The exact user-visible or behavioral change required.
+- **Relevant Files**: Starting paths and documentation pointers.
+- **Exclusions**: Files, APIs, or architectural patterns strictly out of scope.
 
-For implementation, a draft PR is an intermediate artifact unless draft-only
-work was explicitly assigned. Say who performs pending tests/review and how
-resource access is obtained. Requiring red-before-code while withholding all
-compiler access is an impossible brief; resolve that before dispatch.
+## 2. Implementation & Quality Mindset
+- **TDD Requirement**: Write a focused, failing test first (Red). Implement the minimal production code to pass the test (Green). Refactor while preserving green checks.
+- **No Headless Hacks**: Stay interactive and visible in your terminal pane.
 
-For research, completion means bounded findings with evidence, confidence and
-unresolved questions; it does not close an implementation issue. For review,
-name the exact candidate and user-relevant questions; separate material defects
-from optional polish. After a correction, narrow the next brief to the changed
-candidate and unresolved findings rather than replaying a whole audit.
+## 3. Delivery & PR Protocol
+- **Branch**: feature/<task-name>
+- **Worktree**: .worktrees/<task-name>
+- When your tests pass:
+  1. Commit your changes with a conventional commit message.
+  2. Push your branch: `git push origin feature/<task-name>`
+  3. Open a **Draft Pull Request**:
+     `gh pr create --draft --title "feat: <task-name>" --body "$(cat .agent-runs/report.md)"`
+  4. Save your structured report to `.agent-runs/report.md`.
 
-A useful brief is complete, not padded. A continuation usually needs current
-SHA, surviving gaps and constraints; a new subsystem needs more context. Check
-that a cold agent can identify done, blocked and outside scope without guessing.
+## 4. MANDATORY COMPLETION & CALLBACK MANDATE
+- Orchestrator Pane: <CALLER_PANE_ID>
+- Orchestrator Tab: <CALLER_TAB_ID>
+- Your Pane: <WORKER_PANE_ID>
 
-## Confirm pickup and preserve continuity
+When your task is complete (or if blocked by an unresolvable issue):
+1. NOTIFY THE ORCHESTRATOR IMMEDIATELY by executing:
+   herdr agent prompt "<CALLER_PANE_ID>" "I'm the herdr agent in pane <WORKER_PANE_ID> (tab <WORKER_TAB_ID>). I've finished my work on feature/<task-name>. PR: #$(gh pr view --json number -q .number) (Draft). Tests are passing. You can read my full report with: herdr agent read <WORKER_PANE_ID> --source recent-unwrapped --lines 100"
+2. Show desktop alert:
+   herdr notification show "Task Complete: <task-name>" --body "Worker in pane <WORKER_PANE_ID> opened Draft PR" --sound done
+```
 
-A sent message may be queued behind the active turn. For important corrections,
-record acknowledgment or observed compliance before relying on the change.
-After compaction, re-anchor completed work and current evidence so the agent
-does not restart it. Keep the same task/attempt history and exact conversation
-ID where recovery supports it; failed child workflows return to the controller
-for reassignment instead of spawning duplicate writers.
+---
 
-Worker sessions stay interactive and visible under the main skill. Report
-files preserve the final evidence while the user retains the ability to follow
-progress and intervene in the pane.
+## 3. Making the Finish Line Honest
+
+- **Implementation**: An open Draft PR is an intermediate milestone. It signals that code is synthesized and ready for an independent, clean-context review.
+- **Research**: A research brief completes with bounded evidence, confidence scores, and open questions; it does not close an implementation issue.
+- **Review**: A review brief points to an existing Draft PR diff (`gh pr diff <PR_NUMBER>`). The reviewer leaves review comments and reports sign-off back to the orchestrator pane.
+
+---
+
+## 4. Safe Submission Pattern
+
+Always submit briefs from a static file using quoted parameter expansion to prevent shell syntax interpolation or log leakage:
+
+```bash
+herdr agent prompt "$WORKER_PANE_ID" "$(cat /tmp/mission-brief-$TASK_NAME.txt)"
+```

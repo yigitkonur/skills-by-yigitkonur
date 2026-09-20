@@ -111,7 +111,7 @@ GROUPS = {
     "yk-research": (
         "research",
         "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting. Bundles the internet-researcher subagents.",
-        ["run-research", "run-deep-research", "run-github-scout"],
+        ["run-research", "run-deep-research", "run-github-scout", "compare-anything"],
     ),
     "yk-automation": (
         "automation",

@@ -46,9 +46,148 @@ Sentry.init({
 });
 ```
 
-## Muting / Ignoring Issues from the CLI
+## Muting / Ignoring Issues vs. Stopping Quota Bleed
 
-If an issue is low-priority and you want to mute notifications temporarily:
+> [!CAUTION]
+> **Muting / Archiving an issue does NOT save quota.**
+> Running `sentry-cli issues mute` or clicking **Ignore / Mute** in the Sentry UI only silences notification emails and alerts. New events for that issue **are still ingested at Sentry's edge and count 100% against your monthly event quota**.
+>
+> To stop events from burning your quota, you MUST either:
+> 1. **Drop at the Sentry Edge** using Server-Side Inbound Filters (`filters:error_messages`).
+> 2. **Rate Limit or Disable the Client Key (DSN)** in Project Settings -> Client Keys.
+> 3. **Drop in the Client SDK** using `ignoreErrors` or returning `null` from `beforeSend`.
+> 4. **Fix or Kill the Runaway Caller** (e.g. queue retry loops, broken crons, or infinite workflows).
+
+## Server-Side Inbound Message Filtering (`filters:error_messages`)
+
+Inbound filters drop matching events before they are ingested or counted against your organization's quota.
+
+### Via Sentry REST API
+
+If you have an admin token (`sntryu_` or `sntrys_`) in `~/.sentryclirc`:
+
+```bash
+# Add a glob pattern to drop matching error messages (preserves quota)
+curl -X PUT "https://<host>/api/0/projects/<org>/<project>/" \
+  -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "options": {
+      "filters:error_messages": "*Cannot read properties of undefined (reading '\''status'\'')*"
+    }
+  }'
+```
+*(Note: Replace `<host>` with `de.sentry.io` for EU organizations or `sentry.io` for US).*
+
+### Via Sentry Web UI
+1. Navigate to **Project Settings** -> **Inbound Filters**.
+2. Scroll to **Filter out errors with specific messages**.
+3. Add the exact string or glob wildcard pattern (e.g., `*TypeError: Cannot read properties of undefined*`).
+
+> [!NOTE]
+> **Plan Tier Constraint**: Sentry locks server-side Custom Rate Limits (`count` & `window`) and custom error message/release inbound filters behind the **Business Plan**. On Developer and Team plans (including Sponsored Team plans), these UI inputs are disabled (`countDisabled: true`).
+>
+> On non-Business plans, **Client-Side Sliding-Window Deduplication in `beforeSend`** is the primary defense against runaway loops and repetitive bug floods.
+
+## Client-Side Sliding-Window Deduplicator (`beforeSend`)
+
+To prevent repeating bugs from logging "over and over" and exhausting your monthly quota:
+
+```typescript
+import * as Sentry from '@sentry/node'; // or @sentry/nextjs, @sentry/browser
+
+// Track error occurrences in a 1-hour sliding window
+interface ErrorRateEntry {
+  count: number;
+  resetAt: number;
+}
+const errorRateMap = new Map<string, ErrorRateEntry>();
+
+const MAX_REPEATED_ERRORS_PER_HOUR = 5; // Accept at most 5 occurrences per bug per hour
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+export function rateLimitedBeforeSend(
+  event: Sentry.ErrorEvent,
+  hint?: Sentry.EventHint,
+): Sentry.ErrorEvent | null {
+  // Generate a fingerprint key from exception or message
+  const exception = hint?.originalException as Error | undefined;
+  const key =
+    event.fingerprint?.join(':') ||
+    exception?.message ||
+    event.message ||
+    event.exception?.values?.[0]?.value ||
+    'unknown-error';
+
+  const now = Date.now();
+  const entry = errorRateMap.get(key) || { count: 0, resetAt: now + WINDOW_MS };
+
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + WINDOW_MS;
+  }
+
+  entry.count += 1;
+  errorRateMap.set(key, entry);
+
+  // If this specific error has occurred more than the threshold in the window, DROP IT
+  if (entry.count > MAX_REPEATED_ERRORS_PER_HOUR) {
+    return null; // Dropped client-side: 0 network calls, 0 quota spent!
+  }
+
+  return event;
+}
+
+// In Sentry.init:
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  beforeSend: rateLimitedBeforeSend,
+});
+```
+
+## Client Key (DSN) Rate Limiting & Emergency Circuit Breaker
+
+When an application has a runaway retry storm, you can halt or throttle ingest at the DSN level:
+
+### Option A: Set DSN Rate Limit (Business Plan Only)
+In **Project Settings -> Client Keys (DSN)** -> Edit Key:
+- Set **Rate Limit** to a ceiling (e.g. `100 events per 1 hour`).
+- Excess events are dropped at Sentry's edge with HTTP 429 and **do NOT consume quota**.
+
+### Option B: Deactivate Key (All Plans)
+Toggle **Active** to **Off** (`isActive: false` via API or UI):
+```bash
+curl -X PUT "https://<host>/api/0/projects/<org>/<project>/keys/<key_id>/" \
+  -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"isActive": false}'
+```
+Incoming envelopes are immediately rejected with HTTP 403, stopping the quota drain instantly.
+
+## Queue & Workflow Retry Storm Prevention
+
+Background workers (Upstash QStash, BullMQ, Celery, Temporal, Cloudflare Queues) often retry failed HTTP endpoints automatically. If an endpoint throws an unhandled 500 exception:
+1. Sentry intercepts the exception and sends an error envelope.
+2. The endpoint responds with HTTP 500.
+3. The queue triggers a retry attempt, creating an exponential multiplier that generates tens of thousands of errors in hours.
+
+### Prevention Rules:
+1. **Defensive Guard**: Never let workflow routing wrappers read properties from potentially `undefined` responses (e.g., `response?.status`).
+2. **SDK `ignoreErrors`**: Register known transient or non-actionable errors so the SDK never dispatches them:
+   ```typescript
+   Sentry.init({
+     dsn: process.env.SENTRY_DSN,
+     ignoreErrors: [
+       /Cannot read properties of undefined \(reading 'status'\)/,
+       /QStash signature verification failed/,
+     ],
+   });
+   ```
+3. **Queue Poison-Pill Handling**: If an error is non-retryable, catch it in the worker, record structured telemetry if desired, and return a clean HTTP 200/400 instead of an unhandled 500 that forces infinite queue retries.
+
+## Muting / Ignoring Issues from the CLI (Alert Silencing Only)
+
+If you understand that quota is still consumed and only want to mute notifications temporarily:
 
 ```bash
 # Ignore until it occurs 100 more times:
