@@ -24,6 +24,24 @@ Herdr operates on a decoupled multi-agent topology where **runtime is distinct f
 > [!IMPORTANT]
 > **No Autonomous Management Bootstrapping**: Workers and reviewers execute bounded tasks under explicit briefs. A worker must never bootstrap a nested management hierarchy or inherit CTO duties.
 
+### 1.3 Leadership Topology & Live Coordinate Discovery
+Mission leadership operates under a unified two-pane topology:
+- **ONE Leadership Tab, Exactly TWO Panes**:
+  - **CTO (LEFT)**: Strategy, architectural constraints, and candidate gate approvals.
+  - **Engineering Manager (RIGHT)**: Task graph dispatch, worker oversight, report intake, capacity tracking.
+- **Cold Bootstrap Sequence**:
+  - The CTO initializes the leadership tab.
+  - The CTO provisions the EM pane via a native right split:
+    ```bash
+    herdr pane split --pane "$CTO_PANE_ID" --direction right
+    ```
+  - **Verification Invariant**: Verify that both leadership panes share the exact same `tab_id` and maintain the expected layout (CTO left, EM right).
+- **Worker & Reviewer Isolation**:
+  - In contrast to the co-located leadership tab, implementers, fresh technical reviewers, and executors **never share panes or tabs**. Each task runs in its own dedicated tab with its own isolated Git worktree.
+- **Verified Live Discovery vs. Stale Startup Env**:
+  - When panes are relocated or migrated (e.g. CTO moving the EM pane to the leadership tab while preserving identity), shell environment variables set at startup (`HERDR_TAB_ID`, `HERDR_PANE_ID`) become stale.
+  - Roles, registration briefs, and handback reports must query runtime introspection (`herdr pane current --json`) for verified live `pane_id`, `tab_id`, `terminal_id`, and `session_id`, rather than trusting stale startup environment variables.
+
 ---
 
 ## 2. Dynamic Capacity Budget & Resource Thresholds
@@ -118,10 +136,10 @@ The implementer publishes an immutable YAML report to `<RUN_ROOT>/<TASK_ID>-a<AT
 > Technical review binds strictly to an exact commit SHA. Any subsequent commit, rebase, or fix pushes the branch HEAD to a new SHA ($SHA_2 \neq SHA_1$). When branch HEAD advances, any prior approval is automatically **stale and invalidated**. The new SHA must undergo fresh technical verification before integration.
 
 ### Stage 6: Serial Integration & Delivery
-Integration proceeds serially under the direction of the AGY Integration Executor:
+Integration proceeds serially under the direction of the AGY Integration Executor, parameterized by the brief's assigned delivery authority (`DELIVERY_AUTHORITY`):
 
-#### Scenario A: Single Integrated PR Delivery (e.g. Mission `herdr-codex-first-20260920`)
-When a mission is authorized to deliver an unmerged candidate PR:
+#### Mode A: Unmerged Draft PR Delivery (`DELIVERY_AUTHORITY="unmerged_pr"`)
+When a mission's authorized scope explicitly concludes at an unmerged candidate PR (e.g., bootstrapping waves, review milestones):
 1. Combine verified lane commits onto the candidate branch.
 2. Run repository generators (`python3 scripts/gen-marketplace.py`), validation scripts (`python3 scripts/validate-skills.py`), and `git diff --check`.
 3. Push candidate branch: `git push origin <candidate-branch>`.
@@ -131,8 +149,8 @@ When a mission is authorized to deliver an unmerged candidate PR:
    ```
 5. Hand back unmerged PR to CTO/EM. **Do not push directly to main or merge.**
 
-#### Scenario B: Authorized Merge Delivery (Standard Future Workflow)
-When authorized to merge into main:
+#### Mode B: Authorized Merge Delivery (`DELIVERY_AUTHORITY="authorized_merge"`)
+When the mission authorizes autonomous completion into `main`:
 1. Rebase candidate cleanly onto latest `origin/main`.
 2. Run verification test suites on the rebased tree.
 3. Push with lease: `git push --force-with-lease`.
