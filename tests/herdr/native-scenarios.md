@@ -6,7 +6,7 @@ This document defines the runnable, finite acceptance scenarios for the Codex-fi
 
 $$\text{Codex CTO} \longrightarrow \text{Codex Engineering Manager (EM)} \longrightarrow \text{AGY Implementers / Fresh Reviewers / Integration & Recovery Executors}$$
 
-### 1.1 The 3-Axis Decoupling Invariant & Delivery Tiers
+### 1.1 The 3-Axis Decoupling Invariant, Topology & Delivery Tiers
 
 All scenarios enforce explicit separation across three distinct state axes:
 
@@ -19,6 +19,17 @@ All scenarios enforce explicit separation across three distinct state axes:
    - **General Future Production Delivery**:
      $$\text{assigned} \longrightarrow \text{implementing} \longrightarrow \text{committed_locally} \longrightarrow \text{clean_review} \longrightarrow \text{integrated_pr} \longrightarrow \text{pr_ready} \longrightarrow \text{serial_merge}$$
      Describes fully authorized production delivery where the AGY integration executor performs serial rebase onto `origin/main`, executes candidate verification, promotes the PR to ready (`gh pr ready`), and executes serial squash-merge after explicit authorization.
+
+#### Leadership Topology & Worker Isolation
+- **Leadership Plane (One Tab, Two Panes)**: The leadership hierarchy resides in **exactly two panes within ONE shared tab**:
+  - **CTO Pane (LEFT)**: Strategy, scope approvals, exceptional decisions, candidate gate clearance.
+  - **Engineering Manager Pane (RIGHT)**: Created via `herdr pane split [CTO_PANE] --direction right`. Task allocation, observation, report intake, reviewer scheduling, state checkpointing.
+- **Worker & Reviewer Plane (Separate Per-Task Tabs)**: Every implementer, fresh reviewer, and integration executor operates in an independent, dedicated per-task tab (`herdr tab create --label <task-lane> --no-focus`) to ensure zero visual interference, zero shared Git index collisions, and clean conversational isolation.
+
+#### Safe Pane Move & Dynamic Metadata Invariant
+- During dynamic topology re-organization or migration (e.g. moving a manager pane into the CTO's tab), static startup environment variables (such as `$HERDR_TAB_ID`) are frozen at process creation and become **stale**.
+- Agents and orchestration procedures must **never trust static startup environment variables** for topology decisions. They must always query live coordinates via `herdr pane current` or `herdr pane get <PANE_ID>`, which return the authoritative live `tab_id`, `pane_id`, `terminal_id`, and `workspace_id`.
+- Safe pane movement (`herdr pane move`) preserves physical `pane_id`, `terminal_id`, running OS processes, cognitive `session_id`, working directory, and callback prompt reception (`herdr agent prompt <PANE_ID>`).
 
 ### 1.2 Evidence Classification & Integrity Taxonomy
 
@@ -61,6 +72,7 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 | **SCEN-11** | Clean-Context Exact-SHA Review Gate & Invalidation | Fresh AGY Reviewer | `[PROPOSED]` / `[UNVERIFIED]` | Independent audit at candidate SHA; commit advance invalidates review |
 | **SCEN-12** | Safe Sequential Teardown & Evidence Preservation | Integration Executor | `[SUPPORTED]` / `[PROPOSED]` | Clean unmount; zero dirty force deletes; durable logs preserved; delivery hold |
 | **SCEN-13** | Cold Role Selection, Reference Routing & Authority Bounding | Any Cold Role | `[SUPPORTED]` / `[PROPOSED]` | Role identification before reading; targeted references; secondary manager refusal |
+| **SCEN-14** | Leadership Split-Tab Layout, Safe Pane Move & Dynamic Metadata Preservation | Codex CTO & EM | `[SUPPORTED]` / `[PROPOSED]` | 2-pane leadership tab (CTO left, EM right); safe move preserves session/callbacks; live metadata vs stale env |
 
 ---
 
@@ -75,8 +87,9 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
   - Target workspace allocated (`HERDR_WORKSPACE_ID`).
   - Available runtime models discovered (`gpt-6-astra` for Codex, `gemini-3.8-flash-high` for AGY).
   - Candidate `SKILL.md` in active candidate worktree checkout.
+  - Leadership tab established (CTO left, EM right in one tab); workers allocated in separate per-task tabs.
 - **Execution Steps**:
-  1. Allocate dedicated tab and split pane:
+  1. Allocate dedicated tab and split pane for the worker:
      ```bash
      herdr tab create --workspace "$HERDR_WORKSPACE_ID" --label "lane-worker" --no-focus
      # Returns .result.tab.tab_id and .result.root_pane.pane_id
@@ -93,8 +106,12 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
   4. Worker inspects candidate `SKILL.md` to compute exact candidate binding metadata:
      ```bash
      CANDIDATE_SKILL_PATH="$WORKER_CWD/skills/herdr/SKILL.md"
+     test -f "$CANDIDATE_SKILL_PATH" || { echo "ERROR: Candidate skill missing at $CANDIDATE_SKILL_PATH" >&2; exit 1; }
+     CANDIDATE_WORKTREE=$(git -C "$(dirname "$CANDIDATE_SKILL_PATH")" rev-parse --show-toplevel 2>/dev/null)
+     test -n "$CANDIDATE_WORKTREE" || { echo "ERROR: $CANDIDATE_SKILL_PATH not inside a git repository" >&2; exit 1; }
      CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
-     CANDIDATE_HEAD=$(git -C "$WORKER_CWD" rev-parse HEAD)
+     CANDIDATE_HEAD=$(git -C "$CANDIDATE_WORKTREE" rev-parse HEAD)
+     test -n "$CANDIDATE_HEAD" || { echo "ERROR: Failed to resolve candidate HEAD from $CANDIDATE_WORKTREE" >&2; exit 1; }
      ```
   5. Worker submits registration notice to Manager pane (`$MANAGER_PANE_ID`) without `--wait`, explicitly declaring role and candidate binding:
      ```bash
@@ -475,11 +492,11 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
      ```
   4. Reviewer publishes review report: `review-candidate-SHA_1.yaml` (`verdict: approved`).
   5. **Invalidation Test**:
-     - Implementer makes an additional commit `SHA_2` on `lane/feature-x`.
-     - Manager checks current branch HEAD: `git rev-parse HEAD` returns `SHA_2`.
-     - Manager compares current HEAD against reviewed SHA (`SHA_1`).
+     - Implementer (AGY) makes an additional commit `SHA_2` on `lane/feature-x` and submits candidate notice with `candidate_head: SHA_2`.
+     - Manager (Codex) inspects candidate notice from implementer specifying `candidate_head: SHA_2`.
+     - Manager compares reported candidate HEAD (`SHA_2`) against reviewed SHA (`SHA_1`).
      - Because `SHA_2 != SHA_1`, manager marks previous review **stale/invalidated**.
-     - Manager dispatches fresh review on `SHA_2`.
+     - Manager dispatches fresh AGY review on `SHA_2`.
 - **Pass/Fail & Observable Signals**:
   - **Pass**: Reviewer executes in clean context without access to implementer conversational bloat; review is explicitly bound to `SHA_1`; commit `SHA_2` successfully invalidates review and blocks integration until re-reviewed.
   - **Fail**: Review conducted in dirty implementer pane; stale review accepted after branch HEAD advances; PR merged without binding exact SHA.
@@ -572,8 +589,86 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
   - **Fail**: Worker attempts to execute manager topology commands (`herdr tab create`, `herdr workspace close`); worker bootstraps a competing manager; worker reads all references unconditionally without role filtering.
 - **Evidence to Retain**:
   - Transcript showing role identification, targeted reference access, and boundary refusal output.
-- **Cleanup Boundary**:
+  - **Cleanup Boundary**:
   - None (procedural validation).
+
+---
+
+### SCEN-14: Leadership Split-Tab Layout, Safe Pane Move & Dynamic Metadata Preservation
+
+- **Objective**: Verify that the leadership plane bootstraps cleanly as exactly two panes in ONE shared tab (CTO Left, EM Right via `pane split --direction right`), that workers reside in separate per-task tabs, and that when a pane is safely moved between tabs:
+  1. The move succeeds without process interruption or session reset.
+  2. The pane preserves its exact `pane_id`, `terminal_id`, `session_id`, `cwd`, and remains receptive to callback prompts (`herdr agent prompt <PANE_ID>`).
+  3. Live metadata queries (`herdr pane current` / `herdr pane get <PANE_ID>`) return the new authoritative `tab_id`, while demonstrating that static startup environment variables (such as `$HERDR_TAB_ID`) are stale and must not be used.
+  4. Tab inspection (`herdr tab get <TAB_ID>`) confirms `pane_count: 2` with CTO Left and EM Right.
+- **Classification**: `[SUPPORTED]` (Verified in live Herdr protocol 22); `[PROPOSED]` (Forward-test verification).
+- **Prerequisites**:
+  - Herdr server running (protocol 22).
+  - CTO pane active in `$CTO_PANE_ID` within leadership tab `$LEADERSHIP_TAB_ID`.
+- **Execution Steps**:
+  1. **Leadership Cold Bootstrap (Right-Split from CTO)**:
+     - From the CTO pane, execute a native right-split to allocate the Engineering Manager pane:
+       ```bash
+       herdr pane split "$CTO_PANE_ID" --direction right --no-focus
+       # Captures returned .result.pane_id as $EM_PANE_ID
+       ```
+     - Launch Codex Engineering Manager in the new right-split pane:
+       ```bash
+       herdr agent start "herdr-engineering-manager" --kind codex --pane "$EM_PANE_ID" -- --model gpt-6-astra
+       ```
+     - Inspect leadership tab layout:
+       ```bash
+       herdr tab get "$LEADERSHIP_TAB_ID"
+       ```
+       Asserts that `.result.tab.pane_count == 2`.
+     - EM executes `herdr pane current` and confirms `.result.pane.tab_id == "$LEADERSHIP_TAB_ID"`, matching the CTO's tab.
+  2. **Worker Per-Task Tab Isolation**:
+     - EM allocates a dedicated task tab for workers, verifying separation:
+       ```bash
+       herdr tab create --workspace "$HERDR_WORKSPACE_ID" --label "lane-worker" --no-focus
+       ```
+       Asserts worker `tab_id` is distinct from `$LEADERSHIP_TAB_ID`.
+  3. **Safe Pane Move & Stale Environment Demonstration**:
+     - Move an active pane into a target tab:
+       ```bash
+       herdr pane move "$PANE_ID" --tab "$TARGET_TAB_ID" --split right --target-pane "$TARGET_PANE_ID"
+       ```
+     - Query live metadata:
+       ```bash
+       herdr pane get "$PANE_ID"
+       ```
+       Asserts `.result.pane.tab_id == "$TARGET_TAB_ID"`.
+     - Inside the moved pane's shell, compare live query against startup environment:
+       ```bash
+       LIVE_TAB=$(herdr pane current | jq -r .result.pane.tab_id)
+       echo "Live: $LIVE_TAB | Startup Env: $HERDR_TAB_ID"
+       test "$LIVE_TAB" = "$TARGET_TAB_ID"
+       # Demonstrates that HERDR_TAB_ID retains its initial startup value, proving startup env is stale!
+       ```
+     - Assert physical identity continuity: `.result.pane.pane_id`, `.result.pane.terminal_id`, and `agent_session.value` remain unchanged across the move.
+  4. **Callback Continuity Verification**:
+     - Send an operational callback prompt to the moved pane:
+       ```bash
+       herdr agent prompt "$PANE_ID" "Verification notice post-move"
+       ```
+       Asserts prompt delivery exits code 0 with `{"type":"agent_prompted"}` and target activates without error.
+- **Pass/Fail & Observable Signals**:
+  - **Pass**:
+    - Leadership tab contains exactly 2 panes (`pane_count: 2`) with CTO Left and EM Right.
+    - Worker tab is separate and distinct.
+    - Moved pane reflects new live `tab_id` via `pane current` / `pane get`.
+    - Static startup `$HERDR_TAB_ID` is proven stale while live queries succeed.
+    - Physical `pane_id`, `terminal_id`, session, and callback prompt reception remain completely intact post-move.
+  - **Fail**:
+    - EM launched in separate tab without right-split;
+    - Pane move crashes process or resets session ID;
+    - Code relies on stale `$HERDR_TAB_ID` and misroutes callbacks;
+    - Prompt fails delivery after pane move.
+- **Evidence to Retain**:
+  - Output of `herdr tab get` showing 2-pane leadership layout.
+  - Pre- and post-move JSON from `herdr pane get` demonstrating preserved identities and updated `tab_id`.
+- **Cleanup Boundary**:
+  - Preserved within mission layout lifecycle.
 
 ---
 
@@ -581,18 +676,35 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 
 When the native forward-test lane is activated, the testing controller must execute these scenarios following this protocol:
 
-1. **Controller Identity**: The forward-test lane is driven by a fresh native Codex controller session, communicating with native AGY workers as executors.
+1. **Controller Supervisory Identity & Execution Seam**:
+   - The forward-test lane is supervised by the native controller session (Codex supervisory lane).
+   - **Strict Execution Authority Invariant**: All Git operations, workspace checkout inspections, test suite runs, and candidate artifact verifications are strictly performed by **AGY execution agents** (`agy` workers/executors). Scenario instructions must **never quietly direct Codex to perform engineering Git/test operations**. The supervisory controller dispatches prompts to AGY executor panes, which run the shell commands, git inspections, and verifications in their isolated environments.
 2. **Candidate Artifact Binding (Zero Globally Mounted Fallback)**:
-   - Before executing any scenario, the controller must identify and record the exact candidate skill artifact:
+   - Before executing any scenario, the AGY executor (under controller coordination) must identify and record the exact candidate skill artifact and verify its owning candidate git worktree:
      ```bash
+     # Explicit candidate skill path inside candidate worktree checkout
      CANDIDATE_SKILL_PATH="/Users/mac/docs/superpowers/worktrees/herdr-codex-first-20260920/integration/skills/herdr/SKILL.md"
+
+     # Assert skill file exists at path; fail immediately on missing path
+     test -f "$CANDIDATE_SKILL_PATH" || { echo "ERROR: Missing candidate skill at $CANDIDATE_SKILL_PATH" >&2; exit 1; }
+
+     # Bind owning candidate repository/worktree explicitly (fail if detached or not in git repo)
+     CANDIDATE_WORKTREE=$(git -C "$(dirname "$CANDIDATE_SKILL_PATH")" rev-parse --show-toplevel 2>/dev/null)
+     test -n "$CANDIDATE_WORKTREE" || { echo "ERROR: Candidate skill path $CANDIDATE_SKILL_PATH is not in a git repository" >&2; exit 1; }
+
+     # Compute candidate content digest
      CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
-     CANDIDATE_HEAD=$(git rev-parse HEAD)
+
+     # Query exact candidate HEAD commit SHA directly from the owning candidate worktree (never from controller CWD!)
+     CANDIDATE_HEAD=$(git -C "$CANDIDATE_WORKTREE" rev-parse HEAD)
+
+     # Fail immediately on path, digest, or repository mismatch
+     test -n "$CANDIDATE_HEAD" || { echo "ERROR: Failed to resolve candidate HEAD from $CANDIDATE_WORKTREE" >&2; exit 1; }
      ```
-   - The controller and all participating AGY workers must strictly bind to this `CANDIDATE_SKILL_PATH` and verify matching `CANDIDATE_SKILL_SHA256`.
+   - The controller and all participating AGY workers must strictly bind to this `CANDIDATE_SKILL_PATH` and verify matching `CANDIDATE_SKILL_SHA256` and `CANDIDATE_HEAD`.
    - **Strict Invariant**: A globally mounted skill (such as `~/.codex/skills/herdr/SKILL.md` or `~/.agents/skills/herdr/SKILL.md`) must **never** be passed off as the tested candidate. Any run where worker execution resolves to an unverified global skill is classified as an immediate test abort (`abort: unverified_global_skill_mounted`).
 3. **Deterministic Sequence**:
-   - *Wave 1 (Role & Discovery)*: Execute SCEN-13 (Role Selection & Authority) and SCEN-01 (Launch, Coordinates, Registration & Candidate Binding).
+   - *Wave 1 (Role, Leadership Topology & Discovery)*: Execute SCEN-13 (Role Selection & Authority), SCEN-14 (Leadership Split Layout, Safe Move & Dynamic Metadata), and SCEN-01 (Launch, Coordinates, Registration & Candidate Binding).
    - *Wave 2 (Handoffs & Intake)*: Execute SCEN-02 (Idle Handback), SCEN-03 (Busy Handback), SCEN-04 (Fan-In), and SCEN-05 (Fault-Tolerant Intake).
    - *Wave 3 (Recovery & Control)*: Execute SCEN-06 (Tab Deferred), SCEN-07 (Observer Cancellation), SCEN-08 (Esc Interruption), and SCEN-09 (Manager Relinquishment & Structural Checkpoint Resume with Negative Swallow Test).
    - *Wave 4 (Delivery & Teardown)*: Execute SCEN-10 (Parallel Capacity), SCEN-11 (Exact-SHA Review Gate), and SCEN-12 (Safe Teardown & Delivery Hold).
