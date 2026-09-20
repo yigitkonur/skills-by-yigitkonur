@@ -21,15 +21,32 @@ Runtime identity (`codex`, `agy`, `claude`) designates an execution engine, not 
 > [!IMPORTANT]
 > **Strict Boundary Invariant**: An assigned implementer, reviewer, or integration executor must **never** infer it is an orchestrator, spawn nested subagent hierarchies, or inherit CTO strategic duties. The brief bounds authority strictly to owned files and assigned verification checks.
 
-### 1.3 The 5 Mandatory Brief Components
+### 1.3 Leadership Tab Topology & Live Coordinate Discovery
+Mission leadership operates under a unified two-pane topology:
+- **ONE Leadership Tab, Exactly TWO Panes**:
+  - **CTO (LEFT)**: Strategy, architectural constraints, and candidate gate approvals.
+  - **Engineering Manager (RIGHT)**: Task graph dispatch, worker oversight, report intake, capacity tracking.
+- **Cold Bootstrap Sequence**:
+  - The CTO initializes the leadership tab.
+  - The CTO provisions the EM pane via a native right split:
+    ```bash
+    herdr pane split --pane "$CTO_PANE_ID" --direction right
+    ```
+  - **Layout Verification**: Verify both leaders share the identical `tab_id` and maintain the expected layout (CTO left, EM right).
+  - Workers and fresh reviewers remain in separate, dedicated per-task tabs (1 tab per worker/task; dedicated tab for fresh reviewer).
+- **Verified Live Discovery vs. Stale Startup Env**:
+  - When panes are relocated or migrated (e.g. CTO moving the EM pane to the shared leadership tab while preserving identity), shell environment variables set at startup (`HERDR_PANE_ID`, `HERDR_TAB_ID`) become stale.
+  - All roles, registration notices, and brief execution must discover verified live coordinates via runtime introspection (`herdr pane current --json`), never relying on stale startup environment variables. Pane moves preserve session and pane identity without restart.
+
+### 1.4 The 5 Mandatory Brief Components
 Every brief submitted via `herdr agent prompt` must carry five invariant components:
 1. **Role Authority & Boundaries**: Explicit role title, narrow file ownership, strict exclusions, and no recursive agent spawning.
 2. **Relevant Reference Selection**: Exact pointers to the specific references required for that role (e.g., [report-contract.md](report-contract.md) for reporting schemas, [parallel-capacity.md](parallel-capacity.md) for delivery mechanics). Cold workers load only what their assigned role requires.
-3. **Mandatory Coordinates & Return Route**: Complete self-contained execution coordinates: assigned role, `MISSION_ID`, `TASK_ID`, `ATTEMPT`, expected versus actual `RUNTIME` and `MODEL`, mounted `SKILL_PATH` and `SKILL_REVISION`, origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `OWN_PANE_ID`, `OWN_TAB_ID`), portable `RUN_ROOT`, and explicit return route (`herdr agent prompt` without `--wait`). All coordinates use discovered values, never hard-coded host paths or live pane numbers.
+3. **Mandatory Coordinates & Return Route**: Complete self-contained execution coordinates: assigned role, `MISSION_ID`, `TASK_ID`, `ATTEMPT`, expected versus actual `RUNTIME` and `MODEL`, mounted `SKILL_PATH` and `SKILL_REVISION`, origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `OWN_PANE_ID`, `OWN_TAB_ID`), portable `RUN_ROOT`, and explicit return route (`herdr agent prompt` without `--wait`). All coordinates must carry verified live values discovered via `herdr pane current --json` (not stale startup environment variables after a move), never hard-coded host paths or live pane numbers.
 4. **Measurable Outcomes & Acceptance Criteria**: Concrete shell verification commands (`npm test`, `cargo test`, `git diff --check`, `python3 scripts/validate-skills.py`), expected exit codes, and test-driven proof.
 5. **Atomic Handback & Failure Boundaries**: Strict two-attempt rule before blocker reporting, 10-minute silent boundary checkpointing at the next safe tool boundary, and atomic report publication.
 
-### 1.4 Stable Reporting Invariants
+### 1.5 Stable Reporting Invariants
 Briefs must **never duplicate YAML report schemas or publication commands**. All reporting requirements route directly to [report-contract.md](report-contract.md). Producers must uphold these cross-cutting invariants:
 - **Exact Assigned Attempt & Producer**: Producers publish strictly against their assigned `task_id`, `attempt`, and registered producer identity. Manager alone owns attempt increments; producer revisions or checkpoints within an assigned attempt publish under unique report IDs (e.g. `<task_id>-a<attempt>-<purpose>2.yaml`).
 - **All Reports Immutable**: All producers (including Codex managers and AGY workers) publish immutable reports. Only `state.yaml` is a mutable checkpoint maintained by the manager.
@@ -205,6 +222,7 @@ Read only these references:
 - OWN_PANE_ID: "<YOUR_PANE_ID>"
 - OWN_TAB_ID: "<YOUR_TAB_ID>"
 - RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- DELIVERY_AUTHORITY: "<ASSIGNED_DELIVERY_AUTHORITY>" # "unmerged_pr" (e.g. for draft PR delivery) or "authorized_merge"
 - RETURN_ROUTE: `herdr agent prompt "$CALLER_PANE_ID" "<NOTICE>"` (without `--wait`)
 
 ## 4. Execution Sequence & GitHub Mechanics
@@ -218,12 +236,12 @@ Read only these references:
    - Run repository validation suite: `<validation_command>` (e.g., `python3 scripts/validate-skills.py` or project test suite).
    - Run diff hygiene check: `git diff --check`
    - Ensure zero unlinked references, syntax errors, or packaging discrepancies.
-3. **PR & Delivery Handling**:
-   - **Unmerged PR Delivery** (for missions ending at unmerged draft PR):
+3. **PR & Delivery Handling by Assigned Authority**:
+   - **Unmerged Draft PR Delivery** (when `DELIVERY_AUTHORITY="unmerged_pr"`, e.g. for bootstrap/draft missions):
      Push verified candidate branch: `git push origin <BRANCH_NAME>`
      Open single integrated draft PR: `gh pr create --draft --title "<TITLE>" --body "<BODY>"`
      Hand back draft PR URL to EM. Do NOT merge or push directly to main.
-   - **Authorized Merge Delivery** (for general authorized missions):
+   - **Authorized Merge Delivery** (when `DELIVERY_AUTHORITY="authorized_merge"`, for standard autonomous completion):
      Observe GitHub branch protections and same-account approval restrictions.
      Promote PR to ready (`gh pr ready <PR_NUM>`) and merge serially (`gh pr merge <PR_NUM> --squash --delete-branch`).
 4. **Safe Teardown Protocol**:
