@@ -1,44 +1,54 @@
 # Herdr-Lite Orchestration Workflow
 
-This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising side-by-side implementer and reviewer panes, and safely retiring resources.
+This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside worktree workspaces, and executing serial integration.
 
 ---
 
-## 1. Lifecycle Overview
+## 1. Lifecycle & Streaming Architecture
 
 ```
-[ Problem Input: Issue / Bug / Task ]
-                 │
-                 ▼
-[ Phase 1: Native Worktree Provisioning ]
-   • Execute herdr worktree create
-   • Capture workspace_id and root_pane.pane_id
-                 │
-                 ▼
-[ Phase 2: AGY Implementer Execution ]
-   • Launch AGY into root pane
-   • Implement feature with behavioral tests (TDD)
-   • Commit changes and open PR via gh pr create
-                 │
-                 ▼
-[ Phase 3: Sibling Reviewer (Review-and-Fix) ]
-   • Split tab right from implementer pane
-   • Launch independent reviewer (gemini-3.8-flash-high)
-   • Reviewer audits candidate SHA, authors test/bug patches, pushes
-   • Reviewer posts approval on GitHub PR
-                 │
-                 ▼
-[ Phase 4: Verification & Safe Teardown ]
-   • Close worker panes promptly (herdr pane close)
-   • Gate worktree removal on clean git status
-   • Merge approved PR
+[ Problem Input: Issue / Bug / Task Batch ]
+                     │
+                     ▼
+[ Step 1: Parallelism Analysis & Wave Sizing ]
+   • Classify tasks into Disjoint vs Coupled lanes
+   • Maximize parallelism across independent write surfaces
+                     │
+                     ▼
+[ Step 2: Native Worktree Provisioning ]
+   • herdr worktree create provisions Git worktree + Workspace
+   • Tab 1: impl (Implementer runs TDD, commits, opens PR)
+                     │
+                     ▼
+[ Step 3: Event-Driven Streaming Review (No Lockstep Waiting) ]
+   • When Worker i sends "I'm done: PR=<url>", Antigravity immediately:
+   • Spawns Tab 2: review inside Worker i's Workspace
+   • Reviewer (Gemini 3.8 Flash) runs in-depth audit with domain skills
+   • Reviewer patches edge cases directly, commits, and approves PR
+                     │
+                     ▼
+[ Step 4: Serial Merge & Conflict Resolution ]
+   • Enqueue approved candidates into serial rebase-and-merge pipeline
+   • Rebase cleanly onto moving main baseline (resolve conflicts if needed)
+   • Merge to main, close workspace, remove worktree, notify user
 ```
 
 ---
 
-## 2. Phase 1: Native Worktree & Pane Provisioning
+## 2. Step 1: Parallelism Analysis & Wave Sizing
 
-Do not spawn detached tabs and then manually configure worktrees. Use Herdr's native `worktree create` command, which provisions the Git worktree, a dedicated Herdr workspace, and the root pane in a single atomic operation:
+Before provisioning resources, the Antigravity orchestrator classifies incoming tasks based on write boundaries:
+
+1. **Disjoint Parallelism (Maximized Concurrency)**:
+   Tasks that touch non-overlapping directories, separate packages, or independent backend routes are assigned disjoint lanes. Launch all disjoint lanes concurrently in Wave 1.
+2. **Coupled Work Rule**:
+   Interdependent files, tightly coupled schema/service pairs, or shared utilities must be kept within a single writer lane to avoid cross-branch synchronization thrashing.
+
+---
+
+## 3. Step 2: Native Worktree & Workspace Provisioning
+
+Use Herdr's native `worktree create` command. This creates the Git worktree, opens an isolated Herdr workspace, and launches a root pane in Tab 1:
 
 ```bash
 TASK_ID="182"
@@ -46,82 +56,83 @@ REPO_ROOT="/root/dev/my-project"
 WORKTREE_PATH="/root/dev/my-project-task-${TASK_ID}"
 BRANCH_NAME="fix/issue-${TASK_ID}"
 
-# Provision worktree and capture coordinates:
+# 1. Provision worktree and capture coordinates:
 WORKTREE_JSON="$(herdr worktree create "$REPO_ROOT" "$WORKTREE_PATH" --branch "$BRANCH_NAME")"
 WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.workspace.workspace_id')"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
-```
+IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.tab_id')"
 
----
+# 2. Rename root tab to 'impl' for visual clarity:
+herdr tab rename "$IMPL_TAB_ID" "impl"
 
-## 3. Phase 2: Launching the Implementer
-
-Start the Antigravity (AGY) implementer in the root pane:
-
-```bash
+# 3. Launch AGY Implementer:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" -- --model "$IMPL_MODEL"
 ```
 
-### Implementer Mission Discipline:
-1. **Behavioral Testing (TDD)**: Author a failing behavioral test verifying the bug or required feature before changing application logic.
-2. **Atomic Commits**: Stage and commit only owned files with standard conventional commit headers:
-   ```bash
-   git add <owned_files>
-   git commit -m "fix(core): resolve race condition in task coordinator (#${TASK_ID})"
-   ```
-3. **Open GitHub PR**: Push the branch and create a PR:
-   ```bash
-   git push -u origin "$BRANCH_NAME"
-   PR_URL="$(gh pr create --title "fix(core): resolve task coordinator race" --body "Closes #${TASK_ID}")"
-   ```
+### Implementer Mission Brief:
+Instruct the implementer to follow TDD, commit, open a PR, and report completion:
+```bash
+herdr agent prompt "$IMPL_PANE_ID" "Execute Task #${TASK_ID}:
+1. Implement behavioral tests first (TDD).
+2. Fix the underlying issue with minimal surface changes.
+3. Commit cleanly and push branch '$BRANCH_NAME'.
+4. Open PR: gh pr create --title 'fix: issue #${TASK_ID}' --body 'Closes #${TASK_ID}'.
+5. When complete, output notification:
+   DONE: task_id=${TASK_ID} pr_url=<PR_URL> candidate_sha=$(git rev-parse HEAD)"
+```
 
 ---
 
-## 4. Phase 3: Spawning the Sibling Reviewer (Review-and-Fix)
+## 4. Step 3: Event-Driven Streaming Review (Inside Worktree Workspace)
 
-To audit and harden the candidate without context switching, split the worktree tab to the right:
+> [!IMPORTANT]
+> **No Lockstep Waiting**: When 7 worktrees are running in parallel, do not wait for all 7 to finish. As soon as Worker $i$ finishes and reports `DONE`, immediately open a dedicated review tab inside Worker $i$'s workspace!
 
+### Spawning the Review Tab:
 ```bash
-REV_PANE_ID="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus | jq -er '.result.pane.pane_id')"
+# Open Tab 2 for deep review inside the worktree's workspace:
+REV_TAB_JSON="$(herdr tab create --workspace "$WORKSPACE_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
+REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er '.result.root_pane.pane_id')"
+
+# Launch independent reviewer:
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "gemini-3.8-flash-high"
 ```
 
-### Reviewer Mission Brief:
-Deliver the candidate SHA and PR URL to the reviewer:
+### Deep Review with Domain Skills:
+The reviewer operates with full terminal width in Tab 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
+
 ```bash
-# Ensure reviewer composer is ready:
+# Ensure reviewer is idle before prompting:
 herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
 
-herdr agent prompt "$REV_PANE_ID" "Review PR candidate:
-- Branch: $BRANCH_NAME
-- Worktree: $WORKTREE_PATH
-- Candidate SHA: $(git -C "$WORKTREE_PATH" rev-parse HEAD)
+herdr agent prompt "$REV_PANE_ID" "Deep Review & Hardening for PR #${TASK_ID}:
 - PR URL: $PR_URL
+- Candidate SHA: $CANDIDATE_SHA
+- Worktree: $WORKTREE_PATH
 
 Instructions:
-1. Audit the exact candidate commit SHA for correctness, edge cases, and test coverage.
-2. If edge case tests or minor bug fixes are needed, patch them directly in this worktree, commit, and push to the branch.
-3. Once all tests and linters pass, post an approval review comment via gh pr review."
+1. Use skills (code-review, tdd, audit-completion) to verify specifications, edge cases, and test suites.
+2. Review-and-Fix: If tests are missing or minor bugs are found, write the patches directly, run validation suites, commit, and push to the branch.
+3. Post formal GitHub PR approval:
+   gh pr review '$PR_URL' --approve -b 'LGTM: verified candidate commit $(git rev-parse HEAD)'
+4. Send notification:
+   APPROVED: task_id=${TASK_ID} pr_url=$PR_URL head_sha=$(git rev-parse HEAD)"
 ```
 
 ---
 
-## 5. Phase 4: Two-Stage Safe Teardown
+## 5. Step 4: Serial Merge & Safe Teardown
 
-Once the PR review is approved and CI passes:
-
-1. **Terminal / Pane Retirement**: Close worker panes immediately:
+Once approved:
+1. **Desktop / TUI Notification**:
    ```bash
-   herdr pane close "$REV_PANE_ID"
-   herdr pane close "$IMPL_PANE_ID"
+   herdr notification show "Candidate Approved" \
+     --body "Issue #${TASK_ID} approved and enqueued for merge." \
+     --sound done
    ```
-2. **Worktree Removal Gate**:
-   - Verify the worktree is completely clean:
-     ```bash
-     test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "DIRTY WORKTREE: Preserving for investigation"; exit 1; }
-     ```
-   - Delete the worktree cleanly:
-     ```bash
-     git worktree remove "$WORKTREE_PATH"
-     ```
-   - *Never* use `git worktree remove --force` on uncommitted or ambiguous checkouts.
+2. **Serial Integration**:
+   Follow [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md) to serially rebase onto `main`, resolve any conflicts, and land the PR.
+3. **Safe Teardown**:
+   - Close workspace: `herdr workspace close --workspace "$WORKSPACE_ID"`.
+   - Verify `git status --porcelain` is clean in the worktree.
+   - Remove worktree: `git worktree remove "$WORKTREE_PATH"`.

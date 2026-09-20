@@ -1,16 +1,18 @@
 # herdr-lite
 
-Orchestrate coding agents with native Git worktrees, PR-driven state tracking, and side-by-side review-and-fix panes using the Herdr multiplexer.
+Orchestrate coding agents with native Git worktrees, PR-driven state tracking, and streaming review tabs using the Herdr multiplexer.
 
 **Category:** orchestration
 
 ## Core Capabilities
 
 - **AGY-First Direct Orchestration**: Run lightweight, agile multi-agent workflows without requiring a Codex CTO/EM hierarchy, `state.yaml` checkpointing, or disk-based YAML reporting.
-- **Native Infrastructure State Machine**: Uses Git worktrees, GitHub Issues, Pull Requests, and commit SHAs as the living project state machine.
-- **Single-Call Worktree Provisioning**: Automatically provisions isolated workspaces and root panes in one atomic command (`herdr worktree create`).
-- **Sibling Review-and-Fix**: Pairs each implementer with an independent side-by-side reviewer (`gemini-3.8-flash-high`) who audits exact candidate SHAs, authors missing test patches directly, and posts GitHub PR review approvals.
-- **Strict Invariant Safeguards**: Codifies PR #88 engineering physics—exact-SHA review binding, 2-round failure bounds, mandatory `idle` waiting before AGY prompt injection, modal bridge handling, and clean-only worktree removal gates.
+- **Native Worktree Workspace Topology**: Each task receives an isolated workspace via `herdr worktree create` containing Tab 1 (`impl`) for the implementer and Tab 2 (`review`) for the reviewer.
+- **Event-Driven Streaming Review**: As soon as any worker opens a PR and reports `DONE`, a dedicated review tab is immediately spawned inside that worktree workspace without waiting for other parallel workers to finish (no lockstep barrier).
+- **Deep Review-and-Fix with Domain Skills**: Pairs each implementer with an independent reviewer (`gemini-3.8-flash-high`) who audits exact candidate commit SHAs using domain skills (`code-review`, `tdd`, `audit-completion`), directly authors test/bug patches, and posts GitHub PR approvals.
+- **Serial Merge & Conflict Integration**: Lands approved candidates serially onto moving `main`, applying `resolving-merge-conflicts` skill principles to resolve rebasing conflicts cleanly.
+- **Full Primitives Exposure**: Directly leverages Herdr's entire CLI surface (`worktree`, `workspace`, `tab`, `pane`, `agent`, `notification`).
+- **Strict Invariant Safeguards**: Preserves PR #88 engineering physics—exact-SHA review binding, 2-round failure bounds, mandatory `idle` waiting before AGY prompt injection, modal bridge handling, and clean-only worktree removal gates.
 
 ## Requirements
 
@@ -47,7 +49,8 @@ npx -y skills add yigitkonur/skills-by-yigitkonur/skills/herdr-lite -y -g -a uni
 
 Invoke `/herdr-lite`, or ask naturally:
 
-- "Use Herdr-Lite to dispatch parallel worktrees for these 3 GitHub issues with side-by-side reviewers."
+- "Use Herdr-Lite to dispatch parallel worktrees for these GitHub issues with streaming review tabs."
 - "Orchestrate an implementer and a gemini-3.8-flash-high reviewer in a new worktree for this bug."
-- "Review and fix this candidate branch in a split pane with automated PR approval."
-- "Clean up finished Herdr-Lite worktrees and retire worker panes safely."
+- "Review and patch this candidate branch in a review tab with automated PR approval."
+- "Serially rebase and merge these approved candidate PRs onto main, resolving any conflicts."
+- "Clean up finished Herdr-Lite worktrees and retire worker workspaces safely."

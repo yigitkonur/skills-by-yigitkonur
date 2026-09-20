@@ -7,84 +7,84 @@ description: "Use if orchestrating coding agents via Herdr with native Git workt
 
 Herdr-Lite is a lightweight, self-contained orchestration control plane for AI coding agents. While the primary `herdr` skill governs enterprise multi-agent hierarchies (CTO $\to$ Codex EM with `state.yaml` and disk YAML reporting), **Herdr-Lite** provides a direct, agile workflow tailored for Antigravity (AGY) and developer orchestrators.
 
-In Herdr-Lite, **Git worktrees**, **GitHub PRs**, **commit SHAs**, and **Herdr panes** form the native state machine.
+In Herdr-Lite, **Git worktrees**, **dedicated Herdr workspaces**, **GitHub PRs**, and **Herdr panes** form the native state machine.
 
 ---
 
-## 1. Role Selection
+## 1. Antigravity Orchestration Lifecycle
 
-Every cold reader identifies its assigned role first. Read only the sections and references relevant to your role.
+Antigravity operates a continuous, streaming orchestration loop:
 
-| Assigned Role | Authority & Scope | Focus Sections & References | Out of Scope |
-|---|---|---|---|
-| **Lite Orchestrator** | Worktree provisioning, agent dispatch, PR tracking, safe retirement. | §2, §4, [references/orchestration-workflow.md](references/orchestration-workflow.md) | Authoring feature code directly |
-| **Implementer (AGY)** | Feature implementation, behavioral tests (TDD), atomic commits, PR creation. | §3, [references/orchestration-workflow.md](references/orchestration-workflow.md) | Spawning sibling reviewers |
-| **Sibling Reviewer** | Exact-SHA audit, direct test/code patching (review-and-fix), PR approval. | §3, [references/review-and-fix-contract.md](references/review-and-fix-contract.md) | Arbitrary task reassignment |
-
-> [!IMPORTANT]
-> **No Management Bootstrapping**: Implementers and Reviewers focus strictly on code, tests, and diffs. Never spawn nested subagents or assume supervisor authority.
+1. **Parallelism Analysis**: Group incoming issues by write boundaries; dispatch all disjoint tasks concurrently in Wave 1.
+2. **Worktree & Workspace Provisioning**: Execute `herdr worktree create` to spin up a dedicated workspace for each task with Tab 1 labeled `impl`.
+3. **Event-Driven Streaming Review**: Do not wait for all workers to finish. As soon as Worker $i$ publishes its PR and reports `DONE`, immediately open Tab 2 (`review`) inside that worktree's workspace.
+4. **Deep Review-and-Fix**: The reviewer (Gemini 3.8 Flash) audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly, and posts GitHub PR approval.
+5. **Serial Integration & Land**: Rebase approved candidates serially onto moving `main`, resolve any merge conflicts via `resolving-merge-conflicts` principles, merge to `main`, and retire resources.
 
 ---
 
-## 2. Worktree & Pane Provisioning
+## 2. Worktree Workspace Topology
 
-Provision an isolated workspace and root pane in a single atomic step using `herdr worktree create`. Do not spawn redundant tabs with `herdr tab create`:
-
-```bash
-# 1. Provision worktree, workspace, and root pane in one call:
-WORKTREE_OUTPUT="$(herdr worktree create "$REPO_ROOT" "$WORKTREE_PATH" --branch "$BRANCH_NAME")"
-WORKSPACE_ID="$(echo "$WORKTREE_OUTPUT" | jq -er .result.workspace.workspace_id)"
-IMPL_PANE_ID="$(echo "$WORKTREE_OUTPUT" | jq -er .result.root_pane.pane_id)"
-
-# 2. Launch AGY Implementer into root pane:
-herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" -- --model "$IMPL_MODEL"
-```
-
----
-
-## 3. Review-and-Fix Loop (Side-by-Side Panes)
-
-The core unit of delivery in Herdr-Lite is a coupled **Implementer + Sibling Reviewer** pair operating in a shared worktree tab:
+Each task operates inside its own dedicated Herdr workspace:
 
 ```
-┌───────────────────────────────────────┬───────────────────────────────────────┐
-│ Implementer Pane (Left)               │ Sibling Reviewer Pane (Right)         │
-│ • Runs AGY implementer                │ • Runs Gemini 3.8 Flash / Reviewer    │
-│ • Authors code with TDD               │ • Audits exact candidate commit SHA   │
-│ • Opens PR (gh pr create)             │ • Patches tests/edge cases directly   │
-│                                       │ • Posts formal approval on PR         │
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ Worktree Workspace: task-182 (workspace_id: w1Y)                               │
+├───────────────────────────────────────┬───────────────────────────────────────┤
+│ Tab 1: "impl"                         │ Tab 2: "review" (Opened on "DONE")    │
+│ • Runs AGY Implementer                │ • Runs Gemini 3.8 Flash Reviewer      │
+│ • Behavioral TDD implementation       │ • Audits exact candidate commit SHA   │
+│ • Local commit & push branch          │ • Uses code-review & tdd skills       │
+│ • Opens PR (gh pr create)             │ • Directly patches tests & bug fixes  │
+│ • Reports: "DONE: PR=<url> SHA=<sha>" │ • Approves PR (gh pr review --approve)│
 └───────────────────────────────────────┴───────────────────────────────────────┘
 ```
 
-1. **Split Right for Sibling Reviewer**:
-   ```bash
-   REV_PANE_ID="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus | jq -er .result.pane.pane_id)"
-   herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "gemini-3.8-flash-high"
-   ```
-2. **Review-and-Fix Discipline**:
-   - The reviewer audits the candidate HEAD, runs test suites, and inspects diffs.
-   - For minor defects or missing test coverage, the reviewer **directly commits fixes** to the PR branch and pushes.
-   - Once all criteria pass, the reviewer approves the PR:
-     ```bash
-     gh pr review "$PR_URL" --approve -b "LGTM: verified candidate commit $(git rev-parse HEAD)"
-     ```
+---
+
+## 3. Core Herdr CLI Primitives Quick Reference
+
+Herdr commands output native JSON. Use `jq` to extract identifiers:
+
+```bash
+# 1. Provision worktree & capture workspace/pane/tab IDs:
+WORKTREE_JSON="$(herdr worktree create "$REPO_ROOT" "$WORKTREE_PATH" --branch "$BRANCH")"
+WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
+IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
+IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.tab_id)"
+herdr tab rename "$IMPL_TAB_ID" "impl"
+
+# 2. Launch Implementer:
+herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" -- --model "$IMPL_MODEL"
+
+# 3. Streaming Review: As soon as worker reports DONE, spawn Tab 2:
+REV_TAB_JSON="$(herdr tab create --workspace "$WS_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
+REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er .result.root_pane.pane_id)"
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "gemini-3.8-flash-high"
+
+# 4. Notify User of Milestones:
+herdr notification show "Candidate Approved" --body "Issue #${TASK_ID} approved and queued for merge." --sound done
+
+# 5. Retire Workspace & Remove Clean Worktree:
+herdr workspace close --workspace "$WS_ID"
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
+```
+
+See [references/herdr-primitives.md](references/herdr-primitives.md) for the complete CLI catalog.
 
 ---
 
 ## 4. Preserved Invariant Safeguards
 
-Herdr-Lite enforces rigorous engineering physics to prevent common multi-agent failure modes:
+Herdr-Lite strictly enforces core engineering physics:
 
-1. **Wait for `idle` Before Prompting AGY**: Never inject prompt text into an active AGY writer while it is synthesizing code or executing tools. Always wait for idle:
-   ```bash
-   herdr agent wait "$TARGET_PANE_ID" --until idle --timeout 60000
-   ```
+1. **Wait for `idle` Before Prompting AGY**: Never inject prompt text into an active AGY writer while it is synthesizing code or executing tools (`herdr agent wait "$PANE_ID" --until idle`).
 2. **Exact-SHA Review Binding**: Reviews bind strictly to an exact commit SHA. Any subsequent commit pushes HEAD to a new SHA ($SHA_2 \neq SHA_1$), invalidating prior approvals. A delta review is required for the new SHA.
 3. **Two-Round Failure Budget**: If an implementer and reviewer do not converge within 2 review-and-fix rounds, **stop automated retries**. Escalate the concrete blocker to the user or supervisor.
 4. **No Material Waivers**: Material findings cannot be reclassified as advisory to force an approval.
 5. **Two-Stage Teardown**:
-   - *Prompt Pane Retirement*: Close worker panes as soon as PR review is approved (`herdr pane close <PANE_ID>`). Do not leave orphaned idle panes running.
-   - *Worktree Removal Gate*: Only delete worktree checkouts when `git status --porcelain` is strictly clean (`git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
+   - *Prompt Pane/Workspace Retirement*: Close reviewer and implementer resources once PR review is approved (`herdr workspace close <WS_ID>`).
+   - *Worktree Removal Gate*: Only delete worktrees when `git status --porcelain` is strictly clean (`git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
 
 ---
 
@@ -92,7 +92,9 @@ Herdr-Lite enforces rigorous engineering physics to prevent common multi-agent f
 
 | Reference | When to Read | Topics |
 |---|---|---|
-| [references/orchestration-workflow.md](references/orchestration-workflow.md) | Setting up tasks, dispatching workers, tracking PRs, and tearing down. | Step-by-step lifecycle, coordinate capture, PR creation, and integration. |
+| [references/orchestration-workflow.md](references/orchestration-workflow.md) | Setting up tasks, dispatching workers, streaming reviews, and safe teardown. | Parallelism analysis, workspace coordinate capture, streaming reviews, and deep audit. |
+| [references/herdr-primitives.md](references/herdr-primitives.md) | Looking up CLI commands, syntax, flags, and `jq` coordinate extraction recipes. | Full command reference for worktree, workspace, tab, pane, agent, and notification. |
+| [references/serial-merge-and-conflicts.md](references/serial-merge-and-conflicts.md) | Merging approved PRs onto main or resolving merge conflicts. | Serial rebase-and-merge pipeline, resolving-merge-conflicts protocol, force-push with lease. |
 | [references/terminal-and-event-rules.md](references/terminal-and-event-rules.md) | Interacting with Herdr panes, sending prompts, and handling modals. | Live coordinates, PTY buffering, bracketed paste, modal bridge, degraded mode. |
 | [references/review-and-fix-contract.md](references/review-and-fix-contract.md) | Auditing candidate PRs, writing test patches, or evaluating decisions. | Exact-SHA binding, direct patching, 2-round limits, delta reviews, PR commands. |
 | [references/recovery-and-safeguards.md](references/recovery-and-safeguards.md) | Handling crashed agents, quota exhaustion, Git locks, or hung sessions. | No-kill-9, index.lock recovery, exact conversation resume, worktree safety. |
