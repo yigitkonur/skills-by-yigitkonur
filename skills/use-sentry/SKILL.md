@@ -3,7 +3,7 @@ name: use-sentry
 description: "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes."
 metadata:
   author: Yigit Konur
-  version: 2.0.0
+  version: 2.1.0
   category: observability
   tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp]
 ---
@@ -89,6 +89,16 @@ If `SENTRY_DSN` is empty or missing, `initSentry()` must cleanly no-op. Offline 
 ### 4. Standalone CLI Guaranteed Flush
 CLI scripts terminate immediately on exit. Always wrap the execution pipeline in try/catch and execute `await flushSentry(3000)` before `process.exit()`.
 
+### 5. Quota Bleed & Runaway Loop Circuit Breakers (Muting ≠ Saving Quota)
+`sentry-cli issues mute` or UI "Ignore" only silences notifications. Events are still ingested at Sentry's edge and count 100% against your monthly quota. To halt quota bleed immediately:
+1. **Server-Side Inbound Filters (`filters:error_messages`)**: Discard events matching error patterns before quota billing via Sentry REST API (`PUT /api/0/projects/<org>/<project>/`) or Project Settings -> Inbound Filters.
+2. **Client Key (DSN) Rate Limiting & Deactivation**: Throttle (`rateLimit: { window, count }`) or disable (`isActive: false`) in Project Settings -> Client Keys. Dropped events return HTTP 429/403 at the edge and spend 0 quota.
+3. **Queue & Workflow Retry Storm Defense**: Background queues (Upstash QStash, BullMQ, Celery, crons) retrying unhandled 500 exceptions create exponential error multipliers. Guard handlers against `undefined` responses, register SDK `ignoreErrors`, or swallow poison pills before queue retries.
+4. **Project Deletion**: When retiring an unused/dead project, delete it via Sentry REST API (`DELETE /api/0/projects/<org>/<project>/`) to immediately invalidate its DSNs and eliminate zombie traffic.
+
+### 6. Regional Multi-Tenant Host Awareness
+Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` vs US cluster `https://sentry.io`). When an organization is hosted on a regional cluster, API queries and `sentry-cli` must target `https://de.sentry.io/` (`--url https://de.sentry.io/` or `url = https://de.sentry.io/` in `~/.sentryclirc`). Pointing to `https://sentry.io/` will return `404 Not Found` for legitimate issues and projects.
+
 ## Common pitfalls
 
 | Pitfall | Root Cause | Fix |
@@ -99,6 +109,10 @@ CLI scripts terminate immediately on exit. Always wrap the execution pipeline in
 | MCP client crashes on start | Sentry debug or console logs written to stdout | Set `debug: false`; isolate logging to stderr in stdio mode |
 | Tests fail when offline | SDK attempts live HTTP calls in unit tests | No-op `initSentry()` when `SENTRY_DSN` is missing |
 | Alert fatigue from retries | Identical errors grouped under separate issues | Use `scope.setFingerprint(['db-outage', error.code])` |
+| Quota drained despite issue mute | `sentry-cli issues mute` silences alerts but still ingests events | Use Inbound Filters (`filters:error_messages`) or Client Key rate limits |
+| 404 on API/CLI issue lookup | Organization is on EU cluster (`de.sentry.io`), CLI defaults to US | Set `url = https://de.sentry.io/` in `~/.sentryclirc` or pass `--url` |
+| Queue retry flood exhausts quota | Queue retries failed jobs in a loop; SDK reports on every attempt | Add SDK `ignoreErrors`, guard handlers against `undefined`, rate-limit DSN |
+| Zombie project burning quota | Old deployment or background job sending events to stale project | Delete project via REST API (`DELETE /api/0/projects/<org>/<project>/`) |
 
 ## Minimal reading sets
 
@@ -183,3 +197,6 @@ CLI scripts terminate immediately on exit. Always wrap the execution pipeline in
 - Never let an offline test suite make network requests to Sentry; no-op when `SENTRY_DSN` is empty.
 - Always call `await flushSentry(3000)` before calling `process.exit()` in CLI scripts.
 - Never resolve, archive, or merge an issue without explicit user authorization or empirical proof.
+- Never rely on `sentry-cli issues mute` or issue archiving to stop quota exhaustion; use Inbound Filters or Client Key rate limits.
+- Always verify the Sentry organization cluster (`de.sentry.io` vs `sentry.io`) when configuring CLI or investigating API 404s.
+- Never let queue/cron/workflow handlers throw unhandled 500s in an infinite retry loop without SDK `ignoreErrors` or poison-pill suppression.

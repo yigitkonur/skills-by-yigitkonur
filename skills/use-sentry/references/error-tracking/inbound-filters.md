@@ -46,9 +46,87 @@ Sentry.init({
 });
 ```
 
-## Muting / Ignoring Issues from the CLI
+## Muting / Ignoring Issues vs. Stopping Quota Bleed
 
-If an issue is low-priority and you want to mute notifications temporarily:
+> [!CAUTION]
+> **Muting / Archiving an issue does NOT save quota.**
+> Running `sentry-cli issues mute` or clicking **Ignore / Mute** in the Sentry UI only silences notification emails and alerts. New events for that issue **are still ingested at Sentry's edge and count 100% against your monthly event quota**.
+>
+> To stop events from burning your quota, you MUST either:
+> 1. **Drop at the Sentry Edge** using Server-Side Inbound Filters (`filters:error_messages`).
+> 2. **Rate Limit or Disable the Client Key (DSN)** in Project Settings -> Client Keys.
+> 3. **Drop in the Client SDK** using `ignoreErrors` or returning `null` from `beforeSend`.
+> 4. **Fix or Kill the Runaway Caller** (e.g. queue retry loops, broken crons, or infinite workflows).
+
+## Server-Side Inbound Message Filtering (`filters:error_messages`)
+
+Inbound filters drop matching events before they are ingested or counted against your organization's quota.
+
+### Via Sentry REST API
+
+If you have an admin token (`sntryu_` or `sntrys_`) in `~/.sentryclirc`:
+
+```bash
+# Add a glob pattern to drop matching error messages (preserves quota)
+curl -X PUT "https://<host>/api/0/projects/<org>/<project>/" \
+  -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "options": {
+      "filters:error_messages": "*Cannot read properties of undefined (reading '\''status'\'')*"
+    }
+  }'
+```
+*(Note: Replace `<host>` with `de.sentry.io` for EU organizations or `sentry.io` for US).*
+
+### Via Sentry Web UI
+1. Navigate to **Project Settings** -> **Inbound Filters**.
+2. Scroll to **Filter out errors with specific messages**.
+3. Add the exact string or glob wildcard pattern (e.g., `*TypeError: Cannot read properties of undefined*`).
+
+## Client Key (DSN) Rate Limiting & Emergency Circuit Breaker
+
+When an application has a runaway retry storm (such as a queue or workflow retrying every 500ms), you can halt or throttle ingest at the DSN level immediately:
+
+### Option A: Set DSN Rate Limit
+In **Project Settings -> Client Keys (DSN)** -> Edit Key:
+- Set **Rate Limit** to a ceiling (e.g. `100 events per 1 hour`).
+- Excess events are dropped at Sentry's edge with HTTP 429 and **do NOT consume quota**.
+
+### Option B: Deactivate Key
+Toggle **Active** to **Off** (`isActive: false` via API):
+```bash
+curl -X PUT "https://<host>/api/0/projects/<org>/<project>/keys/<key_id>/" \
+  -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"isActive": false}'
+```
+Incoming envelopes are immediately rejected with HTTP 403, stopping the quota drain instantly.
+
+## Queue & Workflow Retry Storm Prevention
+
+Background workers (Upstash QStash, BullMQ, Celery, Temporal, Cloudflare Queues) often retry failed HTTP endpoints automatically. If an endpoint throws an unhandled 500 exception:
+1. Sentry intercepts the exception and sends an error envelope.
+2. The endpoint responds with HTTP 500.
+3. The queue triggers a retry attempt, creating an exponential multiplier that generates tens of thousands of errors in hours.
+
+### Prevention Rules:
+1. **Defensive Guard**: Never let workflow routing wrappers read properties from potentially `undefined` responses (e.g., `response?.status`).
+2. **SDK `ignoreErrors`**: Register known transient or non-actionable errors so the SDK never dispatches them:
+   ```typescript
+   Sentry.init({
+     dsn: process.env.SENTRY_DSN,
+     ignoreErrors: [
+       /Cannot read properties of undefined \(reading 'status'\)/,
+       /QStash signature verification failed/,
+     ],
+   });
+   ```
+3. **Queue Poison-Pill Handling**: If an error is non-retryable, catch it in the worker, record structured telemetry if desired, and return a clean HTTP 200/400 instead of an unhandled 500 that forces infinite queue retries.
+
+## Muting / Ignoring Issues from the CLI (Alert Silencing Only)
+
+If you understand that quota is still consumed and only want to mute notifications temporarily:
 
 ```bash
 # Ignore until it occurs 100 more times:

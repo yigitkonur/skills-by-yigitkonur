@@ -24,8 +24,24 @@ if command -v sentry >/dev/null 2>&1; then
     | column -t -s $'\t' || true
 
 elif command -v sentry-cli >/dev/null 2>&1; then
-  echo "Querying unresolved issues via 'sentry-cli'..."
-  sentry-cli issues list --status unresolved
+  TARGET="${1:-}"
+  if [[ -n "${TARGET}" ]]; then
+    # Strip org prefix if provided as <org>/<project>
+    PROJECT="${TARGET#*/}"
+    echo "Querying unresolved issues via 'sentry-cli' for project '${PROJECT}'..."
+    sentry-cli issues list -p "${PROJECT}" --status unresolved
+  else
+    echo "No project specified. Discovering projects..."
+    PROJECTS=$(sentry-cli projects list 2>/dev/null | awk -F'|' 'NR>3 && NF>=3 {gsub(/^[ \t]+|[ \t]+$/, "", $3); if ($3 != "" && $3 != "Slug") print $3}' || true)
+    if [[ -z "${PROJECTS}" ]]; then
+      echo "❌ No projects found or failed to authenticate. Provide project slug: $0 <project>"
+      exit 1
+    fi
+    for p in ${PROJECTS}; do
+      echo "=== Project: ${p} ==="
+      sentry-cli issues list -p "${p}" --status unresolved || true
+    done
+  fi
 
 else
   echo "❌ Neither 'sentry' nor 'sentry-cli' binary found in PATH."
