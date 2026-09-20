@@ -40,7 +40,7 @@ Mission leadership operates under a unified two-pane topology:
   - In contrast to the co-located leadership tab, implementers, fresh technical reviewers, and executors **never share panes or tabs**. Each task runs in its own dedicated tab with its own isolated Git worktree.
 - **Verified Live Discovery vs. Stale Startup Env**:
   - When panes are relocated or migrated (e.g. CTO moving the EM pane to the leadership tab while preserving identity), shell environment variables set at startup (`HERDR_TAB_ID`, `HERDR_PANE_ID`) become stale.
-  - Roles, registration briefs, and handback reports must query runtime introspection (`herdr pane current --json`) for verified live `pane_id`, `tab_id`, `terminal_id`, and `session_id`, rather than trusting stale startup environment variables.
+  - Roles, registration briefs, and handback reports must query runtime introspection (`herdr pane current`) for verified live `pane_id`, `tab_id`, `terminal_id`, and `session_id`, rather than trusting stale startup environment variables.
 
 ---
 
@@ -68,7 +68,7 @@ When an executing agent encounters visible upstream API quota exhaustion, token 
 - **Authorized Replacement Sequence**:
   1. **Ownership & Effect Reconciliation**: Verify and reconcile owned processes, background commands, and worktree git status before taking action.
   2. **Actual Model Verification**: Discover and verify that an authorized native alternative model tier (e.g., stepping up from `gemini-3.8-flash-high` to `gemini-3.1-pro-high`) is genuinely functional and available via native CLI/TUI tools before provisioning.
-  3. **Explicit Native Registration**: Launch the replacement worker in a fresh native session, verify live coordinates (`pane_id`, `tab_id`, `terminal_id`, `session_id`, `actual_model`) via `herdr pane current --json`, and register explicitly with the Engineering Manager.
+  3. **Explicit Native Registration**: Launch the replacement worker in a fresh native session, verify live coordinates (`pane_id`, `tab_id`, `terminal_id`, `session_id`, `actual_model`) via `herdr pane current`, and register explicitly with the Engineering Manager.
   4. **Manager-Owned Attempt Increment**: Only the Engineering Manager assigns the new attempt (e.g., attempt 2). Workers never increment their own attempt counters. Historical attempt records and prior reports from the exhausted session remain preserved in the run root.
 - **Strict Escalation Boundary**:
   - If no authorized replacement model or capacity exists within the approved mission parameters, escalate immediately to the Engineering Manager and CTO.
