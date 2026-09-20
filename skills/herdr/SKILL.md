@@ -17,12 +17,12 @@ Every cold reader identifies its assigned role first. The same skill and referen
 
 | Assigned Role | Authority & Scope | Execute | Skip |
 |---|---|---|---|
-| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. Bounded EM observation via compact reads and report reconciliation when notices are missing. | §1, §2 (conditional), §7 references | §3–§6 execution (delegate to EM) |
+| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. Bounded observation of EM checkpoint and worker evidence via report files on disk. When outside a Herdr pane, CTO reads reports manually and queries EM — native pane controls and callbacks are unavailable. | §1, §2 (CTO path), Canonical References | §3–§6 execution (delegate to EM) |
 | **Engineering Manager (EM)** | Central orchestration: `state.yaml`, task dispatch, capacity, report intake, reviewer Q/A relay, milestone publication. | §1–§7 | Direct feature code authoring; pushing to `main` |
-| **Implementer** | Feature implementation, TDD, local commits, atomic report publication in assigned worktree. | §1, §2, §3, §4 (own work), §7 references | Editing `state.yaml`; managing peers; bootstrapping management |
-| **Fresh Reviewer** | Independent read-only audit of exact candidate commit SHA in clean context. | §1, §2, §5, §7 references | Editing production code; advancing branches; spawning subagents |
-| **Integration Executor** | Baseline reconciliation, worktree provisioning, serial rebase, packaging validation, delivery mechanics. | §1, §2, §6, §7 references | Parallel drafting; merging without candidate gate approval |
-| **Recovery Executor** | Bounded diagnostic probes, process reconciliation, Git lock clearing, crashed session restart. | §1, §2, §7 (recovery reference) | Blind kills (`kill -9` / `pkill`); relaunching over live TUIs |
+| **Implementer** | Feature implementation, TDD, local commits, atomic report publication in assigned worktree. | §1, §2, §4, Canonical References | §3 (EM-only); editing `state.yaml`; managing peers; bootstrapping management |
+| **Fresh Reviewer** | Independent read-only audit of exact candidate commit SHA in clean context. Receives review pane ID and candidate SHA in EM brief; does not spawn topology. | §1, §2 (own coordinates only), §5 (review steps), Canonical References | §3, §4, §6; editing production code; advancing branches; spawning subagents |
+| **Integration Executor** | Baseline reconciliation, worktree provisioning, serial rebase, packaging validation, delivery mechanics. Receives integration worktree and verified lane SHAs in EM brief. | §1, §2, §6, Canonical References | §3 (EM-only); parallel drafting; merging without candidate gate approval |
+| **Recovery Executor** | Bounded diagnostic probes, process reconciliation, Git lock clearing, crashed session restart. | §1, §2, Screen Inspection & Recovery, Canonical References | §3–§6; blind kills; relaunching over live TUIs |
 
 > [!IMPORTANT]
 > **No Management Hierarchy Bootstrapping**: Assigned AGY roles select only execution and evidence paths. Never infer you are an orchestrator, spawn nested subagent hierarchies, or modify `state.yaml`. All multi-agent coordination flows through the designated EM.
@@ -34,13 +34,34 @@ Every cold reader identifies its assigned role first. The same skill and referen
 
 ## 2. Discover, Register, Verify
 
-### 2a. Verify Herdr Environment
+### Cold Bootstrap Sequence (CTO → EM → Workers)
+
+Before any workers exist, the CTO bootstraps the mission:
+
+1. **CTO allocates an EM pane** in an existing Herdr workspace and starts a Codex EM:
+   ```bash
+   herdr pane split --pane "$CTO_PANE_ID" --direction right --cwd "$RUN_ROOT" --no-focus
+   herdr agent start "engineering-manager" --kind codex --pane "$EM_PANE_ID" -- --model "$EM_MODEL"
+   ```
+   The CTO records `$EM_PANE_ID` as the EM return address. CTO runtime is typically Codex (`--kind codex`); EM runtime is also Codex. Runtime choice is explicit per mission — it does not determine role authority.
+
+2. **CTO dispatches the EM brief** via `herdr agent prompt "$EM_PANE_ID" "..."` containing: mission scope, run root path, CTO return address (`$CTO_PANE_ID`), and authorized model tiers.
+
+3. **EM registers with CTO** by sending a registration notice (no `--wait`) back to `$CTO_PANE_ID` with its confirmed identity. CTO acknowledges before the EM begins dispatching.
+
+4. **EM dispatches an AGY bootstrap/integration executor** to fetch baseline, reconcile worktrees, and prepare isolated checkouts before any implementation workers start.
+
+5. **EM dispatches workers and reviewers** into their assigned panes. Each worker and reviewer follows the registration protocol below before beginning work.
+
+When the CTO operates outside a Herdr pane (no `HERDR_ENV`), step 1 uses whatever access the CTO has (e.g., a terminal with `herdr` CLI access, or delegating pane creation to a bootstrap script). The CTO cannot receive native `herdr agent prompt` callbacks in this mode — the EM publishes milestone reports to the shared run root for the CTO to read manually.
+
+### 2a. Verify Herdr Environment (Pane Roles)
 
 ```bash
 test "${HERDR_ENV:-}" = 1 || echo "WARNING: Not inside a Herdr-managed pane"
 ```
 
-CTO may operate outside a Herdr pane (e.g., terminal session or API). When `HERDR_ENV` is unset, the CTO uses bounded EM observation via report files and compact `herdr agent read` commands targeted at known pane IDs — without discovering own pane coordinates.
+CTO may operate outside a Herdr pane (e.g., terminal session or API). When `HERDR_ENV` is unset, the CTO cannot receive native `herdr agent prompt` callbacks or use pane-based controls. The CTO reads EM milestone reports and `state.yaml` from the shared run root on disk, and queries the EM through whatever channel is available (e.g., direct terminal access, `herdr agent prompt` if CLI-reachable, or manual observation). This is the degraded CTO boundary — do not promise controls that require an active pane.
 
 ### 2b. Discover Own Coordinates (Pane Roles Only)
 
@@ -106,20 +127,12 @@ Write failing test first (Red). Satisfy with minimal code (Green). Commit locall
 
 ### 4b. Candidate Handback
 
-When work is complete (or blocked), publish an immutable YAML report to the shared run root and notify the manager. The report and publication pipeline follow the canonical contract in [references/report-contract.md](references/report-contract.md).
+When work is complete (or blocked), publish an immutable YAML report to the shared run root and send a notice to the manager. The report schema, atomic publication pipeline, notice format and fields, and no-wait constraint are defined in [references/report-contract.md](references/report-contract.md) — do not duplicate those fields here.
 
-**Notice** — push to manager return pane without `--wait`:
-
-```bash
-herdr agent prompt "$MANAGER_PANE_ID" \
-  "REPORT NOTICE: mission_id=$MISSION_ID task_id=$TASK_ID attempt=$ATTEMPT \
-   report_id=$REPORT_ID pane_id=$SELF_PANE_ID tab_id=$SELF_TAB_ID \
-   report_path=$REPORT_PATH status=$STATUS requested_action=$ACTION"
-```
-
-- Workers must **never** pass `--wait` when notifying. `--wait` blocks the worker and causes callback deadlocks if the manager prompts back.
-- Messages are the primary notification mechanism. Bounded native observation and report reconciliation serve as fallback for missing feedback — not always-wake guarantees.
-- **Tab** is optional deferred input requiring exclusive composer ownership. Never use Tab for urgent alerts or operational fan-in; Enter is the operational default.
+Key constraints on notices:
+- Workers must **never** pass `--wait` when notifying the manager. `--wait` blocks the worker and causes callback deadlocks.
+- Messages are the primary notification mechanism. Bounded observation and report-file reconciliation serve as fallback — not always-wake guarantees.
+- **Tab** is optional deferred input requiring exclusive composer ownership. Never use Tab for urgent alerts or fan-in; Enter is the operational default.
 
 ### 4c. Push Notification Mechanics
 
@@ -139,13 +152,15 @@ An observer timeout is not a worker failure. An idle worker is not a completed m
 
 ### 5a. Clean-Context Exact-SHA Review
 
-Spawn a fresh AGY reviewer in a dedicated pane. The reviewer checks out the exact candidate commit SHA with zero context pollution:
+**EM dispatches**: The EM spawns a fresh AGY reviewer in a dedicated pane and provides the candidate SHA, review worktree path, and manager return address in the brief:
 
 ```bash
+# EM creates the review pane and starts the reviewer:
 herdr pane split --pane "$PARENT_PANE_ID" --direction right --cwd "$REVIEW_PATH" --no-focus
-# In the review pane:
-git checkout <CANDIDATE_SHA>
+herdr agent start "reviewer-$TASK_ID" --kind agy --pane "$REVIEWER_PANE_ID" -- --model "$REVIEWER_MODEL"
 ```
+
+**Reviewer executes**: The reviewer registers (§2d), checks out the exact candidate SHA (`git checkout <CANDIDATE_SHA>`), performs read-only audit, publishes its review report per [references/report-contract.md](references/report-contract.md), and notifies the manager. The reviewer does not spawn topology, allocate panes, or start agents.
 
 Never review code in the implementer's active pane. Reviews may proceed while other writers continue on disjoint tasks.
 
@@ -161,7 +176,9 @@ If changes are requested, the original implementer fixes in its worktree and pub
 
 ## 6. Serial Integration & Delivery
 
-The Integration Executor combines verified lane commits into a single integrated candidate:
+**EM dispatches**: The EM starts an AGY Integration Executor in a dedicated pane with the integration worktree path, list of verified lane SHAs, and manager return address.
+
+**Integration Executor executes**: Registers (§2d), then combines verified lane commits into a single integrated candidate:
 
 1. **Rebase** each verified lane onto current baseline, resolving conflicts.
 2. **Run repository validation and generation** per the target repo's documented checks.
@@ -219,13 +236,13 @@ When an agent is `blocked` on interactive confirmation, Herdr rejects `herdr age
 When Herdr detection reports `unknown` for a known AGY process:
 
 1. Confirm foreground AGY via `herdr pane process-info --pane <PANE_ID>`.
-2. Verify visible composer via `herdr agent read <TARGET> --source visible`.
-3. Use `herdr pane run <PANE_ID> <COMMAND>...` as verified fallback (injects text + Enter). Never use on an unverified shell or relaunch over a live TUI.
+2. Verify visible composer via `herdr pane get <PANE_ID>` (pane-level, not agent-level — agent binding is unknown in this mode).
+3. Use `herdr pane run <PANE_ID> <TEXT>...` as verified fallback. This injects the literal text into the pane followed by Enter — it is keystroke injection, not OS shell execution. Never use on an unverified foreground program or relaunch over a live TUI.
 
 ### Targeted Intervention
 
 - **`esc`**: Interrupts stuck prompts or active turns. May leave background work running with unknown side effects. Always inspect process inventory and owned effects afterwards.
-- **`ctrl+c`**: Terminates the foreground child command. Verify return to interactive prompt. Does not guarantee all background processes stopped — inspect owned process tree.
+- **`ctrl+c`**: Sends SIGINT to the foreground process group. The actual effect depends on the foreground application — it may terminate a child command, cancel an active turn, or be caught/ignored. Verify the resulting state by reading the visible screen before assuming the prompt returned. Inspect owned process tree for background work that may continue.
 - **No blind kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
 
 Detailed recovery runbooks: [references/stopped-agent-recovery.md](references/stopped-agent-recovery.md).
