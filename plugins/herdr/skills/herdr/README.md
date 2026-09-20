@@ -11,9 +11,9 @@ Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean
 - **Small Coupled Work Default**: Default to 1 whole-change writer and 1 independent reviewer for cohesive tasks; parallelize across isolated worktrees only for genuinely independent deliverables.
 - **Conditional Registration**: Workers verify actual TUI runtime and model, then register with the manager. Proceed without waiting for ACK when preflight fully matches; preserve explicit acknowledgment on mismatch, restart, or unclear authority.
 - **Cheap Communication & Durable Evidence**: Routine progress and technical questions use short native messages; durable immutable YAML reports are reserved for handback candidates, review decisions, and material blockers.
-- **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD invalidates stale reviews; same reviewer may issue new-HEAD delta decisions.
+- **Exact-SHA Review & Finite Failure Bounds**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs in clean context. Changed HEAD invalidates stale reviews; same reviewer may issue new-HEAD delta decisions. Two-failure limit enforces escalation rather than endless retries; material findings cannot be reclassified as advisory to force approval. Read-only movement, error-ID changes, model shifts, or new requests do not reset failure budgets.
 - **Early Coherent Candidate & Serial Integration**: Designated writer composes whole-candidate changes locally for unified checks without per-file approval bottlenecks; Integration Executor combines verified candidates serially into a moving baseline.
-- **Evidence-Preserving Cleanup**: Only owned, completed, clean resources are removed. Evidence is archived before teardown. No force removal without inventory.
+- **Two-Stage Retrospective Lifecycle**: Terminal panes are promptly retired by EM upon verified handback without waiting for PR merge; worktree cleanup is a separate gate where clean checkouts are removed, while dirty checkouts, user-owned panes, and leadership/active siblings are preserved.
 
 ## Requirements
 

@@ -17,11 +17,11 @@ Every cold reader identifies its assigned role first. Read only the sections and
 
 | Assigned Role | Authority & Scope | Execute | Skip |
 |---|---|---|---|
-| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. | §1, §2 (CTO path) | §3–§6 execution (delegate to EM) |
-| **Engineering Manager (EM)** | Central orchestration: `state.yaml`, task dispatch, report intake, reviewer scheduling, milestone publication. | §1–§7 | Direct feature code authoring; pushing to `main` |
+| **CTO** | Strategic governance, architectural gates, candidate evidence sign-off. | §1, §2 (CTO path) | §3–§7 execution (delegate to EM) |
+| **Engineering Manager (EM)** | Central orchestration: `state.yaml`, task dispatch, report intake, reviewer scheduling, milestone publication, terminal retirement. | §1–§7 | Direct feature code authoring; pushing to `main` |
 | **Implementer** | Feature implementation, local commits, atomic report publication in assigned worktree. | §1, §2, §4, references/report-contract.md | §3 (EM-only); editing `state.yaml` |
 | **Fresh Reviewer** | Independent read-only audit of exact candidate commit SHA in clean context. | §1, §2, §5, references/report-contract.md | §3, §4, §6; editing production code |
-| **Integration/Recovery**| Worktree integration or bounded diagnostic probes/recovery. | §1, §2, §6, references/stopped-agent-recovery.md | §3–§5 |
+| **Integration/Recovery**| Worktree integration or bounded diagnostic probes/recovery. | §1, §2, §6, §7, references/stopped-agent-recovery.md | §3–§5 |
 
 > [!IMPORTANT]
 > **No Management Bootstrapping**: Assigned AGY roles select only execution and evidence paths. Never infer you are an orchestrator or spawn nested subagents.
@@ -35,21 +35,30 @@ Every cold reader identifies its assigned role first. Read only the sections and
 
 Before workers exist, the CTO establishes the leadership pair. Leadership resides in **exactly two panes in ONE shared tab**: CTO on the LEFT, EM on the RIGHT. Workers and reviewers run in separate per-task tabs.
 
-1. **CTO creates the EM pane** via horizontal right split, then launches Codex EM with authorized model/effort into the returned shell pane:
+1. **CTO captures coordinates and creates the EM pane**:
    ```bash
-   herdr pane split --pane "$CTO_PANE_ID" --direction right --cwd "$RUN_ROOT" --no-focus
+   # Discover CTO own coordinates and leadership tab:
+   CTO_PANE_ID="$(herdr pane current | jq -r .result.pane.pane_id)"
+   LEADERSHIP_TAB_ID="$(herdr pane current | jq -r .result.pane.tab_id)"
+
+   # Split right from CTO, capturing the returned EM pane ID:
+   EM_PANE_ID="$(herdr pane split --pane "$CTO_PANE_ID" --direction right --cwd "$RUN_ROOT" --no-focus | jq -r .result.pane.pane_id)"
+
+   # Launch Codex EM into returned shell pane with authorized model and effort:
    herdr agent start "herdr-engineering-manager" --kind codex --pane "$EM_PANE_ID" -- --model "$EM_MODEL"
    ```
 2. **Verify Leadership Topology**:
    Confirm SAME tab, exactly two panes, CTO left (x=0) and EM right (x>0):
    ```bash
    herdr tab get "$LEADERSHIP_TAB_ID"
-   herdr pane layout "$LEADERSHIP_TAB_ID"
+   herdr pane layout --pane "$CTO_PANE_ID"
    ```
 3. **CTO dispatches EM brief** with mission scope, run root path, CTO return address (`$CTO_PANE_ID`), and authorized model tiers.
-4. **EM allocates workers/reviewers** into separate dedicated tabs and launches native AGY:
+4. **EM allocates workers/reviewers** into separate dedicated tabs, capturing returned IDs, and launches native AGY:
    ```bash
-   herdr tab create --workspace "$WS_ID" --cwd "$TASK_CWD" --label "$TASK_LABEL" --no-focus
+   TAB_INFO="$(herdr tab create --workspace "$WS_ID" --cwd "$TASK_CWD" --label "$TASK_LABEL" --no-focus)"
+   WORKER_TAB_ID="$(echo "$TAB_INFO" | jq -r .result.tab.tab_id)"
+   WORKER_PANE_ID="$(echo "$TAB_INFO" | jq -r .result.tab.active_pane_id // .result.tab.panes[0].pane_id)"
    herdr agent start "$AGENT_LABEL" --kind agy --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL"
    ```
 5. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
@@ -77,11 +86,11 @@ Register confirmed identity with the manager's return address without `--wait`:
 
 ## 3. Bound, Decompose, Assign (EM)
 
-The EM runs a continuous loop: **report intake** → **strict identity/evidence decision** → **next ready dispatch or escalation** → **checkpoint**.
+The EM runs a continuous loop: **report intake** → **strict identity/evidence decision** → **next ready dispatch or escalation** → **checkpoint & prompt retirement**.
 
 - **Small Work Default**: Default to 1 writer and 1 independent reviewer for a cohesive coupled unit of work.
 - **Parallel Capacity**: Dispatch all ready disjoint work in the same wave. Refill capacity as workers publish handbacks. True parallelism requires independent results; do not artificially spawn multiple workers for interdependent files.
-- **Checkpointing**: Maintain `state.yaml` with active state, ownership, dedupe index, and pending effects. Do not copy historical transcripts. Read past reports from disk when needed.
+- **Checkpointing & Dedupe**: Maintain `state.yaml` with active state, ownership, dedupe index, and pending effects. Do not copy historical transcripts. Read past reports from disk when needed.
 
 ---
 
@@ -98,7 +107,7 @@ The EM runs a continuous loop: **report intake** → **strict identity/evidence 
 - **Exact-SHA Review**: Reviews bind strictly to an exact commit SHA in clean context. The reviewer verifies the candidate SHA in a frozen read-only checkout. Unconditional `git checkout` is unsafe in a shared read-only worktree; allocate a separate exact-SHA checkout only if tests mutate state or the author must continue working simultaneously. Reviewers audit code, tests, and diffs; reviewers never author fixes or inherit EM dispatch authority.
 - **Delta Review**: If the implementer modifies the branch and produces a new SHA, the old review is invalidated. The same independent reviewer can perform a delta review on the new HEAD, checking only the changed diff and impacted rules. The reviewer explicitly issues a new decision for the new HEAD.
 - **Early Coherent Local Candidate Path**: Scoped work may be composed locally for whole-candidate checks and review without requiring redundant per-file lane approvals. Local composition is not release approval. One AGY writer may sequentially prepare, write, generate/package, and execute authorized PR mechanics with explicit ownership, keeping independent review separate.
-- **Review Loop Bounds**: Two equivalent failed corrections or two review/fix rounds require a changed approach or concrete escalation, never a third blind retry or automatic approval. Cosmetic issues do not reopen a cycle.
+- **Review Loop Bounds & Failure Budget**: Two equivalent failed corrections or two review/fix rounds require a changed approach or concrete escalation, never a third blind retry or automatic approval. Read-only tool movement, changing error IDs, switching model tiers, or receiving new prompt iterations do NOT reset equivalent-failure budgets. Material findings cannot be reclassified as advisory to reach an approval. Cosmetic issues do not reopen a cycle.
 
 ---
 
@@ -113,11 +122,25 @@ Integration combines verified lane commits into a single integrated candidate:
 
 ---
 
-## 7. Cleanup & Handback
+## 7. Retrospective Lifecycle, Teardown & Handback
 
-- Clean up only **owned, completed, clean** resources.
-- Archive evidence before removing worktrees (`git worktree remove`) or closing tabs. Do not force-delete dirty worktrees without authorization.
-- Final Handback: Publish final immutable YAML report to the run root with exact HEAD, check results, unresolved effects.
+Two distinct cleanup gates govern resource lifecycle:
+
+### 7a. Prompt Terminal & Pane Retirement (Codex EM Control)
+- Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`).
+- Terminal release does NOT wait for PR merge or mission completion.
+- If a session must be retained (e.g. for follow-up debugging), the EM records an explicit retention reason and release trigger in `state.yaml`. Conversation/resume identity and artifacts are preserved outside the process before closing.
+- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close leadership panes (CTO/EM), user-owned panes, or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
+- Verify pane disappearance (`herdr pane process-info` or read returns not found) and update the compact checkpoint in `state.yaml`.
+- **Late/Duplicate Notices**: Late or duplicate notices from a retired worker do not respawn the terminal, repeat dispatch, or trigger Git actions.
+
+### 7b. Worktree Removal Gate (AGY Integration Authority)
+- Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
+- Removal gate: verify checkout is owned, `git status --porcelain` is strictly clean, references/evidence/reports are retained outside the checkout, and zero unresolved operations exist (`git worktree remove <PATH>`).
+- Dirty, modified, or ambiguous checkouts are **retained with a recorded reason**; no default force removal (`git worktree remove --force` is prohibited without explicit authorization).
+
+### 7c. Mission Handback
+Publish final immutable YAML report to the run root with exact HEAD, check results, and unresolved effects.
 
 ---
 
@@ -129,4 +152,4 @@ Integration combines verified lane commits into a single integrated candidate:
 | [references/event-monitoring.md](references/event-monitoring.md) | Supervising terminals, reading Alt-Screen, delivering prompts, diagnosing unknown states. | Screen inspection buffers, bracketed paste, no-wait constraints, Tab input, modal bridge, degraded mode, model verification. |
 | [references/stopped-agent-recovery.md](references/stopped-agent-recovery.md) | Unblocking stalled, modal-blocked, hung, or crashed sessions. | Diagnosis matrix, modal resolution, targeted `esc`/`ctrl+c`, Git lock reconciliation, safe TUI restart, quota recovery (§4.6). |
 | [references/mission-briefs.md](references/mission-briefs.md) | Dispatching tasks or receiving assignments. | Common authority block, role additions (implementer/reviewer/integrator), coordinate discovery, callback mandate. |
-| [references/parallel-capacity.md](references/parallel-capacity.md) | Planning concurrency waves or managing worktrees. | Disjoint parallelism, early coherent candidate path, review invalidation, finite review bounds, delivery authority. |
+| [references/parallel-capacity.md](references/parallel-capacity.md) | Planning concurrency waves or managing worktrees. | Disjoint parallelism, early candidate path, finite review bounds, failure budget rules, retrospective pane retirement, worktree cleanup gate. |

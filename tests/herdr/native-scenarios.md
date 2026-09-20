@@ -38,29 +38,33 @@ A globally mounted skill (`~/.codex/skills/herdr/SKILL.md`, `~/.agents/skills/he
 3. **EM applies identity/evidence gate**: Verifies producer identity matches registered assignment before advancing graph. Reads report from disk. Dispatches an independent reviewer in a dedicated pane.
 4. **Independent reviewer** audits candidate in fresh pane at exact commit SHA in clean context. Publishes review report and notifies manager without `--wait`.
 5. **EM relays review outcome** and publishes manager milestone report to CTO.
-6. **Idempotent duplicate check (K4)**: Resend worker's original handback notice once. Verify manager records no second dispatch, no Git effect, and no ACK chain.
-7. **Fixture constraint**: No public PR or merge. The smoke flow runs on an isolated test fixture and does not push to `main`.
+6. **Prompt Terminal Retirement & Bounded Resource Release**:
+   - Upon verified handback and reconciled effects, EM promptly retires the completed owned worker pane (`herdr pane close "$WORKER_PANE_ID"`).
+   - Verify the completed owned worker pane disappears from live inventory, while leadership panes (CTO, EM) and any active sibling panes persist.
+   - Worktree cleanup gate: clean worker checkout is removed (`git worktree remove`); an intentional dirty checkout fixture is retained with a recorded reason (no default force removal).
+7. **Idempotent duplicate check (K4)**: Resend worker's original handback notice once. Verify manager records no second dispatch, no Git effect, and no terminal respawn.
+8. **Fixture constraint**: No public PR or merge. The smoke flow runs on an isolated test fixture and does not push to `main`.
 
 ## 3. Optional Risk Catalogue — Original 14 SCEN Scenarios
 
 These 14 scenarios are preserved as a risk catalogue for targeted selection. Do not execute all 14 as a mandatory campaign; activate individually by risk.
 
-| ID | Name | Status |
-|---|---|---|
-| SCEN-01 | Agent Launch, Coordinate Discovery & Native Registration | `[SUPPORTED]` / `[PROPOSED]` |
-| SCEN-02 | Explicit AGY → Idle Codex Handback | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-03 | Asynchronous Handback to Busy Codex (Enter at Tool Boundary) | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-04 | Multi-Sender Fan-In & Idempotent Intake | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-05 | Fault-Tolerant Intake (Missed Notice, Partial, Stale, Mutated) | `[PROPOSED]` / `[UNVERIFIED]` |
-| SCEN-06 | Deferred Follow-Up via Tab Keystroke (Exclusive Composer) | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-07 | Observer Wait Cancellation vs. Worker Survival | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-08 | Targeted Escape Interruption & Side-Effect Reconciliation | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-09 | Manager Relinquishment, Crash Recovery & State Resume | `[HISTORICAL]` / `[PROPOSED]` |
-| SCEN-10 | Parallel Lane Allocation & Dynamic Capacity Refill | `[SUPPORTED]` / `[PROPOSED]` |
-| SCEN-11 | Clean-Context Exact-SHA Review Gate & Invalidation | `[PROPOSED]` / `[UNVERIFIED]` |
-| SCEN-12 | Safe Sequential Teardown & Evidence Preservation | `[SUPPORTED]` / `[PROPOSED]` |
-| SCEN-13 | Cold Role Selection, Reference Routing & Authority Bounding | `[SUPPORTED]` / `[PROPOSED]` |
-| SCEN-14 | Leadership Split-Tab Layout, Safe Pane Move & Dynamic Metadata Preservation | `[SUPPORTED]` / `[PROPOSED]` |
+| ID | Name | Status | Key Risk Verification |
+|---|---|---|---|
+| SCEN-01 | Agent Launch, Coordinate Discovery & Native Registration | `[SUPPORTED]` / `[PROPOSED]` | Bind candidate path/digest/HEAD; JSON coordinate extraction; registration without wait |
+| SCEN-02 | Explicit AGY → Idle Codex Handback | `[HISTORICAL]` / `[PROPOSED]` | Atomic report publication; turn activation via bracketed paste |
+| SCEN-03 | Asynchronous Handback to Busy Codex (Enter at Tool Boundary) | `[HISTORICAL]` / `[PROPOSED]` | Input queued at turn boundary; qualified non-interrupting delivery |
+| SCEN-04 | Multi-Sender Fan-In & Idempotent Intake | `[HISTORICAL]` / `[PROPOSED]` | Sequential ingestion; duplicate report ID / identical digest consumed as no-op |
+| SCEN-05 | Fault-Tolerant Intake (Missed Notice, Partial, Stale, Mutated) | `[PROPOSED]` / `[UNVERIFIED]` | Unnotified report discovered; partial, stale attempt, mutated digest quarantined |
+| SCEN-06 | Deferred Follow-Up via Tab Keystroke (Exclusive Composer) | `[HISTORICAL]` / `[PROPOSED]` | Tab deferred input on dedicated empty composer; Enter remains default |
+| SCEN-07 | Observer Wait Cancellation vs. Worker Survival | `[HISTORICAL]` / `[PROPOSED]` | Host wait exits cleanly; worker process continues undisturbed |
+| SCEN-08 | Targeted Escape Interruption & Side-Effect Reconciliation | `[HISTORICAL]` / `[PROPOSED]` | Surgical Esc/Ctrl+C; process inventory and Git locks reconciled |
+| SCEN-09 | Manager Relinquishment, Crash Recovery & State Resume | `[HISTORICAL]` / `[PROPOSED]` | Old manager relinquished; structural shape validation; selective report intake |
+| SCEN-10 | Parallel Lane Allocation & Dynamic Capacity Refill | `[SUPPORTED]` / `[PROPOSED]` | Disjoint worktrees; zero Git lock collisions; capacity refill on handback |
+| SCEN-11 | Clean-Context Exact-SHA Review Gate & Invalidation | `[PROPOSED]` / `[UNVERIFIED]` | Fresh audit at exact commit SHA; commit advance invalidates prior review |
+| SCEN-12 | Safe Sequential Teardown, Resource Release & Evidence Preservation | `[SUPPORTED]` / `[PROPOSED]` | Prompt pane retirement; leadership/active siblings & dirty checkouts persist; no respawn on late notice |
+| SCEN-13 | Cold Role Selection, Reference Routing & Authority Bounding | `[SUPPORTED]` / `[PROPOSED]` | Role matrix triage before reading; secondary manager bootstrapping refused |
+| SCEN-14 | Leadership Split-Tab Layout, Safe Pane Move & Dynamic Metadata Preservation | `[SUPPORTED]` / `[PROPOSED]` | 2-pane leadership tab (CTO left, EM right); safe move preserves session; live metadata vs stale env |
 
 ## 4. Forward-Test Controller Protocol
 
