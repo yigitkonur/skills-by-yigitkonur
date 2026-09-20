@@ -153,11 +153,20 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    Before initializing a replacement manager, prove that the previous manager process has actually stopped or relinquished its authority. Disconnection alone is insufficient evidence of termination.
 2. **State & Report Intake**:
    The incoming manager must read `state.yaml`, the approved plan, `decisions.md`, and all immutable YAML reports under `report_root`.
-3. **Carry Valid Work Forward**:
+3. **Checkpoint Write & Resume Verification**:
+   Never rely solely on YAML parse success. Indentation slips during context compaction or edits can silently swallow structured blocks into adjacent multiline scalar strings (e.g. common-brief indentation swallowing assignment-shaped text into a YAML literal) or misplace historical decision entries.
+   Whenever writing or resuming `state.yaml`, verify both keys and internal shapes before proceeding:
+   - **Top-Level Keys**: Verify presence of expected keys (`mission_id`, `status`, `manager`, `cto`, `report_root`, `task_graph`, `assignments`, `consumed_reports`, `decisions`).
+   - **Assignment Shapes**: `assignments` must be a dictionary where each entry is a structured mapping containing `task_id`, `attempt`, `pane_id`, `tab_id`, and explicit file ownership—not a swallowed string literal.
+   - **Task Graph Shapes**: `task_graph` entries must remain structured mappings with explicit `depends_on` sequences and valid lifecycle states.
+   - **Sole-Writer Invariant**: Ensure every active assignment maps to exactly one isolated checkout and one designated writer pane.
+   - **Decisions List**: Verify `decisions` remains an explicit sequence of entries and has not been absorbed by adjacent multiline scalar blocks.
+   - **No New Parser/Framework**: Perform these checks using standard structural inspection; coordinate report schemas by pointer to [report-contract.md](report-contract.md) without introducing new artifact kinds or external parsing frameworks.
+4. **Carry Valid Work Forward**:
    - Reconcile active assignments and consumed report digests.
    - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
    - Re-establish observer handles on existing worker panes.
-4. **Resumed Notice to CTO**:
+5. **Resumed Notice to CTO**:
    Notify the CTO pane (`$CTO_PANE_ID`) of the resumed manager session with current milestone state.
 
 ---
