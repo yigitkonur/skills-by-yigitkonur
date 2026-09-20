@@ -1,33 +1,54 @@
 # Event Monitoring & Communication
 
 ## 1. Live Coordinates
-Always use live native records via `herdr pane current`. Do NOT trust static startup environment variables (e.g., `HERDR_TAB_ID`) for topology decisions, as panes may move.
+Always resolve live coordinates via `herdr pane current` (returns JSON). Do NOT rely on static startup env vars (e.g. `HERDR_TAB_ID`) for topology decisions — they freeze at process creation and become stale when panes move.
+
+`herdr pane current` gives physical pane/tab/terminal IDs. It does NOT prove the active model, effort tier, or that a composer is ready to receive input. Verify identity separately via the runtime's own identity query.
 
 ## 2. Reading Pane State
-Use `herdr agent wait <TARGET> --until idle --until done --timeout 60000` to block until the agent reaches a stable state.
-Do not use tight polling loops.
+
+| Source | Syntax | Use |
+|---|---|---|
+| `recent-unwrapped` | `herdr agent read <T> --source recent-unwrapped --lines <N>` | **Default**: transcripts, code, LLM output. Merges soft wraps. |
+| `visible` | `herdr agent read <T> --source visible --lines <N>` | **Modals**: questionnaires, spinners, confirmation prompts. |
+| `recent` | `herdr agent read <T> --source recent --lines <N>` | **Columnar**: ASCII diagrams, tables, aligned grids. |
+| `detection` | `herdr agent read <T> --source detection` | **Heuristic**: regex rule introspection only. |
+
+`herdr agent wait <TARGET> --until idle --until done --until blocked --timeout 60000` blocks until a stable state. A wait timeout is not itself evidence of worker failure. `blocked` state is included because a worker waiting on a modal is stable.
 
 ## 3. Communication & Prompt Delivery
-To submit a prompt or notification to a recognized agent, use `herdr agent prompt`:
 
 ```bash
 herdr agent prompt <TARGET> "<PROMPT_TEXT>"
 ```
-- **Enter is Default**: `herdr agent prompt` uses Enter.
-- **Worker Notices Omit `--wait`**: Workers must NEVER pass `--wait` when notifying the manager. Passing `--wait` blocks the worker process.
 
-### Runtime-Aware Notification Rules
-- **Codex**: Buffers incoming text during tool execution. You MAY send `herdr agent prompt` even if it is currently busy (e.g., has a spinner).
-- **AGY**: Interrupting an active AGY writer during synthesis can corrupt state. Wait for `idle` before sending prompts.
+- **Bracketed Paste Mechanics**: Wraps text in DEC Mode 2004 (`\x1b[200~...\x1b[201~`). Staged pacing delay (~300ms) before Enter; does not eliminate all PTY race conditions under heavy load.
+- **Worker Notices Omit `--wait`**: Passing `--wait` blocks the worker and risks deadlock.
+
+### Runtime-Aware Notice Qualification
+- **Codex**: Buffers incoming PTY text during tool execution and reads it at the next turn boundary. Short operational notices to a busy Codex manager may be queued safely, **but busy delivery is not a guaranteed, loss-free synchronization mechanism** under rapid PTY churn. Where timing matters, wait for `idle` first or use the report sweep as fallback.
+- **AGY**: Injecting prompt text into an active AGY writer while it is synthesizing code or generating tool calls can disrupt the turn, corrupt composer state, or collide with file writes. **Wait for `idle`** before sending prompts to an active AGY writer. This is a qualified operational constraint, not an invented corruption guarantee; the reviewer's claim that any busy notice corrupts file reads is not established.
 
 ## 4. Modal Bridge
-When an agent encounters a blocking modal (`ask_question`, `[y/N]`), Herdr rejects `prompt` with `error.code: agent_blocked`.
-Resolve it mechanically:
-1. `herdr agent read <target> --source visible --lines 20`
-2. `herdr agent send-keys <target> down enter`
+When an agent is `blocked`, Herdr rejects `herdr agent prompt` with `error.code: agent_blocked`. Resolve mechanically:
+1. Inspect first: `herdr agent read <target> --source visible --lines 20`
+2. Choose keystrokes based on what you read: `herdr agent send-keys <target> <keys...>`
+   Valid tokens: `up`, `down`, `enter`, `esc`, `tab`, `ctrl+c`. Read the modal before choosing; do not default to `down enter` without confirming the option.
 
-## 5. Degraded Mode: `herdr pane run`
-If Herdr detection reports `unknown` but a foreground agent is visible:
-1. Verify: `herdr pane read --source visible --lines 10 <PANE_ID>`
-2. Fallback: `herdr pane run <PANE_ID> <COMMAND>...`
-Never use `pane run` on an unverified shell prompt.
+## 5. Degraded AGY Mode (`herdr pane run`)
+When Herdr detection reports `unknown` for a known AGY process:
+1. Verify foreground process: `herdr pane process-info --pane <PANE_ID>`
+2. Confirm visible input-ready composer with no modal: `herdr pane read --source visible --lines 10 <PANE_ID>`
+   Foreground process alone is insufficient — a modal or alt-screen can be open.
+3. If confirmed, use fallback: `herdr pane run <PANE_ID> <TEXT>...`
+   This injects literal text followed by Enter into the pane (keystroke injection, not OS shell execution). Never use on an unverified foreground program or relaunch over a live TUI.
+
+## 6. Targeted Intervention
+- **`esc`**: Interrupts stuck prompts. May leave background work running. Inspect process inventory and owned effects afterwards.
+- **`ctrl+c`**: In raw-mode TUIs the terminal passes raw byte 0x03 to the application. In cooked mode it sends SIGINT. The actual effect depends on the foreground application. Verify the resulting state by reading the visible screen before assuming the prompt returned.
+- **No blind kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
+
+## 7. Discovery, Bootstrap & Model Verification
+All panes identify live topology via `herdr pane current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
+
+The 10-Minute Silent Boundary: If an agent operates without an external notification for ten minutes, it must generate a checkpoint report at its next safe tool boundary.

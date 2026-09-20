@@ -46,8 +46,10 @@ SELF_TERM_ID="$(herdr pane current | jq -r .result.pane.terminal_id)"
 SELF_CWD="$(herdr pane current | jq -r .result.pane.cwd)"
 ```
 
-### Worker Registration
-Verify requested vs observed model before accepting assignment. Register confirmed identity with the manager's return address without `--wait`. Registration requires EM acknowledgment before starting engineering work.
+### Registration & Acknowledgment
+Verify requested vs observed model before accepting assignment. Register confirmed identity with the manager's return address without `--wait`.
+- **Preflight match** (identity, model, and role all verified as authorized): May proceed without waiting for explicit ACK.
+- **Preflight mismatch, unclear authority, or restart/relaunch context**: Preserve explicit acknowledgment before proceeding.
 
 ---
 

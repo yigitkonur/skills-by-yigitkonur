@@ -7,7 +7,7 @@ Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean
 ## Core Capabilities
 
 - **Role-First Multi-Agent Router**: CTO, Engineering Manager (EM), and native AGY implementers, reviewers, integration executors, and recovery executors all read the same skill — role selection determines which sections to execute. Runtime is not role.
-- **Verified Registration**: Workers verify actual TUI runtime and model, register with the manager, and await acknowledgment before beginning engineering work.
+- **Verified Registration**: Workers verify actual TUI runtime and model, then register with the manager. Proceed without ACK when preflight fully matches; preserve explicit acknowledgment on mismatch, restart, or unclear authority.
 - **Bidirectional Push Notification**: Workers push completion notices directly to the manager return pane (`herdr agent prompt`). No passive polling. Bounded observation and report reconciliation serve as fallback.
 - **Clean-Context Exact-SHA Review**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs with zero context pollution. Changed HEAD automatically invalidates stale reviews.
 - **Parallel Writers, Serial Integration**: Disjoint writers execute in parallel across isolated worktrees. The Integration Executor combines verified candidates serially into a moving baseline.
