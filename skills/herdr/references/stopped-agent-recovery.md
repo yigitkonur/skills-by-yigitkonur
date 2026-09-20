@@ -15,7 +15,7 @@ For canonical blocker and checkpoint report schemas, route to [report-contract.m
 | **Implementer / Reviewer** | Local error handling within assigned worktree only. If blocked by external dependencies or tool failure, report a blocker to the manager. | **Strictly prohibited from sending keystrokes, prompts, or termination signals to peer panes.** |
 | **Engineering Manager (EM)** | Full authority to diagnose worker panes, resolve modals, send targeted continuation prompts, or restart crashed worker sessions. | Must inspect viewport and process info before intervening. Never issue blind process kills. |
 | **Recovery Executor** | Delegated by EM to unblock stalled lanes, reconcile task inventories, and recover interrupted checkout states. | Reports all intervention outcomes and unconfirmed side effects to the manager. |
-| **CTO** | Strategic escalation point for mission-level blockers; authorizes EM session replacement if manager halts. | Non-pane host operates through manual observation boundary. |
+| **CTO** | Strategic escalation point for mission-level blockers; authorizes EM session replacement if manager halts. If operating in a native Herdr pane, receives native PTY prompts without `--wait`; if on a non-pane host, observes via the manual-observation boundary. | Non-pane host operates through manual observation boundary without callback promises. |
 
 ---
 
@@ -76,15 +76,15 @@ herdr agent send-keys <TARGET> esc
 > Always inspect the native task inventory and process tree (`herdr pane process-info --pane <PANE_ID>`) after `esc` to verify whether background side effects persist.
 
 ### 3. Hung Tool Call Recovery (`ctrl+c`)
-If an agent CLI is permanently deadlocked on an unresponsive child process:
-1. Send `ctrl+c` to terminate the hung child process:
+If an agent CLI is deadlocked on an unresponsive child process:
+1. Send `ctrl+c` to issue a SIGINT interrupt:
    ```bash
    herdr agent send-keys <TARGET> ctrl+c
    ```
-2. Read the visible screen to verify that the agent returned to its interactive prompt:
-   ```bash
-   herdr agent read <TARGET> --source visible --lines 15
-   ```
+> [!WARNING]
+> **Signal Semantics**: `ctrl+c` transmits `SIGINT`, which child processes may catch, defer, or ignore. Sending `ctrl+c` does not prove immediate termination of child processes or completion of background side effects.
+2. Verify process state and terminal status:
+   Inspect `herdr pane process-info --pane <PANE_ID>` and read the visible screen (`herdr agent read <TARGET> --source visible --lines 15`) to confirm that the child process has actually terminated and the agent has returned to an interactive prompt before sending further input.
 3. If returned to prompt, issue a targeted continuation prompt.
 
 ### 4. Interactive Continuation Prompt
@@ -107,16 +107,23 @@ Before restarting an agent or retrying a task:
    ```bash
    herdr pane process-info --pane <PANE_ID>
    ```
-2. **Reconcile Git Locks**:
-   If an interrupted process left `.git/index.lock` behind:
-   - Check whether any Git process is actively holding the lock:
-     ```bash
-     lsof "$WORKTREE_PATH/.git/index.lock" 2>/dev/null || true
-     ```
-   - If no process holds the file descriptor and the previous process is dead, safely remove the stale lock:
-     ```bash
-     rm -f "$WORKTREE_PATH/.git/index.lock"
-     ```
+2. **Reconcile Git Locks Across Worktrees**:
+   In Git worktrees, `.git` is a gitlink file pointing to the repository's worktree administrative directory, not a directory itself. Never target `.git/index.lock` directly with static paths.
+   Discover the actual lock path dynamically:
+   ```bash
+   LOCK_PATH="$(git -C "$WORKTREE_PATH" rev-parse --git-path index.lock)"
+   if [ -f "$LOCK_PATH" ]; then
+     # Check if an active process currently holds an open file descriptor on the lock
+     if lsof "$LOCK_PATH" >/dev/null 2>&1; then
+       echo "Lock $LOCK_PATH is actively held by a running process. Do NOT remove."
+     else
+       # Ensure prior git/tool processes in the pane are dead before removing
+       herdr pane process-info --pane "$PANE_ID"
+       rm -f "$LOCK_PATH"
+     fi
+   fi
+   ```
+   Never interpret a masked `lsof` failure as safe removal; verify whether the lock is actively held and confirm previous pane processes are dead before removing any lock.
 3. **Reconcile Pending File Artifacts**:
    Check for unfinalized `.partial` report files under `report_root`. Reconcile whether the content is complete before removing or finalizing.
 
@@ -159,7 +166,7 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    - **Top-Level Keys**: Verify presence of expected keys (`mission_id`, `status`, `manager`, `cto`, `report_root`, `task_graph`, `assignments`, `consumed_reports`, `decisions`).
    - **Assignment Shapes**: `assignments` must be a dictionary where each entry is a structured mapping containing `task_id`, `attempt`, `pane_id`, `tab_id`, and explicit file ownership—not a swallowed string literal.
    - **Task Graph Shapes**: `task_graph` entries must remain structured mappings with explicit `depends_on` sequences and valid lifecycle states.
-   - **Sole-Writer Invariant**: Ensure every active assignment maps to exactly one isolated checkout and one designated writer pane.
+   - **Writer vs. Reviewer Topology & Sole-Writer Invariant**: Distinguish write-enabled assignments (implementers, integration executors) from read-only reviewers. Every active writing assignment must have sole-writer ownership over its isolated checkout and designated writer pane. Read-only review assignments (auditing candidates via exact-SHA or detached snapshots) must be clearly designated as non-writers, ensuring no competing writers exist on the same surface while permitting concurrent reviewer checkouts.
    - **Decisions List**: Verify `decisions` remains an explicit sequence of entries and has not been absorbed by adjacent multiline scalar blocks.
    - **No New Parser/Framework**: Perform these checks using standard structural inspection; coordinate report schemas by pointer to [report-contract.md](report-contract.md) without introducing new artifact kinds or external parsing frameworks.
 4. **Carry Valid Work Forward**:
@@ -167,7 +174,9 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
    - Re-establish observer handles on existing worker panes.
 5. **Resumed Notice to CTO**:
-   Notify the CTO pane (`$CTO_PANE_ID`) of the resumed manager session with current milestone state.
+   Check CTO registration in `state.yaml` / mission brief:
+   - If the CTO is registered in a native Herdr pane (e.g. `$CTO_PANE_ID`, such as pane `w3H:p3`), dispatch a native notice prompt without `--wait`.
+   - If the CTO is operating on a non-pane host, record the resumed milestone in `state.yaml` and publish a structured manager report for manual observation via the manual-observation boundary.
 
 ---
 

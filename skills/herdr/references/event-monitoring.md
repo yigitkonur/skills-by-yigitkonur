@@ -19,7 +19,7 @@ Every cold reader must discover its assigned role before executing observation c
 | **Reviewer** | Independent technical review: audits candidate diffs (`gh pr diff` or exact-SHA checkouts), conducts verification checks, and publishes review reports with structured verdicts. | Never edit production code under review; never mutate manager state; never spawn worker panes. |
 | **Integration Executor** | Serial baseline reconciliation, worktree provisioning, branch rebase verification, and opening the single unmerged candidate PR. | Never merge without explicit candidate sign-off; never run concurrent conflicting rebases. |
 | **Recovery Executor** | Targeted intervention for stopped, stalled, or crashed panes; reconciles native task inventories and active background processes. | Never perform blind kills (`kill -9` / `pkill`); never relaunch agents over live interactive TUIs. |
-| **CTO** | Strategic governance, candidate evidence gates, and milestone reviews via the manual-observation boundary. | Does not manage fine-grained pane loops; operates outside native callback guarantees on non-pane hosts. |
+| **CTO** | Strategic governance, candidate evidence gates, and milestone reviews. If operating in a native Herdr pane, receives native PTY prompts without `--wait`; if on a non-pane host, observes via the manual-observation boundary without callback promises. | Does not manage fine-grained pane loops; operates outside native callback guarantees when hosted on a non-pane environment. |
 
 ### Stable Governance Invariants
 - **Manager Alone Increments Attempts**: The Engineering Manager alone increments task `attempt` counters in `state.yaml`. Producers always match their assigned `attempt`; corrections use fresh `report_id`s within the assigned attempt.
@@ -164,7 +164,7 @@ herdr agent wait <TARGET> --until idle --until done --timeout 60000
 - **One Observation Handle Per Target/Attempt/Purpose**: Do not spawn competing background watchers on the same pane.
 - **Distinguish Host Handles**: Distinguish `session_id` (the underlying execution process) from outer orchestration wait cells (`cell_id`).
 - **The 10-Minute Silent Boundary Rule**: Multi-agent operations must never rely on fictional cron schedulers or unverified background wake promises. If an agent operates without state transitions for 10 minutes, it must record a checkpoint report at its next safe tool boundary.
-- **Non-Pane CTO Boundary**: A CTO operating outside Herdr panes cannot receive native PTY callbacks. The EM maintains an honest manual-observation boundary, checkpointing progress in `state.yaml` and publishing structured milestone reports.
+- **CTO Routing & Non-Pane Boundary**: A CTO may operate inside a native Herdr pane (receiving native PTY prompts without `--wait`, e.g. `$CTO_PANE_ID`) or outside panes on a non-pane host. When the CTO is on a non-pane host, native PTY callbacks cannot be promised; the EM maintains an honest manual-observation boundary, checkpointing progress in `state.yaml` and publishing structured milestone reports.
 
 ---
 
@@ -176,7 +176,8 @@ herdr agent wait <TARGET> --until idle --until done --timeout 60000
    - The assigned Integration Executor rebases verified commits serially and opens the draft PR.
 2. **General Authorized Delivery Sequence**:
    - Worker synthesizes tests and code in isolated worktree.
-   - Independent Reviewer audits candidate diff (`gh pr diff`) in a clean context.
-   - Upon approval, promote to ready (`gh pr ready <PR_NUM>`).
-   - Rebase serially on `origin/main`, verify checks pass (green), and squash-merge.
+   - Rebase serially on `origin/main` and verify test suite passes (green).
+   - **Exact-SHA Review Gate**: Independent Reviewer audits candidate diff and exact head in a clean context. Any rebase or code change produces a new commit SHA that invalidates prior reviews; delivery cannot proceed on a stale review.
+   - Only after the exact candidate head is approved and checks pass: promote PR to ready (`gh pr ready <PR_NUM>`).
+   - Merge serially (squash-merge) into main.
    - Clean up worktree and pane containers.
