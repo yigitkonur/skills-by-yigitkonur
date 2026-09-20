@@ -44,6 +44,7 @@ herdr pane process-info --pane <PANE_ID>
 | **Agent prompt resting idle (`? for shortcuts`, `>`)** | Agent finished its turn but did not send notification. | Inspect filesystem for `.partial` or `.yaml` reports. If absent, issue a continuation prompt. |
 | **Shell prompt resting idle (`$`, `%`)** | Agent CLI process crashed or exited cleanly. | Reconcile background processes, then restart agent session (Phase 4). |
 | **Terminal frozen on subshell command** | Tool execution hung or caught in infinite loop. | Send targeted `ctrl+c` interrupt (Phase 2). |
+| **Visible quota / rate limit (429, ResourceExhausted)** | Model quota exhausted; neither dead worker nor successful idle. | **Do NOT retry blindly on same model.** Preserve partial artifacts and owned pending effects. Route to Quota & Rate-Limit Protocol (Section 3.5). |
 | **`error.code: pane_not_found`** | Pane was closed or workspace corrupted. | Check `herdr pane list`; verify if pane was relocated. |
 
 ---
@@ -76,15 +77,17 @@ herdr agent send-keys <TARGET> esc
 > Always inspect the native task inventory and process tree (`herdr pane process-info --pane <PANE_ID>`) after `esc` to verify whether background side effects persist.
 
 ### 3. Hung Tool Call Recovery (`ctrl+c`)
-If an agent CLI is deadlocked on an unresponsive child process:
-1. Send `ctrl+c` to issue a SIGINT interrupt:
+If an agent CLI is deadlocked on an unresponsive child process or long-running tool:
+1. Send `ctrl+c` via Herdr key tokens:
    ```bash
    herdr agent send-keys <TARGET> ctrl+c
    ```
 > [!WARNING]
-> **Signal Semantics**: `ctrl+c` transmits `SIGINT`, which child processes may catch, defer, or ignore. Sending `ctrl+c` does not prove immediate termination of child processes or completion of background side effects.
+> **TTY Raw-Mode & Application Semantics**:
+> In interactive terminal sessions running in raw mode, `ctrl+c` transmits the ASCII byte `\x03` across the PTY. Unlike canonical (cooked) terminal mode where the TTY line discipline automatically signals the foreground process group with OS `SIGINT`, raw-mode byte delivery is consumed directly by the application's event loop.
+> The application may handle, defer, or ignore `\x03`, and may or may not forward `SIGINT` to child processes running in subshells. Sending `ctrl+c` does not guarantee POSIX signal dispatch, does not prove child process termination, and leaves background child side effects (partial writes, file descriptor holds, lock acquisition) unknown.
 2. Verify process state and terminal status:
-   Inspect `herdr pane process-info --pane <PANE_ID>` and read the visible screen (`herdr agent read <TARGET> --source visible --lines 15`) to confirm that the child process has actually terminated and the agent has returned to an interactive prompt before sending further input.
+   Never assume child termination. Always inspect `herdr pane process-info --pane <PANE_ID>` and read the visible screen (`herdr agent read <TARGET> --source visible --lines 15`) to confirm that child processes have actually exited and the agent has returned to a clean interactive prompt before sending further input.
 3. If returned to prompt, issue a targeted continuation prompt.
 
 ### 4. Interactive Continuation Prompt
@@ -93,6 +96,23 @@ If the agent CLI is alive and sitting at its interactive prompt after an error o
 herdr agent prompt <TARGET> \
   "Your previous operation paused or encountered an error. Review terminal history, check git status, and resume from the last valid checkpoint."
 ```
+
+### 5. Quota & Rate-Limit Recovery Protocol
+When an agent pane encounters visible API rate limits or quota exhaustion (e.g. HTTP 429, `ResourceExhausted`):
+1. **Neither Dead Worker Nor Successful Idle**:
+   - The underlying agent process has not crashed back to a shell prompt, nor has it cleanly finished its turn or task.
+   - Never treat a quota stall as clean task completion or idle settlement.
+2. **Preserve Artifacts & Owned Pending Effects**:
+   - Preserve unfinalized `.partial` reports under `report_root` and all in-progress worktree modifications.
+   - Do not discard partial files or revert uncommitted working tree progress without inspection.
+3. **Cease Blind Same-Model Retries**:
+   - Repeatedly submitting continuation prompts (`herdr agent prompt`) or restarting the agent with the same exhausted model compounds rate limits and wastes mission time. Stop blind retries immediately upon observing quota exhaustion evidence.
+4. **Authorized Available Model Re-registration Gate**:
+   - Switching models is permitted **only** if an alternative model is explicitly authorized by mission policy and capacity allocations.
+   - Model replacement requires verified native AGY explicit re-registration: relaunching or re-configuring the agent with the authorized `--model <AUTHORIZED_MODEL>` flag, updating the registered model in `state.yaml`, and adhering to the manager-owned `attempt` policy.
+5. **Escalate Capacity Blocker**:
+   - If no alternative model is authorized or available in the project capacity pool, publish an immutable blocker report (`requested_action: unblock_decision` / capacity blocker) with qualified screen evidence.
+   - **Strictly Prohibited**: Making billing modifications, editing platform configuration files, or altering underlying agent frameworks.
 
 ---
 
@@ -169,11 +189,15 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    - **Writer vs. Reviewer Topology & Sole-Writer Invariant**: Distinguish write-enabled assignments (implementers, integration executors) from read-only reviewers. Every active writing assignment must have sole-writer ownership over its isolated checkout and designated writer pane. Read-only review assignments (auditing candidates via exact-SHA or detached snapshots) must be clearly designated as non-writers, ensuring no competing writers exist on the same surface while permitting concurrent reviewer checkouts.
    - **Decisions List**: Verify `decisions` remains an explicit sequence of entries and has not been absorbed by adjacent multiline scalar blocks.
    - **No New Parser/Framework**: Perform these checks using standard structural inspection; coordinate report schemas by pointer to [report-contract.md](report-contract.md) without introducing new artifact kinds or external parsing frameworks.
-4. **Carry Valid Work Forward**:
+4. **Leadership Tab Topology & Invariants**:
+   - The Engineering Manager (EM) shares the dedicated leadership tab with the CTO (two panes only: CTO on the left, EM on the right, sharing `tab_id`). Worker and reviewer lanes operate in separate tabs.
+   - When recovering or resuming a manager session, preserve existing session identities; the CTO alone migrates live panes (such as moving live `p8`), and agents must never move, split, or restart live panes autonomously.
+   - Cold bootstrap creates the EM pane via a right horizontal split from the CTO pane (`herdr pane split --direction right ...`) and verifies the shared `tab_id` and horizontal layout (CTO at x=0, EM to the right at x>0 via `herdr tab get` and `herdr pane layout`).
+5. **Carry Valid Work Forward**:
    - Reconcile active assignments and consumed report digests.
    - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
    - Re-establish observer handles on existing worker panes.
-5. **Resumed Notice to CTO**:
+6. **Resumed Notice to CTO**:
    Check CTO registration in `state.yaml` / mission brief:
    - If the CTO is registered in a native Herdr pane (e.g. `$CTO_PANE_ID`, such as pane `w3H:p3`), dispatch a native notice prompt without `--wait`.
    - If the CTO is operating on a non-pane host, record the resumed milestone in `state.yaml` and publish a structured manager report for manual observation via the manual-observation boundary.
