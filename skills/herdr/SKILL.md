@@ -36,14 +36,14 @@ Every cold reader identifies its assigned role first. The same skill and referen
 
 ### Cold Bootstrap Sequence (CTO → EM → Workers)
 
-Before any workers exist, the CTO bootstraps the mission:
+Before any workers exist, the CTO bootstraps the mission. The leadership topology requires exactly TWO panes in ONE tab: CTO on the LEFT, EM on the RIGHT. Workers and reviewers are allocated to separate, task-specific tabs.
 
-1. **CTO allocates an EM pane** in an existing Herdr workspace and starts a Codex EM:
+1. **CTO allocates the EM pane** by splitting right from the CTO pane, then starts a Codex EM:
    ```bash
    herdr pane split --pane "$CTO_PANE_ID" --direction right --cwd "$RUN_ROOT" --no-focus
    herdr agent start "engineering-manager" --kind codex --pane "$EM_PANE_ID" -- --model "$EM_MODEL"
    ```
-   The CTO records `$EM_PANE_ID` as the EM return address. CTO runtime is typically Codex (`--kind codex`); EM runtime is also Codex. Runtime choice is explicit per mission — it does not determine role authority.
+   The CTO verifies the actual layout and same live `tab_id`, and records `$EM_PANE_ID` as the EM return address. CTO runtime is typically Codex (`--kind codex`); EM runtime is also Codex. Runtime choice is explicit per mission — it does not determine role authority.
 
 2. **CTO dispatches the EM brief** via `herdr agent prompt "$EM_PANE_ID" "..."` containing: mission scope, run root path, CTO return address (`$CTO_PANE_ID`), and authorized model tiers.
 
@@ -53,7 +53,7 @@ Before any workers exist, the CTO bootstraps the mission:
 
 5. **EM dispatches workers and reviewers** into their assigned panes. Each worker and reviewer follows the registration protocol below before beginning work.
 
-When the CTO operates outside a Herdr pane (no `HERDR_ENV`), step 1 uses whatever access the CTO has (e.g., a terminal with `herdr` CLI access, or delegating pane creation to a bootstrap script). The CTO cannot receive native `herdr agent prompt` callbacks in this mode — the EM publishes milestone reports to the shared run root for the CTO to read manually.
+When the CTO operates outside a Herdr pane (no `HERDR_ENV`), step 1 uses explicit-target CLI (if available) or manual terminal access. The non-pane CTO can use CLI commands like `herdr agent read` but has no native callback address (`herdr agent prompt` targeting the CTO is unavailable). Never fabricate coordinates. The CTO reads EM milestone reports from the shared run root.
 
 ### 2a. Verify Herdr Environment (Pane Roles)
 
@@ -65,12 +65,12 @@ CTO may operate outside a Herdr pane (e.g., terminal session or API). When `HERD
 
 ### 2b. Discover Own Coordinates (Pane Roles Only)
 
-Agents running inside Herdr panes discover their own identity:
+Agents running inside Herdr panes discover their own identity. Always use live native records via `herdr pane current`, as panes may be moved between tabs, making the startup `HERDR_TAB_ID` environment variable stale:
 
 ```bash
-SELF_PANE_ID="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"
-SELF_TAB_ID="${HERDR_TAB_ID:-$(herdr pane current | jq -r .result.pane.tab_id)}"
-SELF_TERM_ID="${HERDR_TERMINAL_ID:-$(herdr pane current | jq -r .result.pane.terminal_id)}"
+SELF_PANE_ID="$(herdr pane current | jq -r .result.pane.pane_id)"
+SELF_TAB_ID="$(herdr pane current | jq -r .result.pane.tab_id)"
+SELF_TERM_ID="$(herdr pane current | jq -r .result.pane.terminal_id)"
 SELF_CWD="$(herdr pane current | jq -r .result.pane.cwd)"
 ```
 
@@ -102,7 +102,11 @@ The manager acknowledges registration before releasing the assignment. Registrat
 
 ## 3. Bound, Decompose, Assign (EM)
 
-The EM decomposes the mission into independently verifiable tasks with disjoint ownership:
+The EM runs a continuous operational loop: **report intake** → **strict identity/evidence decision** → **next ready dispatch or escalation** → **checkpoint**.
+
+### 3a. Decomposition & Dispatch
+
+As part of the dispatch cycle, the EM decomposes the mission into independently verifiable tasks with disjoint ownership:
 
 - **One writer per writable surface**. Concurrent writers use separate worktrees in task-owned external paths or verified ignored locations. Never share worktrees.
 - **Dispatch all ready disjoint work in the same wave**. Reviews proceed while other writers continue. Refill capacity as workers publish handbacks.
@@ -134,17 +138,7 @@ Key constraints on notices:
 - Messages are the primary notification mechanism. Bounded observation and report-file reconciliation serve as fallback — not always-wake guarantees.
 - **Tab** is optional deferred input requiring exclusive composer ownership. Never use Tab for urgent alerts or fan-in; Enter is the operational default.
 
-### 4c. Push Notification Mechanics
-
-- **Bracketed Paste**: Wraps text in DEC Mode 2004 (`\x1b[200~...\x1b[201~`), preventing premature execution.
-- **300ms Staged Enter Delay**: Pause before transmitting `\r` (Enter), preventing dropped characters.
-- **`herdr agent wait`**: Event-driven kernel wait. Timeout is in milliseconds. Default settled states: `idle`, `done`, `blocked`. A start timeout means the agent has not transitioned yet — it is not proof of launch failure.
-
-```bash
-herdr agent wait <target> --until idle --until done --until blocked --timeout <MS>
-```
-
-An observer timeout is not a worker failure. An idle worker is not a completed mission. `unknown` remains unknown — settlement grants permission to inspect screen and filesystem evidence, not to assume outcome.
+All duplicated low-level injection, signal, and publication mechanics (such as DEC Mode 2004 bracketed paste, staged enter delays, and `herdr agent wait` kernel events) are canonically defined in [references/event-monitoring.md](references/event-monitoring.md). Preserve compact TUI reads as context rather than a semantic/full transcript. An observer timeout is not a worker failure, and an idle worker is not a completed mission — settlement only grants permission to inspect screen and filesystem evidence.
 
 ---
 
@@ -160,7 +154,7 @@ herdr pane split --pane "$PARENT_PANE_ID" --direction right --cwd "$REVIEW_PATH"
 herdr agent start "reviewer-$TASK_ID" --kind agy --pane "$REVIEWER_PANE_ID" -- --model "$REVIEWER_MODEL"
 ```
 
-**Reviewer executes**: The reviewer registers (§2d), checks out the exact candidate SHA (`git checkout <CANDIDATE_SHA>`), performs read-only audit, publishes its review report per [references/report-contract.md](references/report-contract.md), and notifies the manager. The reviewer does not spawn topology, allocate panes, or start agents.
+**Reviewer executes**: The reviewer registers (§2d), verifies the existing exact HEAD in the shared frozen readonly checkout matches the candidate SHA, performs a read-only audit, publishes its review report per [references/report-contract.md](references/report-contract.md), and notifies the manager. Unconditional `git checkout` is unsafe in a shared read-only worktree; allocate a separate exact-SHA checkout only if tests mutate state or the author must continue working simultaneously. The reviewer does not spawn topology, allocate panes, or start agents.
 
 Never review code in the implementer's active pane. Reviews may proceed while other writers continue on disjoint tasks.
 
@@ -236,13 +230,12 @@ When an agent is `blocked` on interactive confirmation, Herdr rejects `herdr age
 When Herdr detection reports `unknown` for a known AGY process:
 
 1. Confirm foreground AGY via `herdr pane process-info --pane <PANE_ID>`.
-2. Verify visible composer via `herdr pane get <PANE_ID>` (pane-level, not agent-level — agent binding is unknown in this mode).
-3. Use `herdr pane run <PANE_ID> <TEXT>...` as verified fallback. This injects the literal text into the pane followed by Enter — it is keystroke injection, not OS shell execution. Never use on an unverified foreground program or relaunch over a live TUI.
+2. Use `herdr pane run <PANE_ID> <TEXT>...` as verified fallback. This injects the literal text into the pane followed by Enter — it is keystroke injection, not OS shell execution. Never use on an unverified foreground program or relaunch over a live TUI.
 
 ### Targeted Intervention
 
 - **`esc`**: Interrupts stuck prompts or active turns. May leave background work running with unknown side effects. Always inspect process inventory and owned effects afterwards.
-- **`ctrl+c`**: Sends SIGINT to the foreground process group. The actual effect depends on the foreground application — it may terminate a child command, cancel an active turn, or be caught/ignored. Verify the resulting state by reading the visible screen before assuming the prompt returned. Inspect owned process tree for background work that may continue.
+- **`ctrl+c`**: Keystrokes are not always SIGINT. In raw-mode TUIs, the terminal driver passes the raw byte (0x03) to the application to handle. In cooked mode, it sends SIGINT. The actual effect always depends on the foreground application — verify the resulting state by reading the visible screen before assuming the prompt returned. Inspect the owned process tree for background work that may continue.
 - **No blind kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
 
 Detailed recovery runbooks: [references/stopped-agent-recovery.md](references/stopped-agent-recovery.md).
@@ -257,13 +250,6 @@ Two kinds of durable mission artifact:
 2. **Immutable YAML Reports**: Producer reports (`<task>-a<attempt>-<purpose>.yaml`) and manager milestones (`manager-m<N>-<purpose>.yaml`), published atomically to the shared run root.
 
 All report schemas, the atomic publication pipeline, notice format, consumption semantics, idempotent digest checks, and reviewer Q/A protocol are defined in [references/report-contract.md](references/report-contract.md).
-
-### Reporting Invariants
-
-- **Manager alone increments attempts**. Producers match their assigned `attempt`.
-- **Idempotent consumption**. Manager records SHA-256 digests; duplicate notices are no-ops; mutated same-ID reports are rejected.
-- **Receipt is not approval**. Report receipt updates `state.yaml`; task advancement requires independent technical review.
-- **10-minute silent boundary**. If operating without external notice or state transition for 10 minutes, publish a checkpoint at the next safe tool boundary.
 
 ---
 
