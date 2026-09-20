@@ -23,8 +23,8 @@ Before executing any instructions, cold readers must locate their assigned role 
 
 | Role | Runtime Host | Primary Authority | Permitted Sections | Strictly Out of Scope |
 |---|---|---|---|---|
-| **CTO** | Codex / Root PTY | Mission strategy, architectural boundaries, final candidate gate authority. | Sections 2, 6.5 (Receipt vs Approval Gate). | Daily task dispatch, PTY monitoring, worktree editing. |
-| **Engineering Manager (EM)** | Codex | Global task graph dispatch, checkpointing, report intake, reviewer Q/A relay. | Sections 2, 5 (Notice Intake), 6 (Consumption Semantics). | Direct production code editing, unassigned task execution. |
+| **CTO** | Codex / Root PTY | Mission strategy, architectural boundaries, final candidate gate authority, bounded native observation. | Sections 2, 6.5 (Receipt vs Approval Gate). | Daily task dispatch, worktree editing. |
+| **Engineering Manager (EM)** | Codex | Global task graph dispatch, checkpointing, report intake, milestone publication, reviewer Q/A relay. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice Intake), 6 (Consumption Semantics). | Direct production code editing, unassigned task execution. |
 | **Implementer** | AGY | Feature implementation, tests, local commits, report handback in assigned worktree. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 7, 8. | Modifying `state.yaml`, consuming peer reports, managing other workers. |
 | **Fresh Reviewer** | AGY | Clean-context evaluation of spec, code, tests, and diffs on assigned branch/head. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice), 8 (Q/A). | Editing implementation files, approving own work, managing task graph. |
 | **Integration Executor** | AGY | Serial Git/GitHub gating, draft PR lifecycle, packaging generation, cleanup. | Sections 2, 3 (Schema), 4 (Publication), 5 (Notice). | Parallel drafting, direct push to main without gate approval. |
@@ -83,7 +83,7 @@ event_id: <string>                       # Optional fine-grained event tracker: 
 producer:
   runtime: <string>                      # Runtime binary: agy | codex | claude
   model: <string>                        # Specific model identifier: gemini-3.8-flash-high | gpt-6-astra
-  role: <string>                         # Assigned role: implementer | reviewer | integrator | recovery_executor
+  role: <string>                         # Assigned role: implementer | reviewer | integrator | recovery_executor | manager
   pane_id: <string>                      # Herdr pane identifier: e.g. <PRODUCER_PANE_ID>
   tab_id: <string>                       # Herdr tab identifier: e.g. <PRODUCER_TAB_ID>
   terminal_id: <string>                  # Underlying PTY terminal ID: e.g. <PRODUCER_TERM_ID>
@@ -146,17 +146,31 @@ To prevent the manager or automated observers from reading partially written, co
        │  Producer generates report via apply_patch to:
        │  <REPORT_ROOT>/<report_id>.partial
        ▼
-[ Step 2: Validate Content & Compute SHA-256 ]
-       │  Producer executes syntax validation and computes SHA-256 digest:
-       │  python3 -c "import yaml; yaml.safe_load(open('<REPORT_ROOT>/<report_id>.partial'))"
-       │  (or standard library Python validation where PyYAML is not installed)
+[ Step 2: Validate Content, Shape, & Compute SHA-256 ]
+       │  2a. Syntax validation — choose the path matching your environment:
+       │    • PyYAML available: python3 -c "import yaml; yaml.safe_load(open('<REPORT_ROOT>/<report_id>.partial'))"
+       │    • No PyYAML: Author reports as JSON-formatted YAML (a valid YAML 1.2 subset),
+       │      then validate with: python3 -c "import json; json.load(open('<REPORT_ROOT>/<report_id>.partial'))"
+       │  2b. Shape validation — verify required top-level keys exist and nested values
+       │      are mappings (not strings that swallowed their sub-keys due to indentation):
+       │      Required keys: schema_version, mission_id, task_id, attempt, report_id, producer, status.
+       │      Required mappings: producer, manager, cto (each must be a dict, not a scalar).
+       │      See stopped-agent-recovery.md for checkpoint shape recovery after indentation defects.
+       │  2c. Compute SHA-256 digest of the .partial file for post-publication verification.
        ▼
-[ Step 3: Collision Pre-Flight & Atomic Rename ]
+[ Step 3: Collision Pre-Flight, Atomic Rename, & Verified Publication ]
        │  Producer verifies destination does NOT exist:
        │  test ! -e <REPORT_ROOT>/<report_id>.yaml || { echo 'Destination exists!'; exit 1; }
        │  Then POSIX atomic replace without clobber:
        │  mv -n <REPORT_ROOT>/<report_id>.partial <REPORT_ROOT>/<report_id>.yaml
-       │  Verify file exists post-rename: test -f <REPORT_ROOT>/<report_id>.yaml
+       │  Verify all three post-rename conditions (any failure aborts notice):
+       │    1. Source removed:  test ! -e <REPORT_ROOT>/<report_id>.partial
+       │    2. Destination exists: test -f <REPORT_ROOT>/<report_id>.yaml
+       │    3. Destination matches expected digest from Step 2c:
+       │       shasum -a 256 <REPORT_ROOT>/<report_id>.yaml  (compare to Step 2c value)
+       │  If .partial still exists after mv -n exits 0, a TOCTOU race occurred:
+       │  another producer published the destination between pre-flight and rename.
+       │  Abort the notice; do not report success for bytes that were not published.
        ▼
 [ Step 4: Native Prompt Notice (No-Wait) ]
           Producer alerts manager via Herdr PTY prompt without blocking:
@@ -167,7 +181,7 @@ To prevent the manager or automated observers from reading partially written, co
 1. **Command-Capable AGY Requirement**: Google Antigravity CLI (AGY) workers have full tool execution capabilities (`apply_patch`, git, python). Never use non-atomic file writes, raw string redirection (`>`), or file-only fallbacks that weaken this publication sequence.
 2. **No-Overwrite Invariant**: A published report is immutable. The pre-flight check in Step 3 ensures that if a destination file `<REPORT_ROOT>/<report_id>.yaml` already exists, publication aborts with an error rather than silently overwriting evidence.
 3. **No Producer Attempt Increments**: The Engineering Manager alone owns incrementing `attempt` numbers. If a producer needs to publish corrections, progress updates, or revisions within an assigned attempt, it must generate a **new unique `report_id`** with a descriptive purpose suffix (e.g. `report_contract-a1-revision1.yaml`), leaving prior published reports untouched.
-4. **No Undeclared Dependencies**: Validation in Step 2 uses available system tooling. In Python environments where PyYAML is present, `yaml.safe_load` may be used on YAML files; where absent, Python standard-library parsing (`json`, token checks, or structured field inspection) provides clean validation without installing new packages. Do not implement a fake or non-standard YAML parser.
+4. **No Undeclared Dependencies**: Validation in Step 2 uses available system tooling only. Two supported paths: (a) When PyYAML is installed, `yaml.safe_load` validates arbitrary YAML reports. (b) When PyYAML is absent, producers **author reports as JSON-formatted YAML** — a valid YAML 1.2 subset that Python's standard-library `json.load` can validate without additional packages. JSON-formatted YAML is an explicit authoring choice, not a claim that `json.load` parses arbitrary YAML. Shape validation (Step 2b: required keys exist, required values are mappings) applies regardless of parser. Do not implement a custom YAML parser or install packages not already present.
 
 ---
 
@@ -229,7 +243,7 @@ When the Engineering Manager receives a report notification (or discovers an unc
                                 │
                                 ▼
                         Does report_id already exist?
-                                ├─── No ───► [ Record in state.yaml & Advance Task ]
+                                ├─── No ───► [ Record Evidence in state.yaml ]
                                Yes
                                 │
                                 ▼
@@ -344,9 +358,15 @@ evidence:
   - command: "git diff --check"
     exit_code: 0
     result: "Clean diff check; zero whitespace or formatting defects."
-  - command: "python3 -c \"import yaml; data = yaml.safe_load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\""
+  - command: "python3 -c \"import json; data = json.load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\""
     exit_code: 0
-    result: "Target YAML report file verified structurally valid."
+    result: "JSON-formatted YAML report validated via stdlib json.load."
+  - command: "python3 -c \"import json; json.load(open('standard-yaml-report.yaml'))\""
+    exit_code: 1
+    result: "json.decoder.JSONDecodeError — json.load cannot parse standard (non-JSON) YAML. Use yaml.safe_load when PyYAML is available, or author reports as JSON-formatted YAML for stdlib validation."
+  - command: "shasum -a 256 <REPORT_ROOT>/sample_feature-a1-handback.yaml"
+    exit_code: 0
+    result: "<EXPECTED_DIGEST>  <REPORT_ROOT>/sample_feature-a1-handback.yaml (matches Step 2c digest)"
 git:
   base: ce4dc7325241f8a3269047934c31131274019c7c
   head: 8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b
