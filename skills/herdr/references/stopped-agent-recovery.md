@@ -1,73 +1,179 @@
-# Resume a Stopped Worker
+# Recovery, Intervention & Reconciling Stopped Agents
 
-Use this procedure only after READ confirms that a worker stopped unexpectedly with unfinished authorized work. A normal wait timeout or an `unknown` classification belongs first to [event-monitoring.md](event-monitoring.md), not immediate worker restart.
+Read this reference when an agent pane appears stalled, unresponsive, blocked on input, or halted unexpectedly. This document defines the diagnosis sequence, targeted intervention mechanics, process reconciliation procedures, and crash recovery across all Herdr orchestration roles.
+
+For canonical blocker and checkpoint report schemas, route to [report-contract.md](report-contract.md).
 
 ---
 
-## 1. Inspect and Classify First
+## 1. Role Authority & Recovery Boundaries
 
-Read the current pane before intervening:
+**Runtime identity is not role identity.** Do not assume recovery authority simply because you operate from a command-capable runtime. Interventions must respect the explicit role hierarchy:
+
+| Role | Recovery Authority & Scope | Invariant |
+|---|---|---|
+| **Implementer / Reviewer** | Local error handling within assigned worktree only. If blocked by external dependencies or tool failure, report a blocker to the manager. | **Strictly prohibited from sending keystrokes, prompts, or termination signals to peer panes.** |
+| **Engineering Manager (EM)** | Full authority to diagnose worker panes, resolve modals, send targeted continuation prompts, or restart crashed worker sessions. | Must inspect viewport and process info before intervening. Never issue blind process kills. |
+| **Recovery Executor** | Delegated by EM to unblock stalled lanes, reconcile task inventories, and recover interrupted checkout states. | Reports all intervention outcomes and unconfirmed side effects to the manager. |
+| **CTO** | Strategic escalation point for mission-level blockers; authorizes EM session replacement if manager halts. | Non-pane host operates through manual observation boundary. |
+
+---
+
+## 2. Phase 1: Read & Introspect Before Intervening
+
+### The Cardinal Rule: Read Before Targeted Action
+Never inject prompts, keystrokes, or cancellation signals into an agent pane without first reading its live state. A silent or non-reporting agent is not necessarily broken—it may be reasoning, compiling, or awaiting modal input.
 
 ```bash
-herdr agent read <target> --source visible --lines 25
-herdr agent read <target> --source recent-unwrapped --lines 50
+# 1. Read the 2D rendered viewport (modals, spinners, thinking progress, prompt cursor)
+herdr agent read <TARGET> --source visible --lines 25
+
+# 2. Read unwrapped terminal transcript (error messages, tracebacks, recent tool outputs)
+herdr agent read <TARGET> --source recent-unwrapped --lines 50
+
+# 3. Check underlying process state in the pane
+herdr pane process-info --pane <PANE_ID>
 ```
 
-Determine the exact operating state:
-- **Still Working**: Thinking or tool call is executing. Do not inject another prompt; renew the bounded wait.
-- **Finished Turn**: The prompt is at rest. Consume the report or deliverable.
-- **Interactive Question / Modal**: The agent is paused on `ask_question` or a confirmation menu (`[y/N]`). Do NOT send text! Use the modal bridge:
-  ```bash
-  herdr agent send-keys <target> down enter
-  ```
-- **CLI / Session Crash**: The agent process aborted or crashed back to the shell prompt.
+### State Classification Matrix
+
+| Observed Screen / Process State | Diagnosis | Required Action |
+|---|---|---|
+| **Spinner active / thinking text streaming** | Agent is actively generating or executing a tool call. | **Do NOT interrupt or prompt.** Renew bounded wait (`herdr agent wait <TARGET> --timeout 60000`). |
+| **Modal prompt / arrow menu visible (`ask_question`, `[y/N]`)** | Agent is paused on interactive input (`agent_blocked`). | **Do NOT send text.** Use the Modal Bridge via `herdr agent send-keys` (Phase 2). |
+| **Agent prompt resting idle (`? for shortcuts`, `>`)** | Agent finished its turn but did not send notification. | Inspect filesystem for `.partial` or `.yaml` reports. If absent, issue a continuation prompt. |
+| **Shell prompt resting idle (`$`, `%`)** | Agent CLI process crashed or exited cleanly. | Reconcile background processes, then restart agent session (Phase 4). |
+| **Terminal frozen on subshell command** | Tool execution hung or caught in infinite loop. | Send targeted `ctrl+c` interrupt (Phase 2). |
+| **`error.code: pane_not_found`** | Pane was closed or workspace corrupted. | Check `herdr pane list`; verify if pane was relocated. |
 
 ---
 
-## 2. Recovery Strategies
+## 3. Phase 2: Targeted Intervention Protocols
 
-### Strategy A: The Interactive Continuation Prompt
-If the agent CLI is still alive and resting at its interactive prompt after an error or interruption, submit a single targeted continuation prompt:
+### 1. The Modal Bridge (`herdr agent send-keys`)
+When an agent stops at an interactive question or tool approval dialog, Herdr protects the terminal by rejecting prompts with `error.code: agent_blocked`.
 
+Resolve the modal mechanically using pre-validated key tokens:
 ```bash
-herdr agent prompt <target> \
-  "Your previous command encountered an error. Review the error in your terminal history, inspect git status, and resume the task from the last valid checkpoint."
+# Navigate down and select option
+herdr agent send-keys <TARGET> down enter
+
+# Confirm default yes prompt
+herdr agent send-keys <TARGET> enter
+
+# Cancel or dismiss interactive prompt
+herdr agent send-keys <TARGET> esc
 ```
 
-### Strategy B: Restarting Crashed Agent Session
-If the agent process exited back to the shell prompt:
-1. Verify the pane is sitting at a shell prompt (`$` or `%`).
-2. Identify the active model used by the orchestrator (`$CURRENT_MODEL`).
-3. Re-launch the agent CLI using the same model:
-   ```bash
-   herdr agent start <name> --kind <kind> --pane <pane_id> -- --model "$CURRENT_MODEL"
-   ```
-4. Re-submit the mission brief pointing to existing progress in the worktree:
-   ```bash
-   herdr agent prompt <target> \
-     "Resuming task on feature/<task>. Previous changes exist in .worktrees/<task>. Check git status and tests, then complete remaining acceptance criteria."
-   ```
+### 2. Targeted Escape (`esc`) Intervention
+`esc` is a targeted intervention after reading visible screen evidence. It interrupts an active conversational turn or aborts a stuck model prompt:
+```bash
+herdr agent send-keys <TARGET> esc
+```
 
-### Strategy C: Interrupted Tool Call Recovery
-If an agent CLI is permanently hung on a frozen subprocess or deadlocked tool call:
-1. Send `ctrl+c` to cancel the hung command:
+> [!WARNING]
+> **The Detached Background Process Hazard**: Pressing `esc` interrupts the interactive agent composer, but background tool commands or compilation scripts already dispatched to OS child subshells may continue running.
+> Always inspect the native task inventory and process tree (`herdr pane process-info --pane <PANE_ID>`) after `esc` to verify whether background side effects persist.
+
+### 3. Hung Tool Call Recovery (`ctrl+c`)
+If an agent CLI is permanently deadlocked on an unresponsive child process:
+1. Send `ctrl+c` to terminate the hung child process:
    ```bash
-   herdr agent send-keys <target> ctrl+c
+   herdr agent send-keys <TARGET> ctrl+c
    ```
-2. Read the visible screen to confirm return to prompt:
+2. Read the visible screen to verify that the agent returned to its interactive prompt:
    ```bash
-   herdr agent read <target> --source visible --lines 10
+   herdr agent read <TARGET> --source visible --lines 15
    ```
-3. Once back at prompt, issue continuation instructions.
+3. If returned to prompt, issue a targeted continuation prompt.
+
+### 4. Interactive Continuation Prompt
+If the agent CLI is alive and sitting at its interactive prompt after an error or unexpected pause, send a single focused continuation prompt:
+```bash
+herdr agent prompt <TARGET> \
+  "Your previous operation paused or encountered an error. Review terminal history, check git status, and resume from the last valid checkpoint."
+```
 
 ---
 
-## 3. Bounded Recovery Rule
+## 4. Phase 3: Process Reconciliation vs. Blind Kills
 
-After **two consecutive failed recovery attempts** for the same failure mode:
-1. Stop automated retries.
-2. Capture the full terminal transcript to a debug file:
+### The No-Blind-Kills Invariant
+**Strictly prohibited**: Executing `kill -9`, blanket `pkill -f <agent>`, or terminating processes without inventory. Blind process termination corrupts Git index files, orphans POSIX semaphores, and destroys partial work.
+
+### Process Reconciliation Procedure
+Before restarting an agent or retrying a task:
+1. **Query Pane Processes**:
    ```bash
-   herdr agent read <target> --source recent-unwrapped --lines 200 > /tmp/worker-crash-dump.log
+   herdr pane process-info --pane <PANE_ID>
    ```
-3. Report the blocker to the orchestrator/user with the exact failure evidence.
+2. **Reconcile Git Locks**:
+   If an interrupted process left `.git/index.lock` behind:
+   - Check whether any Git process is actively holding the lock:
+     ```bash
+     lsof "$WORKTREE_PATH/.git/index.lock" 2>/dev/null || true
+     ```
+   - If no process holds the file descriptor and the previous process is dead, safely remove the stale lock:
+     ```bash
+     rm -f "$WORKTREE_PATH/.git/index.lock"
+     ```
+3. **Reconcile Pending File Artifacts**:
+   Check for unfinalized `.partial` report files under `report_root`. Reconcile whether the content is complete before removing or finalizing.
+
+---
+
+## 5. Phase 4: Restarting Crashed Agent Sessions
+
+### The Live TUI Protection Rule
+**Never execute `herdr agent start` over a live TUI.** Launching a new agent session into a pane that already hosts an active agent corrupts the terminal viewport, traps the cursor, and causes duplicate prompt consumption.
+
+### Safe Restart Sequence
+If and only if `herdr pane process-info` confirms the previous agent process has fully exited back to the shell:
+1. Verify the pane is resting at a shell prompt (`$`, `%`):
+   ```bash
+   herdr pane read --source visible --lines 5 <PANE_ID>
+   ```
+2. Launch the agent using the configured model:
+   ```bash
+   herdr agent start <AGENT_NAME> --kind <KIND> --pane <PANE_ID> -- --model <MODEL>
+   ```
+3. Re-submit the mission brief, instructing the agent to carry forward existing worktree progress:
+   ```bash
+   herdr agent prompt <PANE_ID> \
+     "Resuming task $TASK_ID (attempt $ATTEMPT). Worktree checkout at $WORKTREE_PATH contains prior progress. Reconcile git status, review report_root, and complete remaining criteria."
+   ```
+
+---
+
+## 6. Phase 5: Manager Session Recovery & Resumption
+
+If the Engineering Manager (EM) session crashes, freezes, or disconnects:
+
+1. **Relinquishment Proof**:
+   Before initializing a replacement manager, prove that the previous manager process has actually stopped or relinquished its authority. Disconnection alone is insufficient evidence of termination.
+2. **State & Report Intake**:
+   The incoming manager must read `state.yaml`, the approved plan, `decisions.md`, and all immutable YAML reports under `report_root`.
+3. **Carry Valid Work Forward**:
+   - Reconcile active assignments and consumed report digests.
+   - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
+   - Re-establish observer handles on existing worker panes.
+4. **Resumed Notice to CTO**:
+   Notify the CTO pane (`w3H:p3`) of the resumed manager session with current milestone state.
+
+---
+
+## 7. Phase 6: The Bounded Recovery Rule & Blocker Escalation
+
+### The Rule of Two Failures
+To prevent infinite retry loops and wasted tokens:
+1. **Two Equivalent Failures**: If two consecutive recovery attempts for the same failure mode fail to advance the task, **stop all automated retries**.
+2. **Preserve Evidence**: Capture the full terminal transcript to a diagnostic log:
+   ```bash
+   herdr agent read <TARGET> --source recent-unwrapped --lines 200
+   ```
+3. **Publish Immutable Blocker Report**:
+   Create and publish a formal blocker report conforming to [report-contract.md](report-contract.md):
+   - `status: blocked`
+   - `blockers`: Structured list with unique ID, concrete description, reproduction evidence, options considered, and recommended path.
+   - `requested_action: unblock_decision`
+4. **Notify Supervisor**: Dispatch native notice without `--wait` to the manager return pane (`w3H:p8`).
