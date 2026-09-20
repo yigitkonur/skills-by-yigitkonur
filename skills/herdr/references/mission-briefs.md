@@ -13,10 +13,10 @@ The same `SKILL.md` and reference catalog serve all participants: the Codex CTO,
 Runtime identity (`codex`, `agy`, `claude`) designates an execution engine, not an organizational role. Role authority is explicitly granted by the brief:
 - **CTO**: Owns repository strategy, architectural decisions, and candidate approval gates.
 - **Engineering Manager (EM)**: Owns multi-agent topology, task graphs, capacity allocation, report intake, and checkpointing.
-- **Implementer**: Owns code synthesis, unit tests, and local commits in an isolated worktree.
-- **Fresh Reviewer**: Owns independent read-only audits of exact commit SHAs in clean context windows.
-- **Integration Executor**: Owns baseline reconciliation, worktree provisioning, serial rebase, packaging validation, and clean teardown.
-- **Recovery Executor**: Owns read-first diagnosis, targeted interruption, and state reconciliation for stalled agents.
+- **Implementer (AGY)**: Owns code synthesis, unit tests, and local commits in an isolated worktree.
+- **Fresh Reviewer (AGY)**: Owns independent read-only audits of exact commit SHAs in clean context windows.
+- **Integration Executor (AGY)**: Owns baseline reconciliation, worktree provisioning, serial rebase, packaging validation, and clean teardown under EM supervision.
+- **Recovery Executor (AGY)**: Owns read-first diagnosis, targeted interruption, and state reconciliation for stalled agents.
 
 > [!IMPORTANT]
 > **Strict Boundary Invariant**: An assigned implementer, reviewer, or integration executor must **never** infer it is an orchestrator, spawn nested subagent hierarchies, or inherit CTO strategic duties. The brief bounds authority strictly to owned files and assigned verification checks.
@@ -25,7 +25,7 @@ Runtime identity (`codex`, `agy`, `claude`) designates an execution engine, not 
 Every brief submitted via `herdr agent prompt` must carry five invariant components:
 1. **Role Authority & Boundaries**: Explicit role title, narrow file ownership, strict exclusions, and no recursive agent spawning.
 2. **Relevant Reference Selection**: Exact pointers to the specific references required for that role (e.g., [report-contract.md](report-contract.md) for reporting schemas, [parallel-capacity.md](parallel-capacity.md) for delivery mechanics). Cold workers load only what their assigned role requires.
-3. **Mandatory Coordinates & Return Route**: Explicit origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `WORKER_PANE_ID`, `WORKER_TAB_ID`), runtime, model, skill revision, `task_id`, `attempt`, and portable `report_root`. All coordinates use discovered values, never hard-coded host paths or live pane numbers.
+3. **Mandatory Coordinates & Return Route**: Complete self-contained execution coordinates: assigned role, `MISSION_ID`, `TASK_ID`, `ATTEMPT`, expected versus actual `RUNTIME` and `MODEL`, mounted `SKILL_PATH` and `SKILL_REVISION`, origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `OWN_PANE_ID`, `OWN_TAB_ID`), portable `RUN_ROOT`, and explicit return route (`herdr agent prompt` without `--wait`). All coordinates use discovered values, never hard-coded host paths or live pane numbers.
 4. **Measurable Outcomes & Acceptance Criteria**: Concrete shell verification commands (`npm test`, `cargo test`, `git diff --check`, `python3 scripts/validate-skills.py`), expected exit codes, and test-driven proof.
 5. **Atomic Handback & Failure Boundaries**: Strict two-attempt rule before blocker reporting, 10-minute silent boundary checkpointing at the next safe tool boundary, and atomic report publication.
 
@@ -47,7 +47,7 @@ Use this template when delegating code synthesis, test creation, or bug fixing t
 # Mission Brief: Implement <Task Title>
 
 ## 1. Role Authority & Boundaries
-- **Assigned Role**: Implementer (AGY / Codex).
+- **Assigned Role**: Implementer (AGY).
 - **Authority**: You own code synthesis and unit testing strictly within your assigned files. Do NOT spawn subagents, do NOT edit manager state or decisions, and do NOT modify files outside your assigned ownership.
 - **Owned Paths**:
   - `<path/to/owned/file_1>`
@@ -60,15 +60,24 @@ Read only these references before writing code:
 - `skills/herdr/references/parallel-capacity.md`: Worktree isolation, TDD flow, and delivery lifecycle.
 
 ## 3. Mandatory Coordinates & Return Route
-- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
-- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
-- WORKER_PANE_ID: "<YOUR_PANE_ID>"
-- WORKER_TAB_ID: "<YOUR_TAB_ID>"
-- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- ASSIGNED_ROLE: "Implementer (AGY)"
+- MISSION_ID: "<MISSION_ID>"
 - TASK_ID: "<TASK_NAME>"
 - ATTEMPT: <ASSIGNED_ATTEMPT>
+- EXPECTED_RUNTIME: "<EXPECTED_RUNTIME>"      # e.g. "agy"
+- ACTUAL_RUNTIME: "<DISCOVERED_RUNTIME>"      # discovered via `herdr pane current`
+- EXPECTED_MODEL: "<EXPECTED_MODEL>"          # e.g. "gemini-3.8-flash-high"
+- ACTUAL_MODEL: "<DISCOVERED_MODEL>"          # discovered via `herdr pane current`
+- SKILL_PATH: "<MOUNTED_SKILL_PATH>"          # path to mounted skill
+- SKILL_REVISION: "<MOUNTED_SKILL_REVISION>"  # git revision or "unknown"
+- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
+- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
+- OWN_PANE_ID: "<YOUR_PANE_ID>"
+- OWN_TAB_ID: "<YOUR_TAB_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
 - WORKTREE: "<ABSOLUTE_WORKTREE_PATH>"
 - BRANCH: "lane/<TASK_NAME>"
+- RETURN_ROUTE: `herdr agent prompt "$CALLER_PANE_ID" "<NOTICE>"` (without `--wait`)
 
 ## 4. Implementation & Quality Protocol
 - **TDD Mindset**: Write or identify a failing test first (Red). Implement the minimal production code to satisfy the test (Green). Refactor while preserving passing checks.
@@ -85,7 +94,7 @@ When all acceptance criteria are verified:
    *(Note: Lane writers commit locally; do not open individual PRs unless explicitly instructed. Integration executor combines lane commits).*
 2. Publish your immutable report outside the worktree to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml` following the canonical atomic publication pipeline in `report-contract.md`.
 3. Notify the manager immediately via `herdr agent prompt` WITHOUT `--wait`:
-   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<TASK_ID>-a<ATTEMPT>-handback pane_id=$WORKER_PANE_ID tab_id=$WORKER_TAB_ID report_path=<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
+   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<TASK_ID>-a<ATTEMPT>-handback pane_id=$OWN_PANE_ID tab_id=$OWN_TAB_ID report_path=<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
 
 ## 6. Failure & Checkpoint Boundaries
 - **Two-Attempt Rule**: If a check fails twice, change angle or publish a blocker report with evidence. Do not attempt a third blind retry.
@@ -113,13 +122,22 @@ Read only these references:
 - Project specifications: `<path/to/spec_or_approved_brief.md>` and coding standards.
 
 ## 3. Mandatory Coordinates & Return Route
-- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
-- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
-- REVIEWER_PANE_ID: "<YOUR_PANE_ID>"
-- REVIEWER_TAB_ID: "<YOUR_TAB_ID>"
-- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- ASSIGNED_ROLE: "Fresh Independent Technical Reviewer (AGY)"
+- MISSION_ID: "<MISSION_ID>"
 - TASK_ID: "review_<TASK_NAME>"
 - ATTEMPT: <ASSIGNED_ATTEMPT>
+- EXPECTED_RUNTIME: "<EXPECTED_RUNTIME>"      # e.g. "agy"
+- ACTUAL_RUNTIME: "<DISCOVERED_RUNTIME>"      # discovered via `herdr pane current`
+- EXPECTED_MODEL: "<EXPECTED_MODEL>"          # e.g. "gemini-3.1-pro-high"
+- ACTUAL_MODEL: "<DISCOVERED_MODEL>"          # discovered via `herdr pane current`
+- SKILL_PATH: "<MOUNTED_SKILL_PATH>"          # path to mounted skill
+- SKILL_REVISION: "<MOUNTED_SKILL_REVISION>"  # git revision or "unknown"
+- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
+- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
+- OWN_PANE_ID: "<YOUR_PANE_ID>"
+- OWN_TAB_ID: "<YOUR_TAB_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- RETURN_ROUTE: `herdr agent prompt "$CALLER_PANE_ID" "<NOTICE>"` (without `--wait`)
 
 ## 4. Exact-SHA Checkout & Review Invariant
 1. Review the candidate at its exact commit SHA:
@@ -143,14 +161,14 @@ Evaluate the candidate along two primary axes:
 ## 6. Structured Reviewer Q/A Protocol
 If you require clarification from the author before rendering a verdict:
 - Format inquiry as a structured question notice (see `report-contract.md` Section 7):
-  `QUESTION NOTICE: question_id=rev-<TASK_NAME>-q1 target_pane=<AUTHOR_PANE> reply_pane=$REVIEWER_PANE_ID ...`
+  `QUESTION NOTICE: question_id=rev-<TASK_NAME>-q1 target_pane=<AUTHOR_PANE> reply_pane=$OWN_PANE_ID ...`
 - Submit question to Manager pane `$CALLER_PANE_ID` so the inquiry and reply remain visible in the manager's action log.
 
 ## 7. Verdict Handback Protocol
 1. Formulate explicit verdict: `approved` or `changes_requested`.
 2. Publish immutable report to `<RUN_ROOT>/review_<TASK_NAME>-a<ATTEMPT>-handback.yaml` following the canonical atomic publication pipeline in `report-contract.md`.
 3. Notify manager via `herdr agent prompt "$CALLER_PANE_ID"` without `--wait`:
-   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=review_<TASK_NAME> attempt=<ATTEMPT> report_id=review_<TASK_NAME>-a<ATTEMPT>-handback pane_id=$REVIEWER_PANE_ID tab_id=$REVIEWER_TAB_ID report_path=<RUN_ROOT>/review_<TASK_NAME>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
+   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=review_<TASK_NAME> attempt=<ATTEMPT> report_id=review_<TASK_NAME>-a<ATTEMPT>-handback pane_id=$OWN_PANE_ID tab_id=$OWN_TAB_ID report_path=<RUN_ROOT>/review_<TASK_NAME>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
 ```
 
 ---
@@ -172,12 +190,22 @@ Read only these references:
 - `skills/herdr/references/report-contract.md`: Artifact recording and handback notices.
 
 ## 3. Mandatory Coordinates & Return Route
-- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
-- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
-- EXECUTOR_PANE_ID: "<YOUR_PANE_ID>"
-- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- ASSIGNED_ROLE: "Integration Executor (AGY)"
+- MISSION_ID: "<MISSION_ID>"
 - TASK_ID: "integration"
 - ATTEMPT: <ASSIGNED_ATTEMPT>
+- EXPECTED_RUNTIME: "<EXPECTED_RUNTIME>"      # e.g. "agy"
+- ACTUAL_RUNTIME: "<DISCOVERED_RUNTIME>"      # discovered via `herdr pane current`
+- EXPECTED_MODEL: "<EXPECTED_MODEL>"          # e.g. "gemini-3.8-flash-high"
+- ACTUAL_MODEL: "<DISCOVERED_MODEL>"          # discovered via `herdr pane current`
+- SKILL_PATH: "<MOUNTED_SKILL_PATH>"          # path to mounted skill
+- SKILL_REVISION: "<MOUNTED_SKILL_REVISION>"  # git revision or "unknown"
+- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
+- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
+- OWN_PANE_ID: "<YOUR_PANE_ID>"
+- OWN_TAB_ID: "<YOUR_TAB_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- RETURN_ROUTE: `herdr agent prompt "$CALLER_PANE_ID" "<NOTICE>"` (without `--wait`)
 
 ## 4. Execution Sequence & GitHub Mechanics
 1. **Serial Rebase & Verification**:
@@ -204,7 +232,8 @@ Read only these references:
    - Never issue `--force` on a dirty worktree.
 
 ## 5. Handback Protocol
-Publish integration handback report to `<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml` following `report-contract.md` and notify manager without `--wait`.
+Publish integration handback report to `<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml` following `report-contract.md` and notify manager without `--wait`:
+`herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=integration attempt=<ATTEMPT> report_id=integration-a<ATTEMPT>-handback pane_id=$OWN_PANE_ID tab_id=$OWN_TAB_ID report_path=<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml status=completed requested_action=integrate"`
 ```
 
 ---
@@ -225,40 +254,54 @@ Use this template when assigning a recovery executor to diagnose and unblock an 
 - `skills/herdr/references/event-monitoring.md`: Terminal read sources (`visible` vs `recent-unwrapped`).
 - `skills/herdr/references/report-contract.md`: Checkpoint recording and pending operations.
 
-## 3. Mandatory Coordinates
-- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
-- TARGET_PANE_ID: "<STALLED_PANE_ID>"
-- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+## 3. Mandatory Coordinates & Return Route
+- ASSIGNED_ROLE: "Recovery Executor (AGY)"
+- MISSION_ID: "<MISSION_ID>"
 - TASK_ID: "recovery"
 - ATTEMPT: <ASSIGNED_ATTEMPT>
+- EXPECTED_RUNTIME: "<EXPECTED_RUNTIME>"      # e.g. "agy"
+- ACTUAL_RUNTIME: "<DISCOVERED_RUNTIME>"      # discovered via `herdr pane current`
+- EXPECTED_MODEL: "<EXPECTED_MODEL>"          # e.g. "gemini-3.8-flash-high"
+- ACTUAL_MODEL: "<DISCOVERED_MODEL>"          # discovered via `herdr pane current`
+- SKILL_PATH: "<MOUNTED_SKILL_PATH>"          # path to mounted skill
+- SKILL_REVISION: "<MOUNTED_SKILL_REVISION>"  # git revision or "unknown"
+- CALLER_PANE_ID: "<MANAGER_PANE_ID>"
+- CALLER_TAB_ID: "<MANAGER_TAB_ID>"
+- OWN_PANE_ID: "<YOUR_PANE_ID>"
+- OWN_TAB_ID: "<YOUR_TAB_ID>"
+- TARGET_PANE_ID: "<STALLED_PANE_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- RETURN_ROUTE: `herdr agent prompt "$CALLER_PANE_ID" "<NOTICE>"` (without `--wait`)
 
 ## 4. Diagnostic & Recovery Sequence
 1. **Inspect First**:
-   - Check visible screen for modals: `herdr agent read $TARGET_PANE_ID --source visible --lines 25`
-   - Check unwrapped output: `herdr agent read $TARGET_PANE_ID --source recent-unwrapped --lines 50`
-   - Check OS processes: `herdr pane process-info --pane $TARGET_PANE_ID`
-2. **Targeted Resolution**:
-   - If blocked on menu: Send surgical keys via `herdr agent send-keys $TARGET_PANE_ID <keys...>`.
-   - If looping or hung: Send targeted `esc` or `ctrl+c`.
-   - Check and clear stale Git locks: `ls -la <WORKTREE>/.git/index.lock`
-3. **Handback**:
-   Publish recovery diagnostic report to `<RUN_ROOT>/recovery-a<ATTEMPT>-handback.yaml` following `report-contract.md` detailing root cause, actions taken, and restored agent status. Prompt manager without `--wait`.
+   - Check visible screen for prompts or modals: `herdr agent read $TARGET_PANE_ID --source visible --lines 25`
+   - Check unwrapped output for errors: `herdr agent read $TARGET_PANE_ID --source recent-unwrapped --lines 50`
+   - Check OS process hierarchy: `herdr pane process-info --pane $TARGET_PANE_ID`
+2. **Owned Process & Effect Reconciliation**:
+   - **Reconcile Before Action**: Inspect the active process tree and determine whether any owned processes (compilers, git, test runners) are still executing or holding resources.
+   - **No Blind Retries**: Never retry an operation with unknown or partial side effects without first reconciling uncommitted changes, partial file writes, and process state.
+   - **No Premature Lock Clearing**: Never blindly delete lock files (such as `.git/index.lock`). Reconcile owned processes first: only if `herdr pane process-info` and `ps` definitively prove no active process owns the lock, and pending filesystem effects are reconciled, may a verified stale lock file be removed.
+3. **Targeted Resolution**:
+   - If blocked on interactive menu or confirmation: Send surgical keys via `herdr agent send-keys $TARGET_PANE_ID <keys...>`.
+   - If looping, hung, or stuck in an unresponsive tool call: Send targeted `esc` or `ctrl+c` to restore the agent prompt safely.
+4. **Handback**:
+   Publish recovery diagnostic report to `<RUN_ROOT>/recovery-a<ATTEMPT>-handback.yaml` following `report-contract.md` detailing root cause, process and effect reconciliation results, actions taken, and restored agent status. Notify manager via `herdr agent prompt "$CALLER_PANE_ID"` without `--wait`:
+   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=recovery attempt=<ATTEMPT> report_id=recovery-a<ATTEMPT>-handback pane_id=$OWN_PANE_ID tab_id=$OWN_TAB_ID report_path=<RUN_ROOT>/recovery-a<ATTEMPT>-handback.yaml status=completed requested_action=resume"`
 ```
 
 ---
 
 ## 6. Safe Submission Pattern
 
-Always submit mission briefs from a temporary file to prevent shell syntax interpolation or shell truncation:
+Always author and submit mission briefs safely to prevent shell syntax interpolation, corruption, or truncation:
 
 ```bash
-# 1. Write structured brief to temporary file
-cat << 'EOF' > /tmp/mission-brief-<TASK_NAME>.txt
-# Mission Brief: ...
-EOF
+# 1. Author the structured brief using apply_patch
+# (Never use shell redirection `>` or `cat << 'EOF' >` to write brief files; the apply_patch-only rule applies to all file creation)
 
-# 2. Submit atomically via bracketed paste
-herdr agent prompt "$TARGET_PANE_ID" "$(cat /tmp/mission-brief-<TASK_NAME>.txt)"
+# 2. Submit atomically to the target pane via bracketed paste
+herdr agent prompt "$TARGET_PANE_ID" "$(< /tmp/mission-brief-<TASK_NAME>.txt)"
 ```
 
 > [!CAUTION]

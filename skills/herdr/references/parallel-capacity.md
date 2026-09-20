@@ -19,7 +19,7 @@ Herdr operates on a decoupled multi-agent topology where **runtime is distinct f
 - **AGY Implementers**: Focused synthesis and unit testing in isolated checkouts.
 - **Fresh AGY Reviewers**: Independent technical audits of exact candidate SHAs in clean context windows.
 - **AGY Integration Executor**: Repository preparation, worktree provisioning, serial rebase, packaging validation, PR mechanics, and clean teardown.
-- **Recovery Executor**: Diagnostic inspection and state reconciliation for stalled agents.
+- **AGY Recovery Executor**: Diagnostic inspection and state reconciliation for stalled agents.
 
 > [!IMPORTANT]
 > **No Autonomous Management Bootstrapping**: Workers and reviewers execute bounded tasks under explicit briefs. A worker must never bootstrap a nested management hierarchy or inherit CTO duties.
