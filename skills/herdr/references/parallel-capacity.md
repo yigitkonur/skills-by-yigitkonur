@@ -61,6 +61,19 @@ When launching a multi-agent wave where host resources, token limits, or PTY sta
 | **Compiler / Test Leases** | Heavy native compilers (`cargo`, `xcodebuild`, comprehensive test runners) saturate CPU and memory, triggering system lockups or OOM aborts. | **Enforce Build Leases**: Serialize heavy compilation passes and full test suites while parallelizing text/code drafting and static checks. |
 | **Reviewers** | Reviewers run in fresh, clean context panes. | Read-only checkouts at exact candidate commit SHAs; zero file mutations. |
 
+### 2.3 Quota, Rate-Limit & Resource Exhaustion (The pF Precedent)
+When an executing agent encounters visible upstream API quota exhaustion, token depletion, or 429 rate-limit errors in its terminal/PTY output (as observed in the historical `pF` worker exhaustion case):
+- **Distinct from Dead Worker or Successful Idle**: A visible quota exhaustion or rate-limit error is neither a hung/dead worker nor a normal completion. It represents an external platform capacity boundary while the agent remains blocked.
+- **Preserve Artifacts & Stop Blind Retries**: Stop execution immediately. Do **not** blind-retry with the same exhausted model tier and do **not** restart the session blindly, which burns remaining quota or loops on rate limits. All worktree changes, partial outputs, and published reports must be preserved intact.
+- **Authorized Replacement Sequence**:
+  1. **Ownership & Effect Reconciliation**: Verify and reconcile owned processes, background commands, and worktree git status before taking action.
+  2. **Actual Model Verification**: Discover and verify that an authorized native alternative model tier (e.g., stepping up from `gemini-3.8-flash-high` to `gemini-3.1-pro-high`) is genuinely functional and available via native CLI/TUI tools before provisioning.
+  3. **Explicit Native Registration**: Launch the replacement worker in a fresh native session, verify live coordinates (`pane_id`, `tab_id`, `terminal_id`, `session_id`, `actual_model`) via `herdr pane current --json`, and register explicitly with the Engineering Manager.
+  4. **Manager-Owned Attempt Increment**: Only the Engineering Manager assigns the new attempt (e.g., attempt 2). Workers never increment their own attempt counters. Historical attempt records and prior reports from the exhausted session remain preserved in the run root.
+- **Strict Escalation Boundary**:
+  - If no authorized replacement model or capacity exists within the approved mission parameters, escalate immediately to the Engineering Manager and CTO.
+  - **Prohibitions**: Never attempt ad-hoc billing or credential changes, never alter global host configurations or runtime settings, and never introduce external retry frameworks, wrappers, or unapproved dependencies.
+
 ---
 
 ## 3. Dependency Waves & Parallel Dispatch
