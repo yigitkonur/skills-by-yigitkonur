@@ -21,6 +21,13 @@ Every cold reader must discover its assigned role before executing observation c
 | **Recovery Executor** | Targeted intervention for stopped, stalled, or crashed panes; reconciles native task inventories and active background processes. | Never perform blind kills (`kill -9` / `pkill`); never relaunch agents over live interactive TUIs. |
 | **CTO** | Strategic governance, candidate evidence gates, and milestone reviews via the manual-observation boundary. | Does not manage fine-grained pane loops; operates outside native callback guarantees on non-pane hosts. |
 
+### Stable Governance Invariants
+- **Manager Alone Increments Attempts**: The Engineering Manager alone increments task `attempt` counters in `state.yaml`. Producers always match their assigned `attempt`; corrections use fresh `report_id`s within the assigned attempt.
+- **Strict Ingestion Matching**: The manager matches exact assigned `mission_id`, `task_id`, `attempt`, and registered producer coordinates before acting on evidence; quarantines future attempts, and rejects obsolete attempts from advancing state.
+- **Universal Report Immutability**: All published reports—including Codex manager reports—are strictly immutable. Only `state.yaml` serves as a mutable checkpoint.
+- **Session Metadata**: Session UUID is optional and recorded as unavailable/null when unexposed by the runtime; verified terminal and pane coordinates remain load-bearing.
+- **Portable Return Coordinates**: All reusable documentation and notice templates use dynamic discovered parameters (`$MANAGER_PANE_ID`, `$CALLER_PANE_ID`), never hardcoded host pane IDs.
+
 ---
 
 ## 2. Native Identity Discovery & Return Address Registration
@@ -36,7 +43,7 @@ CALLER_CWD="$(herdr pane current | jq -r .result.pane.cwd)"
 ```
 
 ### Worker Registration Protocol
-Before executing engineering work, a newly started worker registers its confirmed identity with the manager return address (`MANAGER_PANE_ID`, e.g. `w3H:p8`) by dispatching a native notice without `--wait`:
+Before executing engineering work, a newly started worker registers its confirmed identity with the manager return address (`$MANAGER_PANE_ID`) by dispatching a native notice without `--wait`:
 
 ```bash
 herdr agent prompt "$MANAGER_PANE_ID"   "Registration notice: task=$TASK_ID attempt=$ATTEMPT mission=$MISSION_ID status=registered pane=$CALLER_PANE_ID tab=$CALLER_TAB_ID terminal=$CALLER_TERM_ID runtime=$RUNTIME model=$MODEL cwd=$CALLER_CWD. Ready and awaiting assignment acknowledgment."

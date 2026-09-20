@@ -158,7 +158,7 @@ If the Engineering Manager (EM) session crashes, freezes, or disconnects:
    - Do NOT terminate or restart healthy worker lanes that are actively synthesizing code.
    - Re-establish observer handles on existing worker panes.
 4. **Resumed Notice to CTO**:
-   Notify the CTO pane (`w3H:p3`) of the resumed manager session with current milestone state.
+   Notify the CTO pane (`$CTO_PANE_ID`) of the resumed manager session with current milestone state.
 
 ---
 
@@ -174,6 +174,8 @@ To prevent infinite retry loops and wasted tokens:
 3. **Publish Immutable Blocker Report**:
    Create and publish a formal blocker report conforming to [report-contract.md](report-contract.md):
    - `status: blocked`
+   - Match exact assigned `mission_id`, `task_id`, and `attempt` (producers never increment attempts unilaterally; corrections use fresh `report_id`s within the assigned attempt).
+   - Record verified runtime/terminal coordinates (session UUID is optional when unexposed by runtime).
    - `blockers`: Structured list with unique ID, concrete description, reproduction evidence, options considered, and recommended path.
    - `requested_action: unblock_decision`
-4. **Notify Supervisor**: Dispatch native notice without `--wait` to the manager return pane (`w3H:p8`).
+4. **Notify Supervisor**: Dispatch native notice without `--wait` to the discovered manager return pane (`$MANAGER_PANE_ID`).
