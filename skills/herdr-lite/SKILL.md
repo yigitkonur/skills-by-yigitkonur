@@ -13,13 +13,14 @@ In Herdr-Lite, **Git worktrees**, **dedicated Herdr workspaces**, **GitHub PRs**
 
 ## 1. Antigravity Orchestration Lifecycle
 
-Antigravity operates a continuous, streaming orchestration loop:
+Antigravity operates a continuous, multi-wave streaming orchestration loop:
 
-1. **Parallelism Analysis**: Group incoming issues by write boundaries; dispatch all disjoint tasks concurrently in Wave 1.
-2. **Worktree & Workspace Provisioning**: Execute `herdr worktree create` to spin up a dedicated workspace for each task with Tab 1 labeled `impl`.
-3. **Event-Driven Streaming Review**: Do not wait for all workers to finish. As soon as Worker $i$ publishes its PR and reports `DONE`, immediately open Tab 2 (`review`) inside that worktree's workspace.
-4. **Deep Review-and-Fix**: The reviewer (Gemini 3.8 Flash) audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly, and posts GitHub PR approval.
-5. **Serial Integration & Land**: Rebase approved candidates serially onto moving `main`, resolve any merge conflicts via `resolving-merge-conflicts` principles, merge to `main`, and retire resources.
+1. **Automatic Ticket Intake**: When starting without GitHub issues, automatically decompose discussions or bugs into vertical tracer-bullet tickets and publish via `gh issue create`. See [references/ticket-decomposition-and-waves.md](references/ticket-decomposition-and-waves.md).
+2. **Multi-Wave Dependency Graph (Waves 1 to 5)**: Arrange tickets into a DAG based on blocking edges; dispatch disjoint Wave 1 lanes concurrently.
+3. **Worktree & Workspace Provisioning**: Execute `herdr worktree create` to spin up a dedicated workspace for each task with Tab 1 labeled `impl`.
+4. **Streaming Review & Callback Loop**: Implementers write back `status=DONE`. As soon as any worker reports done, Antigravity immediately opens Tab 2 (`review`) inside that worktree workspace without waiting for other lanes.
+5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly, and posts GitHub PR approval.
+6. **Serial Integration & Wave Advancement**: Rebase approved candidates serially onto moving `main`, resolve any merge conflicts via `resolving-merge-conflicts` principles, merge to `main`, and advance to the next wave until all waves complete.
 
 ---
 
@@ -92,6 +93,7 @@ Herdr-Lite strictly enforces core engineering physics:
 
 | Reference | When to Read | Topics |
 |---|---|---|
+| [references/ticket-decomposition-and-waves.md](references/ticket-decomposition-and-waves.md) | Decomposing discussions/bugs into vertical tickets and scheduling up to 5 waves. | Tracer-bullet slices, gh issue create, DAG wave classification, callback protocol. |
 | [references/orchestration-workflow.md](references/orchestration-workflow.md) | Setting up tasks, dispatching workers, streaming reviews, and safe teardown. | Parallelism analysis, workspace coordinate capture, streaming reviews, and deep audit. |
 | [references/herdr-primitives.md](references/herdr-primitives.md) | Looking up CLI commands, syntax, flags, and `jq` coordinate extraction recipes. | Full command reference for worktree, workspace, tab, pane, agent, and notification. |
 | [references/serial-merge-and-conflicts.md](references/serial-merge-and-conflicts.md) | Merging approved PRs onto main or resolving merge conflicts. | Serial rebase-and-merge pipeline, resolving-merge-conflicts protocol, force-push with lease. |

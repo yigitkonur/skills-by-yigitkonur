@@ -1,54 +1,74 @@
 # Herdr-Lite Orchestration Workflow
 
-This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside worktree workspaces, and executing serial integration.
+This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside worktree workspaces, executing serial integration, and advancing through multi-wave dependency graphs.
 
 ---
 
-## 1. Lifecycle & Streaming Architecture
+## 1. Lifecycle & Multi-Wave Streaming Architecture
 
 ```
-[ Problem Input: Issue / Bug / Task Batch ]
-                     │
-                     ▼
-[ Step 1: Parallelism Analysis & Wave Sizing ]
-   • Classify tasks into Disjoint vs Coupled lanes
-   • Maximize parallelism across independent write surfaces
-                     │
-                     ▼
-[ Step 2: Native Worktree Provisioning ]
+[ Problem Input: Conversation / Sentry Bugs / PRD Spec ]
+                           │
+                           ▼
+[ Step 0: Automatic Ticket Intake (if no issues exist) ]
+   • Decompose into vertical tracer-bullet slices
+   • Create GitHub issues automatically via gh issue create
+                           │
+                           ▼
+[ Step 1: Multi-Wave Dependency Graph (Waves 1 to 5) ]
+   • Build DAG based on "Blocked by:" edges and write surfaces
+   • Maximize parallelism across disjoint lanes in Wave 1
+                           │
+                           ▼
+[ Step 2: Native Worktree Provisioning (Current Wave) ]
    • herdr worktree create provisions Git worktree + Workspace
    • Tab 1: impl (Implementer runs TDD, commits, opens PR)
-                     │
-                     ▼
-[ Step 3: Event-Driven Streaming Review (No Lockstep Waiting) ]
-   • When Worker i sends "I'm done: PR=<url>", Antigravity immediately:
-   • Spawns Tab 2: review inside Worker i's Workspace
-   • Reviewer (Gemini 3.8 Flash) runs in-depth audit with domain skills
-   • Reviewer patches edge cases directly, commits, and approves PR
-                     │
-                     ▼
+                           │
+                           ▼
+[ Step 3: Streaming Review & "Write Back to Me" Loop ]
+   • Worker i sends "REPORT: status=DONE pr_url=<url>"
+   • Antigravity immediately spawns Tab 2: review in Workspace i
+   • Reviewer audits with domain skills, patches bugs, approves PR
+                           │
+                           ▼
 [ Step 4: Serial Merge & Conflict Resolution ]
-   • Enqueue approved candidates into serial rebase-and-merge pipeline
-   • Rebase cleanly onto moving main baseline (resolve conflicts if needed)
-   • Merge to main, close workspace, remove worktree, notify user
+   • Rebase approved PRs serially onto main
+   • Reconcile merge conflicts via resolving-merge-conflicts
+   • Merge to main and retire worktree resources
+                           │
+                           ▼
+[ Step 5: Wave Advancement ]
+   • All Wave k tickets merged? Trigger Wave k+1
+   • Continue until all waves converge
 ```
 
 ---
 
-## 2. Step 1: Parallelism Analysis & Wave Sizing
+## 2. Step 0: Automatic Ticket Intake & GitHub Issue Creation
 
-Before provisioning resources, the Antigravity orchestrator classifies incoming tasks based on write boundaries:
+When invoked without pre-existing GitHub issues, Antigravity parses the discussion or problem statement and creates structured issues directly:
 
-1. **Disjoint Parallelism (Maximized Concurrency)**:
-   Tasks that touch non-overlapping directories, separate packages, or independent backend routes are assigned disjoint lanes. Launch all disjoint lanes concurrently in Wave 1.
-2. **Coupled Work Rule**:
-   Interdependent files, tightly coupled schema/service pairs, or shared utilities must be kept within a single writer lane to avoid cross-branch synchronization thrashing.
+1. **Vertical Tracer-Bullet Slicing**:
+   Each ticket cuts across all required layers (schema, services, UI, tests) and declaring explicit blocking dependencies (see [references/ticket-decomposition-and-waves.md](ticket-decomposition-and-waves.md)).
+2. **Automated Publishing**:
+   ```bash
+   gh issue create --title "<TITLE>" --body "## What to build\n...\n## Acceptance criteria\n...\n## Blocked by\n<DEPENDENCIES>"
+   ```
 
 ---
 
-## 3. Step 2: Native Worktree & Workspace Provisioning
+## 3. Step 1: Multi-Wave Dependency Graph & Parallelism Sizing
 
-Use Herdr's native `worktree create` command. This creates the Git worktree, opens an isolated Herdr workspace, and launches a root pane in Tab 1:
+Antigravity organizes the issues into up to 5 sequential execution waves:
+- **Wave 1 (Disjoint Frontier)**: All tickets with `Blocked by: None` that touch disjoint writable surfaces are launched concurrently.
+- **Wave 2**: Tickets gated directly on Wave 1 deliverables.
+- **Waves 3–5**: Multi-stage follow-ups or final integration sweeps.
+
+---
+
+## 4. Step 2: Native Worktree & Workspace Provisioning
+
+For each ticket in the active wave, provision an isolated workspace:
 
 ```bash
 TASK_ID="182"
@@ -69,40 +89,35 @@ herdr tab rename "$IMPL_TAB_ID" "impl"
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" -- --model "$IMPL_MODEL"
 ```
 
-### Implementer Mission Brief:
-Instruct the implementer to follow TDD, commit, open a PR, and report completion:
+### Implementer Mission Brief & Callback Mandate:
+Instruct the implementer to write behavioral tests, commit, push, open a PR, and write back to the orchestrator:
 ```bash
 herdr agent prompt "$IMPL_PANE_ID" "Execute Task #${TASK_ID}:
 1. Implement behavioral tests first (TDD).
 2. Fix the underlying issue with minimal surface changes.
 3. Commit cleanly and push branch '$BRANCH_NAME'.
 4. Open PR: gh pr create --title 'fix: issue #${TASK_ID}' --body 'Closes #${TASK_ID}'.
-5. When complete, output notification:
-   DONE: task_id=${TASK_ID} pr_url=<PR_URL> candidate_sha=$(git rev-parse HEAD)"
+5. When complete, WRITE BACK TO ME with:
+   REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=$(git rev-parse HEAD) status=DONE"
 ```
 
 ---
 
-## 4. Step 3: Event-Driven Streaming Review (Inside Worktree Workspace)
+## 5. Step 3: Event-Driven Streaming Review (Inside Worktree Workspace)
 
 > [!IMPORTANT]
-> **No Lockstep Waiting**: When 7 worktrees are running in parallel, do not wait for all 7 to finish. As soon as Worker $i$ finishes and reports `DONE`, immediately open a dedicated review tab inside Worker $i$'s workspace!
+> **No Lockstep Waiting**: When multiple parallel worktrees run, do not wait for all of them to finish. As soon as Lane $i$ writes back `status=DONE`, immediately open Tab 2 (`review`) inside Workspace $i$!
 
 ### Spawning the Review Tab:
 ```bash
-# Open Tab 2 for deep review inside the worktree's workspace:
 REV_TAB_JSON="$(herdr tab create --workspace "$WORKSPACE_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
 REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er '.result.root_pane.pane_id')"
-
-# Launch independent reviewer:
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "gemini-3.8-flash-high"
 ```
 
 ### Deep Review with Domain Skills:
-The reviewer operates with full terminal width in Tab 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
-
+The reviewer operates in Tab 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
 ```bash
-# Ensure reviewer is idle before prompting:
 herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
 
 herdr agent prompt "$REV_PANE_ID" "Deep Review & Hardening for PR #${TASK_ID}:
@@ -121,18 +136,24 @@ Instructions:
 
 ---
 
-## 5. Step 4: Serial Merge & Safe Teardown
+## 6. Step 4: Serial Merge & Conflict Resolution
 
-Once approved:
-1. **Desktop / TUI Notification**:
+Follow [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md):
+1. Serially rebase approved candidate PRs onto moving `main`.
+2. If conflict markers occur, apply `resolving-merge-conflicts` principles to reconcile markers with semantic integrity and push with lease (`git push --force-with-lease`).
+3. Merge candidate into `main` (`gh pr merge --squash --delete-branch`).
+4. Retire workspace (`herdr workspace close`) and remove clean worktree (`git worktree remove`).
+
+---
+
+## 7. Step 5: Continuous Wave Advancement
+
+Once all PRs in Wave $k$ are merged:
+1. Announce wave completion via Herdr desktop toast:
    ```bash
-   herdr notification show "Candidate Approved" \
-     --body "Issue #${TASK_ID} approved and enqueued for merge." \
+   herdr notification show "Wave ${CURRENT_WAVE} Completed" \
+     --body "All PRs merged to main. Advancing to Wave $((CURRENT_WAVE + 1))." \
      --sound done
    ```
-2. **Serial Integration**:
-   Follow [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md) to serially rebase onto `main`, resolve any conflicts, and land the PR.
-3. **Safe Teardown**:
-   - Close workspace: `herdr workspace close --workspace "$WORKSPACE_ID"`.
-   - Verify `git status --porcelain` is clean in the worktree.
-   - Remove worktree: `git worktree remove "$WORKTREE_PATH"`.
+2. Automatically dispatch the next wave of newly unblocked tickets.
+3. Repeat until all waves are complete.
