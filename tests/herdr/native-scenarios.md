@@ -48,7 +48,7 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 
 | Scenario ID | Name / Purpose | Target Runtime & Role | Integrity Status | Primary Verification Metric |
 |---|---|---|---|---|
-| **SCEN-01** | Launch, Coordinate Discovery & Native Registration | Codex EM & AGY Worker | `[SUPPORTED]` / `[PROPOSED]` | JSON coordinate extraction & registration notice with role acknowledgment |
+| **SCEN-01** | Launch, Coordinate Discovery & Native Registration | Codex EM & AGY Worker | `[SUPPORTED]` / `[PROPOSED]` | JSON coordinate extraction, registration notice with role, and candidate SKILL.md path/SHA-256 binding |
 | **SCEN-02** | Explicit AGY $\to$ Idle Codex Handback | AGY Worker $\to$ Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Atomic report publication & manager turn activation |
 | **SCEN-03** | Asynchronous Handback to Busy Codex (Enter at Tool Boundary) | AGY Worker $\to$ Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Input queued in TUI; zero stdin corruption at tool boundary |
 | **SCEN-04** | Multi-Sender Fan-In & Idempotent Intake | 2 AGY Workers $\to$ Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Sequential ingestion; duplicate event ID ignored |
@@ -56,7 +56,7 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 | **SCEN-06** | Deferred Follow-Up via Tab Keystroke (Exclusive Composer) | Controller $\to$ Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Input deferred across tool executions until full turn completion |
 | **SCEN-07** | Observer Wait Cancellation vs. Worker Survival | Host Shell $\to$ Worker Pane | `[HISTORICAL]` / `[PROPOSED]` | Host wait exits on SIGINT; worker process continues undisturbed |
 | **SCEN-08** | Targeted Escape Interruption & Side-Effect Reconciliation | Controller $\to$ Worker/EM | `[HISTORICAL]` / `[PROPOSED]` | Turn interrupted; background processes and Git state reconciled |
-| **SCEN-09** | Manager Relinquishment, Crash Recovery & State Resume | Resumed Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Old writer relinquished; `state.yaml` and reports carried forward |
+| **SCEN-09** | Manager Relinquishment, Crash Recovery & State Resume | Resumed Codex EM | `[HISTORICAL]` / `[PROPOSED]` | Old writer relinquished; structural checkpoint validation (top keys & assignment shapes) + negative swallow rejection |
 | **SCEN-10** | Parallel Lane Allocation & Dynamic Capacity Refill | Multiple AGY Workers | `[SUPPORTED]` / `[PROPOSED]` | Isolated worktree paths; zero git lock collision; capacity refill |
 | **SCEN-11** | Clean-Context Exact-SHA Review Gate & Invalidation | Fresh AGY Reviewer | `[PROPOSED]` / `[UNVERIFIED]` | Independent audit at candidate SHA; commit advance invalidates review |
 | **SCEN-12** | Safe Sequential Teardown & Evidence Preservation | Integration Executor | `[SUPPORTED]` / `[PROPOSED]` | Clean unmount; zero dirty force deletes; durable logs preserved; delivery hold |
@@ -68,12 +68,13 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 
 ### SCEN-01: Agent Launch, Coordinate Discovery & Native Registration
 
-- **Objective**: Verify clean launch of Codex and AGY agents in dedicated panes, deterministic extraction of native coordinates via JSON, and completion of the mandatory return-address registration handshake including explicit role declaration.
+- **Objective**: Verify clean launch of Codex and AGY agents in dedicated panes, deterministic extraction of native coordinates via JSON, completion of the return-address registration handshake with explicit role declaration, and mandatory binding of the exact candidate `SKILL.md` path and SHA-256 content digest.
 - **Classification**: `[SUPPORTED]` (CLI syntax and JSON parsing verified); `[PROPOSED]` (Acceptance run sequence).
 - **Prerequisites**:
   - Herdr server running (protocol 22).
   - Target workspace allocated (`HERDR_WORKSPACE_ID`).
   - Available runtime models discovered (`gpt-6-astra` for Codex, `gemini-3.8-flash-high` for AGY).
+  - Candidate `SKILL.md` in active candidate worktree checkout.
 - **Execution Steps**:
   1. Allocate dedicated tab and split pane:
      ```bash
@@ -89,7 +90,13 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
      herdr pane current
      ```
      Extract `.result.pane.pane_id`, `.result.pane.tab_id`, `.result.pane.terminal_id`, and `.result.pane.cwd`.
-  4. Worker submits registration notice to Manager pane (`$MANAGER_PANE_ID`) without `--wait`, explicitly declaring role:
+  4. Worker inspects candidate `SKILL.md` to compute exact candidate binding metadata:
+     ```bash
+     CANDIDATE_SKILL_PATH="$WORKER_CWD/skills/herdr/SKILL.md"
+     CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
+     CANDIDATE_HEAD=$(git -C "$WORKER_CWD" rev-parse HEAD)
+     ```
+  5. Worker submits registration notice to Manager pane (`$MANAGER_PANE_ID`) without `--wait`, explicitly declaring role and candidate binding:
      ```bash
      herdr agent prompt "$MANAGER_PANE_ID" "Registration notice:
      - mission_id: $MISSION_ID
@@ -102,16 +109,24 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
      - runtime: agy
      - model: Gemini 3.8 Flash (High)
      - cwd: $WORKER_CWD
+     - candidate_skill_path: $CANDIDATE_SKILL_PATH
+     - candidate_skill_sha256: $CANDIDATE_SKILL_SHA256
+     - candidate_head: $CANDIDATE_HEAD
      Ready for assignment acknowledgment."
      ```
-  5. Manager records worker identity and role in `state.yaml` under `assignments.<task_id>` and replies with assignment acknowledgment.
+  6. Manager verifies candidate binding:
+     - Confirms `candidate_skill_path` resolves inside the active mission worktree (not in `~/.codex/skills/` or `~/.agents/skills/`).
+     - Confirms `candidate_skill_sha256` matches the candidate tree revision.
+     - Records worker identity, role, and candidate binding in `state.yaml` under `assignments.<task_id>`.
+     - Replies with assignment acknowledgment.
 - **Pass/Fail & Observable Signals**:
-  - **Pass**: `herdr pane current` returns valid JSON with non-empty string fields for `pane_id`, `tab_id`, and `cwd`. `herdr agent prompt` exits code 0 with `{"type":"agent_prompted"}`. Manager logs registration state as `verified_native_identity_and_received_notice` with explicit `role: implementer`.
+  - **Pass**: `herdr pane current` returns valid JSON with non-empty string fields for `pane_id`, `tab_id`, and `cwd`. `herdr agent prompt` exits code 0 with `{"type":"agent_prompted"}`. Manager logs registration state as `verified_native_identity_and_received_notice` with explicit `role: implementer` and verified `candidate_skill_sha256`.
+  - **Globally Mounted Skill Rejection**: If registration references a globally mounted path (e.g. `~/.codex/skills/herdr/SKILL.md`), manager rejects registration with `invalid_candidate_source: globally_mounted_skill_forbidden`.
   - **Degraded Signal**: If `herdr agent get $WORKER_PANE_ID` shows `agent_status: unknown`, verify `herdr pane process-info --pane $WORKER_PANE_ID` shows live `agy` child process and proceed under Degraded AGY Mode using direct pane primitives.
   - **Fail**: Command exits non-zero; `pane current` emits unparseable non-JSON; prompt rejected with `agent_blocked`.
 - **Evidence to Retain**:
   - Captured JSON from `herdr pane current`.
-  - Exact registration payload logged in manager `state.yaml`.
+  - Exact registration payload logged in manager `state.yaml` including candidate SHA-256.
 - **Cleanup Boundary**:
   - Close test pane via `herdr pane close $WORKER_PANE_ID` if not reused.
 
@@ -371,7 +386,7 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 
 ### SCEN-09: Manager Relinquishment, Crash Recovery & State Resume
 
-- **Objective**: Validate that a crashed or stopped Codex Engineering Manager can be safely resumed by a fresh session without duplicating tasks or introducing dual-writer split-brain conflicts.
+- **Objective**: Validate that a crashed or stopped Codex Engineering Manager can be safely resumed by a fresh session without duplicating tasks or introducing dual-writer split-brain conflicts, with strict structural checkpoint validation of top-level keys and task/assignment mapping shapes (including a negative test for multiline indentation swallow).
 - **Classification**: `[HISTORICAL]` (Observed in probe `gZJMuX` via session resume); `[PROPOSED]` (Forward-test verification).
 - **Prerequisites**:
   - Established manager session with durable state recorded in `$RUN_ROOT/state.yaml`.
@@ -387,16 +402,29 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
      ```bash
      herdr agent start "herdr-engineering-manager" --kind codex --pane "$MANAGER_PANE_ID" -- --resume "$SESSION_ID"
      ```
-  4. Resumed manager executes recovery sequence:
-     - Read `$RUN_ROOT/state.yaml`.
-     - Scan `$RUN_ROOT/*.yaml` for unconsumed reports.
-     - Inspect active worker panes via `herdr pane read` and `herdr agent get`.
-     - Reconcile pending effects without re-dispatching already completed or active tasks.
+  4. **Structural Checkpoint Validation**:
+     Resumed manager executes structural validation on `$RUN_ROOT/state.yaml` before taking any operational actions:
+     - **Top-Level Keys Assertion**: Must contain all mandatory top-level keys:
+       `mission_id`, `approved_scope`, `status`, `manager`, `cto`, `report_root`, `repository`, `base_sha`, `worktree_root`, `delivery_hold`, `execution_boundary`, `runtime_selection`, `authoring_contract`, `ready_lane_briefs`, `task_graph`, `assignments`, `consumed_reports`, `decisions`, `action_log`, `pending_effects`, `recovery`.
+     - **Task Graph Shape Assertion**: `task_graph` must be a discrete YAML mapping (dict), where each task key contains structured fields: `depends_on` (list), `state` (string), and `owner` (string). It must not be empty or a flat scalar.
+     - **Assignments Shape Assertion**: `assignments` must be a discrete YAML mapping (dict), where each assignment key contains structured fields: `task_id` (string), `attempt` (integer), `pane_id` (string), `tab_id` (string), `terminal_id` (string), `runtime` (string), `model` (string), `worktree` (string), `branch` (string), and `owns` (string/list).
+     - **Indentation & Literal Swallow Guard**: Explicit check confirming that multiline block scalars (e.g. `authoring_contract`, `ready_lane_briefs`) did not accidentally swallow subsequent top-level blocks (`task_graph:`, `assignments:`) due to indentation errors.
+  5. **Negative Test Case: Indentation-Swallowed Structurally Corrupted Checkpoint**:
+     - Operator/tester feeds a syntactically valid YAML checkpoint where an indentation defect in a multiline literal (`authoring_contract: | ...`) causes `task_graph` and `assignments` to be absorbed into the literal string instead of parsed as top-level mappings.
+     - Resumed manager executes structural schema validation.
+     - Resumed manager detects that `'task_graph' not in doc` or `'assignments' not in doc` or `not isinstance(doc['assignments'], dict)`.
+     - Resumed manager halts with error:
+       `structural_checkpoint_validation_failed: required top-level mapping 'task_graph' or 'assignments' missing (possible multiline indentation swallow). Refusing to resume.`
+     - Resumed manager logs the structural defect, refuses to dispatch duplicate tasks or assume empty state, and escalates to CTO.
+  6. **Valid Recovery Progression**:
+     Once valid structure is confirmed, resumed manager scans `$RUN_ROOT/*.yaml` for unconsumed reports, inspects active worker panes via `herdr pane read` and `herdr agent get`, reconciles pending effects, and carries forward active work.
 - **Pass/Fail & Observable Signals**:
-  - **Pass**: Resumed manager restores task graph from `state.yaml`; recognizes completed lanes without re-executing them; re-attaches observation handles to in-flight workers; emits recovery checkpoint.
-  - **Fail**: Manager attempts duplicate task dispatch; crashes due to stale lock; overwrites newer worker reports with old cached state.
+  - **Pass**:
+    - Valid checkpoint restores task graph and assignments without re-executing completed lanes; re-attaches observation handles to in-flight workers; emits recovery checkpoint.
+    - Indentation-swallowed checkpoint fails structural validation with `structural_checkpoint_validation_failed`; manager halts cleanly without wiping state or duplicating tasks.
+  - **Fail**: Manager attempts duplicate task dispatch; crashes due to stale lock; overwrites newer worker reports with old cached state; accepts an indentation-swallowed checkpoint and silently drops task graph or assignments.
 - **Evidence to Retain**:
-  - Resumed manager startup log and reconciled `state.yaml`.
+  - Resumed manager startup log and structural validation test results (both valid and corrupted cases).
 - **Cleanup Boundary**:
   - Normal manager lifecycle.
 
@@ -554,10 +582,19 @@ In Degraded AGY Mode, supervisors must use direct, supported **pane-level contro
 When the native forward-test lane is activated, the testing controller must execute these scenarios following this protocol:
 
 1. **Controller Identity**: The forward-test lane is driven by a fresh native Codex controller session, communicating with native AGY workers as executors.
-2. **Deterministic Sequence**:
-   - *Wave 1 (Role & Discovery)*: Execute SCEN-13 (Role Selection & Authority) and SCEN-01 (Launch, Coordinates & Registration).
+2. **Candidate Artifact Binding (Zero Globally Mounted Fallback)**:
+   - Before executing any scenario, the controller must identify and record the exact candidate skill artifact:
+     ```bash
+     CANDIDATE_SKILL_PATH="/Users/mac/docs/superpowers/worktrees/herdr-codex-first-20260920/integration/skills/herdr/SKILL.md"
+     CANDIDATE_SKILL_SHA256=$(shasum -a 256 "$CANDIDATE_SKILL_PATH" | awk '{print $1}')
+     CANDIDATE_HEAD=$(git rev-parse HEAD)
+     ```
+   - The controller and all participating AGY workers must strictly bind to this `CANDIDATE_SKILL_PATH` and verify matching `CANDIDATE_SKILL_SHA256`.
+   - **Strict Invariant**: A globally mounted skill (such as `~/.codex/skills/herdr/SKILL.md` or `~/.agents/skills/herdr/SKILL.md`) must **never** be passed off as the tested candidate. Any run where worker execution resolves to an unverified global skill is classified as an immediate test abort (`abort: unverified_global_skill_mounted`).
+3. **Deterministic Sequence**:
+   - *Wave 1 (Role & Discovery)*: Execute SCEN-13 (Role Selection & Authority) and SCEN-01 (Launch, Coordinates, Registration & Candidate Binding).
    - *Wave 2 (Handoffs & Intake)*: Execute SCEN-02 (Idle Handback), SCEN-03 (Busy Handback), SCEN-04 (Fan-In), and SCEN-05 (Fault-Tolerant Intake).
-   - *Wave 3 (Recovery & Control)*: Execute SCEN-06 (Tab Deferred), SCEN-07 (Observer Cancellation), SCEN-08 (Esc Interruption), and SCEN-09 (Manager Relinquishment & Resume).
+   - *Wave 3 (Recovery & Control)*: Execute SCEN-06 (Tab Deferred), SCEN-07 (Observer Cancellation), SCEN-08 (Esc Interruption), and SCEN-09 (Manager Relinquishment & Structural Checkpoint Resume with Negative Swallow Test).
    - *Wave 4 (Delivery & Teardown)*: Execute SCEN-10 (Parallel Capacity), SCEN-11 (Exact-SHA Review Gate), and SCEN-12 (Safe Teardown & Delivery Hold).
-3. **Evidence Capture**: Every executed scenario must log its actual command invocations, stdout/stderr, exit codes, and generated file hashes into an immutable YAML report under `/Users/mac/docs/superpowers/runs/herdr-codex-first-20260920/`.
-4. **Honest Attribution**: If any scenario cannot be executed due to environment constraints or tool limitations, the controller must record `status: unverified` or `status: unsupported` with the precise failure evidence. No simulated or fabricated pass results are permitted.
+4. **Evidence Capture**: Every executed scenario must log its actual command invocations, stdout/stderr, exit codes, candidate path/SHA-256, and generated file hashes into an immutable YAML report under `/Users/mac/docs/superpowers/runs/herdr-codex-first-20260920/`.
+5. **Honest Attribution**: If any scenario cannot be executed due to environment constraints or tool limitations, the controller must record `status: unverified` or `status: unsupported` with the precise failure evidence. No simulated or fabricated pass results are permitted.
