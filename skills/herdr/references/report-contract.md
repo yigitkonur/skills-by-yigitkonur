@@ -106,7 +106,7 @@ status: <string>                         # Enum: in_progress | completed | block
 summary: <string>                        # Concise, truthful executive summary of progress or findings
 
 evidence:                                # Structured log of every verification check executed
-  - command: <string>                    # Exact shell command executed (e.g. git diff --check, sentry-cli --version, pytest)
+  - command: <string>                    # Exact shell command executed (e.g. git diff --check, pytest)
     exit_code: <integer>                 # Observed return code (0 = success)
     result: <string>                     # Observed output snippet, test counts, or error diagnostic
 
@@ -384,11 +384,6 @@ recommendation: <recommended_option>
       "command": "python3 -c \"import json; data = json.load(open('<REPORT_ROOT>/sample_feature-a1-handback.yaml')); assert data['status'] == 'completed'\"",
       "exit_code": 0,
       "result": "JSON-formatted YAML report validated via stdlib json.load."
-    },
-    {
-      "command": "sentry-cli --version",
-      "exit_code": 0,
-      "result": "sentry-cli 3.8.0"
     },
     {
       "command": "shasum -a 256 <REPORT_ROOT>/sample_feature-a1-handback.yaml",
