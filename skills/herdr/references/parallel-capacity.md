@@ -97,18 +97,14 @@ The implementer executes focused test-driven development:
 *(Note: In unified multi-lane missions, lane writers commit locally without opening individual PRs. The integration executor combines commits into the single delivery candidate).*
 
 ### Stage 3: Candidate Handback
-The implementer publishes an immutable YAML report to `$RUN_ROOT` outside the worktree following the atomic publication pipeline in [report-contract.md](report-contract.md):
-1. Write `.partial` via `apply_patch`.
-2. Validate syntax and calculate SHA-256 digest.
-3. Atomically rename to `.yaml`.
-4. Notify the manager via `herdr agent prompt` **without `--wait`**.
+The implementer publishes an immutable YAML report to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml` outside the worktree following the canonical atomic publication pipeline defined in [report-contract.md](report-contract.md), and notifies the manager via `herdr agent prompt` **without `--wait`**.
 
 ### Stage 4: Clean-Context Exact-SHA Review
 **Never review code in the implementer's active pane.** Implementer panes carry conversational drift and confirmation bias.
 1. Spawn a fresh reviewer agent in a separate pane or tab:
    ```bash
    herdr pane split --pane "$CALLER_PANE_ID" --direction right --no-focus
-   herdr agent start "reviewer-<task>" --kind agy --pane "$REVIEWER_PANE_ID" -- --model gemini-3.8-flash-high
+   herdr agent start "reviewer-<task>" --kind agy --pane "$REVIEWER_PANE_ID" -- --model "$REVIEWER_MODEL"
    ```
 2. Reviewer checks out the candidate at its exact commit SHA:
    ```bash

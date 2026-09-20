@@ -25,12 +25,17 @@ Runtime identity (`codex`, `agy`, `claude`) designates an execution engine, not 
 Every brief submitted via `herdr agent prompt` must carry five invariant components:
 1. **Role Authority & Boundaries**: Explicit role title, narrow file ownership, strict exclusions, and no recursive agent spawning.
 2. **Relevant Reference Selection**: Exact pointers to the specific references required for that role (e.g., [report-contract.md](report-contract.md) for reporting schemas, [parallel-capacity.md](parallel-capacity.md) for delivery mechanics). Cold workers load only what their assigned role requires.
-3. **Mandatory Coordinates & Return Route**: Explicit origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `WORKER_PANE_ID`, `WORKER_TAB_ID`), runtime, model, skill revision, `task_id`, `attempt`, and absolute `report_root`.
+3. **Mandatory Coordinates & Return Route**: Explicit origin and target identifiers (`CALLER_PANE_ID`, `CALLER_TAB_ID`, `WORKER_PANE_ID`, `WORKER_TAB_ID`), runtime, model, skill revision, `task_id`, `attempt`, and portable `report_root`. All coordinates use discovered values, never hard-coded host paths or live pane numbers.
 4. **Measurable Outcomes & Acceptance Criteria**: Concrete shell verification commands (`npm test`, `cargo test`, `git diff --check`, `python3 scripts/validate-skills.py`), expected exit codes, and test-driven proof.
 5. **Atomic Handback & Failure Boundaries**: Strict two-attempt rule before blocker reporting, 10-minute silent boundary checkpointing at the next safe tool boundary, and atomic report publication.
 
-### 1.4 Routing to Canonical Report Contract
-Briefs must **never duplicate YAML report schemas**. All reporting requirements route directly to [report-contract.md](report-contract.md). Producers publish immutable reports matching canonical fields (`mission_id`, `task_id`, `attempt`, `report_id`, `producer`, `status`, `summary`, `evidence`, `git`, `files`, `blockers`, `requested_action`, `pending_operations`) and notify the manager with no-wait native notices.
+### 1.4 Stable Reporting Invariants
+Briefs must **never duplicate YAML report schemas or publication commands**. All reporting requirements route directly to [report-contract.md](report-contract.md). Producers must uphold these cross-cutting invariants:
+- **Exact Assigned Attempt & Producer**: Producers publish strictly against their assigned `task_id`, `attempt`, and registered producer identity. Manager alone owns attempt increments; producer revisions or checkpoints within an assigned attempt publish under unique report IDs (e.g. `<task_id>-a<attempt>-<purpose>2.yaml`).
+- **All Reports Immutable**: All producers (including Codex managers and AGY workers) publish immutable reports. Only `state.yaml` is a mutable checkpoint maintained by the manager.
+- **Portable Discovered Coordinates**: Briefs and notices use portable placeholders discovered from `herdr pane current` and manager assignments, not live session IDs or machine-specific paths.
+- **No Undeclared PyYAML**: Verification procedures must not mandate third-party PyYAML dependencies (`import yaml`). Use standard syntax inspection and exit-code validation.
+- **Session Metadata**: Record truthful verified terminal and session metadata; record session UUIDs as unavailable when unexposed by the runtime.
 
 ---
 
@@ -59,9 +64,9 @@ Read only these references before writing code:
 - CALLER_TAB_ID: "<MANAGER_TAB_ID>"
 - WORKER_PANE_ID: "<YOUR_PANE_ID>"
 - WORKER_TAB_ID: "<YOUR_TAB_ID>"
-- RUN_ROOT: "/Users/mac/docs/superpowers/runs/<MISSION_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
 - TASK_ID: "<TASK_NAME>"
-- ATTEMPT: 1
+- ATTEMPT: <ASSIGNED_ATTEMPT>
 - WORKTREE: "<ABSOLUTE_WORKTREE_PATH>"
 - BRANCH: "lane/<TASK_NAME>"
 
@@ -78,12 +83,9 @@ When all acceptance criteria are verified:
 1. Commit your changes locally to your branch with a conventional commit message:
    `git add <owned_files> && git commit -m "feat(<scope>): <description>"`
    *(Note: Lane writers commit locally; do not open individual PRs unless explicitly instructed. Integration executor combines lane commits).*
-2. Publish your immutable report outside the worktree to `$RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml` following the 4-step publication pipeline in `report-contract.md`:
-   - Write `$RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml.partial` via `apply_patch`.
-   - Validate: `python3 -c "import yaml; yaml.safe_load(open('$RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml.partial'))"`
-   - Atomic rename: `mv $RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml.partial $RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml`
+2. Publish your immutable report outside the worktree to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml` following the canonical atomic publication pipeline in `report-contract.md`.
 3. Notify the manager immediately via `herdr agent prompt` WITHOUT `--wait`:
-   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<TASK_ID>-a<ATTEMPT>-handback pane_id=$WORKER_PANE_ID tab_id=$WORKER_TAB_ID report_path=$RUN_ROOT/<TASK_ID>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
+   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<TASK_ID>-a<ATTEMPT>-handback pane_id=$WORKER_PANE_ID tab_id=$WORKER_TAB_ID report_path=<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
 
 ## 6. Failure & Checkpoint Boundaries
 - **Two-Attempt Rule**: If a check fails twice, change angle or publish a blocker report with evidence. Do not attempt a third blind retry.
@@ -115,9 +117,9 @@ Read only these references:
 - CALLER_TAB_ID: "<MANAGER_TAB_ID>"
 - REVIEWER_PANE_ID: "<YOUR_PANE_ID>"
 - REVIEWER_TAB_ID: "<YOUR_TAB_ID>"
-- RUN_ROOT: "/Users/mac/docs/superpowers/runs/<MISSION_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
 - TASK_ID: "review_<TASK_NAME>"
-- ATTEMPT: 1
+- ATTEMPT: <ASSIGNED_ATTEMPT>
 
 ## 4. Exact-SHA Checkout & Review Invariant
 1. Review the candidate at its exact commit SHA:
@@ -146,9 +148,9 @@ If you require clarification from the author before rendering a verdict:
 
 ## 7. Verdict Handback Protocol
 1. Formulate explicit verdict: `approved` or `changes_requested`.
-2. Publish immutable report to `$RUN_ROOT/review_<TASK_NAME>-a1-handback.yaml` using the atomic publication pipeline (`.partial` -> verify -> rename).
+2. Publish immutable report to `<RUN_ROOT>/review_<TASK_NAME>-a<ATTEMPT>-handback.yaml` following the canonical atomic publication pipeline in `report-contract.md`.
 3. Notify manager via `herdr agent prompt "$CALLER_PANE_ID"` without `--wait`:
-   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=review_<TASK_NAME> attempt=1 report_id=review_<TASK_NAME>-a1-handback pane_id=$REVIEWER_PANE_ID tab_id=$REVIEWER_TAB_ID report_path=$RUN_ROOT/review_<TASK_NAME>-a1-handback.yaml status=completed requested_action=review_candidate"`
+   `herdr agent prompt "$CALLER_PANE_ID" "REPORT NOTICE: mission_id=<MISSION_ID> task_id=review_<TASK_NAME> attempt=<ATTEMPT> report_id=review_<TASK_NAME>-a<ATTEMPT>-handback pane_id=$REVIEWER_PANE_ID tab_id=$REVIEWER_TAB_ID report_path=<RUN_ROOT>/review_<TASK_NAME>-a<ATTEMPT>-handback.yaml status=completed requested_action=review_candidate"`
 ```
 
 ---
@@ -173,9 +175,9 @@ Read only these references:
 - CALLER_PANE_ID: "<MANAGER_PANE_ID>"
 - CALLER_TAB_ID: "<MANAGER_TAB_ID>"
 - EXECUTOR_PANE_ID: "<YOUR_PANE_ID>"
-- RUN_ROOT: "/Users/mac/docs/superpowers/runs/<MISSION_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
 - TASK_ID: "integration"
-- ATTEMPT: 1
+- ATTEMPT: <ASSIGNED_ATTEMPT>
 
 ## 4. Execution Sequence & GitHub Mechanics
 1. **Serial Rebase & Verification**:
@@ -202,7 +204,7 @@ Read only these references:
    - Never issue `--force` on a dirty worktree.
 
 ## 5. Handback Protocol
-Publish integration handback report to `$RUN_ROOT/integration-a1-handback.yaml` and notify manager without `--wait`.
+Publish integration handback report to `<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml` following `report-contract.md` and notify manager without `--wait`.
 ```
 
 ---
@@ -226,7 +228,9 @@ Use this template when assigning a recovery executor to diagnose and unblock an 
 ## 3. Mandatory Coordinates
 - CALLER_PANE_ID: "<MANAGER_PANE_ID>"
 - TARGET_PANE_ID: "<STALLED_PANE_ID>"
-- RUN_ROOT: "/Users/mac/docs/superpowers/runs/<MISSION_ID>"
+- RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
+- TASK_ID: "recovery"
+- ATTEMPT: <ASSIGNED_ATTEMPT>
 
 ## 4. Diagnostic & Recovery Sequence
 1. **Inspect First**:
@@ -238,7 +242,7 @@ Use this template when assigning a recovery executor to diagnose and unblock an 
    - If looping or hung: Send targeted `esc` or `ctrl+c`.
    - Check and clear stale Git locks: `ls -la <WORKTREE>/.git/index.lock`
 3. **Handback**:
-   Publish recovery diagnostic report to `$RUN_ROOT/recovery-a1-handback.yaml` detailing root cause, actions taken, and restored agent status. Prompt manager without `--wait`.
+   Publish recovery diagnostic report to `<RUN_ROOT>/recovery-a<ATTEMPT>-handback.yaml` following `report-contract.md` detailing root cause, actions taken, and restored agent status. Prompt manager without `--wait`.
 ```
 
 ---
