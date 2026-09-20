@@ -57,8 +57,8 @@ Before workers exist, the CTO establishes the leadership pair. Leadership reside
 4. **EM allocates workers/reviewers** into separate dedicated tabs, capturing returned IDs, and launches native AGY:
    ```bash
    TAB_INFO="$(herdr tab create --workspace "$WS_ID" --cwd "$TASK_CWD" --label "$TASK_LABEL" --no-focus)"
-   WORKER_TAB_ID="$(echo "$TAB_INFO" | jq -r .result.tab.tab_id)"
-   WORKER_PANE_ID="$(echo "$TAB_INFO" | jq -r .result.tab.active_pane_id // .result.tab.panes[0].pane_id)"
+   WORKER_TAB_ID="$(echo "$TAB_INFO" | jq -er '.result.tab.tab_id')"
+   WORKER_PANE_ID="$(echo "$TAB_INFO" | jq -er '.result.root_pane.pane_id')"
    herdr agent start "$AGENT_LABEL" --kind agy --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL"
    ```
 5. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
