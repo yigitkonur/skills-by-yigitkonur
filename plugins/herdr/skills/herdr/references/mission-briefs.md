@@ -42,7 +42,16 @@ Every mission brief must include:
 
 ## 2. Implementer Additions
 
-For implementation tasks, append:
+For implementation tasks, dispatch the prompt with the mandatory `/teamwork-preview /herdr` prefix:
+
+```bash
+herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
+# Mission Brief: <TASK_ID> (Attempt <ATTEMPT>)
+...
+"
+```
+
+Append:
 
 ```markdown
 ## 4. Scope, Worktree & Execution Rules

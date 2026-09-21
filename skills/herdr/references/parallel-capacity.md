@@ -29,14 +29,14 @@ To prevent infinite review-and-fix loops and ensure integrity of findings:
 
 Resource lifecycle follows two explicit, separate cleanup gates:
 
-### 5a. Prompt Terminal & Pane Retirement (Codex EM Control)
-- **Prompt Retirement**: Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`). Terminal release does NOT wait for PR merge or mission completion.
+### 5a. Prompt Terminal & Pane Retirement (EM Control)
+- **Prompt Retirement**: Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`). If using the side-by-side review split pattern, the implementer pane is retained until the reviewer completes verification and PR approval.
 - **Session Retention Rule**: Retaining a session (e.g. for follow-up debugging) requires recording an explicit retention reason and release trigger in `state.yaml`. Conversation resume identity and artifacts must be preserved outside the process before closing.
 - **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close leadership panes (CTO/EM), user-owned panes, or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
 - **Disappearance & State Checkpoint**: Verify pane disappearance (`herdr pane process-info` returns not found) and update compact resource entries in `state.yaml`.
 - **Late/Duplicate Notices**: Late or duplicate notices from a retired worker do not respawn the terminal, repeat dispatch, or trigger Git actions.
 
-### 5b. Worktree Removal Gate (AGY Integration Authority)
+### 5b. Worktree Removal Gate (Integration Authority)
 - Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
 - Removal gate: verify checkout is owned, `git status --porcelain` is strictly clean, references/evidence/reports are retained outside the checkout, and zero unresolved operations exist (`git worktree remove <PATH>`).
 - Dirty, modified, or ambiguous checkouts are **retained with a recorded reason**; no default force removal (`git worktree remove --force` is prohibited without explicit authorization).

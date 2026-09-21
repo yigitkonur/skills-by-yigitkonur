@@ -102,11 +102,11 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
-### Implementer Mission Brief & `/teamwork-preview` Mandate:
-When the Engineering Manager prompts the implementer, the prompt **MUST** start with `/teamwork-preview` (zero space after slash) and instruct the worker to assemble a specialized team:
+### Implementer Mission Brief & `/teamwork-preview /herdr` Mandate:
+When the Engineering Manager prompts the implementer, the prompt **MUST** start with `/teamwork-preview /herdr` (zero space after slash) and instruct the worker to assemble a specialized team:
 
 ```bash
-herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview
+herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
 You are the Lead Implementer for Task #${TASK_ID}.
 Assemble and guide a specialized sub-team (e.g. Architect, Specialist, QA Verifier) to execute this task:
 
