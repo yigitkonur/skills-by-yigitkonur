@@ -128,3 +128,42 @@ const hashCheck = await js(String.raw`(() => ({
 cliLog('Hash Sanitization Proof: ' + JSON.stringify(hashCheck))
 if (hashCheck.hasTokenInHref) throw new Error('Token leaked in address bar!');
 ```
+
+### Trap 4: Stale Asset Caching After Live Deployments (CDP Cache Invalidation)
+When verifying freshly deployed releases in `ego-browser`, Chromium may serve cached JavaScript assets (`assets/*.js`) from disk/memory:
+```js
+// Force Chromium to dump disk/memory cache and reload without cache headers:
+await cdp('Network.clearBrowserCache');
+await cdp('Page.reload', { ignoreCache: true });
+await wait(3);
+```
+
+### Trap 5: Adaptive Predicate Polling Over Brittle Sleep
+Hardcoded `await wait(N)` can result in flaky test failures when network latency varies or hydration takes longer than usual:
+```js
+// Resilient predicate polling pattern:
+const pollUntilReady = async (selector, timeoutSec = 10) => {
+  const start = Date.now();
+  while ((Date.now() - start) < timeoutSec * 1000) {
+    const ready = await js(String.raw`(() => !!document.querySelector('${selector}'))()`);
+    if (ready) return true;
+    await wait(0.5);
+  }
+  throw new Error(`Timeout waiting for selector: ${selector}`);
+};
+await pollUntilReady('.metric-card');
+```
+
+### Trap 6: Modal & Drawer Escape Key Dismissal
+When testing modals, dialogs, or sliding drawers, verify that pressing the `Escape` key cleanly closes them without leaving orphaned backdrop overlays:
+```js
+await pressKey('Escape');
+await wait(1);
+const isDismissed = await js(String.raw`(() => {
+  const modal = document.querySelector('.modal, .drawer, .cite-drawer');
+  const backdrop = document.querySelector('.modal-backdrop, .overlay');
+  return !modal && !backdrop;
+})()`);
+if (!isDismissed) throw new Error('Modal failed to close on Escape key');
+```
+
