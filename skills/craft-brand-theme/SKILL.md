@@ -111,15 +111,20 @@ Does the design specify custom brand typefaces?
 | Topic | Reference Document | When to Read |
 | :--- | :--- | :--- |
 | **Foundations** | [01-mental-model-theming-loop.md](references/01-mental-model-theming-loop.md) | Initializing theme design or understanding inside-out vs outside-in philosophy |
-| **Tokens** | [02-token-contract-schema.md](references/02-token-contract-schema.md) | Mapping CSS custom properties, shadcn tokens, and sidebar variables |
+| **Tokens** | [02-token-contract-schema.md](references/02-token-contract-schema.md) | Mapping CSS custom properties, shadcn tokens, sidebar variables, chart colors, and shadow scales |
 | **Extraction** | [03-reverse-engineering-sources.md](references/03-reverse-engineering-sources.md) | Extracting brand DNA from website code, `DESIGN.md`, live URLs, or Figma tokens |
 | **Color & Ink** | [04-color-surface-ink-ladder.md](references/04-color-surface-ink-ladder.md) | Calibrating 4-tier surface elevations, ink contrast ladder, and accent restraint |
 | **Contrast** | [05-wcag-contrast-and-focus-rings.md](references/05-wcag-contrast-and-focus-rings.md) | Calculating mathematical luminance, WCAG 2.2 compliance, and slate focus rings |
 | **Fonts** | [06-local-font-engine-and-glyph-rules.md](references/06-local-font-engine-and-glyph-rules.md) | Local WOFF2 hosting, `@font-face` injection, and Turkish weight-300 remap |
 | **Geometry** | [07-geometry-spacing-shadow-laws.md](references/07-geometry-spacing-shadow-laws.md) | Enforcing strict 4px radii, 4px modular spacing grid, and solid surfaces |
 | **Vector Assets**| [08-dark-mode-vector-asset-parity.md](references/08-dark-mode-vector-asset-parity.md) | Dynamic logo swapping via CSS `content: url(...)` and mask-free SVG optimization |
-| **Traps** | [09-anti-patterns-and-failure-modes.md](references/09-anti-patterns-and-failure-modes.md) | Diagnosing neon borders, accidental dividers, or glyph fractures |
+| **Traps** | [09-anti-patterns-and-failure-modes.md](references/09-anti-patterns-and-failure-modes.md) | Diagnosing neon borders, accidental dividers, glyph fractures, `@layer` cascade traps, and FOUC |
 | **Verification** | [10-browser-verification-playbook.md](references/10-browser-verification-playbook.md) | Driving headless browser automation, DOM font checks, and visual proof capture |
+| **SSR Injection** | [11-ssr-injection-pipeline.md](references/11-ssr-injection-pipeline.md) | Injecting `<style>` into compiled Next.js SSR chunks for zero-FOUC first paint |
+| **SPA Hooks** | [12-spa-hook-and-registry-patching.md](references/12-spa-hook-and-registry-patching.md) | Patching client theme hooks, theme registry metadata, and backend Zod schema validation |
+| **Containers** | [13-container-patch-architecture.md](references/13-container-patch-architecture.md) | Docker volume mounts, patch orchestration, instance guards, and process restart patterns |
+| **Database** | [14-database-branding.md](references/14-database-branding.md) | Persisting logos, theme selection, and font preferences in application databases |
+| **Refinement** | [15-iterative-refinement-methodology.md](references/15-iterative-refinement-methodology.md) | The change→restart→screenshot→evaluate→refine loop and two-agent review pattern |
 
 ---
 

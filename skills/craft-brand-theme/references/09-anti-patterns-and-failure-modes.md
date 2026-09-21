@@ -59,3 +59,17 @@ This reference catalogs the hard-won failure modes discovered during real-world 
 - **The Crime**: Adding `backdrop-filter: blur(12px); background: rgba(..., 0.7);` to cards or sidebars.
 - **The Consequence**: Scrolling code blocks behind a translucent card creates visual clutter, causes WCAG contrast failures on variable text, and introduces GPU stutter.
 - **The Fix**: Enforce the **Solid Surface Law**. All primary interactive surfaces must be 100% opaque.
+
+---
+
+### Anti-Pattern 9: The CSS `@layer` Cascade Trap
+- **The Crime**: Injecting theme CSS without understanding Tailwind v4's cascade layer hierarchy (`@layer theme, base, components, utilities`). Theme tokens injected inside `@layer base` or via an unscoped `<style>` tag may be silently overridden by Tailwind utility classes in the `utilities` layer, which has higher cascade priority.
+- **The Consequence**: Tokens appear to be set correctly in DevTools on the `:root` element, but individual components display wrong colors because utility classes like `bg-white dark:bg-zinc-900` or `text-foreground` resolve against the framework's default token values rather than your injected overrides.
+- **The Fix**: Inject theme CSS at the `:root` / `html.theme-<id>` selector level **outside any `@layer`** declaration (or within `@layer theme` which is the lowest layer). CSS custom properties set on `:root` propagate through `var()` references regardless of which layer consumes them. The SSR `<style>` injection technique (Reference 11) naturally achieves this because inline `<style>` tags are layerless.
+
+---
+
+### Anti-Pattern 10: The Client Hydration FOUC (Flash of Unstyled Content)
+- **The Crime**: Relying solely on a client-side React hook or `useEffect` to apply theme tokens after the page loads. Or: storing theme selection in `localStorage` / React Query cache without also injecting the CSS server-side.
+- **The Consequence**: The server renders HTML with default theme classes. The browser paints the page with default colors (e.g., white background, blue primary). After 200–400ms, React hydrates and the theme hook fires, swapping all tokens simultaneously — causing a visible flash where the entire page shifts colors.
+- **The Fix**: Always pair client-side theme hooks with SSR injection (Reference 11). The `<style id="zeo-custom-theme-ssr">` tag must be present in the initial HTML response so the browser applies custom tokens before the first paint. The client hook (Reference 12) then acts as a **persistence guard** for SPA navigation, not as the primary delivery mechanism.

@@ -79,3 +79,43 @@ Modern AI platforms (Archestra, LibreChat, Open WebUI) isolate the left navigati
 - **The Bug**: Setting `--card` equal to `--background` in dark mode (`#0e1521`).
 - **The Consequence**: Without elevated card backgrounds, chat composers and dialog boxes blend completely into the page, relying entirely on 1px borders to define boundaries.
 - **The Fix**: Elevate `--card` to `#1c2535` against `#0e1521` base ground.
+
+---
+
+## 5. Chart & Data Visualization Tokens
+
+Modern dashboard applications consume a 5-color chart sequence. These must harmonize with the brand palette while remaining distinguishable from each other:
+
+| Token Variable | Light Mode | Dark Mode | Usage |
+| :--- | :--- | :--- | :--- |
+| `--chart-1` | `#cc0a4d` (Crimson) | `#cc0a4d` (Crimson) | Primary data series, KPI highlights |
+| `--chart-2` | `#1c2535` (Deep Ink) | `#ff5c8f` (Soft Pink) | Secondary series |
+| `--chart-3` | `#22c55e` (Green) | `#4fae47` (Muted Green) | Success / positive metrics |
+| `--chart-4` | `#eab308` (Amber) | `#4a93f5` (Blue) | Warning / neutral metrics |
+| `--chart-5` | `#06b6d4` (Cyan) | `#9d8df0` (Lavender) | Tertiary / supplementary |
+
+**Dark mode guidance**: Avoid direct light-mode color carryover. Dark backgrounds require desaturated or shifted hues to maintain readability. `#eab308` (amber) becomes illegible on dark navy — replace with a contrasting blue.
+
+---
+
+## 6. Shadow & Elevation Token Scale
+
+An 8-step elevation shadow ramp provides consistent depth across all components:
+
+| Token Variable | Light Mode Value | Dark Mode Value |
+| :--- | :--- | :--- |
+| `--shadow-2xs` | `0 1px 2px 0 rgba(175, 184, 202, 0.10)` | `0 1px 2px 0 rgba(0, 0, 0, 0.25)` |
+| `--shadow-xs` | `0 1px 3px 0 rgba(175, 184, 202, 0.12)` | `0 1px 3px 0 rgba(0, 0, 0, 0.30)` |
+| `--shadow-sm` | `0 2px 4px 0 rgba(175, 184, 202, 0.15)` | `0 2px 4px 0 rgba(0, 0, 0, 0.35)` |
+| `--shadow` | `0 4px 8px 0 rgba(175, 184, 202, 0.15)` | `0 4px 8px 0 rgba(0, 0, 0, 0.38)` |
+| `--shadow-md` | `0 6px 16px 0 rgba(175, 184, 202, 0.18)` | `0 6px 16px 0 rgba(0, 0, 0, 0.40)` |
+| `--shadow-lg` | `0 12px 24px 0 rgba(175, 184, 202, 0.20)` | `0 12px 24px 0 rgba(0, 0, 0, 0.45)` |
+| `--shadow-xl` | `0 16px 32px 0 rgba(175, 184, 202, 0.22)` | `0 16px 32px 0 rgba(0, 0, 0, 0.50)` |
+| `--shadow-2xl` | `0 24px 48px 0 rgba(175, 184, 202, 0.25)` | `0 24px 48px 0 rgba(0, 0, 0, 0.60)` |
+| `--shadow-signature` | `-9px 9px 0 0 #cc0a4d` | `-9px 9px 0 0 #cc0a4d` |
+
+**Light mode shadow tint**: Use warm marine `rgba(175, 184, 202, ...)` rather than pure black. This creates a softer, more sophisticated elevation that harmonizes with blue-gray ink tones.
+
+**Dark mode shadow tint**: Use pure black `rgba(0, 0, 0, ...)` with higher opacity. On dark backgrounds, colored shadows are invisible — only darkness provides depth.
+
+**Signature shadow**: A zero-blur hard-edge offset shadow in brand crimson. Used sparingly on hero elements, code blocks, or featured cards to create architectural visual anchoring.
