@@ -81,7 +81,38 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      - Provision a dedicated worktree (`herdr worktree create`) or launch a targeted bugfix subagent with strict TDD instructions (red test first, single minimal fix, Fast Syntax Gate verification).
      - Once verified green, merge and deploy immediately to restore production fidelity.
 9. **Worktree Removal Gate & Remote PR Merge Verification**:
-   - The default behavior of Herdr worktrees is conservative preservation: `herdr worktree remove` MUST only be called AFTER the candidate PR is verified as `MERGED` on remote GitHub (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). If a merge operation is pending, in review, or undergoing conflict resolution, worktrees must remain preserved.
+   - The default behavior of Herdr worktrees is conservative preservation: `herdr worktree remove --workspace "$WS_ID"` MUST only be called AFTER the candidate PR is verified as `MERGED` on remote GitHub (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). If a merge operation is pending, in review, or undergoing conflict resolution, worktrees must remain preserved.
+10. **Mandatory Worktree-Backed Workspaces (Independent Workspaces Prohibited)**:
+   - All task execution environments MUST be opened via Herdr's native worktree command:
+     ```bash
+     WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
+     WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
+     IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
+     ```
+   - **Strictly Prohibited Anti-Patterns**:
+     - Creating independent workspaces via `herdr workspace create`.
+     - Running `git worktree add` in shell and opening loose tabs with `--cwd`.
+     - Creating unlinked workspaces that lose Herdr's 1-to-1 workspace lifecycle tracking.
+   - Herdr's `herdr worktree create` atomically provisions the physical Git worktree checkout, creates the worktree-backed workspace, and anchors the root pane directly in the checkout directory.
+11. **CTO First-Wave Handover & EM Autonomous Orchestration**:
+   - **CTO Role**: Orchestrates the initial wave. Creates the environment, provisions initial worktree workspaces via `herdr worktree create`, launches initial workers with the EM's pane callback target (`$EM_PANE_ID`), and launches the Engineering Manager in Pane 2.
+   - **EM Autonomous Takeover**: Once initialized, the **Engineering Manager completely takes over**. The EM decides how the flow progresses, where reviews happen (side-by-side split via `herdr pane split`), how testing is conducted, which skills each worker uses (`tdd`, `code-review`, `audit-completion`), and how subsequent waves (Waves 2–5) are provisioned and dispatched natively via `herdr worktree create`.
+   - **CTO Follows ONLY the EM**: After first-wave initialization, the **CTO tracks and follows ONLY the Engineering Manager**. The CTO never micromanages workers or bypasses the EM. The CTO waits for the EM's formal `WAVE_COMPLETE` handover block, validates baseline gates, executes serial squash-merges onto `main`, and signals the EM to proceed.
+12. **Universal Agent Wait Tracking Mandate (`herdr agent wait`)**:
+   - All running agents MUST be tracked using the `herdr agent wait` primitive:
+     ```bash
+     herdr agent wait <TARGET_PANE> [--until <STATUS>] [--timeout <MS>]
+     ```
+   - Possible values for `--until`: `idle`, `working`, `blocked`, `done`, `unknown`.
+   - **Tracking Workers & Reviewers**:
+     ```bash
+     herdr agent wait "$WORKER_PANE_ID" --until done,idle --timeout 120000
+     ```
+   - **Supervising the EM (CTO)**:
+     ```bash
+     herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+     ```
+   - **Strictly Prohibited**: Blind `sleep` loops (e.g. `sleep 10`) and detached polling without checking agent state. Always track state changes deterministically through `herdr agent wait`.
 
 ---
 
