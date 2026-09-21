@@ -8,7 +8,7 @@ This is the **single canonical source of truth** for durable artifact kinds, pro
 +------------------------------------------------------------------------------------+
 | KIND 1: MUTABLE MANAGER CHECKPOINT (state.yaml alone)                              |
 | Location: Absolute run root outside disposable worktrees (<REPORT_ROOT>).          |
-| Owner: Codex Engineering Manager (EM) alone. Updated in place on state transitions. |
+| Owner: Engineering Manager (EM) alone. Updated in place on state transitions. |
 +------------------------------------------------------------------------------------+
 | KIND 2: IMMUTABLE YAML REPORTS (<task>-a<attempt>-<purpose>.yaml)                  |
 | Location: Absolute run root. Never modified or overwritten once published.          |

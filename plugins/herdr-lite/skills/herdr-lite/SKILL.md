@@ -30,7 +30,8 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
 ### Mandates & Invariants:
 1. **The EM is an Authentic AGY Agent**: Never replace the Engineering Manager with a dumb bash terminal or passive status script. The EM must be an active AGY agent (`herdr agent start "eng-man" --kind agy --pane <PANE_ID> -- --model gemini-3.8-flash-high --dangerously-skip-permissions`).
 2. **Central Callback Hub**: All implementer and reviewer agents report their status back to the Engineering Manager (`REPORT: task_id=<ID> pr_url=<URL> head_sha=<SHA> status=DONE`). The EM tracks progress, validates evidence, and coordinates with the CTO.
-3. **The `/teamwork-preview` Task Launch Rule**: When starting any implementation task in a worktree, the prompt **MUST** start with `/teamwork-preview` (strictly zero space after slash) and guide the implementer to assemble, coordinate, and lead a specialized sub-team (e.g., Schema Architect, API Specialist, QA Verifier) to execute the task.
+3. **The `/teamwork-preview /herdr` Task Launch Rule**: When starting any implementation task in a worktree, the prompt **MUST** start with `/teamwork-preview /herdr` (strictly zero space after slash) and guide the implementer to assemble, coordinate, and lead a specialized sub-team (e.g., Schema Architect, API Specialist, QA Verifier) to execute the task within Herdr invariants.
+4. **Unbounded Event-Driven Longevity (No Execution Limits)**: Neither the CTO nor the EM operates under arbitrary step or turn limits. Bounded execution is maintained via PR-driven state milestones, 2-strike review budgets, and reactive callbacks, enabling sustained multi-wave completion rallies without artificial execution caps.
 
 ---
 
@@ -96,8 +97,8 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
 # 2. Launch Implementer with --dangerously-skip-permissions:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
 
-# 3. Prompt Implementer with mandatory /teamwork-preview prefix:
-herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview
+# 3. Prompt Implementer with mandatory /teamwork-preview /herdr prefix:
+herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
 You are the Lead Implementer for Task #${TASK_ID}...
 Assemble and guide a specialized team to complete this task.
 When done, report back with: REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=\$(git rev-parse HEAD) status=DONE"
