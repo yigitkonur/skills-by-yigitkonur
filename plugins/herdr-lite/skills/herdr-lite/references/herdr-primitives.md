@@ -20,10 +20,10 @@ Manage Git worktrees paired with dedicated Herdr workspaces.
 ### Recipe: Create Dedicated Worktree Workspace & Side-by-Side Review Pane
 ```bash
 # 1. Provision dedicated worktree workspace (never use loose tabs with git worktree add!):
-WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
+WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
 
 # Extract Workspace ID and initial Root Pane ID:
-WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
+WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
 
 # 2. Launch implementer agent in Pane 1:
@@ -37,10 +37,13 @@ REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 
 # 5. Full-Job Teardown: ONLY once PR is confirmed MERGED to main:
-gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
-herdr worktree remove --workspace "$WORKSPACE_ID"
-git branch -D "$BRANCH_NAME"
-git remote prune origin
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR not merged; aborting teardown"; exit 1; }
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree dirty; aborting teardown"; exit 1; }
+herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
+herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
+herdr worktree remove --workspace "$WS_ID"
+git -C "$REPO_ROOT" branch -D "$BRANCH"
+git -C "$REPO_ROOT" remote prune origin
 
 # 6. Post-Milestone Retirement: When all issues/PRs are resolved, retire EM pane:
 herdr pane close "$EM_PANE_ID"

@@ -185,31 +185,37 @@ Execute these stages in strict order:
 > [!CAUTION]
 > **NEVER remove a worktree until the PR is confirmed submitted and merged into `main`** (or explicitly abandoned). Removing a worktree with unmerged, unpushed commits permanently destroys work.
 ```bash
-# Confirm PR status is MERGED on remote:
-gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+# Confirm PR status is MERGED on remote (abort if not merged):
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR $PR_URL is not MERGED; aborting teardown"; exit 1; }
 ```
 
 ### Stage 2: Cleanliness Verification
-Confirm zero uncommitted or untracked work remains in the checkout:
+Confirm zero uncommitted or untracked work remains in the checkout (abort if dirty):
 ```bash
-test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree $WORKTREE_PATH is dirty; aborting teardown"; exit 1; }
 ```
 
-### Stage 3: Remove Worktree & Workspace
+### Stage 3: Retire Agent Panes in Workspace
+```bash
+herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
+herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
+```
+
+### Stage 4: Remove Worktree & Workspace
 Safely delete the checkout and unregister from Herdr:
 ```bash
 # Preferred (Herdr socket API):
-herdr worktree remove --workspace "$WORKSPACE_ID"
+herdr worktree remove --workspace "$WS_ID"
 
 # Fallback (Manual Git + Herdr):
 git worktree remove "$WORKTREE_PATH"
-herdr workspace close "$WORKSPACE_ID"
+herdr workspace close "$WS_ID"
 ```
 
-### Stage 4: Delete Local Branch & Prune Tracking
+### Stage 5: Delete Local Branch & Prune Tracking
 Now that the branch is no longer checked out anywhere, delete it locally:
 ```bash
-git -C "$REPO_ROOT" branch -d "$BRANCH_NAME" 2>/dev/null || git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"
+git -C "$REPO_ROOT" branch -d "$BRANCH" 2>/dev/null || git -C "$REPO_ROOT" branch -D "$BRANCH"
 git -C "$REPO_ROOT" remote prune origin
 ```
 

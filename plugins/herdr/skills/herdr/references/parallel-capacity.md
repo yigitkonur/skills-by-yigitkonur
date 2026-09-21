@@ -50,11 +50,13 @@ Resource lifecycle follows two explicit, separate cleanup gates:
   - **`workspace close` vs `worktree remove`**: Running `herdr workspace close <WS_ID>` alone closes *only* Herdr UI/session state, leaving the physical directory and Git worktree tracking orphaned on disk. Always use `herdr worktree remove --workspace <WS_ID>`.
 - **Mandatory Merge Integrity Gate**: NEVER remove a worktree until the PR is confirmed merged into `main` (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). Removing a worktree with unmerged commits permanently destroys work.
 - **Clean Teardown Sequence**:
-  1. Confirm clean tree: `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"`.
-  2. Remove checkout and workspace: `herdr worktree remove --workspace "$WORKSPACE_ID"` (or `git worktree remove "$WORKTREE_PATH"` + `herdr workspace close "$WORKSPACE_ID"`).
-  3. Delete local branch: `git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"`.
-  4. Prune remote references: `git -C "$REPO_ROOT" remote prune origin`.
-  5. Verify zero lingering worktrees: `git -C "$REPO_ROOT" worktree list` (only primary root remains).
+  1. Confirm PR status is MERGED: `gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || exit 1`.
+  2. Confirm clean tree: `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || exit 1`.
+  3. Retire agent panes: `herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true` and `herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true`.
+  4. Remove checkout and workspace: `herdr worktree remove --workspace "$WS_ID"` (or `git worktree remove "$WORKTREE_PATH"` + `herdr workspace close "$WS_ID"`).
+  5. Delete local branch: `git -C "$REPO_ROOT" branch -D "$BRANCH"`.
+  6. Prune remote references: `git -C "$REPO_ROOT" remote prune origin`.
+  7. Verify zero lingering worktrees: `git -C "$REPO_ROOT" worktree list` (only primary root remains).
 
 ## 6. Serial Integration & Delivery Lifecycle
 

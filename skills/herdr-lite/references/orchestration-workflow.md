@@ -91,11 +91,11 @@ For each ticket in the active wave, provision an isolated workspace:
 TASK_ID="182"
 REPO_ROOT="/root/dev/my-project"
 WORKTREE_PATH="/root/dev/my-project-task-${TASK_ID}"
-BRANCH_NAME="fix/issue-${TASK_ID}"
+BRANCH="fix/issue-${TASK_ID}"
 
 # 1. Provision worktree and capture coordinates:
-WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
-WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.workspace.workspace_id')"
+WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
+WS_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.workspace.workspace_id')"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
 
 # 2. Launch AGY Implementer in Pane 1:
@@ -125,7 +125,7 @@ Assemble and guide a specialized sub-team to execute this task:
 Workflow:
 1. Implement behavioral tests first (TDD).
 2. Fix the underlying issue with minimal surface changes.
-3. Commit cleanly and push branch '$BRANCH_NAME'.
+3. Commit cleanly and push branch '$BRANCH'.
 4. Open PR: gh pr create --title 'fix: issue #${TASK_ID}' --body 'Closes #${TASK_ID}'.
 5. When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
    REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=\$(git rev-parse HEAD) status=DONE"
@@ -171,6 +171,30 @@ Instructions:
    APPROVED: task_id=${TASK_ID} pr_url=$PR_URL head_sha=$(git rev-parse HEAD)"
 ```
 
+### Non-Monolithic Streaming Wait Loop (Per-Task Wait, Zero Wave-Blocking):
+
+> [!IMPORTANT]
+> **The Streaming Review Rule**:
+> Never wait for ALL implementers in a wave to finish before starting reviews!
+> If a wave has multiple tasks, waiting for the whole wave to finish causes massive idle latency and starves reviewers.
+> Instead, track active workers with per-task waits (`herdr agent wait "$IMPL_PANE_ID" --until done --until idle --timeout <MS>`).
+> As soon as **any single worker** reports `DONE` or enters `idle` with an open PR, **immediately launch its reviewer in Pane 2 via `herdr pane split`**.
+> While Reviewer 1 audits Task 1, Worker 2 and Worker 3 continue implementing.
+> When Reviewer 1 approves Task 1, the CTO can begin serial rebase-and-merge of Task 1 immediately.
+> The whole wave wait does not have to finish before individual task reviews and merges proceed.
+
+```bash
+# Streaming per-task wait and review launch pattern:
+# For each running implementer, wait deterministically for task completion:
+herdr agent wait "$IMPL_PANE_ID" --until done --until idle --timeout 180000
+
+# Immediately launch its reviewer without waiting for other tasks in the wave:
+SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
+REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er '.result.pane.pane_id')"
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash" --dangerously-skip-permissions
+herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
+```
+
 ---
 
 ## 6. Step 4: CTO Active Supervision & Engineering Manager Wave Handover
@@ -204,24 +228,29 @@ The CTO reads this block from the EM pane, runs baseline gates, serially rebases
 > A task is only closed when **both** the review and implementation phases are fully finished and confirmed merged to `main`.
 > Prematurely killing the implementer when review begins is prohibited.
 > Once candidate PR approval and serial squash-merge onto `main` are confirmed:
-> 1. Confirm PR status is MERGED on remote:
+> 1. Confirm PR status is MERGED on remote (abort if not merged):
 >    ```bash
->    gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+>    gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR $PR_URL is not MERGED; aborting teardown"; exit 1; }
 >    ```
-> 2. Confirm clean working tree:
+> 2. Confirm clean working tree (abort if dirty):
 >    ```bash
->    test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"
+>    test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree $WORKTREE_PATH is dirty; aborting teardown"; exit 1; }
 >    ```
-> 3. Remove the worktree checkout and unregister the workspace via Herdr:
+> 3. Retire implementer and reviewer agent panes in the workspace:
 >    ```bash
->    herdr worktree remove --workspace "$WORKSPACE_ID"
+>    herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
+>    herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
 >    ```
-> 4. Delete the local branch and prune remotes:
+> 4. Remove the worktree checkout and unregister the workspace via Herdr:
 >    ```bash
->    git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"
+>    herdr worktree remove --workspace "$WS_ID"
+>    ```
+> 5. Delete the local branch and prune remotes:
+>    ```bash
+>    git -C "$REPO_ROOT" branch -D "$BRANCH"
 >    git -C "$REPO_ROOT" remote prune origin
 >    ```
-> 5. Verify zero lingering worktrees remain:
+> 6. Verify zero lingering worktrees remain:
 >    ```bash
 >    git -C "$REPO_ROOT" worktree list
 >    ```

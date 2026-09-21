@@ -70,7 +70,7 @@ Herdr establishes an explicit, two-tier leadership pair in the primary control w
    herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
    <TASK_BRIEF>
    When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
-   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=\${TASK_ID} pr_url=<URL> head_sha=\$(git rev-parse HEAD) status=DONE\""
+   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=$TASK_ID pr_url=<URL> head_sha=\$(git rev-parse HEAD) status=DONE\""
    ```
 
 3. **CTO Dispatches Handover to the Engineering Manager**:

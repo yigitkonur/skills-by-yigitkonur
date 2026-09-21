@@ -112,6 +112,8 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      ```bash
      herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
      ```
+   - **Non-Monolithic Streaming Wait Rule (Per-Task Wait, Zero Wave-Blocking)**:
+     DO NOT wait for all workers in a wave to finish before starting reviews! Waiting on a wave must be per-task. As each individual worker reaches `done` or `idle` with an open PR, IMMEDIATELY initiate its side-by-side review (`herdr pane split`). The entire wave's wait does NOT have to finish before individual reviews begin. Streaming review pipelines eliminate wave-blocking idle time.
    - **Strictly Prohibited**: Blind `sleep` loops (e.g. `sleep 10`) and detached polling without checking agent state. Always track state changes deterministically through `herdr agent wait`.
 
 ---
@@ -221,13 +223,18 @@ Deep Review & Hardening for PR #${TASK_ID}...
 Auditing candidate commit \$(git rev-parse HEAD) with adversarial rigor..."
 
 # 6. Full-Job Teardown: ONLY once PR is confirmed MERGED to main:
-# Verify PR is merged:
-gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+# Verify PR is merged (abort if not merged):
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR not merged; aborting teardown"; exit 1; }
+# Verify clean working tree (abort if dirty):
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree dirty; aborting teardown"; exit 1; }
+# Retire implementer and reviewer agent panes:
+herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
+herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
 # Remove worktree checkout and unregister workspace via Herdr:
 herdr worktree remove --workspace "$WS_ID"
 # Clean up preserved local branch and prune remotes:
-git branch -D "$BRANCH"
-git remote prune origin
+git -C "$REPO_ROOT" branch -D "$BRANCH"
+git -C "$REPO_ROOT" remote prune origin
 
 # 7. Post-Milestone Retirement: When all issues/PRs are resolved, retire EM and lingering panes:
 herdr pane close "$EM_PANE_ID"
