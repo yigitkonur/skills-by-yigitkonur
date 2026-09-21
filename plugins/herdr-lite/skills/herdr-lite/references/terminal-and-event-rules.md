@@ -48,6 +48,8 @@ herdr agent prompt <TARGET> "<PROMPT_TEXT>"
    Herdr wraps prompt text in DEC Mode 2004 bracketed paste escapes (`\x1b[200~...\x1b[201~`) with a staged ~300ms delay before Enter.
 3. **Never Pass `--wait` on Worker Notices**:
    Passing `--wait` when an implementer or reviewer notifies an orchestrator blocks the worker's own process and risks callback deadlocks.
+4. **Targeted Per-Lane Wait vs. Whole-Fleet Blocking Deadlock**:
+   Never execute an unbounded blocking wait across all workers or reviewers at once. Always wait on individual targets using targeted timeouts (`--timeout 10000` to `15000`). A timeout is normal and non-fatal—it means the agent is still working. This allows the orchestrator to check other lanes and immediately stream reviews for finished tasks without waiting for the whole fleet.
 
 ---
 
@@ -55,7 +57,22 @@ herdr agent prompt <TARGET> "<PROMPT_TEXT>"
 
 When an agent encounters an interactive confirmation prompt, Herdr flags the agent as `blocked` and rejects prompt attempts with `error.code: agent_blocked`.
 
-Resolve modals systematically:
+### 4.1 Worktree Project Trust Modal Bypass
+When AGY starts inside a newly provisioned Git worktree directory, it displays:
+```text
+Do you trust the contents of this project?
+> Yes, proceed
+  No, exit
+```
+Because this modal occurs at startup before any task prompt is sent, attempting to prompt immediately causes `error.code: agent_blocked` or prompt drop.
+**Standard Bypass**: Always dispatch an immediate Enter keypress right after starting an agent in a fresh worktree:
+```bash
+herdr agent start "impl-${TASK_ID}" --kind agy --pane "$PANE_ID" ...
+herdr pane send-keys "$PANE_ID" enter
+herdr agent wait "$PANE_ID" --until idle --timeout 15000
+```
+
+### 4.2 Generic Modal Resolution:
 1. **Inspect First**:
    ```bash
    herdr agent read "$TARGET_PANE_ID" --source visible --lines 20

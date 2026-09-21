@@ -82,6 +82,18 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      - Once verified green, merge and deploy immediately to restore production fidelity.
 9. **Worktree Removal Gate & Remote PR Merge Verification**:
    - The default behavior of Herdr worktrees is conservative preservation: `herdr worktree remove` MUST only be called AFTER the candidate PR is verified as `MERGED` on remote GitHub (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). If a merge operation is pending, in review, or undergoing conflict resolution, worktrees must remain preserved.
+10. **The Streaming Review Law & Anti-"Whole-Fleet Wait Obsession"**:
+   - **The Anti-Pattern**: The orchestrator must NEVER enter a single, global blocking wait waiting for all lanes in a wave to finish before starting reviews. Waiting for the entire fleet before reviewing the first finished task creates idle review capacity, delays feedback loops, and bottlenecks the serial merge pipeline.
+   - **Per-Task Streaming Review**: Reviews are strictly **per-task / streaming**. The moment any single implementer finishes (`status=DONE` or PR opened):
+     1. Immediately split that task's tab side-by-side (`herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus`).
+     2. Launch the reviewer agent in Pane 2 (`herdr agent start "rev-${TASK_ID}" ...`).
+     3. Bypass the project trust prompt (`herdr pane send-keys "$REV_PANE_ID" enter`).
+     4. Prompt the reviewer immediately.
+   - **Targeted Non-Blocking Waiting**: When waiting for agents, the orchestrator/EM must wait on individual lanes (`herdr agent wait "$LANE_PANE_ID" --until idle --timeout 10000`) or iterate across active lanes. A timeout is normal and non-fatal—it signals that the agent is still working, allowing the orchestrator to check other lanes or advance ready PRs. Never wait indefinitely for the whole wave at once.
+11. **Worktree Project Trust Prompt Automatic Bypass**:
+   - When an interactive AGY agent starts in a newly provisioned worktree, it renders the security prompt: `Do you trust the contents of this project?`.
+   - If prompted immediately, the keystrokes are swallowed or rejected (`agent_blocked`).
+   - Mandate: Always dispatch `herdr pane send-keys <PANE_ID> enter` immediately after starting the agent, followed by a brief wait for `idle` before delivering the task prompt.
 
 ---
 
@@ -165,6 +177,9 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
 
 # 2. Launch Implementer with --dangerously-skip-permissions:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
+# Automatically bypass folder trust prompt ("Do you trust the contents of this project?"):
+herdr pane send-keys "$IMPL_PANE_ID" enter
+herdr agent wait "$IMPL_PANE_ID" --until idle --timeout 10000
 
 # 3. Prompt Implementer with mandatory /teamwork-preview /herdr prefix and explicit team structure:
 herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
@@ -178,10 +193,13 @@ When done, report back with: REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha
 # Note: For extremely hard scenarios or deep implementation cases, substitute with /boost:
 # herdr agent prompt "$IMPL_PANE_ID" "/boost /herdr ..."
 
-# 4. Streaming Review: As soon as worker reports DONE, split pane side-by-side in SAME tab:
+# 4. Streaming Review: As soon as worker reports DONE (DO NOT wait for whole wave!), split pane side-by-side in SAME tab:
 SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
 REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
+# Automatically bypass folder trust prompt for reviewer pane:
+herdr pane send-keys "$REV_PANE_ID" enter
+herdr agent wait "$REV_PANE_ID" --until idle --timeout 10000
 
 # 5. Prompt Reviewer (Implementer pane remains alive side-by-side):
 # Use standard review or use /boost for very deep review on high-risk/complex PRs:
@@ -220,6 +238,8 @@ Herdr-Lite strictly enforces core engineering physics:
 6. **Mandatory Merge Verification Before Worktree Removal**: Never unlink or delete a worktree checkout until the candidate PR is confirmed merged into `main`. Removing a worktree with unmerged commits causes permanent data loss.
 7. **Post-Milestone Zero-Bloat Retirement**: When all waves and milestones conclude (zero open issues, zero unmerged PRs), the CTO must immediately close the EM agent pane (`herdr pane close "$EM_PANE_ID"`) and all completed panes/tabs. Zero idle agents in the background.
 8. **Subagent Model Tiering & Concurrency Guard**: Spawning parallel workers without explicit tiering violates the rate limit safeguard. Always bind exploratory, QA, and TDD worker agents to `flash` tier (`--model gemini-3.8-flash` or `Model: "flash"`), restricting concurrent subagents to at most 2–3 active agents per host to prevent 429 quota exhaustion.
+9. **Streaming Reviews Law (Zero Fleet-Wait Deadlock)**: Never wait for all tasks in a wave to complete before starting reviews. Each task streams into review independently the moment it opens a PR or reports done. Targeted per-lane waits (`herdr agent wait <lane> --timeout <ms>`) are used to poll or synchronize without blocking the rest of the fleet.
+10. **Folder Trust Modal Automatic Bypass**: Always dispatch `enter` via `herdr pane send-keys <pane> enter` after launching interactive AGY agents in new worktrees to automatically confirm directory trust before prompt delivery.
 
 ---
 

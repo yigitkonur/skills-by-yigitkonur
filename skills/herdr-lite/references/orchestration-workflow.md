@@ -100,6 +100,10 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
 
 # 2. Launch AGY Implementer in Pane 1:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
+
+# 3. Bypass folder trust prompt immediately:
+herdr pane send-keys "$IMPL_PANE_ID" enter
+herdr agent wait "$IMPL_PANE_ID" --until idle --timeout 10000
 ```
 
 ### Slash Command Selection & Team Structure Rules:
@@ -141,11 +145,32 @@ Workflow:
 > The implementer pane holds critical context: build logs, test failure traces, and agent transcripts.
 > Instead, split the pane side-by-side in the **same tab** so both agents are co-located:
 
+### Streaming Reviews Law (Never Wait for Whole Wave):
+> [!CAUTION]
+> **The "Whole-Fleet Wait Obsession" Trap**:
+> Orchestrators must NEVER execute an unbounded blocking wait for all lanes in a wave to finish before starting reviews.
+> Waiting for the entire fleet stalls delivery, starves reviewer capacity, and creates massive serial backlogs.
+> **Reviews stream per-task**: The moment *any* single worker reports `status=DONE` or opens a PR, immediately split that task's pane right, launch its reviewer in Pane 2, bypass the trust prompt, and start the review!
+
 ### Splitting the Pane Side-by-Side:
 ```bash
+# 1. Split right inside the task's worktree:
 SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
 REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er '.result.pane.pane_id')"
+
+# 2. Launch reviewer agent:
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
+
+# 3. Bypass folder trust prompt immediately:
+herdr pane send-keys "$REV_PANE_ID" enter
+herdr agent wait "$REV_PANE_ID" --until idle --timeout 15000
+```
+
+### Non-Blocking Supervisor Wait Pattern:
+When monitoring multiple active lanes, the supervisor must never run an indefinite single wait. Use short per-lane timeouts or status polling:
+```bash
+# Check or wait on individual lane with a short timeout:
+herdr agent wait "$LANE_PANE_ID" --until idle --timeout 5000 || true
 ```
 
 ### Deep Review with Domain Skills & `/boost` Option:
@@ -153,7 +178,7 @@ The reviewer operates in Pane 2. For standard reviews, use default review instru
 For **very deep reviews** on complex, high-risk, or security-sensitive PRs, prefix the prompt with `/boost /herdr` to invoke deep reasoning and adversarial verification:
 
 ```bash
-herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
+herdr agent wait "$REV_PANE_ID" --until idle --timeout 15000
 
 herdr agent prompt "$REV_PANE_ID" "/boost /herdr
 Deep Review & Hardening for PR #${TASK_ID}:

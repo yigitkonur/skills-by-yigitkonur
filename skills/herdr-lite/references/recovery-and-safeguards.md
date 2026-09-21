@@ -125,3 +125,26 @@ When running multi-agent swarms in parallel Herdr split panes or subagents:
    - Limit concurrent subagents to at most **2–3 active agents** per host.
    - If quota exhaustion (429) is observed on any agent, **immediately pause new lane dispatch**, downgrade worker tasks to `flash`, and sequence runs sequentially until rate counters reset.
 
+---
+
+## 5. Whole-Fleet Wait Obsession & Streaming Review Protocol
+
+1. **The "Wait Obsession" Anti-Pattern**:
+   Orchestrators often assume that because tasks are grouped into "Wave 1", "Wave 2", etc., they must execute a single blocking wait for every implementer in Wave 1 to complete before initiating any reviews or merges. This causes:
+   - Starvation of reviewer capacity while fast tasks wait for the slowest task in the wave.
+   - Delayed feedback loops where bugs in early tasks remain unreviewed for hours.
+   - Sudden merge contention spikes at wave boundaries instead of smooth serial integration.
+
+2. **Streaming Reviews Law**:
+   - Reviews are decoupled per-lane. As soon as task $i$ completes and opens a PR, its reviewer starts immediately in a side-by-side pane.
+   - The orchestrator maintains an active, non-blocking monitoring loop:
+     - Query active lanes or use targeted short waits (`herdr agent wait <lane> --until idle --timeout 5000`).
+     - The moment an implementer transitions to `done` or `idle` with an open PR, split the tab (`herdr pane split --direction right`), bypass the folder trust prompt (`herdr pane send-keys "$REV_PANE" enter`), and prompt the reviewer.
+     - Never let finished tasks sit idle waiting for unfinished tasks in the same wave.
+   - Approvals also stream: as each review is approved (`REVIEW_APPROVED`), it enters the serial merge pipeline immediately without waiting for sibling reviews.
+
+3. **Recovery from Hung / Stalled Waits**:
+   - If an orchestrator accidentally entered an unbounded blocking wait, interrupt it with `ctrl+c`.
+   - Run `herdr agent list` to inspect the true live state across all panes.
+   - Any lane with status `done` or `idle` with an open PR should be immediately split and transitioned to review.
+
