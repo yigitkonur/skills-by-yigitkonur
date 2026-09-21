@@ -102,14 +102,27 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
-### Implementer Mission Brief & `/teamwork-preview /herdr` Mandate:
-When the Engineering Manager prompts the implementer, the prompt **MUST** start with `/teamwork-preview /herdr` (zero space after slash) and instruct the worker to assemble a specialized team:
+### Slash Command Selection & Team Structure Rules:
+1. **Zero-Space Prefix Syntax**: Slash commands must be placed at the **very start** of the prompt string with **strictly zero space** after the slash:
+   - `/teamwork-preview` (NOT `/ teamwork-preview`)
+   - `/boost` (NOT `/ boost`)
+2. **Implementation Command Selection**:
+   - **Standard Implementation Tasks**: Prefix with `/teamwork-preview /herdr`. The prompt **MUST** explicitly specify how the sub-team will be created, even for small teams (e.g. assigning explicit responsibilities across 2–3 roles).
+   - **Simple Tasks**: For minor tweaks (e.g. 1-line typo fix, docs URL update, single config constant), skip `/teamwork-preview` and run directly.
+   - **Deep / Extremely Hard Scenarios**: For high-complexity tasks (e.g. distributed consensus, complex DB migration locks, core algorithmic engines), prefix with `/boost /herdr` to engage deep reasoning and multi-perspective verification.
+
+### Implementer Mission Brief Example:
+When the Engineering Manager prompts the implementer, structure the prompt with explicit sub-team roles:
 
 ```bash
 herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
 You are the Lead Implementer for Task #${TASK_ID}.
-Assemble and guide a specialized sub-team (e.g. Architect, Specialist, QA Verifier) to execute this task:
+Assemble and guide a specialized sub-team to execute this task:
+- Role 1 (Lead Developer): Implements core business logic, schema changes, and service interfaces.
+- Role 2 (TDD Specialist): Authors behavioral test cases first (red), then verifies green state.
+- Role 3 (QA Verifier): Enforces Fast Syntax Gate, edge-case assertions, and git commit cleanliness.
 
+Workflow:
 1. Implement behavioral tests first (TDD).
 2. Fix the underlying issue with minimal surface changes.
 3. Commit cleanly and push branch '$BRANCH_NAME'.
@@ -135,12 +148,14 @@ REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er '.result.pane.pane_id')"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
-### Deep Review with Domain Skills:
-The reviewer operates in Pane 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
+### Deep Review with Domain Skills & `/boost` Option:
+The reviewer operates in Pane 2. For standard reviews, use default review instructions.
+For **very deep reviews** on complex, high-risk, or security-sensitive PRs, prefix the prompt with `/boost /herdr` to invoke deep reasoning and adversarial verification:
+
 ```bash
 herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
 
-herdr agent prompt "$REV_PANE_ID" "/teamwork-preview /herdr
+herdr agent prompt "$REV_PANE_ID" "/boost /herdr
 Deep Review & Hardening for PR #${TASK_ID}:
 - PR URL: $PR_URL
 - Candidate SHA: $CANDIDATE_SHA

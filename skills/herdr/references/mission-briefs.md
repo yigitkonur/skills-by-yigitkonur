@@ -42,11 +42,19 @@ Every mission brief must include:
 
 ## 2. Implementer Additions
 
-For implementation tasks, dispatch the prompt with the mandatory `/teamwork-preview /herdr` prefix:
+### Slash Command Selection & Team Structure Rules:
+- **Prefix Syntax**: Slash commands must be placed at the **very start** of the prompt string with **strictly zero space** after the slash (`/teamwork-preview` or `/boost`).
+- **Standard Implementation Tasks**: Dispatch with `/teamwork-preview /herdr`. The prompt **MUST** explicitly define how the sub-team will be created, even for small teams (e.g. assigning roles like Lead Implementer, TDD Specialist, QA Verifier).
+- **Simple Tasks**: For minor 1-line typo fixes or doc links, skip `/teamwork-preview`.
+- **Deep / High-Complexity Scenarios**: For extremely hard implementation cases (e.g. distributed locking, major engine refactors), substitute with `/boost /herdr`.
 
 ```bash
 herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
 # Mission Brief: <TASK_ID> (Attempt <ATTEMPT>)
+Assemble and guide a specialized sub-team:
+- Role 1 (Lead Developer): Implements business logic and interfaces.
+- Role 2 (TDD Specialist): Authors red/green test suites.
+- Role 3 (QA Verifier): Validates gates and git commit cleanliness.
 ...
 "
 ```

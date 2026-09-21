@@ -22,6 +22,11 @@ This reference codifies the review mechanics, exact-SHA binding, failure budget 
 
 Unlike passive code review where an auditor only comments and blocks, the Herdr-Lite Sibling Reviewer acts as a hardening partner:
 
+> [!TIP]
+> **Deep Review Mode with `/boost`**:
+> For high-risk, security-critical, or complex PRs, prefix the review prompt with `/boost /herdr` (strictly zero space after slash). `/boost` instructs the reviewer to apply multi-perspective adversarial scrutiny, probe non-obvious failure modes, and generate exhaustive regression tests before issuing approval.
+
+
 1. **Verify Baseline & Diffs**:
    Inspect the full change against base:
    ```bash
