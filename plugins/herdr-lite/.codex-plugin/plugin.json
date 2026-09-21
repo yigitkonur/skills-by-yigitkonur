@@ -1,6 +1,6 @@
 {
   "name": "herdr-lite",
-  "version": "1.0.69",
+  "version": "1.0.70",
   "description": "Use if orchestrating coding agents via Herdr with native Git worktrees, PR-driven state, and side-by-side review-and-fix panes.",
   "author": {
     "name": "Yigit Konur",

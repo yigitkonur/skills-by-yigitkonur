@@ -12,19 +12,24 @@ Manage Git worktrees paired with dedicated Herdr workspaces.
 
 | Command | Syntax | Description |
 |---|---|---|
-| `create` | `herdr worktree create <REPO> <PATH> --branch <BRANCH>` | Creates a Git worktree, provisions an isolated Herdr workspace, and launches a root pane in Tab 1. |
+| `create` | `herdr worktree create --cwd <REPO> --path <PATH> --branch <BRANCH> --label <LABEL> [--no-focus]` | Creates a Git worktree, provisions an isolated Herdr workspace, and launches a root pane in Tab 1 directly inside the worktree checkout. |
 | `list` | `herdr worktree list` | Lists all active worktree-backed workspaces. |
 | `open` | `herdr worktree open <PATH>` | Re-opens an existing worktree checkout in a workspace. |
 | `remove` | `herdr worktree remove <PATH>` | Safely unbinds and removes a worktree checkout. |
 
-### Recipe: Create Worktree & Extract All Coordinates
+### Recipe: Create Dedicated Worktree Workspace & Extract All Coordinates
 ```bash
-WORKTREE_JSON="$(herdr worktree create "$REPO_ROOT" "$WORKTREE_PATH" --branch "$BRANCH_NAME")"
+# Provision dedicated worktree workspace (never use loose tabs with git worktree add!):
+WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
 
 # Extract Workspace ID and initial Root Pane/Tab IDs:
 WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
 IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.tab_id)"
+herdr tab rename "$IMPL_TAB_ID" "impl"
+
+# Launch implementer agent directly inside the worktree's Tab 1:
+herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
 ```
 
 ---
@@ -97,7 +102,7 @@ High-level AI cognitive agent control plane over terminal panes.
 
 | Command | Syntax | Description |
 |---|---|---|
-| `start` | `herdr agent start "<LABEL>" --kind <agy\|codex\|claude> --pane <PANE_ID> -- [--model <M>]` | Launches an AI agent CLI in an existing pane. |
+| `start` | `herdr agent start "<LABEL>" --kind <agy\|codex\|claude> --pane <PANE_ID> [--timeout <MS>] -- [--model <M>] [--dangerously-skip-permissions]` | Launches an AI agent CLI in an existing pane with auto-approved permissions. |
 | `prompt` | `herdr agent prompt <TARGET_PANE> "<TEXT>"` | Submits a prompt using bracketed paste (DEC Mode 2004). |
 | `wait` | `herdr agent wait <TARGET_PANE> [--until <idle\|done\|blocked>] [--timeout <MS>]` | Blocks until agent reaches requested lifecycle state. |
 | `read` | `herdr agent read <TARGET_PANE> [--source <recent-unwrapped\|visible\|recent>] [--lines <N>]` | Reads formatted agent transcripts or modals. |
