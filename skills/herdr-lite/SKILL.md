@@ -42,6 +42,25 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      - *Standard Review*: Default review prompt in Pane 2 (or `/teamwork-preview /herdr` when multi-agent review decomposition is required).
      - *Very Deep Review*: For high-risk, security-critical, or complex PRs, prefix with `/boost` to trigger exhaustive adversarial scrutiny, edge-case generation, and deep verification.
 4. **Unbounded Event-Driven Longevity (No Execution Limits)**: Neither the CTO nor the EM operates under arbitrary step or turn limits. Bounded execution is maintained via PR-driven state milestones, 2-strike review budgets, and reactive callbacks, enabling sustained multi-wave completion rallies without artificial execution caps.
+5. **Mandatory CTO ➔ EM Active Supervision Contract (Zero Blindness Mandate)**:
+   - **The Anti-Pattern**: The CTO must NEVER become a detached observer polling raw Git/GitHub state (`gh issue list`, `gh pr list`) while leaving the living EM agent in Pane 2 untracked. Tracking downstream code artifacts instead of upstream agent cognition produces tracking loss, stalls, and blind spots.
+   - **Continuous Supervision Primitives**:
+     - `herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000`: The CTO MUST deterministically wait for the EM to complete its turn before deciding next actions. Never rely on loose unhooked timers or sleep polling.
+     - `herdr pane read "$EM_PANE_ID" --lines 100`: The CTO MUST actively inspect the EM's live terminal buffer at every status boundary to capture lane dispatches, reviewer assignments, and blocker declarations.
+     - `herdr agent prompt "$EM_PANE_ID" "<PROMPT>"`: The CTO MUST apply continuous pressure through active interrogation whenever the EM is idle, silent, or at a wave boundary:
+       ```text
+       CTO STATUS INTERROGATION:
+       1. What is the current wave burndown and active lane progress?
+       2. Which candidate PR URLs and verified commit SHAs are awaiting serial merge?
+       3. Are there any concrete blockers, test failures, or 2-strike review escalations?
+       4. What is the planned DAG and dispatch queue for the next wave?
+       ```
+   - **Structured Wave Handover Protocol (EM ➔ CTO)**:
+     - When all lanes in a wave report `DONE`, the EM must NOT silently stop. It must output a formal, machine-readable handover block:
+       ```text
+       WAVE_COMPLETE: wave=<WAVE_ID> prs=[<PR1>, <PR2>] shas=[<SHA1>, <SHA2>] next_wave=<NEXT_WAVE_ID> next_issues=[<ISSUE1>, <ISSUE2>] status=AWAITING_SERIAL_MERGE
+       ```
+     - The CTO captures this block, verifies gates, performs the serial squash-merges onto `main`, and then explicitly prompts the EM to unlock and dispatch `NEXT_WAVE`.
 
 ---
 
@@ -56,7 +75,8 @@ Antigravity operates a continuous, multi-wave streaming orchestration loop:
    > [!IMPORTANT]
    > **Implementation Pane Preservation**: Never close or kill the implementation pane when a review begins! The implementer pane holds vital execution logs, reasoning transcripts, and test traces needed for review and fix-and-verify loops. Both panes remain alive and visible side-by-side.
 5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly in the worktree, and posts GitHub PR approval.
-6. **Full-Job Teardown & Serial Merge**: Only when **both** the review and the implementation are completely finished (PR approved, SHA verified, tests green), the tab/workspace is closed entirely (`herdr workspace close "$WS_ID"`), clean worktree checkout verified and removed, and the PR merged serially onto `main`.
+6. **EM Handover & CTO Serial Rebase-Merge**: Once all wave lanes report `DONE`, the EM outputs a structured handover (`WAVE_COMPLETE: wave=... prs=[...] shas=[...] next_wave=... next_issues=[...]`). The CTO actively captures this via `herdr pane read`, validates baseline gates, serially rebases candidate PRs onto `main`, and squash-merges.
+7. **Full-Job Teardown & Workspace Retirement**: ONLY when **both** the review and implementation are completely finished and merged, the tab/workspace is closed entirely (`herdr workspace close "$WS_ID"`), clean worktree checkout verified and removed (`git worktree remove "$WORKTREE_PATH"`), and the EM is unlocked to dispatch the next wave.
 
 ---
 
@@ -100,6 +120,19 @@ Each task operates inside its own dedicated Herdr workspace, featuring a side-by
 Herdr commands output native JSON. Use `jq` to extract identifiers:
 
 ```bash
+# 0. CTO Active Supervision & Interrogation of EM in Pane 2 (Zero Blindness):
+# Deterministically wait for EM to complete turn before making strategic moves:
+herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+
+# Capture EM's screen buffer to inspect decisions, lane status, and blockers:
+herdr pane read "$EM_PANE_ID" --lines 100
+
+# Interrogate EM on progress or next wave DAG whenever EM goes quiet or finishes a wave:
+herdr agent prompt "$EM_PANE_ID" "CTO STATUS INTERROGATION:
+1. Report active lanes, PR URLs, and candidate SHAs.
+2. Report any blockers, test failures, or escalations.
+3. State the DAG and queue for the next wave."
+
 # 1. Provision dedicated worktree workspace & capture coordinates:
 WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
 WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"

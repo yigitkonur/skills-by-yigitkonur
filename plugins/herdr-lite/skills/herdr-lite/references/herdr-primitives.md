@@ -71,12 +71,14 @@ Tabs group one or more split panes within a specific workspace.
 | `rename` | `herdr tab rename <TAB_ID> <LABEL>` | Renames the tab label. |
 | `close` | `herdr tab close <TAB_ID>` | Closes the tab and all panes within it. |
 
-### Recipe: Create Review Tab Inside Worktree Workspace
+### Recipe: Side-by-Side Review Pane Split in Worktree Workspace
 ```bash
-# Open Tab 2 for deep review inside the worktree's workspace:
-REV_TAB_JSON="$(herdr tab create --workspace "$WORKSPACE_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
-REV_TAB_ID="$(echo "$REV_TAB_JSON" | jq -er .result.tab.tab_id)"
-REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er .result.root_pane.pane_id)"
+# When worker reports DONE, split pane side-by-side (direction: right) in SAME tab:
+SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
+REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
+
+# Launch reviewer agent in Pane 2 (implementer pane remains ALIVE and readable):
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
 ---
@@ -119,6 +121,22 @@ High-level AI cognitive agent control plane over terminal panes.
 | `list` | `herdr agent list` | Lists all detected agents and their current status. |
 | `get` | `herdr agent get <TARGET_PANE>` | Inspects agent session ID, model, and turns. |
 | `explain` | `herdr agent explain <TARGET_PANE>` | Explains heuristic detection state and rules. |
+
+### Recipe: CTO Active Supervision of the Engineering Manager (EM)
+```bash
+# 1. Deterministically wait for EM to complete generation or tool execution:
+herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+
+# 2. Inspect EM's live terminal buffer to check lane dispatches, reviewer splits, and blockers:
+herdr pane read "$EM_PANE_ID" --lines 100
+
+# 3. Interrogate the EM if silent, stalled, or at a wave boundary:
+herdr agent prompt "$EM_PANE_ID" "CTO STATUS INTERROGATION:
+1. What is the status of active lanes?
+2. Are any PRs waiting for serial merge?
+3. What are the blockers or failed checks?
+4. What is the DAG and plan for the next wave?"
+```
 
 ---
 

@@ -365,6 +365,18 @@
       "category": "Productivity"
     },
     {
+      "name": "craft-brand-theme",
+      "source": {
+        "source": "local",
+        "path": "./plugins/craft-brand-theme"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "deploy-coolify-cloud",
       "source": {
         "source": "local",
