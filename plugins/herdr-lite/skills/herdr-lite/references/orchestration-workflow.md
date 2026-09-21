@@ -173,13 +173,37 @@ Instructions:
 
 ---
 
-## 6. Step 4: Full-Job Teardown & Serial Merge
+## 6. Step 4: CTO Active Supervision & Engineering Manager Wave Handover
+
+> [!IMPORTANT]
+> **Zero Blindness Supervision Mandate**:
+> The CTO must never poll downstream GitHub/Git status in a detached loop while leaving the Engineering Manager in Pane 2 untracked.
+> The CTO must actively supervise and synchronize with the EM:
+> 1. Deterministically block on EM turn completion:
+>    `herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000`
+> 2. Read EM's live screen buffer to capture lane status and blockers:
+>    `herdr pane read "$EM_PANE_ID" --lines 100`
+> 3. Actively interrogate the EM if silent, stalled, or at wave boundaries:
+>    `herdr agent prompt "$EM_PANE_ID" "CTO STATUS INTERROGATION: Report active lanes, PR URLs, candidate SHAs, blockers, and next wave DAG."`
+
+### Structured Wave Handover Protocol:
+When all lanes in active Wave $k$ reach completion and PRs are approved, the EM outputs a formal handover block:
+
+```text
+WAVE_COMPLETE: wave=WAVE_D prs=[#74, #75, #76, #77, #78] shas=[820caa1, 6e906fd, ...] next_wave=WAVE_E next_issues=[#39, #26, #30, #31, #6] status=AWAITING_SERIAL_MERGE
+```
+
+The CTO reads this block from the EM pane, runs baseline gates, serially rebases candidate PRs onto `main`, and executes squash merges.
+
+---
+
+## 7. Step 5: Full-Job Teardown & Workspace Retirement
 
 > [!IMPORTANT]
 > **Complete Job Closure Law**:
-> A task is only closed when **both** the review and implementation phases are fully finished.
+> A task is only closed when **both** the review and implementation phases are fully finished and merged to `main`.
 > Prematurely killing the implementer when review begins is prohibited.
-> Once PR approval is confirmed:
+> Once PR approval and merge are confirmed:
 > 1. Close the dedicated workspace (terminating both implementer and reviewer panes cleanly):
 >    `herdr workspace close "$WORKSPACE_ID"`
 > 2. Gate worktree deletion strictly on `git status --porcelain`:
@@ -190,14 +214,17 @@ Instructions:
 
 ---
 
-## 7. Step 5: Continuous Wave Advancement
+## 8. Step 6: Continuous Wave Advancement
 
-Once all PRs in Wave $k$ are merged:
+Once all PRs in Wave $k$ are merged and verified:
 1. Announce wave completion via Herdr desktop toast:
    ```bash
    herdr notification show "Wave ${CURRENT_WAVE} Completed" \
      --body "All PRs merged to main. Advancing to Wave $((CURRENT_WAVE + 1))." \
      --sound done
    ```
-2. Automatically dispatch the next wave of newly unblocked tickets.
-3. Repeat until all waves are complete.
+2. The CTO prompts the EM to unlock and dispatch the next wave of tickets:
+   ```bash
+   herdr agent prompt "$EM_PANE_ID" "CTO DIRECTION: Wave ${CURRENT_WAVE} merged cleanly. Proceed with Wave $((CURRENT_WAVE + 1)) dispatch."
+   ```
+3. Repeat until all waves converge to zero open issues.

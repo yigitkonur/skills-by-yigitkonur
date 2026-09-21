@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 57 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 58 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.73",
       "category": "bundle",
       "strict": false,
@@ -46,6 +46,7 @@
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
+        "./skills/craft-brand-theme",
         "./skills/deploy-coolify-cloud",
         "./skills/herdr",
         "./skills/herdr-lite",
@@ -127,7 +128,7 @@
     {
       "name": "yk-frontend",
       "source": "./",
-      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, UI/UX/Laws-of-UX audits.",
+      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, brand themes, UI/UX/Laws-of-UX audits.",
       "version": "1.0.73",
       "category": "bundle",
       "tags": [
@@ -139,7 +140,8 @@
         "./skills/optimize-nextjs-fluidity",
         "./skills/audit-ux-laws",
         "./skills/audit-ui-and-save-files",
-        "./skills/audit-ux-and-save-files"
+        "./skills/audit-ux-and-save-files",
+        "./skills/craft-brand-theme"
       ],
       "agents": [
         "./subagents/claude/nextjs-perf-auditor.md",
@@ -641,6 +643,17 @@
       "strict": false,
       "skills": [
         "./skills/convert-url-to-nextjs"
+      ]
+    },
+    {
+      "name": "craft-brand-theme",
+      "source": "./",
+      "description": "Use if reverse-engineering, crafting, or deploying production-grade brand design themes, semantic CSS tokens, and self-hosted fonts without ad-hoc element selectors.",
+      "version": "1.0.73",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/craft-brand-theme"
       ]
     },
     {
