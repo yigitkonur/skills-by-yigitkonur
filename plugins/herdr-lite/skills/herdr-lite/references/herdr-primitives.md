@@ -17,19 +17,28 @@ Manage Git worktrees paired with dedicated Herdr workspaces.
 | `open` | `herdr worktree open <PATH>` | Re-opens an existing worktree checkout in a workspace. |
 | `remove` | `herdr worktree remove <PATH>` | Safely unbinds and removes a worktree checkout. |
 
-### Recipe: Create Dedicated Worktree Workspace & Extract All Coordinates
+### Recipe: Create Dedicated Worktree Workspace & Side-by-Side Review Pane
 ```bash
-# Provision dedicated worktree workspace (never use loose tabs with git worktree add!):
+# 1. Provision dedicated worktree workspace (never use loose tabs with git worktree add!):
 WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
 
-# Extract Workspace ID and initial Root Pane/Tab IDs:
+# Extract Workspace ID and initial Root Pane ID:
 WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
-IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.tab_id)"
-herdr tab rename "$IMPL_TAB_ID" "impl"
 
-# Launch implementer agent directly inside the worktree's Tab 1:
+# 2. Launch implementer agent in Pane 1:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
+
+# 3. When worker reports DONE, split pane side-by-side in SAME tab:
+SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
+REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
+
+# 4. Launch reviewer agent in Pane 2 (implementer pane remains ALIVE and readable):
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
+
+# 5. Full-Job Teardown: ONLY once both review and implementation are completely finished:
+herdr workspace close "$WORKSPACE_ID"
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
 ```
 
 ---
