@@ -1,6 +1,6 @@
 # Herdr-Lite Orchestration Workflow
 
-This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside dedicated worktree workspaces, executing serial integration, and advancing through multi-wave dependency graphs.
+This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer panes side-by-side inside dedicated worktree workspaces, executing serial integration, and advancing through multi-wave dependency graphs.
 
 ---
 
@@ -27,19 +27,21 @@ Herdr-Lite operates a two-tier command structure in the primary control workspac
                            ▼
 [ Step 2: Dedicated Worktree Workspace Provisioning (Current Wave) ]
    • herdr worktree create provisions Git worktree + dedicated Workspace
-   • Tab 1: impl (Implementer runs TDD with /teamwork-preview, commits, opens PR)
+   • Pane 1: impl (Implementer runs TDD with /teamwork-preview, commits, opens PR)
                            │
                            ▼
-[ Step 3: Streaming Review & Callback Loop to EM Agent ]
+[ Step 3: Streaming Side-by-Side Review Split & Callback Loop to EM Agent ]
    • Worker i reports to EM: "REPORT: status=DONE pr_url=<url>"
-   • EM immediately spawns Tab 2: review in Workspace i
+   • EM immediately splits the tab: herdr pane split --pane "$IMPL_PANE_ID" --direction right
+   • Pane 2: review runs side-by-side; Implementer Pane 1 remains ALIVE and readable
    • Reviewer audits with domain skills, patches bugs, approves PR
                            │
                            ▼
-[ Step 4: Serial Merge & Conflict Resolution ]
+[ Step 4: Full-Job Teardown & Serial Merge ]
+   • Both review AND implementation finished? Close workspace
    • Rebase approved PRs serially onto main
    • Reconcile merge conflicts via resolving-merge-conflicts
-   • Merge to main and retire worktree resources
+   • Merge to main and remove clean worktree checkout
                            │
                            ▼
 [ Step 5: Wave Advancement ]
@@ -71,7 +73,7 @@ Antigravity organizes the issues into up to 5 sequential execution waves:
 
 ---
 
-## 4. Step 2: Native Worktree & Workspace Provisioning
+## 4. Step 2: Dedicated Worktree & Workspace Provisioning
 
 > [!CAUTION]
 > **Anti-Pattern (DO NOT DO)**: Running `git worktree add` in a shell and opening loose, independent tabs in the main workspace with `--cwd <path>`. This pollutes the control workspace, breaks Herdr's 1-to-1 workspace lifecycle tracking, and loses isolation.
@@ -81,7 +83,7 @@ Antigravity organizes the issues into up to 5 sequential execution waves:
 > Herdr automatically:
 > 1. Creates the Git worktree at `$WORKTREE_PATH`.
 > 2. Provisions an isolated Herdr workspace bound directly to the worktree.
-> 3. Launches Tab 1 with its root pane already inside the checkout directory.
+> 3. Launches Pane 1 already inside the checkout directory.
 
 For each ticket in the active wave, provision an isolated workspace:
 
@@ -95,12 +97,8 @@ BRANCH_NAME="fix/issue-${TASK_ID}"
 WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
 WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.workspace.workspace_id')"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
-IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.tab_id')"
 
-# 2. Rename root tab to 'impl' for visual clarity:
-herdr tab rename "$IMPL_TAB_ID" "impl"
-
-# 3. Launch AGY Implementer:
+# 2. Launch AGY Implementer in Pane 1:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
@@ -122,46 +120,58 @@ Assemble and guide a specialized sub-team (e.g. Architect, Specialist, QA Verifi
 
 ---
 
-## 5. Step 3: Event-Driven Streaming Review (Inside Worktree Workspace)
+## 5. Step 3: Event-Driven Streaming Review (Side-by-Side Split Pane)
 
 > [!IMPORTANT]
-> **No Lockstep Waiting**: When multiple parallel worktrees run, do not wait for all of them to finish. As soon as Lane $i$ writes back `status=DONE`, immediately open Tab 2 (`review`) inside Workspace $i$!
+> **Side-by-Side Split & Implementation Preservation**:
+> When a worker reports `status=DONE`, do NOT create a separate tab, and **NEVER** terminate the implementer pane!
+> The implementer pane holds critical context: build logs, test failure traces, and agent transcripts.
+> Instead, split the pane side-by-side in the **same tab** so both agents are co-located:
 
-### Spawning the Review Tab:
+### Splitting the Pane Side-by-Side:
 ```bash
-REV_TAB_JSON="$(herdr tab create --workspace "$WORKSPACE_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
-REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er '.result.root_pane.pane_id')"
+SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
+REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er '.result.pane.pane_id')"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
 ### Deep Review with Domain Skills:
-The reviewer operates in Tab 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
+The reviewer operates in Pane 2 and applies specialized skills (`code-review`, `tdd`, `audit-completion`, `diagnosing-bugs`):
 ```bash
 herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
 
-herdr agent prompt "$REV_PANE_ID" "Deep Review & Hardening for PR #${TASK_ID}:
+herdr agent prompt "$REV_PANE_ID" "/teamwork-preview /herdr
+Deep Review & Hardening for PR #${TASK_ID}:
 - PR URL: $PR_URL
 - Candidate SHA: $CANDIDATE_SHA
 - Worktree: $WORKTREE_PATH
 
 Instructions:
 1. Use skills (code-review, tdd, audit-completion) to verify specifications, edge cases, and test suites.
-2. Review-and-Fix: If tests are missing or minor bugs are found, write the patches directly, run validation suites, commit, and push to the branch.
-3. Post formal GitHub PR approval:
+2. Inspect the implementer's left pane output directly if troubleshooting test failures.
+3. Review-and-Fix: If tests are missing or minor bugs are found, write the patches directly, run validation suites, commit, and push to the branch.
+4. Post formal GitHub PR approval:
    gh pr review '$PR_URL' --approve -b 'LGTM: verified candidate commit $(git rev-parse HEAD)'
-4. Send notification:
+5. Send notification:
    APPROVED: task_id=${TASK_ID} pr_url=$PR_URL head_sha=$(git rev-parse HEAD)"
 ```
 
 ---
 
-## 6. Step 4: Serial Merge & Conflict Resolution
+## 6. Step 4: Full-Job Teardown & Serial Merge
 
-Follow [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md):
-1. Serially rebase approved candidate PRs onto moving `main`, using non-interactive continuation (`GIT_EDITOR=true git rebase --continue`).
-2. If conflict markers occur, reconcile markers with semantic integrity—never blindly choosing `--ours` or `--theirs`—and push with lease (`git push --force-with-lease -u origin "$BRANCH_NAME"`).
-3. Merge candidate into `main` (`gh pr merge "$PR_URL" --squash --delete-branch`). If reviewer and PR author share the same token, submit a review comment instead of self-approval before merging.
-4. Execute clean teardown: verify clean worktree, close Herdr tabs and workspace (`herdr workspace close "$WORKSPACE_ID"`), remove worktree (`git worktree remove "$WORKTREE_PATH"`), delete local branch (`git branch -D "$BRANCH_NAME"`), and prune remotes (`git remote prune origin`).
+> [!IMPORTANT]
+> **Complete Job Closure Law**:
+> A task is only closed when **both** the review and implementation phases are fully finished.
+> Prematurely killing the implementer when review begins is prohibited.
+> Once PR approval is confirmed:
+> 1. Close the dedicated workspace (terminating both implementer and reviewer panes cleanly):
+>    `herdr workspace close "$WORKSPACE_ID"`
+> 2. Gate worktree deletion strictly on `git status --porcelain`:
+>    `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"`
+> 3. Serially rebase approved candidate PR onto `main` and squash-merge:
+>    `gh pr merge "$PR_URL" --squash --delete-branch`
+> 4. Prune local branch and remotes (`git branch -D "$BRANCH_NAME"`, `git remote prune origin`).
 
 ---
 

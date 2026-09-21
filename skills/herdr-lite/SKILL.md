@@ -6,7 +6,7 @@ description: "Use if orchestrating coding agents via Herdr with native Git workt
 
 Herdr-Lite is a lightweight, self-contained orchestration control plane for AI coding agents. It provides a direct, agile workflow tailored for Antigravity (AGY) and developer orchestrators.
 
-In Herdr-Lite, **Git worktrees**, **dedicated Herdr workspaces**, **GitHub PRs**, and **Herdr panes** form the native state machine.
+In Herdr-Lite, **Git worktrees**, **dedicated Herdr workspaces**, **GitHub PRs**, and **Herdr split panes** form the native state machine.
 
 ---
 
@@ -40,39 +40,46 @@ Antigravity operates a continuous, multi-wave streaming orchestration loop:
 
 1. **Automatic Ticket Intake**: When starting without GitHub issues, automatically decompose discussions or bugs into vertical tracer-bullet tickets and publish via `gh issue create`. See [references/ticket-decomposition-and-waves.md](references/ticket-decomposition-and-waves.md).
 2. **Multi-Wave Dependency Graph (Waves 1 to 5)**: Arrange tickets into a DAG based on blocking edges; dispatch disjoint Wave 1 lanes concurrently.
-3. **Native Worktree Workspace Provisioning**: Execute `herdr worktree create` to provision an isolated workspace for each task with Tab 1 automatically anchored in the checkout and labeled `impl`.
-4. **Streaming Review & Callback Loop**: Implementers write back `status=DONE` to the EM. As soon as any worker reports done, Tab 2 (`review`) is immediately opened inside that worktree workspace without waiting for other lanes.
-5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly, and posts GitHub PR approval.
-6. **Serial Integration & Wave Advancement**: Rebase approved candidates serially onto moving `main`, resolve any merge conflicts via `resolving-merge-conflicts` principles, merge to `main`, and advance to the next wave until all waves complete.
+3. **Dedicated Worktree Workspace Provisioning**: Execute `herdr worktree create` to provision an isolated workspace for each task with Pane 1 automatically anchored in the checkout.
+4. **Streaming Side-by-Side Review Split**: Implementers report `status=DONE` to the EM. As soon as any worker reports done, **split the pane side-by-side** in the same tab (`herdr pane split --pane "$IMPL_PANE_ID" --direction right ...`) to launch the reviewer in Pane 2.
+   > [!IMPORTANT]
+   > **Implementation Pane Preservation**: Never close or kill the implementation pane when a review begins! The implementer pane holds vital execution logs, reasoning transcripts, and test traces needed for review and fix-and-verify loops. Both panes remain alive and visible side-by-side.
+5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly in the worktree, and posts GitHub PR approval.
+6. **Full-Job Teardown & Serial Merge**: Only when **both** the review and the implementation are completely finished (PR approved, SHA verified, tests green), the tab/workspace is closed entirely (`herdr workspace close "$WS_ID"`), clean worktree checkout verified and removed, and the PR merged serially onto `main`.
 
 ---
 
-## 3. Worktree Workspace Topology: Golden Pattern vs. Anti-Pattern
+## 3. Worktree Workspace Topology: Side-by-Side Pane Layout
+
+Each task operates inside its own dedicated Herdr workspace, featuring a side-by-side implementer and reviewer layout in a single unified tab:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
-│ Dedicated Worktree Workspace: task-182 (workspace_id: w1Y)                    │
+│ Dedicated Worktree Workspace: task-182 (workspace_id: w1Y, Tab: task-182)     │
 ├───────────────────────────────────────┬───────────────────────────────────────┤
-│ Tab 1: "impl"                         │ Tab 2: "review" (Opened on "DONE")    │
+│ Pane 1: "impl" (Implementer)          │ Pane 2: "review" (Split on "DONE")    │
 │ • Runs AGY Implementer                │ • Runs Gemini 3.8 Flash Reviewer      │
 │ • Behavioral TDD implementation       │ • Audits exact candidate commit SHA   │
-│ • Local commit & push branch          │ • Uses code-review & tdd skills       │
+│ • Local commit & push branch          │ • Inspects implementer output directly│
 │ • Opens PR (gh pr create)             │ • Directly patches tests & bug fixes  │
-│ • Reports: "DONE: PR=<url> SHA=<sha>" │ • Approves PR (gh pr review --approve)│
-└───────────────────────────────────────┴───────────────────────────────────────┘
+│ • PRESERVED INTACT DURING REVIEW      │ • Approves PR (gh pr review --approve)│
+├───────────────────────────────────────┴───────────────────────────────────────┤
+│ Both panes remain open until COMPLETE FINISH; then workspace is closed.       │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 > [!CAUTION]
-> **Anti-Pattern (DO NOT DO)**: Running `git worktree add` in a shell and opening loose, independent tabs in the main workspace with `--cwd <path>`. This pollutes the control workspace, breaks Herdr's 1-to-1 workspace lifecycle tracking, and loses isolation.
+> **Anti-Pattern (DO NOT DO)**: 
+> 1. Running `git worktree add` in a shell and opening loose, independent tabs in the main workspace with `--cwd <path>`.
+> 2. Opening separate independent tabs for review instead of splitting side-by-side panes.
+> 3. Prematurely terminating or closing the implementation pane when review starts, destroying the debug/context trail.
 
 > [!TIP]
-> **Golden Pattern (ALWAYS DO)**: Run `herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "$LABEL" --no-focus`.
-> Herdr automatically:
-> 1. Creates the Git worktree at `$WORKTREE_PATH`.
-> 2. Provisions an isolated Herdr workspace bound directly to the worktree.
-> 3. Launches Tab 1 with its root pane already inside the checkout directory.
-> 
-> 1 Task = 1 Git Worktree = 1 Dedicated Herdr Workspace = Tab 1 (`impl`) + Tab 2 (`review`).
+> **Golden Pattern (ALWAYS DO)**: 
+> 1. Run `herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus`.
+> 2. Run implementer in Pane 1.
+> 3. When `status=DONE`, run `herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus` to launch reviewer in Pane 2.
+> 4. Keep both panes open side-by-side until the entire task is certified and approved.
 
 ---
 
@@ -85,8 +92,6 @@ Herdr commands output native JSON. Use `jq` to extract identifiers:
 WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
 WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
-IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.tab_id)"
-herdr tab rename "$IMPL_TAB_ID" "impl"
 
 # 2. Launch Implementer with --dangerously-skip-permissions:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
@@ -97,15 +102,16 @@ You are the Lead Implementer for Task #${TASK_ID}...
 Assemble and guide a specialized team to complete this task.
 When done, report back with: REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=\$(git rev-parse HEAD) status=DONE"
 
-# 4. Streaming Review: As soon as worker reports DONE, spawn Tab 2 inside that workspace:
-REV_TAB_JSON="$(herdr tab create --workspace "$WS_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
-REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er .result.root_pane.pane_id)"
+# 4. Streaming Review: As soon as worker reports DONE, split pane side-by-side in SAME tab:
+SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
+REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 
-# 5. Notify User & EM of Milestones:
-herdr notification show "Candidate Approved" --body "Issue #${TASK_ID} approved and queued for merge." --sound done
+# 5. Prompt Reviewer (Implementer pane remains alive side-by-side):
+herdr agent prompt "$REV_PANE_ID" "/teamwork-preview /herdr
+Deep Review & Hardening for PR #${TASK_ID}..."
 
-# 6. Retire Workspace, Remove Clean Worktree, and Clean Branches:
+# 6. Full-Job Teardown: ONLY once both review and implementation are completely finished:
 herdr workspace close "$WS_ID"
 test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
 git branch -d "$BRANCH" 2>/dev/null || git branch -D "$BRANCH"
@@ -124,8 +130,8 @@ Herdr-Lite strictly enforces core engineering physics:
 2. **Exact-SHA Review Binding**: Reviews bind strictly to an exact commit SHA. Any subsequent commit pushes HEAD to a new SHA ($SHA_2 \neq SHA_1$), invalidating prior approvals. A delta review is required for the new SHA.
 3. **Two-Round Failure Budget**: If an implementer and reviewer do not converge within 2 review-and-fix rounds, **stop automated retries**. Escalate the concrete blocker to the user or supervisor.
 4. **No Material Waivers**: Material findings cannot be reclassified as advisory to force an approval.
-5. **Two-Stage Teardown**:
-   - *Prompt Pane/Workspace Retirement*: Close reviewer and implementer resources once PR review is approved (`herdr workspace close <WS_ID>`).
+5. **Two-Stage Teardown on Full Completion**:
+   - *Workspace Retirement*: Close reviewer and implementer panes together **only after** PR review is approved (`herdr workspace close <WS_ID>`). Never terminate implementation prematurely.
    - *Worktree Removal Gate*: Only delete worktrees when `git status --porcelain` is strictly clean (`git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
 
 ---
