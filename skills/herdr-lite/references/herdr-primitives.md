@@ -15,7 +15,7 @@ Manage Git worktrees paired with dedicated Herdr workspaces.
 | `create` | `herdr worktree create --cwd <REPO> --path <PATH> --branch <BRANCH> --label <LABEL> [--no-focus]` | Creates a Git worktree, provisions an isolated Herdr workspace, and launches a root pane in Tab 1 directly inside the worktree checkout. |
 | `list` | `herdr worktree list` | Lists all active worktree-backed workspaces. |
 | `open` | `herdr worktree open <PATH>` | Re-opens an existing worktree checkout in a workspace. |
-| `remove` | `herdr worktree remove <PATH>` | Safely unbinds and removes a worktree checkout. |
+| `remove` | `herdr worktree remove --workspace <WS_ID> [--force]` | Safely unbinds and removes a worktree checkout and workspace. Runs `git worktree remove` under the hood (never deletes local branch). |
 
 ### Recipe: Create Dedicated Worktree Workspace & Side-by-Side Review Pane
 ```bash
@@ -36,9 +36,14 @@ REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
 # 4. Launch reviewer agent in Pane 2 (implementer pane remains ALIVE and readable):
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 
-# 5. Full-Job Teardown: ONLY once both review and implementation are completely finished:
-herdr workspace close "$WORKSPACE_ID"
-test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
+# 5. Full-Job Teardown: ONLY once PR is confirmed MERGED to main:
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+herdr worktree remove --workspace "$WORKSPACE_ID"
+git branch -D "$BRANCH_NAME"
+git remote prune origin
+
+# 6. Post-Milestone Retirement: When all issues/PRs are resolved, retire EM pane:
+herdr pane close "$EM_PANE_ID"
 ```
 
 ---

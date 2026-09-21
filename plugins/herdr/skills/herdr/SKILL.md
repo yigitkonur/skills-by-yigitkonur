@@ -134,18 +134,34 @@ Integration combines verified lane commits into a single integrated candidate:
 
 Two distinct cleanup gates govern resource lifecycle:
 
-### 7a. Prompt Terminal & Pane Retirement (EM Control)
+### 7a. Prompt Terminal & Pane Retirement (EM Control & CTO Milestone Retirement)
 - Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`). When using the side-by-side review pattern, closure occurs after both implementation and review are complete.
 - Terminal release does NOT wait for PR merge or mission completion.
 - If a session must be retained (e.g. for follow-up debugging), the EM records an explicit retention reason and release trigger in `state.yaml`. Conversation/resume identity and artifacts are preserved outside the process before closing.
-- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close leadership panes (CTO/EM), user-owned panes, or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
+- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close active user-owned panes or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
 - Verify pane disappearance (`herdr pane process-info` or read returns not found) and update the compact checkpoint in `state.yaml`.
 - **Late/Duplicate Notices**: Late or duplicate notices from a retired worker do not respawn the terminal, repeat dispatch, or trigger Git actions.
+- **Post-Milestone Zero-Bloat Retirement (CTO Obligation)**: When the entire mission or milestone is complete (zero open issues, zero unmerged PRs), the CTO orchestrator MUST cleanly retire the living Engineering Manager pane:
+  ```bash
+  herdr pane close "$EM_PANE_ID"
+  ```
+  Close any lingering worker, reviewer, or temporary execution tabs (`herdr tab close "$TAB_ID"`). Never leave idle zombie AI agents running in the background consuming memory and cluttering `herdr pane list`.
 
-### 7b. Worktree Removal Gate (Integration Authority)
+### 7b. Worktree Removal Gate & Herdr Defaults (Integration Authority)
 - Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
-- Removal gate: verify checkout is owned, `git status --porcelain` is strictly clean, references/evidence/reports are retained outside the checkout, and zero unresolved operations exist (`git worktree remove <PATH>`).
-- Dirty, modified, or ambiguous checkouts are **retained with a recorded reason**; no default force removal (`git worktree remove --force` is prohibited without explicit authorization).
+- **Understanding Herdr's Default Worktree Behavior**:
+  - `herdr worktree remove --workspace <WS_ID>` deletes the checkout directory on disk and unregisters the workspace from Herdr.
+  - **Invariant 1: Never Deletes the Branch**: Neither Herdr nor Git deletes the local branch upon checkout removal.
+  - **Invariant 2: Refuses Dirty Trees**: Removal fails if uncommitted changes exist (never pass `--force` without verifying changes are disposable).
+  - **Invariant 3: `workspace close` vs `worktree remove`**: Running `herdr workspace close <WS_ID>` alone closes *only* Herdr UI/session state, leaving the physical directory and Git worktree tracking orphaned on disk. Always use `herdr worktree remove --workspace <WS_ID>`.
+  - **Invariant 4: Branch Deletion Block**: `gh pr merge --delete-branch` cannot delete a local branch while it is checked out in an active worktree. Local branch deletion must occur post-worktree removal.
+- **Mandatory Merge Integrity Gate**: NEVER remove a worktree until the PR is confirmed merged into `main` (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). Removing a worktree with unmerged commits permanently destroys work.
+- **Clean Teardown Sequence**:
+  1. Confirm clean tree: `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"`.
+  2. Remove checkout and workspace: `herdr worktree remove --workspace "$WORKSPACE_ID"` (or `git worktree remove "$WORKTREE_PATH"` + `herdr workspace close "$WORKSPACE_ID"`).
+  3. Delete local branch: `git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"`.
+  4. Prune remote references: `git -C "$REPO_ROOT" remote prune origin`.
+  5. Verify zero lingering worktrees: `git -C "$REPO_ROOT" worktree list` (only primary root remains).
 
 ### 7c. Mission Handback
 Publish final immutable YAML report to the run root with exact HEAD, check results, and unresolved effects.
@@ -161,3 +177,4 @@ Publish final immutable YAML report to the run root with exact HEAD, check resul
 | [references/stopped-agent-recovery.md](references/stopped-agent-recovery.md) | Unblocking stalled, modal-blocked, hung, or crashed sessions. | Diagnosis matrix, modal resolution, targeted `esc`/`ctrl+c`, Git lock reconciliation, safe TUI restart, quota recovery (§4.6). |
 | [references/mission-briefs.md](references/mission-briefs.md) | Dispatching tasks or receiving assignments. | Common authority block, role additions (implementer/reviewer/integrator), coordinate discovery, callback mandate. |
 | [references/parallel-capacity.md](references/parallel-capacity.md) | Planning concurrency waves or managing worktrees. | Disjoint parallelism, early candidate path, finite review bounds, failure budget rules, retrospective pane retirement, worktree cleanup gate. |
+| [references/serial-merge-and-conflicts.md](references/serial-merge-and-conflicts.md) | Merging candidate PRs onto main or resolving merge conflicts. | Serial rebase-and-merge pipeline, self-contained 5-step conflict engine, Herdr default worktree behavior, PR merge gate, post-milestone teardown. |

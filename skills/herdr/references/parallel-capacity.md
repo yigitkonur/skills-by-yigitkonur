@@ -29,17 +29,32 @@ To prevent infinite review-and-fix loops and ensure integrity of findings:
 
 Resource lifecycle follows two explicit, separate cleanup gates:
 
-### 5a. Prompt Terminal & Pane Retirement (EM Control)
+### 5a. Prompt Terminal & Pane Retirement (EM Control & CTO Milestone Retirement)
 - **Prompt Retirement**: Once an owned worker's handback report is received, evidence is verified durable on disk, ownership is reconciled, and no assigned work or uncertain operations remain, the EM **promptly closes the owned worker pane** (`herdr pane close <PANE_ID>`). If using the side-by-side review split pattern, the implementer pane is retained until the reviewer completes verification and PR approval.
 - **Session Retention Rule**: Retaining a session (e.g. for follow-up debugging) requires recording an explicit retention reason and release trigger in `state.yaml`. Conversation resume identity and artifacts must be preserved outside the process before closing.
-- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close leadership panes (CTO/EM), user-owned panes, or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
+- **Closure Invariants**: Verify live identity, foreground process, and owned effects before closing. **Never** close active user-owned panes or active sibling panes. Close a whole tab (`herdr tab close <TAB_ID>`) only if every contained pane is owned, completed, and eligible for closure.
 - **Disappearance & State Checkpoint**: Verify pane disappearance (`herdr pane process-info` returns not found) and update compact resource entries in `state.yaml`.
 - **Late/Duplicate Notices**: Late or duplicate notices from a retired worker do not respawn the terminal, repeat dispatch, or trigger Git actions.
+- **Post-Milestone Zero-Bloat Retirement**: When the entire mission/milestone is 100% complete (zero open issues, zero unmerged PRs), the CTO must cleanly retire the EM agent pane:
+  ```bash
+  herdr pane close "$EM_PANE_ID"
+  ```
+  Close any leftover execution tabs (`herdr tab close "$TAB_ID"`). Zero idle agents in the background.
 
-### 5b. Worktree Removal Gate (Integration Authority)
+### 5b. Worktree Removal Gate & Herdr Defaults (Integration Authority)
 - Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
-- Removal gate: verify checkout is owned, `git status --porcelain` is strictly clean, references/evidence/reports are retained outside the checkout, and zero unresolved operations exist (`git worktree remove <PATH>`).
-- Dirty, modified, or ambiguous checkouts are **retained with a recorded reason**; no default force removal (`git worktree remove --force` is prohibited without explicit authorization).
+- **Understanding Herdr's Default Worktree Behavior**:
+  - `herdr worktree remove --workspace <WS_ID>` deletes the checkout directory on disk and unregisters the workspace from Herdr.
+  - **Never Deletes Branch**: Neither Herdr nor Git deletes the local branch when removing a worktree. Local branch deletion must be done after checkout removal (`git branch -D <BRANCH>`).
+  - **Refuses Dirty Trees**: Removal fails if uncommitted changes exist (never pass `--force` without verifying changes are disposable).
+  - **`workspace close` vs `worktree remove`**: Running `herdr workspace close <WS_ID>` alone closes *only* Herdr UI/session state, leaving the physical directory and Git worktree tracking orphaned on disk. Always use `herdr worktree remove --workspace <WS_ID>`.
+- **Mandatory Merge Integrity Gate**: NEVER remove a worktree until the PR is confirmed merged into `main` (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). Removing a worktree with unmerged commits permanently destroys work.
+- **Clean Teardown Sequence**:
+  1. Confirm clean tree: `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"`.
+  2. Remove checkout and workspace: `herdr worktree remove --workspace "$WORKSPACE_ID"` (or `git worktree remove "$WORKTREE_PATH"` + `herdr workspace close "$WORKSPACE_ID"`).
+  3. Delete local branch: `git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"`.
+  4. Prune remote references: `git -C "$REPO_ROOT" remote prune origin`.
+  5. Verify zero lingering worktrees: `git -C "$REPO_ROOT" worktree list` (only primary root remains).
 
 ## 6. Serial Integration & Delivery Lifecycle
 
@@ -48,9 +63,11 @@ Resource lifecycle follows two explicit, separate cleanup gates:
 3. **Verification**: Verify exact rebased HEAD with passing check exits.
 4. **Authorized Delivery**: Execute delivery actions authorized by the mission brief (e.g. unmerged draft PR hold, or authorized merge to main). General delivery follows actual mission authority and branch protections; draft/unmerged holds apply only when specified by the brief.
 
-### Merge Conflict Ownership
-Treat conflict resolution as standard engineering execution:
-1. Rebase in the isolated worktree cleanly onto target baseline.
-2. Resolve conflict markers with integrity, preserving upstream intent.
-3. Re-verify with full test and validation suites.
-4. Force-push with lease (`git push --force-with-lease`).
+### Merge Conflict Resolution Engine
+Treat conflict resolution as standard engineering execution using the self-contained 5-step engine detailed in [references/serial-merge-and-conflicts.md](serial-merge-and-conflicts.md):
+1. **Inspect State**: Observe `git status`, `git diff --check`, and identify unmerged files (`UU`).
+2. **Understand Intent**: Inspect commit messages and PR tickets on both sides.
+3. **Reconcile Hunks**: Preserve upstream invariants (error traps, types, lint rules); layer candidate functionality on top. Never use blind `--ours` or `--theirs`; never invent new behavior.
+4. **Run Project Checks**: Execute project syntax gate, typecheck, and test suites.
+5. **Complete Rebase Non-Interactively**: `git add <files>`, `GIT_EDITOR=true git rebase --continue`, and force-push with lease (`git push --force-with-lease`).
+

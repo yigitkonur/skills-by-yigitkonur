@@ -1,6 +1,6 @@
 # Serial Merge & Conflict Resolution Pipeline
 
-This reference details the serial integration and delivery mechanics for landing multiple parallel candidate PRs onto `main`, including automated conflict resolution in isolated worktrees, headless rebase safeguards, and clean resource teardown.
+This reference details the serial integration and delivery mechanics for landing multiple parallel candidate PRs onto `main`, including automated conflict resolution in isolated worktrees, headless rebase safeguards, Herdr default worktree behaviors, and clean post-milestone resource teardown.
 
 ---
 
@@ -34,9 +34,7 @@ gh pr merge "$PR_1_URL" --squash --delete-branch
 ```
 
 > [!NOTE]
-> **Worktree Branch Deletion Notice**: When `gh pr merge --delete-branch` runs, Git attempts to delete the local branch as well. If the branch is currently checked out in an active worktree, Git will report:
-> `failed to delete local branch <branch>: failed to run git: error: cannot delete branch '<branch>' used by worktree at '<path>'`
-> This is normal and non-fatal. The local branch will be safely retired during Stage 5 Cleanup after the worktree is unlinked.
+> **Worktree Branch Deletion Notice**: When `gh pr merge --delete-branch` runs, Git attempts to delete the remote branch, but will refuse to delete the local branch if it is currently checked out in an active worktree (`cannot delete branch '<branch>' used by worktree at '<path>'`). This is normal and expected. Local branch cleanup occurs during post-worktree teardown.
 
 ### Step 2: Primary Repository Sync
 Keep the primary repo checkout synchronized with the remote HEAD:
@@ -55,8 +53,8 @@ git rebase origin/main
 - **If Rebase is Clean**:
   1. Run workspace validation suites:
      ```bash
-     npm --workspace="$WORKSPACE" run typecheck
-     npm --workspace="$WORKSPACE" run test
+     npm --workspace="$WORKSPACE" run typecheck --if-present
+     npm --workspace="$WORKSPACE" run test --if-present
      ```
   2. Push the verified rebased HEAD using force-with-lease:
      ```bash

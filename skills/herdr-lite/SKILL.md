@@ -60,7 +60,14 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
        ```text
        WAVE_COMPLETE: wave=<WAVE_ID> prs=[<PR1>, <PR2>] shas=[<SHA1>, <SHA2>] next_wave=<NEXT_WAVE_ID> next_issues=[<ISSUE1>, <ISSUE2>] status=AWAITING_SERIAL_MERGE
        ```
-     - The CTO captures this block, verifies gates, performs the serial squash-merges onto `main`, and then explicitly prompts the EM to unlock and dispatch `NEXT_WAVE`.
+      - The CTO captures this block, verifies gates, performs the serial squash-merges onto `main`, and then explicitly prompts the EM to unlock and dispatch `NEXT_WAVE`.
+6. **Post-Milestone Agent & Pane Retirement Mandate (Zero Background Bloat)**:
+   - When all waves and milestones are 100% complete (zero open issues, zero open PRs), the CTO MUST cleanly retire the living Engineering Manager in Pane 2:
+     ```bash
+     herdr pane close "$EM_PANE_ID"
+     ```
+   - Close any remaining worker panes, review panes, or temporary tabs (`herdr tab close "$TAB_ID"`).
+   - Never leave idle, zombie AI agents running in the background consuming memory, API context, and cluttering `herdr pane list`.
 
 ---
 
@@ -76,7 +83,11 @@ Antigravity operates a continuous, multi-wave streaming orchestration loop:
    > **Implementation Pane Preservation**: Never close or kill the implementation pane when a review begins! The implementer pane holds vital execution logs, reasoning transcripts, and test traces needed for review and fix-and-verify loops. Both panes remain alive and visible side-by-side.
 5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly in the worktree, and posts GitHub PR approval.
 6. **EM Handover & CTO Serial Rebase-Merge**: Once all wave lanes report `DONE`, the EM outputs a structured handover (`WAVE_COMPLETE: wave=... prs=[...] shas=[...] next_wave=... next_issues=[...]`). The CTO actively captures this via `herdr pane read`, validates baseline gates, serially rebases candidate PRs onto `main`, and squash-merges.
-7. **Full-Job Teardown & Workspace Retirement**: ONLY when **both** the review and implementation are completely finished and merged, the tab/workspace is closed entirely (`herdr workspace close "$WS_ID"`), clean worktree checkout verified and removed (`git worktree remove "$WORKTREE_PATH"`), and the EM is unlocked to dispatch the next wave.
+7. **Full-Job Teardown, Worktree Removal & Milestone Retirement**:
+   - *Merge Integrity Verification*: Confirm PR is MERGED on remote before touching checkouts (`gh pr view "$PR_URL" --json state -q .state`).
+   - *Worktree Teardown*: Execute `herdr worktree remove --workspace "$WS_ID"` (removes disk checkout and unregisters workspace).
+   - *Branch Cleanup*: Delete local branch post-removal (`git branch -D "$BRANCH"`) and prune remotes (`git remote prune origin`).
+   - *Milestone Retirement*: When all waves/milestones conclude, retire the EM pane (`herdr pane close "$EM_PANE_ID"`).
 
 ---
 
@@ -164,11 +175,17 @@ herdr agent prompt "$REV_PANE_ID" "/boost /herdr
 Deep Review & Hardening for PR #${TASK_ID}...
 Auditing candidate commit \$(git rev-parse HEAD) with adversarial rigor..."
 
-# 6. Full-Job Teardown: ONLY once both review and implementation are completely finished:
-herdr workspace close "$WS_ID"
-test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"
-git branch -d "$BRANCH" 2>/dev/null || git branch -D "$BRANCH"
+# 6. Full-Job Teardown: ONLY once PR is confirmed MERGED to main:
+# Verify PR is merged:
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+# Remove worktree checkout and unregister workspace via Herdr:
+herdr worktree remove --workspace "$WS_ID"
+# Clean up preserved local branch and prune remotes:
+git branch -D "$BRANCH"
 git remote prune origin
+
+# 7. Post-Milestone Retirement: When all issues/PRs are resolved, retire EM and lingering panes:
+herdr pane close "$EM_PANE_ID"
 ```
 
 See [references/herdr-primitives.md](references/herdr-primitives.md) for the complete CLI catalog.
@@ -184,8 +201,10 @@ Herdr-Lite strictly enforces core engineering physics:
 3. **Two-Round Failure Budget**: If an implementer and reviewer do not converge within 2 review-and-fix rounds, **stop automated retries**. Escalate the concrete blocker to the user or supervisor.
 4. **No Material Waivers**: Material findings cannot be reclassified as advisory to force an approval.
 5. **Two-Stage Teardown on Full Completion**:
-   - *Workspace Retirement*: Close reviewer and implementer panes together **only after** PR review is approved (`herdr workspace close <WS_ID>`). Never terminate implementation prematurely.
-   - *Worktree Removal Gate*: Only delete worktrees when `git status --porcelain` is strictly clean (`git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
+   - *Workspace Retirement*: Close reviewer and implementer panes together **only after** PR review is approved and merged (`herdr workspace close <WS_ID>`). Never terminate implementation prematurely.
+   - *Worktree Removal Gate*: Only delete worktrees when `git status --porcelain` is strictly clean (`herdr worktree remove --workspace "$WS_ID"` or `git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
+6. **Mandatory Merge Verification Before Worktree Removal**: Never unlink or delete a worktree checkout until the candidate PR is confirmed merged into `main`. Removing a worktree with unmerged commits causes permanent data loss.
+7. **Post-Milestone Zero-Bloat Retirement**: When all waves and milestones conclude (zero open issues, zero unmerged PRs), the CTO must immediately close the EM agent pane (`herdr pane close "$EM_PANE_ID"`) and all completed panes/tabs. Zero idle agents in the background.
 
 ---
 
@@ -196,7 +215,7 @@ Herdr-Lite strictly enforces core engineering physics:
 | [references/ticket-decomposition-and-waves.md](references/ticket-decomposition-and-waves.md) | Decomposing discussions/bugs into vertical tickets and scheduling up to 5 waves. | Tracer-bullet slices, gh issue create, DAG wave classification, callback protocol. |
 | [references/orchestration-workflow.md](references/orchestration-workflow.md) | Setting up tasks, dispatching workers, streaming reviews, and safe teardown. | Parallelism analysis, workspace coordinate capture, streaming reviews, and deep audit. |
 | [references/herdr-primitives.md](references/herdr-primitives.md) | Looking up CLI commands, syntax, flags, and `jq` coordinate extraction recipes. | Full command reference for worktree, workspace, tab, pane, agent, and notification. |
-| [references/serial-merge-and-conflicts.md](references/serial-merge-and-conflicts.md) | Merging approved PRs onto main or resolving merge conflicts. | Serial rebase-and-merge pipeline, resolving-merge-conflicts protocol, force-push with lease. |
+| [references/serial-merge-and-conflicts.md](references/serial-merge-and-conflicts.md) | Merging approved PRs onto main or resolving merge conflicts. | Self-contained 5-step conflict engine, Herdr default worktree behavior, PR merge gate, post-milestone teardown. |
 | [references/terminal-and-event-rules.md](references/terminal-and-event-rules.md) | Interacting with Herdr panes, sending prompts, and handling modals. | Live coordinates, PTY buffering, bracketed paste, modal bridge, degraded mode. |
 | [references/review-and-fix-contract.md](references/review-and-fix-contract.md) | Auditing candidate PRs, writing test patches, or evaluating decisions. | Exact-SHA binding, direct patching, 2-round limits, delta reviews, PR commands. |
 | [references/recovery-and-safeguards.md](references/recovery-and-safeguards.md) | Handling crashed agents, quota exhaustion, Git locks, or hung sessions. | No-kill-9, index.lock recovery, exact conversation resume, worktree safety. |

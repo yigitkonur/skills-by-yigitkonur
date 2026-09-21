@@ -1,6 +1,7 @@
 .DS_Store
 *.swp
 *.swo
+node_modules
 node_modules/
 .design-soul/
 DERAILMENT_TEST_INVENTION/
