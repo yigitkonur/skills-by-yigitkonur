@@ -30,7 +30,17 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
 ### Mandates & Invariants:
 1. **The EM is an Authentic AGY Agent**: Never replace the Engineering Manager with a dumb bash terminal or passive status script. The EM must be an active AGY agent (`herdr agent start "eng-man" --kind agy --pane <PANE_ID> -- --model gemini-3.8-flash-high --dangerously-skip-permissions`).
 2. **Central Callback Hub**: All implementer and reviewer agents report their status back to the Engineering Manager (`REPORT: task_id=<ID> pr_url=<URL> head_sha=<SHA> status=DONE`). The EM tracks progress, validates evidence, and coordinates with the CTO.
-3. **The `/teamwork-preview /herdr` Task Launch Rule**: When starting any implementation task in a worktree, the prompt **MUST** start with `/teamwork-preview /herdr` (strictly zero space after slash) and guide the implementer to assemble, coordinate, and lead a specialized sub-team (e.g., Schema Architect, API Specialist, QA Verifier) to execute the task within Herdr invariants.
+3. **Prompt Slash Commands & Team Assembly Mandate**:
+   - **Prefix Syntax**: Slash commands MUST be placed at the **very beginning** of the prompt string with **strictly zero space** after the slash:
+     - `/teamwork-preview` (NOT `/ teamwork-preview`)
+     - `/boost` (NOT `/ boost`)
+   - **Implementation Tasks**:
+     - *Standard Implementation*: Prefix with `/teamwork-preview /herdr`. The prompt MUST explicitly instruct the lead implementer how to structure and assemble a specialized sub-team even for small tasks (e.g. 2–3 roles: Lead Implementer, Test/TDD Specialist, Domain Specialist, QA Verifier).
+     - *Very Simple Tasks* (e.g. 1-line typo, doc link repair, single-value config update): Can skip `/teamwork-preview` and run directly.
+     - *Deep / High-Complexity Scenarios* (e.g. distributed concurrency, database lock migrations, multi-system synchronization): Prefix with `/boost` to invoke deep reasoning, multi-perspective strategic planning, and rigorous verification loops.
+   - **Review Tasks**:
+     - *Standard Review*: Default review prompt in Pane 2 (or `/teamwork-preview /herdr` when multi-agent review decomposition is required).
+     - *Very Deep Review*: For high-risk, security-critical, or complex PRs, prefix with `/boost` to trigger exhaustive adversarial scrutiny, edge-case generation, and deep verification.
 4. **Unbounded Event-Driven Longevity (No Execution Limits)**: Neither the CTO nor the EM operates under arbitrary step or turn limits. Bounded execution is maintained via PR-driven state milestones, 2-strike review budgets, and reactive callbacks, enabling sustained multi-wave completion rallies without artificial execution caps.
 
 ---
@@ -63,7 +73,8 @@ Each task operates inside its own dedicated Herdr workspace, featuring a side-by
 │ • Behavioral TDD implementation       │ • Audits exact candidate commit SHA   │
 │ • Local commit & push branch          │ • Inspects implementer output directly│
 │ • Opens PR (gh pr create)             │ • Directly patches tests & bug fixes  │
-│ • PRESERVED INTACT DURING REVIEW      │ • Approves PR (gh pr review --approve)│
+│ • Reports: "status=DONE pr_url=..."   │ • Posts PR review & approvals         │
+│ • REMAINS OPEN throughout review      │ • Certifies final green state         │
 ├───────────────────────────────────────┴───────────────────────────────────────┤
 │ Both panes remain open until COMPLETE FINISH; then workspace is closed.       │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -97,11 +108,17 @@ IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
 # 2. Launch Implementer with --dangerously-skip-permissions:
 herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "$IMPL_MODEL" --dangerously-skip-permissions
 
-# 3. Prompt Implementer with mandatory /teamwork-preview /herdr prefix:
+# 3. Prompt Implementer with mandatory /teamwork-preview /herdr prefix and explicit team structure:
 herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
 You are the Lead Implementer for Task #${TASK_ID}...
-Assemble and guide a specialized team to complete this task.
+Assemble and guide a specialized sub-team to complete this task:
+- Role 1 (Lead Developer): Core logic, schemas, and API handlers.
+- Role 2 (TDD Specialist): Behavioral red-to-green test suite.
+- Role 3 (QA Verifier): Fast Syntax Gate, edge-case assertions, and PR packaging.
 When done, report back with: REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=\$(git rev-parse HEAD) status=DONE"
+
+# Note: For extremely hard scenarios or deep implementation cases, substitute with /boost:
+# herdr agent prompt "$IMPL_PANE_ID" "/boost /herdr ..."
 
 # 4. Streaming Review: As soon as worker reports DONE, split pane side-by-side in SAME tab:
 SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
@@ -109,8 +126,10 @@ REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er .result.pane.pane_id)"
 herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 
 # 5. Prompt Reviewer (Implementer pane remains alive side-by-side):
-herdr agent prompt "$REV_PANE_ID" "/teamwork-preview /herdr
-Deep Review & Hardening for PR #${TASK_ID}..."
+# Use standard review or use /boost for very deep review on high-risk/complex PRs:
+herdr agent prompt "$REV_PANE_ID" "/boost /herdr
+Deep Review & Hardening for PR #${TASK_ID}...
+Auditing candidate commit \$(git rev-parse HEAD) with adversarial rigor..."
 
 # 6. Full-Job Teardown: ONLY once both review and implementation are completely finished:
 herdr workspace close "$WS_ID"
