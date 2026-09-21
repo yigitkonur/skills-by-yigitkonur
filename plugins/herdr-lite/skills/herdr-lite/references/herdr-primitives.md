@@ -120,7 +120,7 @@ High-level AI cognitive agent control plane over terminal panes.
 |---|---|---|
 | `start` | `herdr agent start "<LABEL>" --kind <agy\|codex\|claude> --pane <PANE_ID> [--timeout <MS>] -- [--model <M>] [--dangerously-skip-permissions]` | Launches an AI agent CLI in an existing pane with auto-approved permissions. |
 | `prompt` | `herdr agent prompt <TARGET_PANE> "<TEXT>"` | Submits a prompt using bracketed paste (DEC Mode 2004). |
-| `wait` | `herdr agent wait <TARGET_PANE> [--until <idle\|done\|blocked>] [--timeout <MS>]` | Blocks until agent reaches requested lifecycle state. |
+| `wait` | `herdr agent wait <TARGET_PANE> [--until <idle\|done\|blocked\|working\|unknown>] [--timeout <MS>]` | Blocks until agent reaches requested lifecycle state. Without `--until`, defaults to matching `idle`, `done`, or `blocked`. Repeat `--until` for multiple states (e.g. `--until done --until idle`). |
 | `read` | `herdr agent read <TARGET_PANE> [--source <recent-unwrapped\|visible\|recent>] [--lines <N>]` | Reads formatted agent transcripts or modals. |
 | `send-keys` | `herdr agent send-keys <TARGET_PANE> <KEYS...>` | Sends keyboard navigation to interactive menus/modals. |
 | `list` | `herdr agent list` | Lists all detected agents and their current status. |

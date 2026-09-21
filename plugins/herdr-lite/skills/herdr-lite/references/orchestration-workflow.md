@@ -197,20 +197,34 @@ The CTO reads this block from the EM pane, runs baseline gates, serially rebases
 
 ---
 
-## 7. Step 5: Full-Job Teardown & Workspace Retirement
+## 7. Step 5: Full-Job Teardown & Worktree Retirement
 
 > [!IMPORTANT]
 > **Complete Job Closure Law**:
-> A task is only closed when **both** the review and implementation phases are fully finished and merged to `main`.
+> A task is only closed when **both** the review and implementation phases are fully finished and confirmed merged to `main`.
 > Prematurely killing the implementer when review begins is prohibited.
-> Once PR approval and merge are confirmed:
-> 1. Close the dedicated workspace (terminating both implementer and reviewer panes cleanly):
->    `herdr workspace close "$WORKSPACE_ID"`
-> 2. Gate worktree deletion strictly on `git status --porcelain`:
->    `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" && git worktree remove "$WORKTREE_PATH"`
-> 3. Serially rebase approved candidate PR onto `main` and squash-merge:
->    `gh pr merge "$PR_URL" --squash --delete-branch`
-> 4. Prune local branch and remotes (`git branch -D "$BRANCH_NAME"`, `git remote prune origin`).
+> Once candidate PR approval and serial squash-merge onto `main` are confirmed:
+> 1. Confirm PR status is MERGED on remote:
+>    ```bash
+>    gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
+>    ```
+> 2. Confirm clean working tree:
+>    ```bash
+>    test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"
+>    ```
+> 3. Remove the worktree checkout and unregister the workspace via Herdr:
+>    ```bash
+>    herdr worktree remove --workspace "$WORKSPACE_ID"
+>    ```
+> 4. Delete the local branch and prune remotes:
+>    ```bash
+>    git -C "$REPO_ROOT" branch -D "$BRANCH_NAME"
+>    git -C "$REPO_ROOT" remote prune origin
+>    ```
+> 5. Verify zero lingering worktrees remain:
+>    ```bash
+>    git -C "$REPO_ROOT" worktree list
+>    ```
 
 ---
 

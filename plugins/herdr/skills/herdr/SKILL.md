@@ -32,11 +32,11 @@ Every cold reader identifies its assigned role first. Read only the sections and
 
 ## 2. Discover, Register, Verify
 
-### 2a. Cold Bootstrap Sequence (CTO → EM → Workers)
+### 2a. Cold Bootstrap Sequence (CTO First-Wave Handover & EM Autonomous Orchestration)
 
-Before workers exist, the CTO establishes the leadership pair. Leadership resides in **exactly two panes in ONE shared tab**: CTO on the LEFT, EM on the RIGHT. Workers and reviewers run in separate per-task tabs or worktree workspaces.
+Herdr establishes an explicit, two-tier leadership pair in the primary control workspace: CTO on the LEFT (Pane 1), EM on the RIGHT (Pane 2). Workers and reviewers run in separate per-task worktree workspaces.
 
-1. **CTO captures coordinates and creates the EM pane**:
+1. **CTO captures coordinates and launches the EM pane**:
    ```bash
    # Discover CTO own coordinates and leadership tab:
    CTO_PANE_ID="$(herdr pane current | jq -r .result.pane.pane_id)"
@@ -47,29 +47,65 @@ Before workers exist, the CTO establishes the leadership pair. Leadership reside
 
    # Launch EM into returned shell pane with chosen harness (defaults to ambient/agy):
    EM_KIND="${HERDR_AGENT_KIND:-agy}"
-   herdr agent start "herdr-engineering-manager" --kind "$EM_KIND" --pane "$EM_PANE_ID" -- --model "$EM_MODEL"
+   herdr agent start "herdr-engineering-manager" --kind "$EM_KIND" --pane "$EM_PANE_ID" -- --model "$EM_MODEL" --dangerously-skip-permissions
    ```
-2. **Verify Leadership Topology**:
-   Confirm SAME tab, exactly two panes, CTO left (x=0) and EM right (x>0):
-   ```bash
-   herdr tab get "$LEADERSHIP_TAB_ID"
-   herdr pane layout --pane "$CTO_PANE_ID"
-   ```
-3. **CTO dispatches EM brief** with mission scope, run root path, CTO return address (`$CTO_PANE_ID`), and authorized model tiers.
-4. **EM allocates workers/reviewers** into dedicated worktree tabs/workspaces, capturing returned IDs, and launches the executor agent:
-   ```bash
-   TAB_INFO="$(herdr tab create --workspace "$WS_ID" --cwd "$TASK_CWD" --label "$TASK_LABEL" --no-focus)"
-   WORKER_TAB_ID="$(echo "$TAB_INFO" | jq -er '.result.tab.tab_id')"
-   WORKER_PANE_ID="$(echo "$TAB_INFO" | jq -er '.result.root_pane.pane_id')"
-   WORKER_KIND="${HERDR_AGENT_KIND:-agy}"
-   herdr agent start "$AGENT_LABEL" --kind "$WORKER_KIND" --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL"
 
-   # Dispatch task brief with mandatory /teamwork-preview /herdr prefix:
+2. **CTO orchestrates the First Wave**:
+   The CTO initializes the environment, decomposes the initial tasks, and opens task environments:
+   ```bash
+   # CRITICAL LAW: Workspaces MUST be worktree-backed. NEVER create independent workspaces
+   # via `herdr workspace create` or loose shell `git worktree add` tabs.
+   # Always use Herdr's native worktree command:
+   WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
+   WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
+   WORKER_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
+
+   # Launch initial worker:
+   herdr agent start "impl-${TASK_ID}" --kind "$WORKER_KIND" --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL" --dangerously-skip-permissions
+
+   # Wait for worker harness to initialize to idle before prompting:
+   herdr agent wait "$WORKER_PANE_ID" --until idle --timeout 60000
+
+   # Dispatch task brief with mandatory /teamwork-preview /herdr prefix and inject $EM_PANE_ID as the return route:
    herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
-   <TASK_BRIEF>"
+   <TASK_BRIEF>
+   When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
+   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=\${TASK_ID} pr_url=<URL> head_sha=\$(git rev-parse HEAD) status=DONE\""
    ```
-5. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
-6. **Non-Pane CTO Boundary**: When the CTO operates from a Root PTY outside Herdr, explicit-target CLI commands (`herdr agent read`, etc.) work, but native prompt callbacks targeting the CTO do not exist (`cto.pane_id: null`). The CTO reads reports and `state.yaml` directly from the shared run root on disk.
+
+3. **CTO Dispatches Handover to the Engineering Manager**:
+   The CTO instructs the EM to take over operational command of the running team:
+   ```bash
+   # Wait for EM harness to initialize to idle before prompting:
+   herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+
+   herdr agent prompt "$EM_PANE_ID" "CTO HANDOVER & OPERATIONAL DIRECTIVE:
+   First-wave tasks are provisioned and workers are running. They will report directly to you at $EM_PANE_ID.
+   You now take full operational command:
+   - Organize and direct workers using their specialized skills (tdd, code-review, audit-completion).
+   - Manage streaming side-by-side reviews in their tabs (herdr pane split).
+   - Provision subsequent waves (Waves 2-5) natively via herdr worktree create.
+   - When all wave tasks pass review, emit:
+     WAVE_COMPLETE: wave=<WAVE_ID> prs=[<PRS>] shas=[<SHAS>] next_wave=<NEXT> next_issues=[<ISSUES>] status=AWAITING_SERIAL_MERGE"
+   ```
+
+4. **EM Autonomous Operational Takeover**:
+   - The Engineering Manager takes over all execution details: deciding review workflows, allocating reviewers via side-by-side splits (`herdr pane split --pane "$IMPL_PANE_ID" --direction right ...`), and assigning domain skills (`tdd`, `code-review`, `audit-completion`).
+   - For subsequent waves (Waves 2–5), the EM natively provisions worktree workspaces (`herdr worktree create`). Independent workspaces are strictly forbidden.
+   - Workers, reviewers, and EM orchestrate among themselves.
+
+5. **CTO Sole-Follower Invariant & Wait Tracking Mandate**:
+   - Once initialized, the **CTO tracks and follows ONLY the Engineering Manager**:
+     ```bash
+     # Deterministically wait for EM to complete its turn before checking status:
+     herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+     herdr pane read "$EM_PANE_ID" --lines 100
+     ```
+   - **Deterministic Agent Wait Tracking**: Every running agent MUST be tracked with `herdr agent wait <TARGET_PANE> [--until <STATUS>] [--timeout <MS>]`. Unhooked `sleep` loops and detached polling without agent state checks are strictly prohibited.
+   - When the EM emits `WAVE_COMPLETE`, the CTO verifies baseline gates, performs the serial squash-merges onto `main`, and signals the EM to proceed.
+
+6. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
+7. **Non-Pane CTO Boundary**: When the CTO operates from a Root PTY outside Herdr, explicit-target CLI commands (`herdr agent read`, etc.) work, but native prompt callbacks targeting the CTO do not exist (`cto.pane_id: null`). The CTO reads reports and `state.yaml` directly from the shared run root on disk.
 
 ### 2b. Live Coordinates & Model Verification (All Panes)
 

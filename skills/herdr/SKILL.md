@@ -63,16 +63,22 @@ Herdr establishes an explicit, two-tier leadership pair in the primary control w
    # Launch initial worker:
    herdr agent start "impl-${TASK_ID}" --kind "$WORKER_KIND" --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL" --dangerously-skip-permissions
 
+   # Wait for worker harness to initialize to idle before prompting:
+   herdr agent wait "$WORKER_PANE_ID" --until idle --timeout 60000
+
    # Dispatch task brief with mandatory /teamwork-preview /herdr prefix and inject $EM_PANE_ID as the return route:
    herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
    <TASK_BRIEF>
    When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
-   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=\${TASK_ID} pr_url=<URL> head_sha=\\\$(git rev-parse HEAD) status=DONE\""
+   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=\${TASK_ID} pr_url=<URL> head_sha=\$(git rev-parse HEAD) status=DONE\""
    ```
 
 3. **CTO Dispatches Handover to the Engineering Manager**:
    The CTO instructs the EM to take over operational command of the running team:
    ```bash
+   # Wait for EM harness to initialize to idle before prompting:
+   herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+
    herdr agent prompt "$EM_PANE_ID" "CTO HANDOVER & OPERATIONAL DIRECTIVE:
    First-wave tasks are provisioned and workers are running. They will report directly to you at $EM_PANE_ID.
    You now take full operational command:

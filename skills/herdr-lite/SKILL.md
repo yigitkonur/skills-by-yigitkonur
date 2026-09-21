@@ -106,7 +106,7 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
    - Possible values for `--until`: `idle`, `working`, `blocked`, `done`, `unknown`.
    - **Tracking Workers & Reviewers**:
      ```bash
-     herdr agent wait "$WORKER_PANE_ID" --until done,idle --timeout 120000
+     herdr agent wait "$WORKER_PANE_ID" --until done --until idle --timeout 120000
      ```
    - **Supervising the EM (CTO)**:
      ```bash
