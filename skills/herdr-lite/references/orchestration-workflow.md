@@ -1,10 +1,15 @@
 # Herdr-Lite Orchestration Workflow
 
-This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside worktree workspaces, executing serial integration, and advancing through multi-wave dependency graphs.
+This reference provides the complete, step-by-step lifecycle for dispatching tasks, managing parallel Git worktrees, supervising streaming implementer and reviewer tabs inside dedicated worktree workspaces, executing serial integration, and advancing through multi-wave dependency graphs.
 
 ---
 
-## 1. Lifecycle & Multi-Wave Streaming Architecture
+## 1. Dual-Agent Leadership & Multi-Wave Streaming Architecture
+
+Herdr-Lite operates a two-tier command structure in the primary control workspace:
+
+- **CTO Agent (Pane 1, e.g. `wV:pH`)**: Focuses on strategic architecture, wave sequencing, DAG construction, serial merge decisions, and pair-programming with the user/founder.
+- **Engineering Manager (EM) Agent (Pane 2, e.g. `wV:pJ`)**: A dedicated **AGY Agent** (NOT a simple bash terminal or shell script!) that actively manages the worker pool, receives implementer callbacks, monitors PRs, and coordinates reviews.
 
 ```
 [ Problem Input: Conversation / Sentry Bugs / PRD Spec ]
@@ -16,18 +21,18 @@ This reference provides the complete, step-by-step lifecycle for dispatching tas
                            │
                            ▼
 [ Step 1: Multi-Wave Dependency Graph (Waves 1 to 5) ]
-   • Build DAG based on "Blocked by:" edges and write surfaces
+   • CTO builds DAG based on "Blocked by:" edges and write surfaces
    • Maximize parallelism across disjoint lanes in Wave 1
                            │
                            ▼
-[ Step 2: Native Worktree Provisioning (Current Wave) ]
-   • herdr worktree create provisions Git worktree + Workspace
-   • Tab 1: impl (Implementer runs TDD, commits, opens PR)
+[ Step 2: Dedicated Worktree Workspace Provisioning (Current Wave) ]
+   • herdr worktree create provisions Git worktree + dedicated Workspace
+   • Tab 1: impl (Implementer runs TDD with /teamwork-preview, commits, opens PR)
                            │
                            ▼
-[ Step 3: Streaming Review & "Write Back to Me" Loop ]
-   • Worker i sends "REPORT: status=DONE pr_url=<url>"
-   • Antigravity immediately spawns Tab 2: review in Workspace i
+[ Step 3: Streaming Review & Callback Loop to EM Agent ]
+   • Worker i reports to EM: "REPORT: status=DONE pr_url=<url>"
+   • EM immediately spawns Tab 2: review in Workspace i
    • Reviewer audits with domain skills, patches bugs, approves PR
                            │
                            ▼
@@ -68,6 +73,16 @@ Antigravity organizes the issues into up to 5 sequential execution waves:
 
 ## 4. Step 2: Native Worktree & Workspace Provisioning
 
+> [!CAUTION]
+> **Anti-Pattern (DO NOT DO)**: Running `git worktree add` in a shell and opening loose, independent tabs in the main workspace with `--cwd <path>`. This pollutes the control workspace, breaks Herdr's 1-to-1 workspace lifecycle tracking, and loses isolation.
+
+> [!TIP]
+> **Golden Pattern (ALWAYS DO)**: Run `herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "$LABEL" --no-focus`.
+> Herdr automatically:
+> 1. Creates the Git worktree at `$WORKTREE_PATH`.
+> 2. Provisions an isolated Herdr workspace bound directly to the worktree.
+> 3. Launches Tab 1 with its root pane already inside the checkout directory.
+
 For each ticket in the active wave, provision an isolated workspace:
 
 ```bash
@@ -77,7 +92,7 @@ WORKTREE_PATH="/root/dev/my-project-task-${TASK_ID}"
 BRANCH_NAME="fix/issue-${TASK_ID}"
 
 # 1. Provision worktree and capture coordinates:
-WORKTREE_JSON="$(herdr worktree create "$REPO_ROOT" "$WORKTREE_PATH" --branch "$BRANCH_NAME")"
+WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH_NAME" --label "task-${TASK_ID}" --no-focus)"
 WORKSPACE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.workspace.workspace_id')"
 IMPL_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.pane_id')"
 IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.tab_id')"
@@ -86,21 +101,23 @@ IMPL_TAB_ID="$(echo "$WORKTREE_JSON" | jq -er '.result.root_pane.tab_id')"
 herdr tab rename "$IMPL_TAB_ID" "impl"
 
 # 3. Launch AGY Implementer:
-herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" -- --model "$IMPL_MODEL"
+herdr agent start "impl-${TASK_ID}" --kind agy --pane "$IMPL_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
-### Implementer Mission Brief & Callback Mandate:
-Instruct the implementer to write behavioral tests, commit, push, open a PR, and write back to the orchestrator.
-**Always prefix with `/teamwork-preview /herdr`**:
+### Implementer Mission Brief & `/teamwork-preview` Mandate:
+When the Engineering Manager prompts the implementer, the prompt **MUST** start with `/teamwork-preview` (zero space after slash) and instruct the worker to assemble a specialized team:
+
 ```bash
-herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview /herdr
-Execute Task #${TASK_ID}:
+herdr agent prompt "$IMPL_PANE_ID" "/teamwork-preview
+You are the Lead Implementer for Task #${TASK_ID}.
+Assemble and guide a specialized sub-team (e.g. Architect, Specialist, QA Verifier) to execute this task:
+
 1. Implement behavioral tests first (TDD).
 2. Fix the underlying issue with minimal surface changes.
 3. Commit cleanly and push branch '$BRANCH_NAME'.
 4. Open PR: gh pr create --title 'fix: issue #${TASK_ID}' --body 'Closes #${TASK_ID}'.
-5. When complete, WRITE BACK TO ME (without --wait) with:
-   REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=$(git rev-parse HEAD) status=DONE"
+5. When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
+   REPORT: task_id=${TASK_ID} pr_url=<PR_URL> head_sha=\$(git rev-parse HEAD) status=DONE"
 ```
 
 ---
@@ -114,7 +131,7 @@ Execute Task #${TASK_ID}:
 ```bash
 REV_TAB_JSON="$(herdr tab create --workspace "$WORKSPACE_ID" --cwd "$WORKTREE_PATH" --label "review" --no-focus)"
 REV_PANE_ID="$(echo "$REV_TAB_JSON" | jq -er '.result.root_pane.pane_id')"
-herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" -- --model "gemini-3.8-flash-high"
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
 ```
 
 ### Deep Review with Domain Skills:
@@ -122,8 +139,7 @@ The reviewer operates in Tab 2 and applies specialized skills (`code-review`, `t
 ```bash
 herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
 
-herdr agent prompt "$REV_PANE_ID" "/teamwork-preview /herdr
-Deep Review & Hardening for PR #${TASK_ID}:
+herdr agent prompt "$REV_PANE_ID" "Deep Review & Hardening for PR #${TASK_ID}:
 - PR URL: $PR_URL
 - Candidate SHA: $CANDIDATE_SHA
 - Worktree: $WORKTREE_PATH
@@ -133,7 +149,7 @@ Instructions:
 2. Review-and-Fix: If tests are missing or minor bugs are found, write the patches directly, run validation suites, commit, and push to the branch.
 3. Post formal GitHub PR approval:
    gh pr review '$PR_URL' --approve -b 'LGTM: verified candidate commit $(git rev-parse HEAD)'
-4. Send notification (without --wait):
+4. Send notification:
    APPROVED: task_id=${TASK_ID} pr_url=$PR_URL head_sha=$(git rev-parse HEAD)"
 ```
 

@@ -1,123 +1,54 @@
-# Observe tasks and PR candidates
+# Event Monitoring & Communication
 
-Read this before submitting or supervising a task. The main skill owns the master orchestration lifecycle and container cleanup; this file owns observation mechanics, the bidirectional push-callback protocol, result classification, and PR discovery.
+## 1. Live Coordinates
+Always resolve live coordinates via `herdr pane current` (returns JSON). Do NOT rely on static startup env vars (e.g. `HERDR_TAB_ID`) for topology decisions — they freeze at process creation and become stale when panes move.
 
----
+`herdr pane current` gives physical pane/tab/terminal IDs. It does NOT prove the active model, effort tier, or that a composer is ready to receive input. Verify identity separately via the runtime's own identity query.
 
-## Submission and identity
+## 2. Reading Pane State
 
-Record task/attempt, pane/terminal, agent conversation ID, prompt submission time, last observed status/revision, and the host observer handle. These identifiers are not interchangeable.
-
-### The Bidirectional Push-Callback Architecture
-Never rely solely on continuous polling or indefinite synchronous blocking. When the orchestrator dispatches a task to a worker agent, the orchestrator **must** provide its own coordinates:
-
-```bash
-CALLER_PANE_ID="${HERDR_PANE_ID:-$(herdr pane current --json | jq -r .result.pane_id)}"
-CALLER_TAB_ID="${HERDR_TAB_ID:-}"
-```
-
-In the task brief, instruct the worker agent to report its completion directly back to the caller's pane:
-
-```bash
-herdr agent prompt "$CALLER_PANE_ID" \
-  "I'm the herdr agent in pane $WORKER_PANE_ID (tab $WORKER_TAB_ID). Task $TASK_NAME is finished on branch $BRANCH. PR: #$PR_NUM (Draft). Summary: $SUMMARY. You can read my full output with: herdr agent read $WORKER_PANE_ID --source recent-unwrapped --lines 100"
-herdr notification show "Task Complete" --body "Worker in $WORKER_PANE_ID finished $BRANCH" --sound done
-```
-
-### Submitting to Recognized Agents
-For a recognized agent ready for input, deliver prompts using `herdr agent prompt`:
-
-```bash
-herdr agent prompt <target> "$(cat /absolute/run/mission.txt)"
-```
-
-- **Bracketed Paste**: Herdr wraps text in DEC Mode 2004 (`\x1b[200~...\x1b[201~`), preserving newlines without premature execution.
-- **300ms Staged Delay**: Herdr enforces a 300ms silence (`AGENT_PROMPT_SUBMIT_DELAY`) between text write and `\r` (Enter), preventing dropped keystroke race conditions.
-- **Activity Guard**: If submitted from a non-working state with `--wait`, Herdr enforces a 5,000ms deadline requiring a transition to `working` or `blocked`. If the agent stalls or does not activate, Herdr returns `agent_prompt_stalled`.
-
----
-
-## Keep the controller responsive
-
-Modern multi-agent workflows run across different agent runtimes. Tailor your supervision strategy to the runtime environment:
-
-### Runtime Strategy Matrix
-
-| Agent Runtime | Observation Mechanism | Recommended Supervisor Pattern |
+| Source | Syntax | Use |
 |---|---|---|
-| **Claude Code** | Native background subshells / streaming monitors | Launch background terminal task with output monitoring; receive streaming updates while keeping caller interactive. |
-| **Antigravity CLI / Gemini** | Asynchronous tool calls (`run_command` async + `schedule` watchdog) | Dispatch worker with Push Callback Mandate. Either run bounded `agent wait` or set a 5-minute watchdog timer via `schedule` tool and yield turn. The worker's reverse prompt reactivates the supervisor automatically. |
-| **OpenAI Codex CLI** | Synchronous tool turns | Dispatch with Push Callback Mandate; execute bounded `agent wait --timeout 60000`. If timeout occurs, inspect screen with `agent read --source visible` and renew. |
-| **Cursor / IDE Terminals** | Persistent terminal panes | Dispatch with Push Callback Mandate. Use non-blocking terminal sessions. |
+| `recent-unwrapped` | `herdr agent read <T> --source recent-unwrapped --lines <N>` | **Default**: transcripts, code, LLM output. Merges soft wraps. |
+| `visible` | `herdr agent read <T> --source visible --lines <N>` | **Modals**: questionnaires, spinners, confirmation prompts. |
+| `recent` | `herdr agent read <T> --source recent --lines <N>` | **Columnar**: ASCII diagrams, tables, aligned grids. |
+| `detection` | `herdr agent read <T> --source detection` | **Heuristic**: regex rule introspection only. |
 
-### Bounded Wait vs. Polling Loops
-Do NOT write continuous tight polling loops (`while true; do sleep 1; done`) or custom Unix socket daemons. Instead, use Herdr's native event-driven wait:
+`herdr agent wait <TARGET> --until idle --until done --until blocked --timeout 60000` blocks until a stable state. A wait timeout is not itself evidence of worker failure. `blocked` state is included because a worker waiting on a modal is stable.
 
-```bash
-herdr agent wait <target> --until idle --until done --timeout 60000
-```
-
-- The default settled set is `[idle, done, blocked]`.
-- Background tabs transition to `done` (`seen = false`) upon completing work. Focusing the tab marks it seen, transitioning it to `idle`. **Always wait for both `--until idle --until done`.**
-
----
-
-## WAIT result → READ → action
-
-The mandatory supervision sequence is:
-**WAIT / NOTIFY → READ → CLASSIFY → NEXT ACTION.**
-
-After any wait returns or after receiving a callback prompt, always perform an explicit read to extract verified evidence before deciding the next step:
+## 3. Communication & Prompt Delivery
 
 ```bash
-# Read uncorrupted, unwrapped transcript lines
-herdr agent read <target> --source recent-unwrapped --lines 40
-
-# Read active modal or question state
-herdr agent read <target> --source visible --lines 20
+herdr agent prompt <TARGET> "<PROMPT_TEXT>"
 ```
 
-### Result Classification Matrix
+- **Bracketed Paste Mechanics**: Wraps text in DEC Mode 2004 (`\x1b[200~...\x1b[201~`). Staged pacing delay (~300ms) before Enter; does not eliminate all PTY race conditions under heavy load.
+- **Worker Notices Omit `--wait`**: Passing `--wait` blocks the worker and risks deadlock.
 
-| Observation | Interpretation and Required Next Action |
-|---|---|
-| **Callback Prompt Received in Caller Pane** | Worker has finished its assignment (or is blocked). Read the worker's pane or report file (`.agent-runs/report.md`), verify the test outcomes and Draft PR URL, and advance to clean-context review. |
-| **WAIT returns 0 (Status: `idle` or `done`)** | Agent has finished its turn. Read `recent-unwrapped` to verify the completion claim and handback contract. |
-| **WAIT returns `error.code: timeout`** | Deadline expired before status changed. READ current pane. If the agent is compiling or running tests, renew the wait. If the agent is idle, consume the result. If hung, investigate. |
-| **Agent is `blocked`** | Target is pausing on an interactive question or modal. READ `visible` viewport to see choices. Use `herdr agent send-keys <target> <keys...>` to navigate and select options. |
-| **`error.code: agent_prompt_stalled`** | Prompt did not produce working/blocked state within 5,000ms. Inspect pane with `visible`. If model is reasoning with slow TTFT, wait. Do not resubmit duplicate prompts. |
-| **`error.code: agent_blocked`** | Attempted to prompt a blocked agent. Herdr actively protected the PTY from corrupted text. Read `visible` and use `agent send-keys`. |
-| **Target missing (`pane_not_found`)** | Inspect `herdr pane list` to check if pane was moved, renamed, or closed. |
+### Runtime-Aware Notice Qualification
+- **Codex**: Buffers incoming PTY text during tool execution and reads it at the next turn boundary. Short operational notices to a busy Codex manager may be queued safely, **but busy delivery is not a guaranteed, loss-free synchronization mechanism** under rapid PTY churn. Where timing matters, wait for `idle` first or use the report sweep as fallback.
+- **AGY**: Injecting prompt text into an active AGY writer while it is synthesizing code or generating tool calls can disrupt the turn, corrupt composer state, or collide with file writes. **Wait for `idle`** before sending prompts to an active AGY writer. This is a qualified operational constraint, not an invented corruption guarantee; the reviewer's claim that any busy notice corrupts file reads is not established.
 
----
+## 4. Modal Bridge
+When an agent is `blocked`, Herdr rejects `herdr agent prompt` with `error.code: agent_blocked`. Resolve mechanically:
+1. Inspect first: `herdr agent read <target> --source visible --lines 20`
+2. Choose keystrokes based on what you read: `herdr agent send-keys <target> <keys...>`
+   Valid tokens: `up`, `down`, `enter`, `esc`, `tab`, `ctrl+c`. Read the modal before choosing; do not default to `down enter` without confirming the option.
 
-## Discover PR changes separately
+## 5. Degraded AGY Mode (`herdr pane run`)
+When Herdr detection reports `unknown` for a known AGY process:
+1. Verify foreground process: `herdr pane process-info --pane <PANE_ID>`
+2. Confirm visible input-ready composer with no modal: `herdr pane read --source visible --lines 10 <PANE_ID>`
+   Foreground process alone is insufficient — a modal or alt-screen can be open.
+3. If confirmed, use fallback: `herdr pane run <PANE_ID> <TEXT>...`
+   This injects literal text followed by Enter into the pane (keystroke injection, not OS shell execution). Never use on an unverified foreground program or relaunch over a live TUI.
 
-Herdr observes workers; GitHub queries verify pull requests and candidate states. A draft PR may appear while its author is still refining tests.
+## 6. Targeted Intervention
+- **`esc`**: Interrupts stuck prompts. May leave background work running. Inspect process inventory and owned effects afterwards.
+- **`ctrl+c`**: In raw-mode TUIs the terminal passes raw byte 0x03 to the application. In cooked mode it sends SIGINT. The actual effect depends on the foreground application. Verify the resulting state by reading the visible screen before assuming the prompt returned.
+- **No blind kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
 
-When checking PRs across a wave, use finite, targeted queries rather than continuous loops:
+## 7. Discovery, Bootstrap & Model Verification
+All panes identify live topology via `herdr pane current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
 
-```bash
-# Check PR status for a specific branch
-gh pr view <branch-or-number> --json number,title,state,isDraft,mergeable,reviewDecision
-
-# List open PRs for this project
-gh pr list --state open --json number,title,headRefName,isDraft,updatedAt
-```
-
-### The Clean-Context Review Integration Gate
-1. Once a worker opens a **Draft PR**, do NOT review it in the worker's pane.
-2. Launch a fresh Reviewer agent in a separate tab or pane with a clean context window.
-3. Reviewer inspects `gh pr diff <PR_NUMBER>`.
-4. Reviewer submits review comments or approval:
-   ```bash
-   gh pr review <PR_NUMBER> --approve -b "LGTM: spec requirements and test coverage verified."
-   ```
-5. Once approved, mark PR ready for review:
-   ```bash
-   gh pr ready <PR_NUMBER>
-   ```
-6. Rebase serially on `origin/main`, verify tests, and merge:
-   ```bash
-   gh pr merge <PR_NUMBER> --squash --delete-branch
-   ```
+The 10-Minute Silent Boundary: If an agent operates without an external notification for ten minutes, the supervisor or agent performs ONE status check at the next safe tool boundary—not a mandatory checkpoint report, timer, heartbeat loop, or endless wait.

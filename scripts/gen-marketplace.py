@@ -118,6 +118,7 @@ GROUPS = {
         "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
         [
             "herdr",
+            "herdr-lite",
             "project-manager",
             "run-agent-browser",
             "run-agent-device",

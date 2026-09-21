@@ -1,21 +1,23 @@
 # herdr
 
-Orchestrate coding tasks, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.
+Orchestrate coding agents, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.
 
 **Category:** orchestration
 
-## Core Architecture & Key Capabilities
+## Core Capabilities
 
-- **Single-Model Multi-Agent Fleet**: Orchestrate subagents running on the same model in dedicated worktree tabs and split panes.
-- **Bidirectional Push-Notification Callback**: Eliminates passive polling across all agent runtimes (Claude Code, Antigravity CLI, Codex, Gemini, Cursor). Workers push completion notices directly back to the orchestrator pane (`herdr agent prompt <CALLER_PANE_ID>`).
-- **Clean-Context PR Reviews**: Implementer opens Draft PR → Fresh Reviewer agent in a clean pane/tab audits the diff (`gh pr diff`) with zero context pollution → Feedback applied → Promoted to Ready (`gh pr ready`) → Merged serially.
-- **Merge Conflict Resolution**: Rebase on target (`git rebase origin/main`), resolve conflict markers, verify tests, and push with lease (`git push --force-with-lease`).
-- **The Interactive Modal Bridge**: Handles `agent_blocked` via `herdr agent read --source visible` and sends atomic pre-validated keystrokes (`herdr agent send-keys <target> down enter`).
-- **4 Memory Buffers**: Resolves Alternate Screen Buffer limitations via `recent-unwrapped` and filesystem handbacks.
+- **Role-First Multi-Agent Router**: CTO, Engineering Manager (EM), and native AGY implementers, reviewers, integration executors, and recovery executors all read the same skill — role selection determines which sections to execute. Runtime is not role.
+- **Two-Pane Leadership Topology**: CTO (left) and EM (right) share exactly one leadership tab. Workers and reviewers operate in separate, task-specific tabs.
+- **Small Coupled Work Default**: Default to 1 whole-change writer and 1 independent reviewer for cohesive tasks; parallelize across isolated worktrees only for genuinely independent deliverables.
+- **Conditional Registration**: Workers verify actual TUI runtime and model, then register with the manager. Proceed without waiting for ACK when preflight fully matches; preserve explicit acknowledgment on mismatch, restart, or unclear authority.
+- **Cheap Communication & Durable Evidence**: Routine progress and technical questions use short native messages; durable immutable YAML reports are reserved for handback candidates, review decisions, and material blockers.
+- **Exact-SHA Review & Finite Failure Bounds**: Fresh reviewer agents in dedicated panes audit exact candidate commit SHAs in clean context. Changed HEAD invalidates stale reviews; same reviewer may issue new-HEAD delta decisions. Two-failure limit enforces escalation rather than endless retries; material findings cannot be reclassified as advisory to force approval. Read-only movement, error-ID changes, model shifts, or new requests do not reset failure budgets.
+- **Early Coherent Candidate & Serial Integration**: Designated writer composes whole-candidate changes locally for unified checks without per-file approval bottlenecks; Integration Executor combines verified candidates serially into a moving baseline.
+- **Two-Stage Retrospective Lifecycle**: Terminal panes are promptly retired by EM upon verified handback without waiting for PR merge; worktree cleanup is a separate gate where clean checkouts are removed, while dirty checkouts, user-owned panes, and leadership/active siblings are preserved.
 
 ## Requirements
 
-Install Herdr first and run the agent inside a Herdr-managed pane (`HERDR_ENV=1`):
+Install Herdr and run agents inside Herdr-managed panes (`HERDR_ENV=1`):
 
 ```bash
 brew install herdr
@@ -34,23 +36,40 @@ Herdr documentation: [herdr.dev/docs](https://herdr.dev/docs/)
 /plugin install herdr@yigitkonur
 ```
 
-**Or with the `skills` CLI — this skill only:**
+**With the `skills` CLI:**
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/herdr
-```
+1. **Project-level install (recommended & PromptScript-compatible):**
+   Installs directly into `./.agents/skills` for your active project, keeping your workspace self-contained and avoiding global collisions. Fully compatible with project-scoped tools like PromptScript:
 
-**Or the full pack:**
+   ```bash
+   # This skill only
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/herdr -y
 
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-```
+   # Or the full pack
+   npx -y skills add yigitkonur/skills-by-yigitkonur -y
+   ```
+
+   PromptScript projects can also import directly via `prs`:
+   ```bash
+   prs skills add github.com/yigitkonur/skills-by-yigitkonur/skills/herdr/SKILL.md
+   ```
+
+2. **Global install (user-level):**
+   Installs globally into `~/.agents/skills` for all universal agents (Claude Code, Cursor, Codex, Antigravity, Amp, etc.) cleanly without triggering project-scoped agent warnings:
+
+   ```bash
+   # This skill only
+   npx -y skills add yigitkonur/skills-by-yigitkonur/skills/herdr -y -g -a universal
+
+   # Or the full pack
+   npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+   ```
 
 ## Use
 
 Invoke `/herdr`, or ask naturally:
 
-- "Use Herdr to spin up 3 parallel workers in isolated worktrees for these issues."
-- "Open a draft PR for this feature, review it in a clean context with a reviewer agent, and merge it."
+- "Use Herdr to dispatch parallel AGY workers across isolated worktrees for these tasks."
+- "Orchestrate an exact-SHA clean-context review of this candidate branch with a fresh reviewer agent."
 - "Inspect the agent in the neighboring Herdr pane and resolve its blocked question."
-- "Coordinate this multi-step refactor across Herdr tabs with push callbacks."
+- "Coordinate this multi-step refactor across Herdr tabs with push callbacks and atomic YAML reports."

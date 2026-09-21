@@ -1,73 +1,52 @@
-# Resume a Stopped Worker
+# Recovery, Resumption & Quota Safeguards
 
-Use this procedure only after READ confirms that a worker stopped unexpectedly with unfinished authorized work. A normal wait timeout or an `unknown` classification belongs first to [event-monitoring.md](event-monitoring.md), not immediate worker restart.
+## 1. Process Reconciliation vs. Blind Kills
 
----
+**Strictly prohibited**: Executing `kill -9`, blanket `pkill -f <agent>`, or terminating processes without inventory. Blind termination corrupts Git index files, orphans POSIX semaphores, and destroys partial work.
 
-## 1. Inspect and Classify First
+Before restarting an agent or retrying a task:
+1. **Query Processes**: `herdr pane process-info --pane <PANE_ID>`
+2. **Reconcile Git Locks Across Worktrees**:
+   Discover the dynamic lock path (`git -C "$WORKTREE_PATH" rev-parse --git-path index.lock`). Check if actively held with `lsof`. Only remove if unheld and prior pane processes are dead.
+3. **Reconcile Pending Files**: Check for unfinalized `.partial` reports before removing or restarting.
 
-Read the current pane before intervening:
+## 2. Safe Restart of Crashed Agent Sessions
 
-```bash
-herdr agent read <target> --source visible --lines 25
-herdr agent read <target> --source recent-unwrapped --lines 50
-```
+**Never execute `herdr agent start` over a live TUI.**
+1. Verify the pane is resting cleanly at a shell prompt (`$`, `%`):
+   `herdr pane read --source visible --lines 5 <PANE_ID>`
+2. Confirm previous processes have fully terminated via `herdr pane process-info --pane <PANE_ID>`.
+3. Launch the agent with explicitly configured model/effort.
 
-Determine the exact operating state:
-- **Still Working**: Thinking or tool call is executing. Do not inject another prompt; renew the bounded wait.
-- **Finished Turn**: The prompt is at rest. Consume the report or deliverable.
-- **Interactive Question / Modal**: The agent is paused on `ask_question` or a confirmation menu (`[y/N]`). Do NOT send text! Use the modal bridge:
-  ```bash
-  herdr agent send-keys <target> down enter
-  ```
-- **CLI / Session Crash**: The agent process aborted or crashed back to the shell prompt.
+## 3. Quota & Hang Recovery Safeguards (§4.6)
 
----
+Quota or hang recovery is invoked **only for an observed quota exhaustion or established stall**, never for a live spinner, active thinking turn, or brief silence alone.
 
-## 2. Recovery Strategies
-
-### Strategy A: The Interactive Continuation Prompt
-If the agent CLI is still alive and resting at its interactive prompt after an error or interruption, submit a single targeted continuation prompt:
-
-```bash
-herdr agent prompt <target> \
-  "Your previous command encountered an error. Review the error in your terminal history, inspect git status, and resume the task from the last valid checkpoint."
-```
-
-### Strategy B: Restarting Crashed Agent Session
-If the agent process exited back to the shell prompt:
-1. Verify the pane is sitting at a shell prompt (`$` or `%`).
-2. Identify the active model used by the orchestrator (`$CURRENT_MODEL`).
-3. Re-launch the agent CLI using the same model:
+When an agent encounters genuine quota exhaustion or a verified hard hang:
+1. **Targeted Interruption**: Send a surgical `ctrl+c` to interrupt the stuck agent turn. Do not issue blanket kills.
+2. **State & Conversation Inventory**: Record the exact AGY conversation ID (not merely pane/terminal), isolated worktree path, verified model, and any pending operations or uncommitted edits.
+3. **Pre-Resume Verification**: Verify actual foreground process state and confirm no live TUI remains before resuming.
+4. **Exact Conversation Resume**: Reconnect to the exact conversation history using its explicit ID:
    ```bash
-   herdr agent start <name> --kind <kind> --pane <pane_id> -- --model "$CURRENT_MODEL"
+   agy --conversation "$AGY_CONVERSATION_ID"
    ```
-4. Re-submit the mission brief pointing to existing progress in the worktree:
-   ```bash
-   herdr agent prompt <target> \
-     "Resuming task on feature/<task>. Previous changes exist in .worktrees/<task>. Check git status and tests, then complete remaining acceptance criteria."
-   ```
+   **Never use `--continue`**, which attaches to the most recent conversation and can cross-contaminate lane state.
+5. **Composer Verification & Single Prompt**: Verify the exact conversation ID and confirm an input-ready composer before transmitting **exactly ONE** prompt message: `"continue"`.
+6. **Continuation vs. Blocker Rule**:
+   - If actual tool progress and turns resume, continue the task.
+   - If the same quota failure returns immediately, **stop**. Do not enter a retry loop, claim a quota reset, or guess unassigned model tiers. Either switch to an explicitly authorized available model tier or escalate a concrete capacity blocker to the manager.
 
-### Strategy C: Interrupted Tool Call Recovery
-If an agent CLI is permanently hung on a frozen subprocess or deadlocked tool call:
-1. Send `ctrl+c` to cancel the hung command:
-   ```bash
-   herdr agent send-keys <target> ctrl+c
-   ```
-2. Read the visible screen to confirm return to prompt:
-   ```bash
-   herdr agent read <target> --source visible --lines 10
-   ```
-3. Once back at prompt, issue continuation instructions.
+## 4. Manager Session Recovery & Selective Resume
 
----
+If the Engineering Manager session crashes or disconnects:
+1. **Relinquishment Proof**: Confirm the previous manager process has actually terminated before initializing a replacement.
+2. **Selective State & Report Intake**: Read the compact active checkpoint (`state.yaml`), active ownership, dedupe index, and pending effects. Read only relevant unconsumed or suspect reports from disk; **do not require re-reading all historical reports**.
+3. **Structural Shape Verification**: Check expected top-level keys (`mission_id`, `status`, `manager`, `cto`, `report_root`, `assignments`, `decisions`) and structured mappings. Verify keys were not swallowed into multiline strings by indentation errors.
+4. **Preserve Healthy Workers**: Do NOT terminate or restart healthy worker lanes that are actively synthesizing code. Re-establish observer handles.
+5. **Attempts & Re-registration**: Keep manager attempts and registered identities honest; do not advance tasks on ambiguous provenance.
 
-## 3. Bounded Recovery Rule
+## 5. Bounded Recovery Rule & Blocker Escalation
 
-After **two consecutive failed recovery attempts** for the same failure mode:
-1. Stop automated retries.
-2. Capture the full terminal transcript to a debug file:
-   ```bash
-   herdr agent read <target> --source recent-unwrapped --lines 200 > /tmp/worker-crash-dump.log
-   ```
-3. Report the blocker to the orchestrator/user with the exact failure evidence.
+- **Rule of Two Failures**: If two consecutive recovery attempts for the same failure mode fail to advance the task, **stop automated retries**.
+- **Evidence Capture & Blocker Report**: Capture recent diagnostic output (`herdr agent read <TARGET> --source recent-unwrapped --lines 100`) and publish an immutable blocker report (`status: blocked`, `requested_action: unblock_decision`).
+- **Notify Supervisor**: Dispatch native notice without `--wait` to the discovered manager return pane.
