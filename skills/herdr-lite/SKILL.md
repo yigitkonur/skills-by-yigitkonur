@@ -108,13 +108,20 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      ```bash
      herdr agent wait "$WORKER_PANE_ID" --until done --until idle --timeout 120000
      ```
-   - **Supervising the EM (CTO)**:
-     ```bash
-     herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
-     ```
-   - **Non-Monolithic Streaming Wait Rule (Per-Task Wait, Zero Wave-Blocking)**:
-     DO NOT wait for all workers in a wave to finish before starting reviews! Waiting on a wave must be per-task. As each individual worker reaches `done` or `idle` with an open PR, IMMEDIATELY initiate its side-by-side review (`herdr pane split`). The entire wave's wait does NOT have to finish before individual reviews begin. Streaming review pipelines eliminate wave-blocking idle time.
-   - **Strictly Prohibited**: Blind `sleep` loops (e.g. `sleep 10`) and detached polling without checking agent state. Always track state changes deterministically through `herdr agent wait`.
+    - **Supervising the EM (CTO - Asynchronous & Decoupled)**:
+      ```bash
+      # Execute wait asynchronously in background so turn yields immediately to user:
+      herdr agent wait "$EM_PANE_ID" --until idle
+      ```
+    - **Immediate Dispatch Acknowledgment & Conversational Cadence**:
+      Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states. Never block the interactive session with long synchronous waits (`--timeout 60000`). Run `herdr agent wait` or `herdr pane wait-output` asynchronously in the background so the user receives continuous status and does not experience a hung/frozen interface.
+    - **Context Window Hygiene**:
+      Do NOT run unbounded commands (e.g. `gh issue view <ID>` dumping >1,000 lines) that bloat context and cause inference lag. Rely on local `specs/*.md` files or targeted queries (`gh issue view <ID> --json title,number`).
+    - **Proportional Worker Preflight**:
+      Workers (`impl-*`) must NOT run heavyweight full-repo verification suites (e.g. full `eslint` or full test matrices) upfront as a blind pre-flight ritual. Pre-flight is strictly lightweight: verify git status, read spec, and run targeted tests. Heavy multi-minute suites belong strictly at the Definition of Done (DoD) PR review gate.
+    - **Non-Monolithic Streaming Wait Rule (Per-Task Wait, Zero Wave-Blocking)**:
+      DO NOT wait for all workers in a wave to finish before starting reviews! Waiting on a wave must be per-task. As each individual worker reaches `done` or `idle` with an open PR, IMMEDIATELY initiate its side-by-side review (`herdr pane split`). The entire wave's wait does NOT have to finish before individual reviews begin. Streaming review pipelines eliminate wave-blocking idle time.
+    - **Strictly Prohibited**: Blind `sleep` loops (e.g. `sleep 10`) and detached polling without checking agent state. Always track state changes deterministically through `herdr agent wait`.
 
 ---
 
