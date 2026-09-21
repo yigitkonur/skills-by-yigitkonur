@@ -1,6 +1,6 @@
 {
   "name": "run-ego-e2e",
-  "version": "1.0.78",
+  "version": "1.0.79",
   "description": "Use if running user-faithful agentic end-to-end web tests using ego-browser, testing PR features, verifying live journeys, and parallelizing test runs across Herdr workspaces.",
   "author": {
     "name": "Yigit Konur",
