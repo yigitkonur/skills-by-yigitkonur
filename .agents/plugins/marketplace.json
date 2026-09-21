@@ -545,6 +545,18 @@
       "category": "Productivity"
     },
     {
+      "name": "run-ego-e2e",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-ego-e2e"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "run-github-scout",
       "source": {
         "source": "local",

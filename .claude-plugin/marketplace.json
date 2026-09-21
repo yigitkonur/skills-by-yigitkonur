@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 58 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 59 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.75",
       "category": "bundle",
       "strict": false,
@@ -61,6 +61,7 @@
         "./skills/run-agent-device",
         "./skills/run-codex-review-loop",
         "./skills/run-deep-research",
+        "./skills/run-ego-e2e",
         "./skills/run-github-scout",
         "./skills/run-railway",
         "./skills/run-repo-cleanup",
@@ -174,7 +175,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Frontend and backend testing — create, diagnose, and release-gate TestSprite browser journeys and API contracts against deployed services.",
+      "description": "Frontend and backend testing — create, diagnose, and release-gate TestSprite journeys, agentic ego-browser E2E flows, and API contracts against deployed services.",
       "version": "1.0.75",
       "category": "bundle",
       "tags": [
@@ -183,7 +184,8 @@
       "strict": false,
       "skills": [
         "./skills/run-testsprite-backend",
-        "./skills/run-testsprite-frontend"
+        "./skills/run-testsprite-frontend",
+        "./skills/run-ego-e2e"
       ]
     },
     {
@@ -816,6 +818,17 @@
       "strict": false,
       "skills": [
         "./skills/run-deep-research"
+      ]
+    },
+    {
+      "name": "run-ego-e2e",
+      "source": "./",
+      "description": "Use if running user-faithful agentic end-to-end web tests using ego-browser, testing PR features, verifying live journeys, and parallelizing test runs across Herdr workspaces.",
+      "version": "1.0.75",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/run-ego-e2e"
       ]
     },
     {

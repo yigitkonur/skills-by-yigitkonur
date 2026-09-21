@@ -1,0 +1,35 @@
+{
+  "name": "run-ego-e2e",
+  "version": "1.0.75",
+  "description": "Use if running user-faithful agentic end-to-end web tests using ego-browser, testing PR features, verifying live journeys, and parallelizing test runs across Herdr workspaces.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-ego-e2e"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-ego-e2e",
+    "shortDescription": "Use if running user-faithful agentic end-to-end web tests using ego-browser, testing PR features, verifying live journeys, and parallelizing test runs across Herdr workspaces.",
+    "longDescription": "Install only the run-ego-e2e workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-ego-e2e skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

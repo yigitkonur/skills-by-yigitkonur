@@ -90,8 +90,8 @@ GROUPS = {
     ),
     "yk-testing": (
         "testing",
-        "Frontend and backend testing — create, diagnose, and release-gate TestSprite browser journeys and API contracts against deployed services.",
-        ["run-testsprite-backend", "run-testsprite-frontend"],
+        "Frontend and backend testing — create, diagnose, and release-gate TestSprite journeys, agentic ego-browser E2E flows, and API contracts against deployed services.",
+        ["run-testsprite-backend", "run-testsprite-frontend", "run-ego-e2e"],
     ),
     "yk-build": (
         "build",
