@@ -39,9 +39,9 @@ herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45
 # 5. Full-Job Teardown: ONLY once PR is confirmed MERGED to main:
 gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR not merged; aborting teardown"; exit 1; }
 test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree dirty; aborting teardown"; exit 1; }
-herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
-herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
-herdr worktree remove --workspace "$WS_ID"
+herdr pane close "$REV_PANE_ID" 2>/dev/null || true
+herdr pane close "$IMPL_PANE_ID" 2>/dev/null || true
+herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; aborting teardown"; exit 1; }
 git -C "$REPO_ROOT" branch -D "$BRANCH"
 git -C "$REPO_ROOT" remote prune origin
 

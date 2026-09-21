@@ -188,11 +188,18 @@ Instructions:
 # For each running implementer, wait deterministically for task completion:
 herdr agent wait "$IMPL_PANE_ID" --until done --until idle --timeout 180000
 
-# Immediately launch its reviewer without waiting for other tasks in the wave:
+# Confirm PR is open before launching reviewer:
+PR_URL="$(gh pr list --head "$BRANCH" --json url -q '.[0].url')"
+test -n "$PR_URL" || { echo "No PR open on $BRANCH; awaiting completion"; exit 1; }
+
+# Immediately launch its reviewer in Pane 2 side-by-side:
 SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
 REV_PANE_ID="$(echo "$SPLIT_JSON" | jq -er '.result.pane.pane_id')"
-herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash" --dangerously-skip-permissions
-herdr agent wait "$REV_PANE_ID" --until idle --timeout 60000
+herdr agent start "rev-${TASK_ID}" --kind agy --pane "$REV_PANE_ID" --timeout 45000 -- --model "gemini-3.8-flash-high" --dangerously-skip-permissions
+
+# Deliver the deep review prompt before entering wait state:
+herdr agent prompt "$REV_PANE_ID" "/boost /herdr Review PR $PR_URL on branch $BRANCH. Audit against specs, run hermetic verification, and post approval or fix patches directly."
+herdr agent wait "$REV_PANE_ID" --until idle --timeout 180000
 ```
 
 ---

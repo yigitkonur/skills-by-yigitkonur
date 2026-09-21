@@ -108,13 +108,17 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      ```bash
      herdr agent wait "$WORKER_PANE_ID" --until done --until idle --timeout 120000
      ```
-    - **Supervising the EM (CTO - Asynchronous & Decoupled)**:
+    - **Supervising the EM (CTO - Asynchronous & Decoupled with Bounded Timeout)**:
       ```bash
-      # Execute wait asynchronously in background so turn yields immediately to user:
-      herdr agent wait "$EM_PANE_ID" --until idle
+      # Execute wait asynchronously in background with explicit bounded timeout (max 180000ms):
+      herdr agent wait "$EM_PANE_ID" --until idle --timeout 180000
       ```
-    - **Immediate Dispatch Acknowledgment & Conversational Cadence**:
-      Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states. Never block the interactive session with long synchronous waits (`--timeout 60000`). Run `herdr agent wait` or `herdr pane wait-output` asynchronously in the background so the user receives continuous status and does not experience a hung/frozen interface.
+    - **Mandatory Bounded Timeouts on All Waits (Zero Infinite Waits)**:
+      EVERY `herdr agent wait` and `herdr pane wait-output` command MUST specify an explicit bounded `--timeout <MS>` (default 180000ms / 3m, maximum 300000ms / 5m). Calling wait commands without `--timeout` is strictly forbidden to prevent agents from being stuck indefinitely in the air.
+    - **Resilient Pattern Matching & Fallback Diagnostics**:
+      When using `herdr pane wait-output`, never match on an overly narrow or fragile pattern without handling timeouts. If `--timeout` expires, the agent MUST NOT hang silently; it must immediately read the live pane buffer (`herdr pane read <PANE_ID> --lines 50`), inspect foreground processes (`herdr pane process-info`), diagnose the actual state, and yield an actionable status update to the user.
+    - **Immediate Dispatch Acknowledgment & Conversational Cadence (Max 30s Silence Limit)**:
+      Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. Agents must maintain a conversational heartbeat (max 30–60s silence limit). When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states. Never block the interactive session with long synchronous waits (`--timeout 60000`). Run `herdr agent wait` or `herdr pane wait-output` asynchronously in the background so the user receives continuous status and does not experience a hung/frozen interface.
     - **Context Window Hygiene**:
       Do NOT run unbounded commands (e.g. `gh issue view <ID>` dumping >1,000 lines) that bloat context and cause inference lag. Rely on local `specs/*.md` files or targeted queries (`gh issue view <ID> --json title,number`).
     - **Proportional Worker Preflight**:
@@ -137,9 +141,12 @@ Antigravity operates a continuous, multi-wave streaming orchestration loop:
    > **Implementation Pane Preservation**: Never close or kill the implementation pane when a review begins! The implementer pane holds vital execution logs, reasoning transcripts, and test traces needed for review and fix-and-verify loops. Both panes remain alive and visible side-by-side.
 5. **Deep Review-and-Fix**: The reviewer audits exact commit SHAs with domain skills (`code-review`, `tdd`, `audit-completion`), authors test/bug patches directly in the worktree, and posts GitHub PR approval.
 6. **EM Handover & CTO Serial Rebase-Merge**: Once all wave lanes report `DONE`, the EM outputs a structured handover (`WAVE_COMPLETE: wave=... prs=[...] shas=[...] next_wave=... next_issues=[...]`). The CTO actively captures this via `herdr pane read`, validates baseline gates, serially rebases candidate PRs onto `main`, and squash-merges.
-7. **Full-Job Teardown, Worktree Removal & Milestone Retirement**:
-   - *Merge Integrity Verification*: Confirm PR is MERGED on remote before touching checkouts (`gh pr view "$PR_URL" --json state -q .state`).
-   - *Worktree Teardown*: Execute `herdr worktree remove --workspace "$WS_ID"` (removes disk checkout and unregisters workspace).
+7. **Automated Lifecycle Reaping & Full-Job Teardown**:
+   Never leave completed task workspaces or tabs lingering open in Herdr. As soon as PR merge is confirmed, actively reap all resources:
+   - *Merge Integrity Verification*: Confirm PR is MERGED on remote before touching checkouts (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`).
+   - *Pane Closure*: Close reviewer and implementer panes (`herdr pane close "$REV_PANE_ID" 2>/dev/null || true`, `herdr pane close "$IMPL_PANE_ID" 2>/dev/null || true`).
+   - *Worktree Teardown*: Execute `herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; aborting teardown"; exit 1; }`.
+   - *Standalone Workspace/Tab Cleanup*: If standalone workspaces or tabs were opened, close them via `herdr workspace close "$WS_ID"` or `herdr tab close "$TAB_ID"`.
    - *Branch Cleanup*: Delete local branch post-removal (`git branch -D "$BRANCH"`) and prune remotes (`git remote prune origin`).
    - *Milestone Retirement*: When all waves/milestones conclude, retire the EM pane (`herdr pane close "$EM_PANE_ID"`).
 

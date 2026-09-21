@@ -94,18 +94,31 @@ Herdr establishes an explicit, two-tier leadership pair in the primary control w
    - For subsequent waves (Waves 2–5), the EM natively provisions worktree workspaces (`herdr worktree create`). Independent workspaces are strictly forbidden.
    - Workers, reviewers, and EM orchestrate among themselves.
 
-5. **CTO Sole-Follower Invariant & Wait Tracking Mandate**:
-   - Once initialized, the **CTO tracks and follows ONLY the Engineering Manager**:
-     ```bash
-     # Deterministically wait for EM to complete its turn before checking status:
-     herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
-     herdr pane read "$EM_PANE_ID" --lines 100
-     ```
-   - **Deterministic Agent Wait Tracking**: Every running agent MUST be tracked with `herdr agent wait <TARGET_PANE> [--until <STATUS>] [--timeout <MS>]`. Unhooked `sleep` loops and detached polling without agent state checks are strictly prohibited.
+5. **CTO Sole-Follower Invariant & Asynchronous Wait Tracking**:
+   - Once initialized, the **CTO tracks and follows ONLY the Engineering Manager**.
+   - **Mandatory Bounded Timeouts on All Waits (Zero Infinite Waits)**:
+     - EVERY `herdr agent wait` and `herdr pane wait-output` command MUST specify an explicit bounded `--timeout <MS>` (default 180000ms / 3m, maximum 300000ms / 5m). Calling wait commands without `--timeout` is strictly forbidden to prevent agents from hanging in the air for hours.
+     - When matching output patterns, never wait on an overly fragile narrow regex without handling generic errors or timeouts. If `--timeout` expires, the agent MUST NOT hang silently; it must immediately read the live pane buffer (`herdr pane read <PANE_ID> --lines 50`), inspect foreground processes (`herdr pane process-info`), diagnose the actual state, and yield an actionable status update to the user.
+   - **Immediate Dispatch Acknowledgment & Conversational Cadence (Max 30s Silence Limit)**:
+     - Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. Agents must maintain a conversational heartbeat (max 30–60s silence limit).
+     - When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states.
+     - Never block the interactive session with long synchronous waits (`--timeout 60000`). Run `herdr agent wait` or `herdr pane wait-output` asynchronously in the background so the user receives continuous status and does not experience a hung/frozen interface.
+   - **Automated Lifecycle Reaping & Workspace/Tab Cleanup**:
+     - Completed tasks must be automatically reaped immediately upon remote PR merge verification (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`).
+     - Panes must be closed (`herdr pane close "$REV_PANE_ID" 2>/dev/null || true`, `herdr pane close "$IMPL_PANE_ID" 2>/dev/null || true`).
+     - Worktrees must be removed: `herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; aborting teardown"; exit 1; }`.
+     - Standalone workspaces or tabs must be closed: `herdr workspace close "$WS_ID"`.
+     - Never leave completed tasks or dead tabs/workspaces lingering open in Herdr.
+   - **Context Window Hygiene**:
+     - Do NOT run unbounded commands (e.g. `gh issue view <ID>` dumping >1,000 lines) that bloat context and cause inference lag. Rely on local `specs/*.md` files or targeted queries (`gh issue view <ID> --json title,number`).
+   - **Deterministic Agent Wait Tracking**: Every running agent MUST be tracked with `herdr agent wait <TARGET_PANE> [--until <STATUS>] [--timeout <MS>]` or `herdr pane wait-output`. Unhooked `sleep` loops and detached polling without agent state checks are strictly prohibited.
    - When the EM emits `WAVE_COMPLETE`, the CTO verifies baseline gates, performs the serial squash-merges onto `main`, and signals the EM to proceed.
 
-6. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
-7. **Non-Pane CTO Boundary**: When the CTO operates from a Root PTY outside Herdr, explicit-target CLI commands (`herdr agent read`, etc.) work, but native prompt callbacks targeting the CTO do not exist (`cto.pane_id: null`). The CTO reads reports and `state.yaml` directly from the shared run root on disk.
+6. **Proportional Worker Preflight**:
+   - Workers (`impl-*`) must NOT run heavyweight full-repo verification suites (e.g. full `eslint` or full test matrices) upfront as a blind pre-flight ritual. Pre-flight is strictly lightweight: verify git status, read spec, and run targeted tests. Heavy multi-minute suites belong strictly at the Definition of Done (DoD) PR review gate.
+
+7. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
+8. **Non-Pane CTO Boundary**: When the CTO operates from a Root PTY outside Herdr, explicit-target CLI commands (`herdr agent read`, etc.) work, but native prompt callbacks targeting the CTO do not exist (`cto.pane_id: null`). The CTO reads reports and `state.yaml` directly from the shared run root on disk.
 
 ### 2b. Live Coordinates & Model Verification (All Panes)
 
