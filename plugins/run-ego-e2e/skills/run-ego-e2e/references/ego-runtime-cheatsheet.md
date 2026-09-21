@@ -65,3 +65,66 @@ This reference provides a concise, high-speed API index for writing `ego-browser
 | `js` | `await js(String.raw\`(() => { ... })()\`)` | Evaluates script in page context. Returns evaluated result. |
 | `cdp` | `await cdp(method, params)` | Raw Chrome DevTools Protocol command. |
 | `cliLog` | `cliLog(message)` | Prints message to terminal output. |
+
+---
+
+## 6. Diagnostic Playbook: Resolving Common E2E Traps
+
+### Trap 1: Unresponsive Clicks (Event Bubbling & StopPropagation)
+When clicking an element (`click('...')`) succeeds without throwing errors, but triggers zero UI state change or network dispatch:
+```js
+const diag = await js(String.raw`(() => {
+  const el = document.querySelector('.my-button');
+  if (!el) return { error: 'Element not found' };
+  
+  // 1. Check if click reaches document (delegated listeners)
+  let heardAtDoc = false;
+  const probe = () => { heardAtDoc = true; };
+  document.addEventListener('click', probe, { once: true });
+  el.click();
+  
+  // 2. Check parent containers for stopPropagation or pointer-events: none
+  let current = el;
+  const blockers = [];
+  while (current && current !== document.body) {
+    const inlineClick = current.getAttribute('onclick') || '';
+    if (inlineClick.includes('stopPropagation')) blockers.push({ tag: current.tagName, class: current.className, blocker: 'onclick-stopPropagation' });
+    const pe = window.getComputedStyle(current).pointerEvents;
+    if (pe === 'none') blockers.push({ tag: current.tagName, class: current.className, blocker: 'pointer-events: none' });
+    current = current.parentElement;
+  }
+  
+  return { heardAtDoc, blockers, outerHTML: el.outerHTML };
+})()`)
+cliLog('Click Diagnosis: ' + JSON.stringify(diag, null, 2))
+```
+
+### Trap 2: Session Boot Gate Redirects (The `/auth` Redirect Trap)
+When navigating directly to `/auth` unexpectedly redirects to `/` or the dashboard:
+```js
+// The SPA boot gate detects an active session in storage and forces a redirect.
+// Preflight: Explicitly clear authentication state for auth flow tests:
+await js(String.raw`(() => {
+  localStorage.removeItem('supabaseAuth');
+  localStorage.removeItem('mockAuth');
+  sessionStorage.clear();
+})()`)
+await gotoAndWait('https://zeoradar.endpoints.lol/auth', { timeout: 20 })
+```
+
+### Trap 3: URL Token Hash Cleansing Verification
+When testing OAuth/SAML token sanitization where `#access_token=...` must be cleansed:
+```js
+const tokenUrl = 'https://zeoradar.endpoints.lol/auth#access_token=test_jwt&token_type=bearer'
+await openOrReuseTab(tokenUrl, { wait: true, timeout: 20 })
+await wait(2)
+
+const hashCheck = await js(String.raw`(() => ({
+  href: window.location.href,
+  hash: window.location.hash,
+  hasTokenInHash: window.location.hash.includes('access_token'),
+  hasTokenInHref: window.location.href.includes('access_token')
+}))()`)
+cliLog('Hash Sanitization Proof: ' + JSON.stringify(hashCheck))
+if (hashCheck.hasTokenInHref) throw new Error('Token leaked in address bar!');
+```

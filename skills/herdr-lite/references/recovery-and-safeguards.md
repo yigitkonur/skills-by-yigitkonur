@@ -77,7 +77,15 @@ Resource cleanup follows two strict gates:
   ```
 
 ### Gate B: Worktree Removal Gate (`git worktree remove`)
-- Worktree cleanup is a separate engineering gate; closing panes or workspaces does not authorize deleting dirty checkouts.
+- Worktree cleanup is a separate engineering gate; closing panes or workspaces does not authorize deleting checkouts.
+- **Mandatory PR Remote Merge Gate**:
+  Never remove a worktree workspace or delete its branch until the PR has been verified as MERGED on GitHub remote:
+  ```bash
+  gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || {
+    echo "ERROR: PR $PR_URL is not yet merged. Preserving worktree $WORKTREE_PATH"
+    exit 1
+  }
+  ```
 - **Cleanliness Check**:
   ```bash
   DIRTY_FILES="$(git -C "$WORKTREE_PATH" status --porcelain)"
@@ -89,7 +97,8 @@ Resource cleanup follows two strict gates:
   ```
 - **Removal**:
   ```bash
-  git worktree remove "$WORKTREE_PATH"
+  herdr worktree remove --workspace "$WORKSPACE_ID"
+  # Or: git worktree remove "$WORKTREE_PATH"
   ```
 - **Branch Retirement & Prune**:
   Once the worktree is unlinked, delete the local merged branch and prune remotes:
@@ -98,3 +107,21 @@ Resource cleanup follows two strict gates:
   git remote prune origin
   ```
 - *No Force Deletion*: `git worktree remove --force` is strictly prohibited without explicit human authorization.
+
+---
+
+## 4. Subagent Model Tiering & Concurrency Guard (429 Quota Exhaustion Prevention)
+
+When running multi-agent swarms in parallel Herdr split panes or subagents:
+
+1. **The Concurrency Anti-Pattern**:
+   Launching 3+ subagents simultaneously using `Model: "inherit"` (defaulting to the heaviest multi-modal reasoning models like Gemini 3.8 Flash Pro/High) exhausts individual per-minute API quotas (`RESOURCE_EXHAUSTED (code 429)`) within ~60 tool invocations.
+
+2. **Strict Two-Tier Model Policy**:
+   - **Tier 1 (Heavy / Deep Reasoning)**: Reserved exclusively for CTO, strategic wave decomposition, deep architectural audits, and high-risk review (`--model gemini-3.8-flash-pro` / `inherit` / `/boost`).
+   - **Tier 2 (High-Throughput / Fast Workers)**: Implementers, bugfix engineers, exploratory test scouts, linting, syntax gates, and TDD regression suites MUST specify high-throughput flash models (`--model gemini-3.8-flash` or `Model: "flash"`).
+
+3. **Concurrency Throttling**:
+   - Limit concurrent subagents to at most **2–3 active agents** per host.
+   - If quota exhaustion (429) is observed on any agent, **immediately pause new lane dispatch**, downgrade worker tasks to `flash`, and sequence runs sequentially until rate counters reset.
+

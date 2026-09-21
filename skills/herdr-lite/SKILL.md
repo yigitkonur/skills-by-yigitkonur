@@ -68,6 +68,20 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      ```
    - Close any remaining worker panes, review panes, or temporary tabs (`herdr tab close "$TAB_ID"`).
    - Never leave idle, zombie AI agents running in the background consuming memory, API context, and cluttering `herdr pane list`.
+7. **Subagent Model Tiering & Concurrency Guard (429 Quota Exhaustion Prevention)**:
+   - **The Problem**: Spawning parallel swarms where every worker agent inherits the heaviest multi-modal model (e.g. Gemini 3.8 Flash Pro/High) exhausts per-minute API quotas (`RESOURCE_EXHAUSTED (code 429)`) within ~60 tool invocations.
+   - **Tiering Rule**:
+     - *Tier 1 (Heavy / Deep Reasoning)*: Reserved exclusively for CTO, strategic wave decomposition, deep architectural audits, and high-risk review (`--model gemini-3.8-flash-pro` / `inherit` / `/boost`).
+     - *Tier 2 (High-Throughput / Fast Workers)*: Implementers, bugfix engineers, exploratory test scouts, linting, syntax gates, and TDD regression suites MUST specify high-throughput flash models (`--model gemini-3.8-flash` or `Model: "flash"`).
+   - **Concurrency Cap**: Restrict concurrent subagents to at most 2–3 active agents per host to prevent API rate exhaustion and resource starvation.
+8. **Defect-to-Worktree Automatic Dispatch Protocol**:
+   - When an E2E test scout or QA agent isolates a reproducible defect with DOM/network evidence:
+     - Never allow the defect to linger as an unaddressed note.
+     - Immediately synthesize a focused bugfix ticket/task.
+     - Provision a dedicated worktree (`herdr worktree create`) or launch a targeted bugfix subagent with strict TDD instructions (red test first, single minimal fix, Fast Syntax Gate verification).
+     - Once verified green, merge and deploy immediately to restore production fidelity.
+9. **Worktree Removal Gate & Remote PR Merge Verification**:
+   - The default behavior of Herdr worktrees is conservative preservation: `herdr worktree remove` MUST only be called AFTER the candidate PR is verified as `MERGED` on remote GitHub (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). If a merge operation is pending, in review, or undergoing conflict resolution, worktrees must remain preserved.
 
 ---
 
@@ -205,6 +219,7 @@ Herdr-Lite strictly enforces core engineering physics:
    - *Worktree Removal Gate*: Only delete worktrees when `git status --porcelain` is strictly clean (`herdr worktree remove --workspace "$WS_ID"` or `git worktree remove "$WORKTREE_PATH"`). Dirty checkouts are preserved with a recorded reason; `--force` is prohibited.
 6. **Mandatory Merge Verification Before Worktree Removal**: Never unlink or delete a worktree checkout until the candidate PR is confirmed merged into `main`. Removing a worktree with unmerged commits causes permanent data loss.
 7. **Post-Milestone Zero-Bloat Retirement**: When all waves and milestones conclude (zero open issues, zero unmerged PRs), the CTO must immediately close the EM agent pane (`herdr pane close "$EM_PANE_ID"`) and all completed panes/tabs. Zero idle agents in the background.
+8. **Subagent Model Tiering & Concurrency Guard**: Spawning parallel workers without explicit tiering violates the rate limit safeguard. Always bind exploratory, QA, and TDD worker agents to `flash` tier (`--model gemini-3.8-flash` or `Model: "flash"`), restricting concurrent subagents to at most 2–3 active agents per host to prevent 429 quota exhaustion.
 
 ---
 

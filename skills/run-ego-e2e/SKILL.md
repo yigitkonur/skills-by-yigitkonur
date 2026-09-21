@@ -121,6 +121,19 @@ See [references/herdr-parallel-execution.md](references/herdr-parallel-execution
 | 4 | **Clean Selector Hygiene** | Element targets accept CSS selectors (`.btn`, `#modal`), `xpath=//...`, `@N` refs from the latest `snapshotText()`, or `text=...`. Never invent unsupported pseudo-selectors like `:has-text(...)` inside raw CSS. |
 | 5 | **Dedicated Teardown Round** | Never append `completeTaskSpace` at the end of an active test heredoc. Always run it in a separate, dedicated final heredoc. |
 | 6 | **Zero Lingering Task Spaces** | Every test session must conclude with `{ keep: false }` unless manual human inspection was explicitly requested. |
+| 7 | **Action Verification vs Silent No-Op Detection** | Never assume `click()` succeeded just because it resolved without error. Headless synthetic clicks can be silently swallowed by `event.stopPropagation()` or `pointer-events: none` on ancestor containers. Always follow actions with an explicit DOM state verification or URL change check. |
+| 8 | **Preflight Session Reset for Auth Journeys** | When testing standalone auth/login routes (e.g. `/auth`), pre-existing tokens in `localStorage` or `sessionStorage` can trigger immediate redirect loops to the dashboard. Always invoke storage cleanup before navigating to auth entry points. |
+| 9 | **Adaptive Predicate Polling Over Hardcoded Sleep** | Replace brittle, arbitrary `wait(N)` calls with predicate polling (`while (!condition && elapsed < timeout) await wait(0.5)`) inside `js()` to ensure hydration and animations settle without race conditions. |
+
+---
+
+## 5. Inline Diagnostic Probes & Failure Triage
+
+When an interaction fails or an assertion does not pass, scouts must NOT make blind guesses. Use surgical inline diagnostic probes inside `js(...)`:
+
+1. **Unresponsive Click Diagnosis**: Probe whether the click reached `document`, and trace ancestor elements for inline `stopPropagation()` or `pointer-events: none` blockers (see [references/ego-runtime-cheatsheet.md §6 Trap 1](references/ego-runtime-cheatsheet.md#trap-1-unresponsive-clicks-event-bubbling--stoppropagation)).
+2. **URL Hash Sanitization Proof**: When testing OAuth redirects or hash callbacks, inspect `window.location.hash` and `window.location.href` to prove sensitive tokens (`#access_token=...`) are sanitized via `history.replaceState` without leaking into browser history.
+3. **Modal & Drawer Escape Dismissal**: Verify both explicit close buttons (`[data-action="close-..."]`) and keyboard `Escape` dismissals work cleanly without leaving orphaned backdrop overlays (`.modal-backdrop`).
 
 ---
 
@@ -128,6 +141,6 @@ See [references/herdr-parallel-execution.md](references/herdr-parallel-execution
 
 | Reference | When to Read | Topics |
 |---|---|---|
-| [references/test-matrix-and-recipes.md](references/test-matrix-and-recipes.md) | Writing test scripts for standard web application patterns. | Brand selection, metric cards, filter chips, theme toggles, i18n localization, modals, billing portals. |
+| [references/test-matrix-and-recipes.md](references/test-matrix-and-recipes.md) | Writing test scripts for standard web application patterns. | Brand selection, metric cards, filter chips, theme toggles, i18n localization, modals, billing portals, OAuth & SAML SSO, sliding drawers. |
 | [references/herdr-parallel-execution.md](references/herdr-parallel-execution.md) | Orchestrating multi-agent parallel test fleets via Herdr. | Workspace provisioning, disjoint task space assignment, callback reporting, pane retirement. |
-| [references/ego-runtime-cheatsheet.md](references/ego-runtime-cheatsheet.md) | Looking up syntax, flags, and options for ego-browser helpers. | Navigation, observation, mouse/scroll, keyboard, evaluation, and task space control API. |
+| [references/ego-runtime-cheatsheet.md](references/ego-runtime-cheatsheet.md) | Looking up syntax, flags, and options for ego-browser helpers. | Navigation, observation, mouse/scroll, keyboard, evaluation, task space control API, and 5-point diagnostic playbook. |
