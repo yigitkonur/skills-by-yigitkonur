@@ -1,6 +1,6 @@
 {
   "name": "herdr",
-  "version": "1.0.75",
+  "version": "1.0.76",
   "description": "Use if orchestrating coding agents, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.",
   "author": {
     "name": "Yigit Konur",
