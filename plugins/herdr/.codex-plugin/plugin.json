@@ -1,6 +1,6 @@
 {
   "name": "herdr",
-  "version": "1.0.81",
+  "version": "1.0.82",
   "description": "Use if orchestrating coding agents, parallel worktrees, split panes, or session lifecycle via Herdr CLI across direct, task, or managed workflows.",
   "author": {
     "name": "Yigit Konur",
