@@ -52,7 +52,7 @@ Resource cleanup follows three distinct, decoupled engineering stages: pane reti
 
 ### Prerequisites Before Worktree Removal:
 1. **Delivery / Preservation Verification & Retained Commit Reachability**:
-   - Ensure explicit retained commit reachability for ALL paths: a remote PR merged status or GitHub squash merge alone does NOT preserve the author's exact commit object in local git history. Verify the author's candidate commit object ID is preserved in an explicit local ref, branch, or run-root patch before worktree checkout removal.
+   - Ensure explicit retained commit reachability for ALL paths: a remote PR merged status or GitHub squash merge alone does NOT preserve the author's exact commit object in local git history. Verify the author's candidate commit object ID is preserved in an explicit retained local Git ref (`git tag` or `refs/archive/...`), local branch, or verified bundle/object archive (`git bundle create ...`) before worktree checkout removal (a textual run-root patch or completion report preserves diff content separately, but does NOT establish Git object reachability).
    - If delivered via PR: verify PR is confirmed merged on remote:
      ```bash
      gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"

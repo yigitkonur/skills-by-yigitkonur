@@ -31,7 +31,7 @@ This reference codifies review mechanics, exact commit object ID binding, failur
    - Reviewers do NOT self-approve their own work. If a reviewer authors production fixes directly, it transfers to the author role, requiring a different independent reviewer to perform the final approval.
 2. **Evidence Quality Standards**:
    - Do NOT certify visual or interactive UI behavior from code formatters, linters, or unit tests alone. Visual or browser behavior requires actual rendering evidence or browser test verification.
-   - Report requested runtime/model separately from observed runtime/model if the live model was not independently proven from TUI headers or process inspection.
+   - Report requested runtime/model separately from observed runtime/model. Process tree or `argv` inspection proves launch intent or binary defaults, but does NOT prove runtime-selected model or effort; true model verification requires inspecting native TUI headers, status bars, menus, or native session queries. If native verification is unavailable, explicitly state that the observed model is unverified.
 3. **Direct Verification Commands**:
    Execute repository-authorized syntax, typecheck, and test commands (e.g. `npm test`, `pytest`, `cargo test`, `make test`, `python3 scripts/validate-skills.py`):
    ```bash

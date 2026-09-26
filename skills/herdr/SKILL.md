@@ -25,11 +25,11 @@ Select the operating mode based on task scope and complexity:
 |---|---|---|---|
 | **Direct Operation (Mode 1)** | Quick inspection, 1 verification command, bug diagnosis, bounded fix | Current pane or 1 sibling pane; no EM | Zero: no issues, no PRs, no DAG, no YAML |
 | **Task Execution (Mode 2)** | 1 cohesive delivery or up to 2 independent lanes | Direct parent supervision; writer + reviewer | Light: task brief, native reports, exact SHA |
-| **Managed Mission (Mode 3)** | 3+ active lanes, cross-repo work, multi-wave DAG | Dedicated EM agent; write worktrees + read tabs | Full: `state.yaml`, immutable YAML, dynamic DAG |
+| **Managed Mission (Mode 3)** | 3+ active implementation areas, coordinated cross-repo delivery, multi-wave DAG | Dedicated EM agent; write worktrees + read tabs | Full: `state.yaml`, immutable YAML, dynamic DAG |
 
 - **Mode 1 (Direct Operation)**: Run commands directly in the caller's pane or a single sibling pane. Reserved for genuinely bounded, low-blast-radius work (e.g. self-contained doc/test/mechanical fixes without architectural or breaking interface shifts). Never force managerial overhead on trivial tasks.
 - **Mode 2 (Task Execution)**: Parent agent manages workers directly. One whole-change writer owns coupled files; an independent reviewer verifies the candidate commit in a sibling pane or isolated checkout.
-- **Mode 3 (Managed Mission)**: Exactly ONE Engineering Manager (EM) agent in the primary workspace manages active state, dynamic DAG waves, resource quotas, and worker handback reports. Dedicated worktrees are used for write isolation; passive read-only lanes retain tab/pane routes in the existing checkout to prevent workspace sprawl.
+- **Mode 3 (Managed Mission)**: Exactly ONE Engineering Manager (EM) agent in the primary workspace manages active state, dynamic DAG waves, resource quotas, and worker handback reports. Triggered only for 3+ active implementation areas or coordinated cross-repo delivery (three independent read-only scouting or research lanes alone do NOT force an EM). Dedicated worktrees are used for write isolation; passive read-only lanes retain tab/pane routes in the existing checkout to prevent workspace sprawl.
 
 For complete routing rules, authority limits, and upgrade procedures, see [references/operating-modes.md](references/operating-modes.md).
 

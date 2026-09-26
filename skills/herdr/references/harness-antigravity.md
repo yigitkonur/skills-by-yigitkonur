@@ -44,18 +44,19 @@ This protocol is invoked ONLY when an AGY queue stalls during an extended active
                  │
                  ▼
 [ Step 1: Pre-Escape Inspection & Safety Gates ]
-  • Inspect live identity (herdr pane current --current)
-  • Inspect visible screen (herdr agent read --source visible)
+  • Is user pause active? ──► YES ──► DO NOT SEND KEYS! Hold state until explicit resume.
+  • Inspect target pane & session (herdr pane get "$TARGET_PANE") — caller --current is NOT target!
+  • Inspect visible screen (herdr agent read "$TARGET_PANE" --source visible)
   • Is agent blocked on a modal? ──► YES ──► DO NOT SEND ESCAPE! Resolve modal via visible choice.
   • Are Git mutations / writes underway? ─► YES ─► Wait for safe boundary.
                  │ (Clean safe boundary confirmed)
                  ▼
 [ Step 2: Send ONE Targeted Escape ]
-  herdr agent send-keys "$PANE_ID" esc
+  herdr agent send-keys "$TARGET_PANE" esc
                  │
                  ▼
 [ Step 3: Inspect Visible State ]
-  herdr agent read "$PANE_ID" --source visible --lines 25
+  herdr agent read "$TARGET_PANE" --source visible --lines 25
                  │
         ┌────────┴──────────────────────────────┐
         ▼                                        ▼
@@ -65,39 +66,39 @@ This protocol is invoked ONLY when an AGY queue stalls during an extended active
         │                                        │
         ▼                                        ▼
 [ Step 4: Submit Existing Text ]         Add nothing! Do NOT send Enter
-  herdr agent send-keys "$PANE_ID" enter  or paste duplicate prompts.
+  herdr agent send-keys "$TARGET_PANE" enter  or paste duplicate prompts.
   (Submit EXISTING text once; NO duplicate paste!)
 ```
 
 ### 3.1 Pre-Escape Safety Gates (Must Precede Any Key)
-1. **Verify Session Identity**:
-   Confirm caller coordinates and target pane via `herdr pane current --current`. Ensure you are targeting the verified AGY pane.
-2. **Inspect Visible Buffer**:
+1. **Preserve User Pause (First Gate)**:
+   If the session or repository was explicitly paused by the human user, **all keypresses (`esc`/`enter`), prompts, modal selections, and dispatches are strictly prohibited** until an explicit resume signal is received. Read-only inspection is permitted, but does NOT authorize key injection.
+2. **Verify Target Identity (Caller vs. Target)**:
+   Do NOT confuse caller identification with target identification. `herdr pane current --current` identifies the *caller* pane, NOT the target agent. Verify the target agent explicitly via `herdr pane get "$TARGET_PANE"`, `herdr agent get "$TARGET_AGENT"`, and `herdr pane process-info --pane "$TARGET_PANE"`, cross-checking against registered assignment metadata. A stale or detached caller blocks focus fallback; an explicit, separately verified authorized target can still be observed.
+3. **Inspect Visible Buffer**:
    ```bash
-   herdr agent read "$PANE_ID" --source visible --lines 25
+   herdr agent read "$TARGET_PANE" --source visible --lines 25
    ```
-3. **Safety Check — Modals**:
+4. **Safety Check — Modals**:
    If the agent is in state `blocked` or displays a modal/dialog (e.g. project trust prompt, question menu, permission prompt), **DO NOT SEND ESCAPE**. Sending Escape to a modal can dismiss the dialog unexpectedly or abort startup. Resolve the modal based on visible authorized choices.
-4. **Safety Check — Active Mutations**:
+5. **Safety Check — Active Mutations**:
    If `herdr pane process-info` or visible output shows active file writes, Git operations (`git commit`, `git rebase`), compiler execution, or package installation, **hold Escape**. Wait for a safe boundary before sending any key. Blind keys during modal display or mutation are strictly prohibited.
-5. **Preserve User Pause**:
-   If the session was explicitly paused by the human user, do NOT send Escape or prompts without explicit authorization to unpause.
 
 ### 3.2 Execution & Post-Escape State Branching
 At a safe boundary, the single designated wakeup owner proceeds:
 1. **Send Exactly ONE Targeted Escape**:
    ```bash
-   herdr agent send-keys "$PANE_ID" esc
+   herdr agent send-keys "$TARGET_PANE" esc
    ```
 2. **Inspect Visible State**:
    ```bash
-   herdr agent read "$PANE_ID" --source visible --lines 25
+   herdr agent read "$TARGET_PANE" --source visible --lines 25
    ```
 3. **Branch Based on Observed State**:
    - **Case A: Exact Queued Message Staged in Composer**:
      Escape interrupted the cognitive turn and promoted the queued message into the active composer (verified by an `[Interrupted]` notice on screen). Verify that the staged text matches the intended message. Submit the **EXISTING** text with exactly ONE Enter:
      ```bash
-     herdr agent send-keys "$PANE_ID" enter
+     herdr agent send-keys "$TARGET_PANE" enter
      ```
      **Never paste the message a second time**. Duplicating the paste corrupts the prompt buffer and submits duplicate prompts.
    - **Case B: Messages Already Consumed**:
@@ -105,7 +106,7 @@ At a safe boundary, the single designated wakeup owner proceeds:
    - **Case C: Composer Empty & Input-Ready with Unconsumed IDs**:
      If the queue was cleared or state is uncertain, reconstruct missing IDs from durable disk artifacts and submit one concise notice:
      ```bash
-     herdr agent prompt "$PANE_ID" "Consume existing report <REPORT_ID> at <PATH>"
+     herdr agent prompt "$TARGET_PANE" "Consume existing report <REPORT_ID> at <PATH>"
      ```
 
 ### 3.3 Child Subprocess vs. Cognitive Turn Disconnection

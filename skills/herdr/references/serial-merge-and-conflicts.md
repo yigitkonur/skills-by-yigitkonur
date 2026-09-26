@@ -47,7 +47,8 @@ POST_REBASE_SHA="$(git rev-parse HEAD)"
     ```
   - An independent reviewer must perform a focused delta review on the rebased candidate diff and issue an explicit approval decision before landing.
 
-### Step 3: Push Verified Rebased HEAD
+### Step 3: Push Verified Rebased HEAD (When Remote Delivery Authorized)
+*Only execute remote push if the mission brief explicitly authorizes remote publication or PR creation. For local-only tasks, skip Step 3 and proceed to local integration in Step 4.*
 - For new candidate branches: use standard `git push -u origin "$BRANCH_NAME"`.
 - If an authorized task branch history rewrite occurred during rebase: use lease with verified expected remote state:
   ```bash
@@ -56,21 +57,24 @@ POST_REBASE_SHA="$(git rev-parse HEAD)"
   *Never push unconditional force (`git push -f`); never use force-with-lease unless a branch rewrite was explicitly required.*
 
 ### Step 4: Execute Authorized Delivery Action
-- **If merging via PR**:
+Verify explicit delivery authority before taking actions:
+- **If delivery authority authorizes PR / remote merge**:
   ```bash
   gh pr merge "$PR_URL" --squash
   ```
   *(Do not pass `--delete-branch` here; local branch retirement occurs strictly after the worktree checkout is unlinked during Stage 3 cleanup).*
-- **If merging locally**:
-  Do NOT run `git checkout "$TARGET_BRANCH"` inside secondary worktrees! If `$TARGET_BRANCH` is checked out in the primary repository workspace, Git will abort. Instead:
-  - If operating from the primary workspace: fast-forward merge the verified branch:
-    ```bash
-    git -C "$REPO_ROOT" merge --ff-only "$BRANCH_NAME"
-    ```
-  - Or push the verified branch into the target ref:
-    ```bash
-    git push . "$BRANCH_NAME":"$TARGET_BRANCH"
-    ```
+- **If delivery authority authorizes local integration**:
+  Do NOT run `git checkout "$TARGET_BRANCH"` inside secondary worktrees! If `$TARGET_BRANCH` is checked out in the primary repository workspace, Git will abort. Do NOT attempt `git push . "$BRANCH_NAME":"$TARGET_BRANCH"` (Git refuses updates to currently checked-out branches by default via `receive.denyCurrentBranch`).
+  Instead:
+  1. Inspect primary repository workspace: verify it is on `$TARGET_BRANCH` and its working tree is clean (`git -C "$REPO_ROOT" status --porcelain`). Preserve unrelated uncommitted work.
+  2. Perform a fast-forward only merge in the primary workspace:
+     ```bash
+     git -C "$REPO_ROOT" merge --ff-only "$BRANCH_NAME"
+     ```
+  3. Verify the resulting integrated HEAD:
+     ```bash
+     git -C "$REPO_ROOT" rev-parse HEAD
+     ```
 
 ---
 
@@ -113,8 +117,10 @@ Verify syntax, types, and test suites on the resolved code using repository-auth
 
 ### Step 5: Complete Rebase Non-Interactively
 ```bash
-# Stage resolved files:
-git diff --name-only --diff-filter=U | xargs -r git add
+# Stage resolved files using NUL-delimited pathspec (safe for spaces, tabs, and newlines):
+git diff -z --name-only --diff-filter=U | xargs -0 -I{} git add -- "{}"
+# Or explicitly stage individually owned resolved paths:
+# git add -- "path/to/resolved file.ts"
 
 # Continue rebase non-interactively:
 GIT_EDITOR=true git rebase --continue

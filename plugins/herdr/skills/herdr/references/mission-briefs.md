@@ -110,4 +110,18 @@ Append to the common block for integration tasks:
 
 For long briefs containing special characters, quotes, or code fences:
 - Author the brief into a temporary markdown file at `<RUN_ROOT>/briefs/<TASK_ID>.md`.
-- Read and inject via piped input or file submission rather than passing giant strings through shell argv.
+- `herdr agent prompt` takes `<TARGET>` and `<TEXT>` as positional arguments (no stdin or `--file` option exists in the CLI). Avoid shell command substitution (`"$(cat ...)"`), which is vulnerable to quoting hazards, word splitting, and shell escaping errors.
+- Use an inline standard library Python command to read UTF-8 content directly and pass it via binary argv (`subprocess.run` without `shell=True` and without creating external helper scripts):
+  ```python
+  import subprocess
+  from pathlib import Path
+
+  target = "w33:p2"  # Explicit target pane or agent handle
+  brief_path = Path("/path/to/run-root/briefs/task-1.md")
+  prompt_text = brief_path.read_text(encoding="utf-8")
+
+  # Submit via argv list without shell expansion (omit --wait for callback notices)
+  subprocess.run(["herdr", "agent", "prompt", target, prompt_text], check=True)
+  ```
+- **Callback Notice Invariant**: Worker notices back to the supervisor must omit `--wait` to prevent callback deadlocks. Standalone plain-language prefixes remain the standard.
+- **Startup Argv Distinction**: Note that `herdr agent start` constraints differ (`herdr agent start <NAME> --kind <KIND> --pane <PANE_ID> [--timeout <MS>] [-- <AGENT_ARGS>...]`); do not extrapolate prompt positional argument behavior to agent startup.

@@ -61,7 +61,7 @@ Manage Git worktree-backed workspaces over the socket API.
 |---|---|---|
 | `create` | `herdr worktree create --cwd <DIR> --path <PATH> --branch <BRANCH> [--base <REF>] [--label <LBL>] [--no-focus]` | Provisions Git worktree, dedicated workspace, and initial root pane. |
 | `open` | `herdr worktree open --cwd <DIR> --path <PATH> [--label <LBL>] [--no-focus]` | Attaches existing worktree directory as a Herdr workspace. |
-| `list` | `herdr worktree list [--json]` | Lists all active worktree-backed workspaces. |
+| `list` | `herdr worktree list [--workspace <ID>] [--cwd <PATH>] [--trust-repository]` | Lists active worktree-backed workspaces (per installed 0.9.0 help; does not support `--json`). |
 | `remove` | `herdr worktree remove --workspace <ID> [--force]` | Unlinks worktree checkout from disk and closes Herdr workspace. Refuses dirty trees unless `--force` is passed. |
 
 ---
@@ -79,10 +79,27 @@ Manage Git worktree-backed workspaces over the socket API.
 
 ---
 
-## 5. Remote Forwarding Commands (`--machine`)
+## 5. Notification Commands (`herdr notification`)
 
-When executing across remote SSH machines:
-- Pass `--machine <PROFILE>` to direct commands to a saved SSH forwarding profile in Herdr.
-- Coordinates and IDs are server-scoped: a pane ID on machine `dev-box` is independent of a pane ID on machine `local`.
-- Paths must be expressed as absolute paths or tilde (`~`) paths on the target machine.
-- Remote operations execute headlessly over the socket protocol without requiring a local TUI window.
+| Subcommand | Syntax | Description |
+|---|---|---|
+| `show` | `herdr notification show <TITLE> [--body <TEXT>] [--position <POSITION>] [--sound <SOUND>]` | Displays a desktop toast alert. Options: `--position <top-left\|top-right\|bottom-left\|bottom-right>`, `--sound <none\|done\|request>`. |
+
+---
+
+## 6. Remote Forwarding Commands (`--machine`)
+
+When executing across remote SSH machines (per upstream lines 91–105):
+- **Server-Scoped Handles**: IDs and live agent names are scoped to one server. Two saved SSH machines can both have `w1:p1` or an agent named `reviewer`. Selecting a machine in the TUI does not retarget commands running in your pane: without `--machine`, commands use the inherited local session and socket context.
+- **Global Machine Prefix**: To control a saved SSH machine, use the same global prefix for discovery and every later command:
+  ```bash
+  herdr --machine <label-or-id> agent list
+  herdr --machine <label-or-id> pane list
+  herdr --machine <label-or-id> agent prompt <remote-agent-name> "Reply with your current status." --wait --timeout 120000
+  ```
+- **Target Selection**: The selector must be an enabled saved profile ID or a unique, case-sensitive label, not an arbitrary SSH hostname. Commands use that profile's remote session without an open TUI.
+- **Flag Separation**: Do NOT combine `--machine` with `--session` or `--remote`. Discover IDs on that machine; inherited local IDs and `--current` do not identify remote panes.
+- **Server Compatibility & Non-Fallback**: Both installations must support machine API forwarding, and the remote server must already be running and API-compatible. Forwarding never installs, starts, or restarts a server, and never falls back to Local. Local configuration, session management, installation commands, and interactive attachment are not forwarded.
+- **Path Constraints**: Remote worktree paths must be absolute, `~`, or start with `~/`; plugin link paths must be absolute.
+- **Dropped Connection Inspection**: A connection failure does not prove a mutation was not applied: inspect remote state before retrying.
+- **Profile Management**: `herdr machine list` lists saved connection profiles, not a cross-machine pane inventory (add `--json` for scripts). Profile management (add, remove, enable, disable) is user-authorized only. Removing a profile disconnects the client but does not stop remote sessions. Adding a machine uses the remote default session unless `--remote-session` is explicitly supplied. Setup asks before stopping an incompatible server (defaults to No; requires user consent). Experimental handoff is not part of `machine add`.

@@ -104,7 +104,7 @@ When Herdr detection reports `unknown` for an active Antigravity process:
 
 ## 7. Discovery, Bootstrap & Model Verification
 
-All panes identify live topology via `herdr pane current --current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
+All panes identify live topology via `herdr pane current --current` before registering. Verify the active binary and verify the live model/effort tier strictly through the runtime's native identity query (e.g. inspect the TUI header, status bar, or native session query). Process tree and `argv` inspection proves launch intent or binary defaults, but does NOT prove runtime-selected model, effort, or active runtime overrides; if a native identity query is unavailable, record the observed model as unverified. Report mismatches before starting engineering work.
 
 ### The 10-Minute Silent Boundary:
 If an agent executes for ten minutes without visible output or external notification:

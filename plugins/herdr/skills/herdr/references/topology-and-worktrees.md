@@ -24,9 +24,14 @@ Independent repository      ──────►  New workspace (herdr workspac
    - **When to use**: Independent read-only topic, background monitoring, review under constrained geometry, or inspection within the same repository that does NOT mutate files concurrently.
    - **Command**:
      ```bash
-     WS_ID="$(herdr pane current --current | jq -r .result.workspace_id)"
+     # Extract workspace_id from caller envelope ({result: {pane: {workspace_id: ...}}}) with strict non-empty string guard
+     WS_ID="$(herdr pane current --current | jq -er '.result.pane.workspace_id | select(type == "string" and length > 0)')" || {
+       echo "ERROR: Failed to resolve valid caller workspace_id; aborting tab creation." >&2
+       exit 1
+     }
      herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "<NAME>" --no-focus
      ```
+     *(Note: `--current` identifies the caller. To target another pane, use `herdr pane current --pane "$TARGET_PANE"`. Never create a tab without an explicitly verified, non-null workspace ID).*
    - **Benefit**: Keeps tabs grouped within the verified project workspace without sprawling across windows or creating unneeded disk checkouts.
 3. **Native Worktree Workspace**:
    - **When to use**: Any task requiring dirty or concurrent write isolation in the same repository.
@@ -67,7 +72,11 @@ Splitting terminal panes without checking dimensions destroys readability. Durin
    - **Tab Fallback Under Constrained Geometry**:
      If *neither* orientation yields usable child dimensions ($\ge 80$ columns and $\ge 20$ rows), **do NOT split the pane further**. Open a dedicated review or tool tab instead:
      ```bash
-     WS_ID="$(herdr pane current --current | jq -r .result.workspace_id)"
+     # Extract workspace_id from caller envelope ({result: {pane: {workspace_id: ...}}}) with strict non-empty string guard
+     WS_ID="$(herdr pane current --current | jq -er '.result.pane.workspace_id | select(type == "string" and length > 0)')" || {
+       echo "ERROR: Failed to resolve valid caller workspace_id; aborting tab creation." >&2
+       exit 1
+     }
      herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "review-${TASK_ID}" --no-focus
      ```
 3. **Preserve User Focus**:

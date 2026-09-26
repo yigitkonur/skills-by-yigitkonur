@@ -4,8 +4,8 @@ This reference documents the 12 concrete operational scenario specifications req
 
 > [!NOTE]
 > **Evidence Status & Scope Notice**:
-> - **[Live Native Run Evidence]**: Scenarios 4 & 5 native AGY turn interruption and composer promotion were empirically verified on this host via AGY CLI 1.2.11 in `probe-agy-controller-verification.json`.
-> - **[Cold-Reader Specification / Decision Walkthrough]**: Scenarios 1, 2, 3, 6, 7, 8, 9, 10, 11, 12 provide normative behavioral specifications and decision walkthroughs.
+> - **[Live Native Run Evidence]**: Scenario 4 (native AGY queued composer promotion, single Escape + existing Enter, and surviving child process retention) was empirically verified on this host via AGY CLI 1.2.11 in `probe-agy-controller-verification.json`. Notice deduplication and waitless callback mechanics in Scenario 5 are also verified from probe evidence.
+> - **[Cold-Reader Specification / Decision Walkthrough]**: Scenarios 1, 2, 3, 5 (trust modals & destructive confirmations), 6, 7, 8, 9, 10, 11, 12 provide normative behavioral specifications and decision walkthroughs. Probe evidence did not exercise active trust dialogs, destructive confirmations, or active mutation interruptions.
 > - **[Unavailable / Unexecuted Checks]**: Full multi-agent fleet execution, remote GitHub PR creation, and unmerged branch force deletions were deliberately not executed in this run per safety guardrails and read-only authority.
 
 ---
@@ -54,21 +54,24 @@ This reference documents the 12 concrete operational scenario specifications req
 
 - **Context**: A prompt notice was submitted to an AGY agent while it was busy in a long turn, queuing the text in its input composer. The turn appears stalled.
 - **Expected Behavior**:
-  - **Pre-Inspection Safety Gates**: Single wakeup owner verifies agent identity via `herdr pane current --current`, reads visible buffer (`--source visible`), confirms agent is not in `blocked` state or displaying a modal, and confirms no active Git mutations or file writes are underway.
-  - Exactly one designated wakeup owner sends a single targeted `esc` (`herdr agent send-keys <pane> esc`).
+  - **Pre-Inspection Safety Gates**:
+    1. **Pause Check Precedes Keystrokes**: Single wakeup owner verifies that user pause is NOT active. If paused, all keystrokes and turn interventions are halted.
+    2. **Explicit Target Verification**: Supervisor verifies explicit target coordinates via `herdr pane get "$TARGET_PANE"` and `herdr agent get "$TARGET_PANE"` (never `herdr pane current --current`, which identifies the caller).
+    3. **Screen & Effects Inspection**: Supervisor inspects native visible buffer (`--source visible`), confirms agent is not in `blocked` state or displaying an unhandled modal, and confirms no active Git mutations or disk writes are underway (`herdr pane process-info`).
+  - Exactly one designated wakeup owner sends a single targeted `esc` (`herdr agent send-keys "$TARGET_PANE" esc`).
   - Supervisor reads visible buffer (`--source visible`).
-  - If Escape promoted the exact queued message into the composer, supervisor presses Enter ONCE (`herdr agent send-keys <pane> enter`) without pasting duplicate text.
+  - If Escape promoted the exact queued message into the composer, supervisor presses Enter ONCE (`herdr agent send-keys "$TARGET_PANE" enter`) without pasting duplicate text.
   - If the turn already consumed the queue, supervisor sends nothing.
-- **Acceptance Criteria**: Pass if message executes cleanly without duplicate prompt text or corrupted turn state.
+- **Acceptance Criteria**: Pass if message executes cleanly without duplicate prompt text, caller coordinates are not confused with target, pause check halts execution, and turn state is preserved.
 
 ---
 
 ## 5. Scenario 5: Unsafe Modal / Effect & Duplicate Notice Prevention
-*(Status: Live Native Run Evidence — verified via probe-agy-controller-verification.json)*
+*(Status: Cold-Reader Specification / Decision Walkthrough — Notice deduplication & waitless callbacks verified; trust dialogs & destructive prompts are normative specifications)*
 
 - **Context**: An agent encounters a project trust dialog or destructive confirmation prompt.
 - **Expected Behavior**:
-  - Supervisor inspects visible screen before sending keys (`herdr agent read <target> --source visible`).
+  - Supervisor inspects visible screen before sending keys (`herdr agent read "$TARGET_PANE" --source visible`).
   - Never automatically sends blind Enter after launch. Resolves modal based on visible authorized choice.
   - Worker notices omit `--wait` to prevent callback deadlocks.
   - Duplicate notices pointing to identical report digests are consumed idempotently without repeating task actions.
@@ -106,12 +109,16 @@ This reference documents the 12 concrete operational scenario specifications req
 
 - **Context**: An agent encounters API rate limiting (`RESOURCE_EXHAUSTED` / 429) during synthesis.
 - **Expected Behavior**:
-  - State and conversation inventory first: capture conversation ID from session metadata before interrupting.
-  - Interrupted with targeted `ctrl+c` or `esc`.
-  - Reconnected using exact conversation ID (`agy --conversation <UUID>`), never `--continue`.
-  - Single continuation prompt (`"continue"`).
-  - If quota failure recurs, supervisor halts automated retries (max 2 equivalent failures) and escalates a concrete capacity blocker.
-- **Acceptance Criteria**: Pass if retries halt after 2 equivalent failures without infinite loops.
+  - **Preflight Gates**: Check pause gate, modal gate, and active disk effects first.
+  - **Harness Routing**: Recovery mechanics route to the specific agent harness ([harness-antigravity.md](harness-antigravity.md), [harness-codex.md](harness-codex.md), [harness-other.md](harness-other.md)). AGY conversation flags are specific to AGY and never applied to Codex.
+  - **Input-Ready Same-Session Continuation First**: If the agent's turn has completed and returned to an input-ready composer in the same session, send a single continuation prompt (`"continue"`) without interrupting or restarting the process.
+  - **Bounded Restart Protocol (If Interruption Needed)**:
+    - Capture exact conversation/session ID from metadata inventory before any interrupt.
+    - Send targeted `ctrl+c` or `esc` to interrupt.
+    - Verify clean TUI process exit before attempting restart.
+    - Reconnect using exact conversation ID (e.g. `agy --conversation <UUID>` for AGY; never `--continue`).
+  - **Rule of Two**: If rate limiting or quota failure recurs after a single continuation attempt (max 2 equivalent failures), supervisor halts automated retries immediately, records the failure, and escalates a concrete capacity blocker to the user.
+- **Acceptance Criteria**: Pass if retries halt after 2 equivalent failures without infinite loops, and harness-specific recovery rules are observed.
 
 ---
 
@@ -157,10 +164,31 @@ This reference documents the 12 concrete operational scenario specifications req
 
 - **Context**: User signals an explicit pause, followed later by task completion and resource teardown.
 - **Expected Behavior**:
-  - Pause stops dispatch, halts new turns, and reconciles state without auto-resuming.
-  - Cleanup executes in 3 decoupled stages:
-    1. Worker panes closed upon handback verification.
-    2. Worktree removed via `herdr worktree remove --workspace <WS_ID>` after delivery completion (PR merge, local merge verified, or read-only/abandoned handback safely archived), clean tree, and ignored build artifact safety verified.
-    3. Local branch deleted via safe `git branch -d "$BRANCH_NAME"`. If `-d` refuses, branch reference is preserved with recorded reason (never `-D` fallback; never global remote prune).
-  - Leadership pane retires only when all responsibilities are finished.
-- **Acceptance Criteria**: Pass if resources are cleanly retired in order, clean worktrees removed, and dirty or intentionally retained checkouts safely preserved with recorded reasons.
+  - **Authorized Pause Invariant**: Explicit user pause stops all task dispatch, halts new turns, and freezes active worktrees. Read-only state inspection is permitted, but NO completion, merge, or teardown workflow may proceed while paused. **An explicit user RESUME signal is strictly required before initiating any completion or cleanup steps**.
+  - **Canonical Decoupled 3-Stage Cleanup Route**: Teardown logic routes strictly to canonical [references/lifecycle-and-cleanup.md](lifecycle-and-cleanup.md):
+    1. **Stage 1 (Pane Retirement)**: Worker panes close only after handback verification. If open review findings or unaddressed review comments exist, author panes MUST be retained for remediation.
+    2. **Stage 2 (Worktree Removal Gate)**: Worktree is removed via `herdr worktree remove --workspace <WS_ID>` only after delivery verification (PR merged, local merge verified, or read-only/abandoned handback safely archived), clean working tree verified, and ignored build artifact safety confirmed.
+    3. **Stage 3 (Local Branch Safe Retirement & Commit Reachability)**:
+       - Exact commit reachability must be preserved: if the branch is not merged into an upstream ancestor (e.g. squash-merged or local abandonment), an explicit local Git ref (`git tag archive/<branch>` or `git update-ref refs/archive/<branch> <SHA>`) or verified bundle archive (`git bundle create <path> <SHA>`) must be retained before branch deletion. (A textual patch alone does NOT prevent Git object garbage collection).
+       - Local branch is deleted with safe `git branch -d "$BRANCH_NAME"`. If `-d` refuses, preserve the branch ref with a recorded reason (never use `-D` fallback; never run global remote prune).
+  - Leadership pane retires only after all assigned responsibilities and decoupled stages complete.
+- **Acceptance Criteria**: Pass if user pause halts teardown until explicit resume, open findings retain author panes, exact commit reachability is guaranteed, and no force flags or global prunes are executed.
+
+---
+
+## 13. Source Rule Family to Scenario Traceability Matrix
+
+| Source Rule Family | Key Principles & Invariants | Mapped Scenario(s) |
+|---|---|---|
+| **Operating Modes & Bounded Routing** | Direct execution without EM/PR/worktree for bounded tasks; task-size routing. | Scenario 1 |
+| **Writer/Reviewer Pairing** | Single whole-change writer; paired independent read-only reviewer; early candidate path. | Scenario 2 |
+| **Workspace & Worktree Topology** | Shared checkout tabs for read-only tasks vs. isolated worktrees for concurrent writes. | Scenario 3 |
+| **AGY Keystroke Injection & Composer** | Single wakeup owner, pause gate, explicit target verification, single Escape, no duplicate prompts. | Scenario 4 |
+| **Modal & Notification Safety** | Visible modal resolution (no blind Enter), waitless notices to prevent deadlocks, idempotent digests. | Scenario 5 |
+| **Codex Steering & Queues** | Tool-boundary Enter vs. Tab enqueue; native thread queue; no AGY Escape applied to Codex. | Scenario 6 |
+| **Startup & Process Monitoring** | Inspect live process tree before kill on startup timeout; active tool progress allowed to run. | Scenario 7 |
+| **Quota & Rate Limiting (Rule of Two)** | Preflight gates, same-session continuation first, harness routing, max 2 failures before escalation. | Scenario 8 |
+| **Report Verification & Quarantining** | Verified commit SHA existence; SHA-256 digest matching; `MUTATED_REPORT_REJECTED` quarantine. | Scenario 9 |
+| **Review Invalidation on Advance** | Candidate HEAD advance ($SHA_2 \neq SHA_1$) invalidates approval; requires delta review. | Scenario 10 |
+| **Worktree Preservation (No Force)** | Dirty checkouts retained; uncommitted work preserved; `--force` prohibited; unrelated worktrees untouched. | Scenario 11 |
+| **Authorized Pause & Decoupled Lifecycle** | Explicit resume required before teardown; 3-stage decoupled cleanup; retained author on findings; exact commit reachability ref. | Scenario 12 |
