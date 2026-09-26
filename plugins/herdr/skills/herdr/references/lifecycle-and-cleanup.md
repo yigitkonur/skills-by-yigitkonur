@@ -27,15 +27,19 @@ Resource cleanup follows three distinct, decoupled engineering stages: pane reti
     herdr pane close "$PANE_ID"
     ```
   - Terminal release does NOT wait for PR merge or milestone completion. Releasing finished terminals promptly frees memory and PTY allocations.
-- **Side-by-Side Review Preservation**:
-  - When using the side-by-side implementer/reviewer pattern, the implementer pane is retained while the reviewer is actively auditing or testing. Both panes are retired after the review verdict is reached.
+- **Review & Author Retention Invariant**:
+  - When using the side-by-side author/reviewer pattern, the author pane is retained while the reviewer is actively auditing.
+  - **Do NOT close an author pane merely because a review verdict was reached**: If a review concludes with findings or a rejection verdict and fixes remain assigned to that author, keep the author pane alive to receive delta review findings and implement fixes.
+  - An author pane is retired only when its candidate is accepted or the task is explicitly re-assigned or canceled.
 - **Session Retention Rule**:
   - If a session must be retained for follow-up debugging, record an explicit retention reason and release trigger in the manager state. Conversation IDs and artifacts must be safe outside the process before closing.
 - **Leadership Retirement**:
   - Leadership panes (EM or supervisor) retire ONLY when no remaining coordination, integration, or delivery responsibilities exist. Never retire leadership prematurely at an arbitrary wave boundary.
   - Never close active user-owned panes.
-- **Pane Disappearance & Ownership Verification**:
-  - Check pane disappearance and verify ownership of all contained panes before tab or workspace closure.
+- **Pre-Closure & Disappearance Verification**:
+  - Before closing any pane, tab, or workspace, verify live pane, session, child process, and pending effect ownership. Ensure all pending `.partial` files or unconsumed notices are finalized.
+  - When closing a tab or workspace, verify ownership and successful termination of ALL child panes before whole-tab or whole-workspace closure.
+  - Verify physical disappearance (`herdr pane list`, `herdr workspace list`) after issuing close commands.
 
 ---
 
@@ -47,11 +51,13 @@ Resource cleanup follows three distinct, decoupled engineering stages: pane reti
 > Deleting a worktree checkout permanently removes the working directory from the filesystem.
 
 ### Prerequisites Before Worktree Removal:
-1. **Delivery / Preservation Verification**:
+1. **Delivery / Preservation Verification & Retained Commit Reachability**:
+   - Ensure explicit retained commit reachability for ALL paths: a remote PR merged status or GitHub squash merge alone does NOT preserve the author's exact commit object in local git history. Verify the author's candidate commit object ID is preserved in an explicit local ref, branch, or run-root patch before worktree checkout removal.
    - If delivered via PR: verify PR is confirmed merged on remote:
      ```bash
      gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
      ```
+     AND ensure candidate commit SHA is reachable locally.
    - If delivered locally: verify candidate commit is merged into target branch:
      ```bash
      git -C "$REPO_ROOT" merge-base --is-ancestor "$CANDIDATE_SHA" "$TARGET_BRANCH"
@@ -74,8 +80,8 @@ herdr worktree remove --workspace "$WORKSPACE_ID"
 ```
 
 ### Critical Invariants:
-- **Refuses Dirty Trees**: `herdr worktree remove` automatically refuses if uncommitted changes exist. Never pass `--force` without explicit verification that untracked changes are disposable.
-- **Preserve Ambiguous Checkouts**: Dirty or ambiguous worktrees are **retained with a recorded reason**; never force-delete.
+- **Ordinary Cleanup Uses No Force**: Ordinary cleanup uses NO force (`--force` is prohibited on ordinary paths). If uncommitted or untracked changes exist, or if checkout state is ambiguous, retain the worktree with an explicit recorded reason and release trigger rather than forcing removal.
+- **Preserve Ambiguous Checkouts**: Dirty or ambiguous worktrees are **retained with a recorded reason and release trigger**; never force-delete.
 - **Workspace Close vs. Worktree Remove**: `herdr workspace close` closes the UI session only, leaving Git tracking intact. Retained linked checkouts can be completely intentional.
 - **No Global Zero-Worktree Prune**: Never run global worktree prune or seek a "zero worktrees on host" goal. Other branches, features, or teammates may have valid active worktrees. Touch ONLY what this task created.
 

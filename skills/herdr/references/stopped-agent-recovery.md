@@ -21,12 +21,12 @@ Before restarting an agent or unblocking a pane:
      LOCK_PATH="$(git -C "$WORKTREE_PATH" rev-parse --path-format=absolute --git-path index.lock)"
      ```
      *(Note: omitting `--path-format=absolute` from a primary clone returns a relative `.git/index.lock`, which misidentifies the target if later checked from a different cwd).*
-   - Check if an active process holds the lock:
-     ```bash
-     lsof "$LOCK_PATH"
-     ```
-   - **Inspection Error vs. Absence of Lock Holder**: An empty or failed `lsof` query alone is NOT proof of safe deletion. Reconcile owned Git processes (`herdr pane process-info`, `pgrep -fl git`) and ensure inspection errors (e.g. permission limits or missing tool) are distinguished from true absence.
-   - Only remove `index.lock` (`rm -f "$LOCK_PATH"`) when no owned Git processes are active in that repository tree.
+   - **Comprehensive Process & Lock Verification**:
+     An empty or failed `lsof` query alone is NOT proof of safe deletion:
+     - Check for BOTH owned and unowned live Git processes touching the repository tree (`herdr pane process-info`, `pgrep -fl git`, `ps aux | grep git`).
+     - Any unowned live Git process in the same repository, unresolved process ownership, or inspection error (e.g. permission limits or missing diagnostic tools) requires lock preservation.
+     - Verify that the lock file belongs to the exact target repository checkout, is demonstrably stale and unheld, and no related processes are actively writing to it.
+     - Only when the lock is proven stale, unheld, and zero live Git processes (owned or unowned) are active in that repository tree may `index.lock` be removed (`rm -f "$LOCK_PATH"`).
 3. **Reconcile Pending Files**:
    Check for unfinalized `.partial` report files before restarting or cleaning up.
 
@@ -54,30 +54,29 @@ Before restarting an agent or unblocking a pane:
 
 Quota or hang recovery is invoked **only for observed quota exhaustion (429) or established stalls**, never for an active thinking turn, live tool execution, or brief silence.
 
-When an agent encounters genuine quota exhaustion or a verified hard hang:
-1. **State & Conversation Inventory First**:
-   Capture the exact conversation ID from Herdr session metadata *before* sending interrupts:
-   ```bash
-   CONV_ID="$(herdr pane get "$PANE_ID" | jq -r '.result.pane.agent_session.value // empty')"
-   ```
-2. **Targeted Interruption**:
-   Send a surgical `ctrl+c` or `esc` to interrupt the stuck turn:
-   ```bash
-   herdr agent send-keys "$PANE_ID" ctrl+c
-   ```
-3. **Reconcile Child Processes**:
-   Check `herdr pane process-info`: Escape or turn interruption may leave background child processes running. Confirm whether child processes need to finish or be stopped.
+Keypress and composer handling routes strictly to the canonical procedure defined in [harness-antigravity.md](harness-antigravity.md):
+1. **Inventory Identity, Modals & Pending Effects First**:
+   - Check live coordinates and identity: `herdr pane current --current`.
+   - Inspect visible screen state: `herdr agent read "$PANE_ID" --source visible --lines 25`.
+   - **Modal Resolution**: If the agent is blocked on a trust dialog or question modal, do NOT send interrupts (`esc`/`ctrl+c`); resolve the modal via its visible choice.
+   - Check for unfinalized `.partial` reports or active mutations.
+2. **Preserve Input-Ready Same-Session Continuation**:
+   - If the agent's composer is visible and resting in an input-ready state (`Prompt:`, `❯`), do NOT restart the TUI or interrupt the session. Deliver prompts or follow-ups directly to the active composer.
+3. **Targeted Interruption via Canonical Safety Gates**:
+   - If a genuine hang or 429 stall is established outside mutating boundaries, follow the staged safety sequence in [harness-antigravity.md](harness-antigravity.md) (single targeted `esc` or `ctrl+c`).
+   - Reconcile child processes via `herdr pane process-info --pane "$PANE_ID"`.
 4. **Preserve User Pause**:
-   If the session was explicitly paused by the human user, do NOT resume without authorization.
-5. **Exact Conversation Resume**:
-   Reconnect to the exact conversation history using its explicit ID:
-   ```bash
-   agy --conversation "$CONV_ID"
-   ```
-   **Never use `--continue`**, which attaches to the most recent global conversation and contaminates state.
-6. **Continuation vs. Blocker Rule**:
-   - If actual tool progress resumes, continue the task.
-   - If quota exhaustion (429) recurs, **stop**. Do not enter an infinite retry loop. Two equivalent failures halt retries. Escalate a concrete blocker to the supervisor.
+   - If the session was explicitly paused by the human user, **all recovery prompts and new dispatches are strictly prohibited** until an explicit resume signal is received.
+5. **Exact Session Resume Gate**:
+   - Verify the exact session ID from Herdr session metadata:
+     ```bash
+     CONV_ID="$(herdr pane get "$PANE_ID" | jq -r '.result.pane.agent_session.value // empty')"
+     ```
+   - **Missing Session ID is a Blocker**: If the conversation ID cannot be verified, recovery must HALT. Never guess an ID, and **never use `--continue`** (which attaches to the most recent global conversation and contaminates state).
+   - **TUI Exit Verification Before Restart**: Launch a resumed TUI (`agy --conversation "$CONV_ID" ...`) **only after the previous TUI has actually exited** and the pane is confirmed resting cleanly at a shell prompt (`$ `, `% `).
+6. **Bounded Recovery Rule (Rule of Two)**:
+   - If tool progress resumes, proceed normally.
+   - If quota exhaustion (429) or hard stalls recur after recovery, **halt immediately**. Two equivalent failures exhaust the recovery budget. Escalate a concrete blocker with captured logs to the supervisor.
 
 ---
 
@@ -86,21 +85,19 @@ When an agent encounters genuine quota exhaustion or a verified hard hang:
 If an Engineering Manager (EM) session crashes or disconnects during a Mode 3 Managed Mission:
 
 1. **Relinquishment Proof**:
-   Confirm that the previous manager process has terminated (PID absent, socket unlinked) before provisioning a replacement manager.
+   Confirm that the previous manager's exact process and session have relinquished ownership (process terminated, PID absent, no active pane operations). Do NOT require disappearance or unlinking of the shared Herdr socket (`~/.config/herdr/herdr.sock`), as the manager does not own the server socket.
 2. **Selective State & Report Intake**:
    - The replacement manager reads `state.yaml` at `<RUN_ROOT>/state.yaml`.
-   - Read active assignments, current DAG wave, dedupe index, and unresolved effects.
-   - **Do NOT re-read all historical completed reports**: Intake only reports for active or un-checkpointed tasks to conserve context.
-3. **Structural Shape Verification**:
-   Verify that `state.yaml` satisfies required top-level schema keys:
-   - `mission_id`, `status`, `manager` (coordinates), `cto` (coordinates), `report_root`, `assignments`, `decisions`.
-   - If `state.yaml` is structurally malformed or corrupted, restore from the last verified checkpoint before resuming.
+   - Restore manager checkpoint shape, dedupe index, unresolved pending effects, and preserved paused state.
+   - **Corrupted Checkpoint Preservation**: If `state.yaml` is structurally malformed or corrupted, preserve the corrupted file first (`cp "$RUN_ROOT/state.yaml" "$RUN_ROOT/state.yaml.corrupt-$(date +%s)"`) before restoring from the last verified clean checkpoint. Never overwrite or clobber corrupted state without preservation.
+   - **Conserve Context**: Intake only reports for active or un-checkpointed tasks; do NOT re-read all historical completed reports.
+3. **Supervisor-Controlled Handover & Attempt Counters**:
+   - The authorized supervisor (Root / Controller) controls manager identity and attempt handover.
+   - Replaced managers or unregistered task producers do NOT increment attempt counters or register coordinates on their own.
 4. **Worker Preservation**:
    - Query all live agent panes across workspaces via `herdr agent list`.
-   - **Adopt healthy running workers**: Do NOT terminate, restart, or duplicate active worker agents that are making steady progress in their worktrees. Map their live pane IDs to existing task assignments.
-5. **Re-Registration**:
-   Register the new manager handle with updated coordinates (`pane_id`, `tab_id`), incrementing attempt counters where applicable while preserving mission history.
-6. **Authority Boundary**:
+   - **Adopt Healthy Running Workers**: Do NOT terminate, restart, or duplicate active worker agents making steady progress in their worktrees. Map their live pane IDs to existing task assignments.
+5. **Authority Boundary**:
    Assigned task executors do NOT infer managerial authority, coordinator roles, or nested subagent spawning without an explicit scope grant and verified native tool support.
 
 ---

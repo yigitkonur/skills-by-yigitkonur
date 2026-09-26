@@ -12,8 +12,8 @@ Queue prevention is the primary architecture; Escape recovery is a secondary fal
 To prevent incoming report notices from queuing behind long managerial operations:
 1. **Sweep Queued Notices & Unconsumed Reports First**:
    Every management turn must begin by sweeping queued notices in the terminal and scanning `report_root` for newly published unconsumed reports before initiating status polling, log reading, or deep investigations.
-2. **Short Management Turns**:
-   Keep supervisory turns concise: **Intake $\to$ Decision $\to$ Dispatch $\to$ Checkpoint (`state.yaml`) $\to$ Yield**. A management turn should not exceed 1–2 tool calls for task coordination.
+2. **Short, Complete Management Turns**:
+   Keep supervisory turns bounded to a complete cycle: **Intake $\to$ Decision $\to$ Dispatch $\to$ Checkpoint (`state.yaml`) $\to$ Yield**. Intake must be allowed to verify multiple queued notices and reports coherently without an arbitrary tool-count cap, while keeping long diagnostics and builds delegated.
 3. **Delegate Lengthy Diagnostics & Build Waits**:
    Never tie up a manager session running long builds, test suites, or exhaustive diagnostic investigations. Delegate diagnostics and build waits to task workers or dedicated diagnostic lanes.
 4. **Prompt Producer Yield**:
