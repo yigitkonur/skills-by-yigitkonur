@@ -17,13 +17,17 @@ Independent repository      ──────►  New workspace (herdr workspac
 ```
 
 1. **Sibling Pane in Same Tab**:
-   - **When to use**: Closely coupled execution (e.g. an implementer and its paired side-by-side reviewer, or a dev server running beside a test runner).
+   - **When to use**: Closely coupled execution (e.g. an implementer and its paired side-by-side reviewer, or a dev server running beside a test runner), provided terminal geometry permits readable splits.
    - **Command**: `herdr pane split --pane "$TARGET_PANE" --direction <right|down> --cwd "$PWD" --no-focus`
    - **Benefit**: Both panes remain visible simultaneously in the same viewport, enabling live observation without switching tabs.
 2. **Tab in Existing Workspace**:
-   - **When to use**: Independent read-only topic, background monitoring, or inspection within the same repository that does NOT mutate files concurrently.
-   - **Command**: `herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<NAME>" --no-focus`
-   - **Benefit**: Keeps tabs grouped within the same project workspace without sprawling across windows.
+   - **When to use**: Independent read-only topic, background monitoring, review under constrained geometry, or inspection within the same repository that does NOT mutate files concurrently.
+   - **Command**:
+     ```bash
+     WS_ID="$(herdr pane current --current | jq -r .result.workspace_id)"
+     herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "<NAME>" --no-focus
+     ```
+   - **Benefit**: Keeps tabs grouped within the verified project workspace without sprawling across windows or creating unneeded disk checkouts.
 3. **Native Worktree Workspace**:
    - **When to use**: Any task requiring dirty or concurrent write isolation in the same repository.
    - **Command**:
@@ -43,19 +47,29 @@ Independent repository      ──────►  New workspace (herdr workspac
 
 ---
 
-## 2. Geometry & The Unreadable Pane Trap
+## 2. Geometry & Projected Usable Dimensions
 
 Splitting terminal panes without checking dimensions destroys readability. During planning, a manager pane was observed compressed to only 12 columns wide due to repeated right splits.
 
-### Geometry Decision Rules:
+### Geometry Decision Rules & Projected Dimensions:
 1. **Inspect Dimensions First**:
    ```bash
-   herdr pane layout --pane "$HERDR_PANE_ID"
+   herdr pane layout --current
    ```
-2. **Split Direction Rules**:
-   - If the target pane is **wide** ($\ge 120$ columns): split `--direction right`.
-   - If the target pane is **narrow** ($< 120$ columns) or **tall**: split `--direction down`.
-   - **Never execute repeated same-direction splits** that reduce a pane below 80 columns or 20 rows.
+2. **Projected Child Dimensions Calculation**:
+   Terminal pane splits share physical space with border and separator lines (1 column or row):
+   $$\text{Projected Child Width} = \left\lfloor \frac{\text{Parent Width} - 1}{2} \right\rfloor, \quad \text{Projected Child Height} = \left\lfloor \frac{\text{Parent Height} - 1}{2} \right\rfloor$$
+   Each child pane must satisfy minimum usable dimensions ($\ge 80$ columns for readable code and diffs, $\ge 20$ rows for terminal context):
+   - **Horizontal Split (`--direction right`)**:
+     Permissible only when parent width satisfies $\ge 161$ columns ($2 \times 80 + 1$). Splitting a narrower parent divides columns in half, creating unreadable ~50–60-column viewports.
+   - **Vertical Split (`--direction down`)**:
+     Permissible when parent width $< 161$ columns but parent height satisfies $\ge 41$ lines ($2 \times 20 + 1$).
+   - **Tab Fallback Under Constrained Geometry**:
+     If *neither* orientation yields usable child dimensions ($\ge 80$ columns and $\ge 20$ rows), **do NOT split the pane further**. Open a dedicated review or tool tab instead:
+     ```bash
+     WS_ID="$(herdr pane current --current | jq -r .result.workspace_id)"
+     herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "review-${TASK_ID}" --no-focus
+     ```
 3. **Preserve User Focus**:
    - Always pass `--no-focus` when provisioning panes, tabs, or worktrees for background agents. Never steal active user focus unless explicitly requested.
 
@@ -63,21 +77,18 @@ Splitting terminal panes without checking dimensions destroys readability. Durin
 
 ## 3. Dynamic Coordinates & Caller Context
 
-Herdr injects physical coordinate handles into each managed pane's environment:
-- `$HERDR_WORKSPACE_ID`: e.g. `w1`
-- `$HERDR_TAB_ID`: e.g. `w1:t1`
-- `$HERDR_PANE_ID`: e.g. `w1:p1`
+Herdr injects physical coordinate handles into each managed pane's environment at startup (`$HERDR_WORKSPACE_ID`, `$HERDR_TAB_ID`, `$HERDR_PANE_ID`).
 
 ### Discovery Invariants:
-1. **Live vs. Static Coordinates**: Environment variables reflect coordinates at process startup. If a pane is moved across tabs or workspaces, environment variables become stale. **Always query live coordinates**:
+1. **Live vs. Static Coordinates**: Environment variables reflect coordinates at process launch and become stale if panes are moved or tabs reorganised. **Always query live coordinates with `--current`**:
    ```bash
-   herdr pane current
+   herdr pane current --current
    ```
-2. **Targeting Own Pane**: Prefer `--current` for operations affecting the executing pane:
+2. **Targeting Own Pane**: Mandate `--current` for operations affecting the executing pane:
    ```bash
    herdr pane layout --current
    ```
-3. **No UI-Focus Assumptions**: A bare command without `--pane` or `--current` may default to the UI-focused pane, which might belong to the human user or another client. Always specify target IDs explicitly.
+3. **No UI-Focus Assumptions**: A bare command without `--pane` or `--current` may default to the UI-focused pane, which might belong to the human user or another client. Fail closed on stale context; always specify target IDs explicitly.
 4. **Opaque Handles**: Treat all IDs as opaque strings. Do not invent suffixes or assume numeric sequences.
 
 ---
@@ -95,9 +106,14 @@ Herdr provides dedicated worktree primitives over the socket API:
 
 ### Critical Worktree Invariants:
 - **`workspace close` vs `worktree remove`**:
-  - `herdr workspace close <WS_ID>` closes **ONLY** the Herdr UI workspace and pane processes. It leaves the Git worktree directory on disk and Git tracking orphaned!
-  - `herdr worktree remove --workspace <WS_ID>` removes the physical directory from disk, unregisters Git worktree tracking, and closes the workspace.
-- **Refusal on Dirty Tree**:
-  - `herdr worktree remove` automatically refuses if uncommitted changes or untracked files exist. Never pass `--force` without verifying changes are safely disposable.
+  - `herdr workspace close <WS_ID>` closes **ONLY** the Herdr UI workspace and pane processes. It leaves the Git worktree directory on disk and Git tracking intact. Retained linked checkouts can be completely intentional for ongoing, deferred, or dirty checkouts.
+  - `herdr worktree remove --workspace <WS_ID>` unlinks the physical directory from disk, unregisters Git worktree tracking, and closes the workspace.
+- **Ownership Verification & Disappearance Check**:
+  - *Before* closing a tab or workspace: verify target identity, confirm ownership of all contained panes, and reconcile pending side effects.
+  - *After* closing: verify that contained pane processes have cleanly disappeared. Never close a workspace containing unowned or user-active panes.
+- **Refusal on Dirty Tree & No Force**:
+  - `herdr worktree remove` automatically refuses if uncommitted changes or untracked files exist. In ordinary operation, `--force` is strictly prohibited; dirty or ambiguous checkouts are safely preserved with a recorded reason.
 - **Local Branch Preservation**:
-  - Removing a worktree checkout does NOT delete its local Git branch. Local branch deletion is a separate step that must occur after worktree removal.
+  - Removing a worktree checkout does NOT delete its local Git branch. Local branch deletion is a separate, safe engineering step that occurs strictly after worktree removal.
+
+For complete 3-stage teardown gates and preservation rules, see [references/lifecycle-and-cleanup.md](lifecycle-and-cleanup.md).

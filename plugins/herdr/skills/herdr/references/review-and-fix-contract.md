@@ -1,21 +1,26 @@
 # Review-and-Fix Contract & Quality Gates
 
-This reference codifies review mechanics, exact-SHA binding, failure budget rules, and GitHub PR interactions across all Herdr operating modes.
+This reference codifies review mechanics, exact commit object ID binding, failure budget rules, evidence quality standards, and GitHub PR interactions across all Herdr operating modes.
 
 ---
 
-## 1. Exact-SHA Review Invariant
+## 1. Full Verified Commit Object ID Invariant
 
-1. **Strict 40-Character Commit SHA Binding**:
-   Technical review and verification bind strictly to an exact, full 40-character commit SHA:
+1. **Commit Object ID & Clean Tree Binding**:
+   Technical review and verification bind strictly to a full verified Git commit object ID (supporting both SHA-1 40-character and SHA-256 64-character repositories) AND a clean working tree:
    ```bash
    CANDIDATE_SHA="$(git rev-parse HEAD)"
+   git cat-file -e "${CANDIDATE_SHA}^{commit}"
+   test -z "$(git status --porcelain)"
    ```
-   Inspectors must verify that the SHA exists in the repository object database and that `git status --porcelain` is clean before auditing.
-2. **Automatic Invalidation on Commit Advance**:
-   Any subsequent commit, fix, rebase, or format edit pushes the branch HEAD to a new commit SHA ($SHA_2 \neq SHA_1$). This **automatically invalidates** any prior review or approval.
-3. **Delta Decisions for New HEADs**:
-   When an author pushes a correction commit producing a new SHA, the same independent reviewer may evaluate the new HEAD via a focused delta and impact check on the newly changed diff, issuing an explicit decision for the new SHA without requiring a full reset to an unfamiliar reviewer.
+   **Exact SHA alone cannot certify a dirty shared tree**: An uncommitted file or staged mutation in the checkout invalidates the candidate claim. The working tree must be proven clean.
+2. **Review Environment Isolation**:
+   - If review occurs in a shared checkout with the author, the author session must be **frozen** during review.
+   - If review checks or test suites mutate files, or if the author must continue working, allocate an isolated native checkout (Git worktree) for the review.
+3. **Automatic Invalidation on Commit Advance**:
+   Any subsequent commit, fix, rebase, or format edit pushes the branch HEAD to a new commit object ID ($SHA_2 \neq SHA_1$). This **automatically invalidates** any prior review or approval.
+4. **Delta Decisions for New HEADs**:
+   When an author pushes a correction commit producing a new SHA, the same independent reviewer evaluates the new HEAD via a focused delta and impact check on the newly changed diff, issuing an explicit decision for the new candidate without requiring a full reset to an unfamiliar reviewer.
 
 ---
 
@@ -24,13 +29,16 @@ This reference codifies review mechanics, exact-SHA binding, failure budget rule
 1. **Read-Only Verification**:
    - The reviewer acts as an adversarial hardening partner. The reviewer audits specification conformance, code standards, edge cases, regression risk, and test suite execution at the exact candidate SHA in clean context.
    - Reviewers do NOT self-approve their own work. If a reviewer authors production fixes directly, it transfers to the author role, requiring a different independent reviewer to perform the final approval.
-2. **Direct Verification Commands**:
-   Run linters, type checks, and automated tests directly:
+2. **Evidence Quality Standards**:
+   - Do NOT certify visual or interactive UI behavior from code formatters, linters, or unit tests alone. Visual or browser behavior requires actual rendering evidence or browser test verification.
+   - Report requested runtime/model separately from observed runtime/model if the live model was not independently proven from TUI headers or process inspection.
+3. **Direct Verification Commands**:
+   Execute repository-authorized syntax, typecheck, and test commands (e.g. `npm test`, `pytest`, `cargo test`, `make test`, `python3 scripts/validate-skills.py`):
    ```bash
-   npm run typecheck --if-present
-   npm test --if-present
+   # Run repository-authorized check commands
+   <AUTHORIZED_REPO_CHECK_COMMAND>
    ```
-3. **GitHub PR Review Mechanics**:
+4. **GitHub PR Review Mechanics**:
    - If independent GitHub accounts are available:
      ```bash
      gh pr review "$PR_URL" --approve -b "LGTM: verified candidate commit $(git rev-parse HEAD). All checks pass."

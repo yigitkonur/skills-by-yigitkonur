@@ -1,6 +1,6 @@
-# Stopped Agent Recovery, Git Locks & Quota Safeguards
+# Stopped Agent Recovery, Git Locks & Manager Resumption
 
-This reference provides procedures for unblocking hung agent sessions, recovering from Git lock contention, resolving quota exhaustion, and safely restarting processes without destroying active work.
+This reference provides procedures for unblocking hung agent sessions, recovering from Git lock contention, resolving quota exhaustion, and safely resuming crashed manager sessions without destroying active work.
 
 ---
 
@@ -14,17 +14,19 @@ Before restarting an agent or unblocking a pane:
    ```bash
    herdr pane process-info --pane "$PANE_ID"
    ```
-2. **Reconcile Git Locks Across Worktrees**:
+2. **Reconcile Git Locks with Target-Bound Absolute Paths**:
    If Git commands fail with `Another git process seems to be running`:
-   - Discover the lock file path dynamically:
+   - Discover the absolute lock file path bound to the target repository:
      ```bash
-     LOCK_PATH="$(git -C "$WORKTREE_PATH" rev-parse --git-path index.lock)"
+     LOCK_PATH="$(git -C "$WORKTREE_PATH" rev-parse --path-format=absolute --git-path index.lock)"
      ```
-   - Check if an active process currently holds the lock:
+     *(Note: omitting `--path-format=absolute` from a primary clone returns a relative `.git/index.lock`, which misidentifies the target if later checked from a different cwd).*
+   - Check if an active process holds the lock:
      ```bash
      lsof "$LOCK_PATH"
      ```
-   - Only remove `index.lock` (`rm -f "$LOCK_PATH"`) if `lsof` confirms no active process holds it and prior pane processes are dead.
+   - **Inspection Error vs. Absence of Lock Holder**: An empty or failed `lsof` query alone is NOT proof of safe deletion. Reconcile owned Git processes (`herdr pane process-info`, `pgrep -fl git`) and ensure inspection errors (e.g. permission limits or missing tool) are distinguished from true absence.
+   - Only remove `index.lock` (`rm -f "$LOCK_PATH"`) when no owned Git processes are active in that repository tree.
 3. **Reconcile Pending Files**:
    Check for unfinalized `.partial` report files before restarting or cleaning up.
 
@@ -53,33 +55,57 @@ Before restarting an agent or unblocking a pane:
 Quota or hang recovery is invoked **only for observed quota exhaustion (429) or established stalls**, never for an active thinking turn, live tool execution, or brief silence.
 
 When an agent encounters genuine quota exhaustion or a verified hard hang:
-1. **Targeted Interruption**:
+1. **State & Conversation Inventory First**:
+   Capture the exact conversation ID from Herdr session metadata *before* sending interrupts:
+   ```bash
+   CONV_ID="$(herdr pane get "$PANE_ID" | jq -r '.result.pane.agent_session.value // empty')"
+   ```
+2. **Targeted Interruption**:
    Send a surgical `ctrl+c` or `esc` to interrupt the stuck turn:
    ```bash
    herdr agent send-keys "$PANE_ID" ctrl+c
    ```
-2. **State & Conversation Inventory**:
-   Capture the exact conversation ID from Herdr session metadata:
-   ```bash
-   CONV_ID="$(herdr pane get "$PANE_ID" | jq -r '.result.pane.agent_session.value // empty')"
-   ```
-3. **Pre-Resume Verification**:
-   Verify actual foreground process state and confirm no live TUI remains before resuming.
-4. **Exact Conversation Resume**:
+3. **Reconcile Child Processes**:
+   Check `herdr pane process-info`: Escape or turn interruption may leave background child processes running. Confirm whether child processes need to finish or be stopped.
+4. **Preserve User Pause**:
+   If the session was explicitly paused by the human user, do NOT resume without authorization.
+5. **Exact Conversation Resume**:
    Reconnect to the exact conversation history using its explicit ID:
    ```bash
    agy --conversation "$CONV_ID"
    ```
    **Never use `--continue`**, which attaches to the most recent global conversation and contaminates state.
-5. **Single Continuation Prompt**:
-   Verify an input-ready composer before transmitting exactly ONE prompt message: `"continue"`.
 6. **Continuation vs. Blocker Rule**:
-   - If actual tool progress and turns resume, continue the task.
-   - If the same quota failure returns immediately, **stop**. Do not enter an infinite retry loop. Two equivalent failures halt retries. Escalate a concrete blocker to the supervisor.
+   - If actual tool progress resumes, continue the task.
+   - If quota exhaustion (429) recurs, **stop**. Do not enter an infinite retry loop. Two equivalent failures halt retries. Escalate a concrete blocker to the supervisor.
 
 ---
 
-## 4. Shared Herdr Server Safety Invariant
+## 4. Manager Session Recovery & Selective Resume
+
+If an Engineering Manager (EM) session crashes or disconnects during a Mode 3 Managed Mission:
+
+1. **Relinquishment Proof**:
+   Confirm that the previous manager process has terminated (PID absent, socket unlinked) before provisioning a replacement manager.
+2. **Selective State & Report Intake**:
+   - The replacement manager reads `state.yaml` at `<RUN_ROOT>/state.yaml`.
+   - Read active assignments, current DAG wave, dedupe index, and unresolved effects.
+   - **Do NOT re-read all historical completed reports**: Intake only reports for active or un-checkpointed tasks to conserve context.
+3. **Structural Shape Verification**:
+   Verify that `state.yaml` satisfies required top-level schema keys:
+   - `mission_id`, `status`, `manager` (coordinates), `cto` (coordinates), `report_root`, `assignments`, `decisions`.
+   - If `state.yaml` is structurally malformed or corrupted, restore from the last verified checkpoint before resuming.
+4. **Worker Preservation**:
+   - Query all live agent panes across workspaces via `herdr agent list`.
+   - **Adopt healthy running workers**: Do NOT terminate, restart, or duplicate active worker agents that are making steady progress in their worktrees. Map their live pane IDs to existing task assignments.
+5. **Re-Registration**:
+   Register the new manager handle with updated coordinates (`pane_id`, `tab_id`), incrementing attempt counters where applicable while preserving mission history.
+6. **Authority Boundary**:
+   Assigned task executors do NOT infer managerial authority, coordinator roles, or nested subagent spawning without an explicit scope grant and verified native tool support.
+
+---
+
+## 5. Shared Herdr Server Safety Invariant
 
 - **Never Stop the Server in an Active Session**:
   `herdr server stop` stops the server daemon for ALL sessions, closing every open pane and terminating all running agents on the machine.

@@ -16,12 +16,13 @@ Every structured mission brief must establish clear boundaries and coordinates:
 - TASK_ID: "<TASK_ID>"
 - ATTEMPT: <ASSIGNED_ATTEMPT>
 - ASSIGNED_ROLE: "<ROLE>"  # Implementer | Independent Reviewer | Integrator
+- WAKEUP_OWNER: "<ROOT_OR_SUPERVISOR_PANE_ID>"
 - START_AUTHORITY: "authorized"
 - RUN_ROOT: "<ABSOLUTE_RUN_ROOT>"
 - EXECUTION_SKILL_PATH: "<PATH_TO_SKILL>/SKILL.md"
 - EXPECTED_RUNTIME: "<RUNTIME>"  # agy | codex | claude
 - EXPECTED_MODEL: "<MODEL_ID>"
-- RETURN_ROUTE: "herdr agent prompt '<SUPERVISOR_PANE_ID>' '<NOTICE>'" (no --wait)
+- RETURN_ROUTE: "artifact_only" | "herdr agent prompt '<SUPERVISOR_PANE_ID>' '<NOTICE>'" (no --wait)
 
 ## 2. Objective & Delivery Authority
 - OBJECTIVE: "<CONCISE_TASK_GOAL>"
@@ -30,22 +31,26 @@ Every structured mission brief must establish clear boundaries and coordinates:
 - DELIVERY_PERMISSIONS: "local_only" | "draft_pr" | "authorized_merge"
 
 ## 3. Preflight & Registration Gate
-- Discover live coordinates via `herdr pane current`.
+- Discover live coordinates via `herdr pane current --current`.
 - Verify runtime binary and model/effort tier against expected values.
 - If verified: proceed directly without waiting for explicit ACK.
 - If mismatched or ambiguous: report confirmed identity to supervisor and await clarification.
 ```
 
+### Return Route Invariant:
+When the supervisor operates outside Herdr (such as Root running in an external terminal or controller ledger), set `RETURN_ROUTE: "artifact_only"`. In this case, the assigned agent publishes its handback report at the run root and yields idle immediately without prompting any other pane.
+
 ---
 
-## 2. Prompt Prefix & Natural Language Rules
+## 2. Prompt Format & Plain Language Standards
 
-- **No Mandatory Slash Slop**:
-  Do NOT blindly force `/teamwork-preview` or `/boost` on every prompt. Standalone plain-language mission briefs are fully valid, robust, and preferred across all harnesses.
-- **When Slash Commands Are Appropriate**:
-  - `/teamwork-preview /herdr`: Use when launching an agent that will explicitly coordinate a multi-agent subteam in its own pane.
-  - `/boost /herdr`: Use for high-risk, security-critical, or complex tasks requiring deep reasoning and adversarial verification.
-  - **Syntax Rule**: Slash commands must be placed at the **very start** of the prompt string with **strictly zero space** after the slash.
+- **Standalone Plain Language is the Default**:
+  Clear, directive, plain-language mission briefs are fully valid, robust, and preferred across all agent harnesses.
+- **Slash Commands Restriction**:
+  Do NOT recommend `/teamwork-preview` or `/boost` generically. Slash skills are permitted ONLY when:
+  1. The skill is verified installed in the local environment (`skills list` or plugin catalog).
+  2. The task explicitly authorizes and requires that specific capability.
+- **Syntax Rule**: When authorized, slash commands must be placed at the **very start** of the prompt string with **strictly zero space** after the slash (e.g. `/teamwork-preview ...`).
 
 ---
 
@@ -60,7 +65,8 @@ Append to the common block for implementers:
 - OWNED_FILES: ["<PATH_1>", "<PATH_2>"]
 - EXCLUSIONS: ["<UNOWNED_PATH_1>", "..."]
 - Behavioral Checks: Changes to production code require appropriate behavioral test coverage (red-to-green TDD). Documentation and generated metadata changes are exempt from mandatory red/green tests.
-- Handback: Publish immutable report to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml` (or report concise outcome for Mode 1/2). Notify supervisor without `--wait`.
+- Internal Subagents: Spawning native internal subagents is permitted ONLY if native runtime tools support them and an explicit scope grant is provided.
+- Handback: Mode 3 Managed Missions publish immutable report to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-handback.yaml`. Mode 1 and Mode 2 report concise native outcome and commit SHA. Yield idle after handback.
 ```
 
 ---
@@ -71,12 +77,12 @@ Append to the common block for reviewers:
 
 ```markdown
 ## 4. Review Scope & Clean Context Rules
-- CANDIDATE_HEAD: "<EXACT_FULL_40_CHAR_COMMIT_SHA>"
+- CANDIDATE_HEAD: "<EXACT_FULL_COMMIT_SHA>"
 - BASE_SHA: "<BASE_COMMIT_SHA>"
-- REVIEW_WORKTREE: "<ABSOLUTE_READONLY_WORKTREE_PATH>"
+- REVIEW_WORKTREE: "<ABSOLUTE_READONLY_WORKTREE_PATH_OR_SHARED_CHECKOUT>"
 - Review Invariant: Audit specification conformance, code quality, diff, and check outputs at the exact candidate SHA in clean context.
-- Read-Only Boundary: Reviewers are read-only hardening partners. They do not author production feature code or self-approve their own changes. Findings are delivered in a formal review report back to the supervisor or author.
-- Handback: Publish immutable review report to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-review.yaml` and notify supervisor without `--wait`.
+- Read-Only Boundary: Reviewers are read-only hardening partners. They do not author production feature code or self-approve their own changes. Findings are delivered back to the author or supervisor.
+- Handback: Mode 3 Managed Missions publish immutable review report to `<RUN_ROOT>/<TASK_ID>-a<ATTEMPT>-review.yaml`. Mode 2 Task Execution delivers a concise native text review verdict with finding disposition directly.
 ```
 
 ---
@@ -92,18 +98,16 @@ Append to the common block for integration tasks:
 - VERIFIED_CANDIDATES: ["<SHA_1>", "<SHA_2>"]
 - Pipeline:
   1. Serial rebase onto target branch baseline.
-  2. Execute repository generator, validation, and test suites.
-  3. Verify exact integrated HEAD with full check suite.
+  2. Execute repository generator, validation, and targeted checks.
+  3. Verify exact integrated HEAD with authorized check commands.
   4. Perform authorized delivery mechanics (push branch, open PR, or execute authorized merge).
-- Handback: Publish immutable integration report to `<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml` and notify supervisor without `--wait`.
+- Handback: Mode 3 Managed Missions publish immutable integration report to `<RUN_ROOT>/integration-a<ATTEMPT>-handback.yaml` (or concise native notice for Mode 2) and yield idle without `--wait`.
 ```
 
 ---
 
 ## 6. Safe Submission Pattern
 
-Always submit large briefs safely via heredocs or files to prevent shell argument escaping issues:
-
-```bash
-herdr agent prompt "$TARGET_PANE" "$(< /path/to/brief.md)"
-```
+For long briefs containing special characters, quotes, or code fences:
+- Author the brief into a temporary markdown file at `<RUN_ROOT>/briefs/<TASK_ID>.md`.
+- Read and inject via piped input or file submission rather than passing giant strings through shell argv.

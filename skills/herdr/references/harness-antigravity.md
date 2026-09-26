@@ -1,19 +1,41 @@
-# Antigravity (AGY) Harness Physics
+# Antigravity (AGY) Harness Physics & Queue Management
 
-This reference defines operational physics, turn queue dynamics, pre-Escape safety gates, modal handling, child process reconciliation, and recovery protocols specific to the Antigravity (AGY) CLI runtime within Herdr.
+This reference defines operational physics, turn queue dynamics, manager intake sequences, pre-Escape safety gates, modal handling, child process reconciliation, and recovery protocols specific to the Antigravity (AGY) CLI runtime (scoped to observations on AGY CLI 1.2.11) within Herdr.
 
 ---
 
-## 1. AGY Turn Queue Dynamics
+## 1. Core Queue Prevention (The Primary Design)
+
+Queue prevention is the primary architecture; Escape recovery is a secondary fallback. Preventing queue stalls eliminates the need for repeated interruptions:
+
+### 1.1 The Manager Turn Sequence
+To prevent incoming report notices from queuing behind long managerial operations:
+1. **Sweep Queued Notices & Unconsumed Reports First**:
+   Every management turn must begin by sweeping queued notices in the terminal and scanning `report_root` for newly published unconsumed reports before initiating status polling, log reading, or deep investigations.
+2. **Short Management Turns**:
+   Keep supervisory turns concise: **Intake $\to$ Decision $\to$ Dispatch $\to$ Checkpoint (`state.yaml`) $\to$ Yield**. A management turn should not exceed 1–2 tool calls for task coordination.
+3. **Delegate Lengthy Diagnostics & Build Waits**:
+   Never tie up a manager session running long builds, test suites, or exhaustive diagnostic investigations. Delegate diagnostics and build waits to task workers or dedicated diagnostic lanes.
+4. **Prompt Producer Yield**:
+   Task workers and report producers must yield immediately after publishing a handback report and transmitting their notice.
+
+### 1.2 Explicit Wakeup Ownership Hierarchy
+- **Root / Controller** is the sole wakeup owner for the Engineering Manager (EM).
+- **The EM / Direct Parent** is the sole wakeup owner for its assigned task workers.
+- **Single Wakeup Owner Invariant**: Exactly ONE supervisor is authorized to wake or nudge an AGY session. Multiple senders must never send Escape or prompts concurrently.
+- **No Routine ACK Cascades**: Never send unnecessary acknowledgment messages ("ACK of ACK") that inflate turn queues and trigger starvation.
+
+---
+
+## 2. AGY Turn Queue Dynamics (CLI 1.2.11)
 
 In the Antigravity interactive TUI:
-- **Queued Input During Active Turns**: If text followed by Enter is submitted to an AGY pane while the agent is in an active turn (`working`), AGY does NOT immediately execute the text. Instead, it buffers the message in an internal visible queue until the current turn, subagent run, or tool call chain finishes.
-- **Single Wakeup Owner Invariant**: Exactly ONE supervisor or controller is authorized to wake or nudge an AGY session. Multiple senders broadcasting keys or prompts create unresolvable race conditions and duplicate prompt staging.
-- **Wait for Idle When Possible**: Whenever workflow permits, wait for AGY to reach `idle` before submitting new prompts. Injecting prompts while the agent is writing files or invoking tools risks composer corruption.
+- **Queued Input During Active Turns**: If text followed by Enter is submitted to an AGY pane while the agent is in an active turn (`working`), AGY buffers the message in an internal visible queue until the current turn, subagent run, or tool call sequence finishes.
+- **Wait for Idle When Possible**: Whenever workflow permits, wait for AGY to reach `idle` before submitting new prompts. Injecting prompts while an agent is writing files or invoking tools can interleave input before the agent is ready.
 
 ---
 
-## 2. Staged-After-Escape Recovery Protocol
+## 3. Staged-After-Escape Recovery Protocol
 
 This protocol is invoked ONLY when an AGY queue stalls during an extended active turn with queued messages. It is **never** used for a modal-blocked agent, an idle agent, or during mutating operations.
 
@@ -22,9 +44,9 @@ This protocol is invoked ONLY when an AGY queue stalls during an extended active
                  │
                  ▼
 [ Step 1: Pre-Escape Inspection & Safety Gates ]
-  • Inspect live identity (herdr pane current)
+  • Inspect live identity (herdr pane current --current)
   • Inspect visible screen (herdr agent read --source visible)
-  • Is agent blocked on a modal? ──► YES ──► DO NOT SEND ESCAPE! Resolve modal via arrows/enter.
+  • Is agent blocked on a modal? ──► YES ──► DO NOT SEND ESCAPE! Resolve modal via visible choice.
   • Are Git mutations / writes underway? ─► YES ─► Wait for safe boundary.
                  │ (Clean safe boundary confirmed)
                  ▼
@@ -47,21 +69,21 @@ This protocol is invoked ONLY when an AGY queue stalls during an extended active
   (Submit EXISTING text once; NO duplicate paste!)
 ```
 
-### Detailed Procedure & Gates:
-
-### 2.1 Pre-Escape Safety Gates (Must Precede Any Key)
+### 3.1 Pre-Escape Safety Gates (Must Precede Any Key)
 1. **Verify Session Identity**:
-   Confirm caller coordinates and target pane via `herdr pane current`. Ensure you are targeting the verified AGY pane.
+   Confirm caller coordinates and target pane via `herdr pane current --current`. Ensure you are targeting the verified AGY pane.
 2. **Inspect Visible Buffer**:
    ```bash
    herdr agent read "$PANE_ID" --source visible --lines 25
    ```
 3. **Safety Check — Modals**:
-   If the agent is in state `blocked` or displays a modal/dialog (e.g. project trust prompt, question menu, permission prompt), **DO NOT SEND ESCAPE**. Sending Escape to a modal can dismiss the dialog unexpectedly or abort startup. Resolve the modal mechanically using arrow keys and Enter.
+   If the agent is in state `blocked` or displays a modal/dialog (e.g. project trust prompt, question menu, permission prompt), **DO NOT SEND ESCAPE**. Sending Escape to a modal can dismiss the dialog unexpectedly or abort startup. Resolve the modal based on visible authorized choices.
 4. **Safety Check — Active Mutations**:
    If `herdr pane process-info` or visible output shows active file writes, Git operations (`git commit`, `git rebase`), compiler execution, or package installation, **hold Escape**. Wait for a safe boundary before sending any key. Blind keys during modal display or mutation are strictly prohibited.
+5. **Preserve User Pause**:
+   If the session was explicitly paused by the human user, do NOT send Escape or prompts without explicit authorization to unpause.
 
-### 2.2 Execution & Post-Escape State Branching
+### 3.2 Execution & Post-Escape State Branching
 At a safe boundary, the single designated wakeup owner proceeds:
 1. **Send Exactly ONE Targeted Escape**:
    ```bash
@@ -86,58 +108,24 @@ At a safe boundary, the single designated wakeup owner proceeds:
      herdr agent prompt "$PANE_ID" "Consume existing report <REPORT_ID> at <PATH>"
      ```
 
-### 2.3 Child Subprocess vs. Cognitive Turn Disconnection
-Captured native evidence (verified via `probe-agy-controller-verification.json`):
+### 3.3 Child Subprocess vs. Cognitive Turn Disconnection
+Captured native evidence (verified via `probe-agy-controller-verification.json` on AGY CLI 1.2.11):
 - Sending Escape interrupts the cognitive LLM turn. However, surviving child processes (e.g. background bash scripts, sleep commands, compiler invocations) may continue executing to exit status $0$.
-- In the probe verification, the agent's internal self-summary reported zero interruptions because its background child process completed cleanly, yet captured native screen output proved that the cognitive LLM turn was interrupted and required Enter submission.
+- In probe verification, the agent's internal self-summary erroneously reported zero interruptions because its background child process completed cleanly, yet captured native screen output proved that the cognitive LLM turn was interrupted and required Enter submission.
 - **Rule**: Do NOT conflate child process survival with cognitive turn continuity, and do NOT equate child exit $0$ with uninterrupted agent flow. Always inspect both `herdr pane process-info` and visible buffer output to reconcile process and cognitive state.
 
 ---
 
-## 3. Project Trust Modal Resolution
+## 4. Project Trust Modal Resolution
 
 When AGY starts inside a newly provisioned Git worktree directory, it presents an interactive project trust confirmation prompt:
 
-```text
-Do you trust the contents of this project?
-> Yes, proceed
-  No, exit
+```bash
+herdr agent read "$PANE_ID" --source visible --lines 15
 ```
 
-### Trust Invariants:
-1. **Inspect Before Sending Keys**:
-   Readiness metadata (`agent_status: idle`, `interactive_ready: true`) can be reported while the trust prompt is still visibly displayed on screen. **Never blindly send Enter after launch**.
-2. **Verification & Selection**:
-   ```bash
-   herdr agent read "$PANE_ID" --source visible --lines 15
-   ```
-   - If the visible output confirms the trust dialog for the authorized repository, send exactly one Enter:
-     ```bash
-     herdr agent send-keys "$PANE_ID" enter
-     ```
-   - If the agent has already passed the prompt and displays an empty composer, **do not send Enter**. An unconditional Enter on an empty composer can submit unwanted blank turns or disrupt startup.
-
----
-
-## 4. Session Resumption & Conversation Integrity
-
-When resuming an AGY session after a pause, crash, or terminal reconnect:
-
-1. **Exact Conversation ID Required**:
-   Always resume using the exact AGY conversation UUID:
-   ```bash
-   agy --conversation "$AGY_CONVERSATION_ID"
-   ```
-2. **Never Use `--continue`**:
-   `agy --continue` attaches to whichever conversation was updated most recently on the host. In a multi-worktree environment, this causes catastrophic cross-lane state contamination.
-3. **Single Continuation Prompt**:
-   Verify an input-ready composer before transmitting exactly ONE prompt message: `"continue"`.
-
----
-
-## 5. Bounded Quota Recovery
-
-If AGY returns an API rate-limit or quota exhaustion error (`RESOURCE_EXHAUSTED` / 429):
-1. **Rule of Two**: Two equivalent infrastructure or quota failures halt automated retries.
-2. **Verify Actual Progress**: A spinning indicator alone does not prove quota reset. Look for real tool calls and turns before declaring recovery.
-3. **Authorized Tiering**: If switching models to bypass quota, use only explicitly authorized model flags (e.g. `--model gemini-3.8-flash`). Never guess non-existent model identifiers or downgrade without authorization.
+1. **Inspect Visible Options**: Read the options displayed on the terminal screen (e.g. `Trust folder`, `Allow once`, `Exit`).
+2. **Targeted Selection**:
+   - Navigate to the authorized selection using `herdr agent send-keys "$PANE_ID" <up|down>`.
+   - Confirm the selection using `herdr agent send-keys "$PANE_ID" enter`.
+3. **Never Blindly Send Enter**: Sending Enter blindly on launch risks submitting blank prompts or selecting unintended options if the composer is already active.

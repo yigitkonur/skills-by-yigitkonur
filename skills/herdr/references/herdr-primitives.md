@@ -1,6 +1,6 @@
 # Herdr CLI Primitives & Command Reference
 
-Complete command reference for Herdr client/server 0.9.0 (protocol 22). All non-interactive CLI commands return structured JSON natively on stdout. Do not pass `--json` to commands that already output JSON by default.
+Command reference for selected Herdr client/server 0.9.0 (protocol 22) primitives. Selected non-interactive CLI commands return structured JSON natively on stdout; screen buffer reads (`herdr pane read`, `herdr agent read`), help text, and status modes emit plain text or ANSI.
 
 ---
 
@@ -36,18 +36,18 @@ Control raw terminal PTY execution surfaces, layout splits, and operating system
 
 | Subcommand | Syntax | Description |
 |---|---|---|
-| `current` | `herdr pane current [--current]` | Returns caller's live coordinates (`pane_id`, `tab_id`, `workspace_id`, `cwd`). |
+| `current` | `herdr pane current --current` | Returns caller's live coordinates (`pane_id`, `tab_id`, `workspace_id`, `cwd`). Always pass `--current`. |
 | `list` | `herdr pane list [--workspace <ID>]` | Lists all terminal panes. |
 | `get` | `herdr pane get <PANE_ID>` | Inspects pane details, session metadata, and process state. |
 | `layout` | `herdr pane layout [--pane <ID>] [--current]` | Shows spatial layout coordinates ($x, y, w, h$). |
 | `process-info` | `herdr pane process-info [--pane <ID>]` | Returns process tree (PID, command, children, foreground process). |
 | `split` | `herdr pane split [--pane <ID>] [--current] --direction <right\|down> [--cwd <DIR>] [--no-focus]` | Splits pane horizontally (`right`) or vertically (`down`). |
-| `read` | `herdr pane read <PANE_ID> [--source <SRC>] [--lines <N>]` | Captures raw terminal buffer output. |
+| `read` | `herdr pane read <PANE_ID> [--source <SRC>] [--lines <N>]` | Captures raw terminal buffer output (plain text/ANSI). |
 | `send-keys` | `herdr pane send-keys <PANE_ID> <KEYS...>` | Sends key events to pane PTY (`esc`, `enter`, `ctrl+c`, etc.). |
 | `send-text` | `herdr pane send-text <PANE_ID> "<TEXT>"` | Injects literal text into PTY without trailing newline. |
 | `run` | `herdr pane run <PANE_ID> "<CMD>"` | Injects text and sends Enter atomically. |
 | `wait-output` | `herdr pane wait-output <--match <TEXT>\|--regex <PAT>> <PANE_ID> [--timeout <MS>]` | Blocks until matching terminal output appears in recent buffer. |
-| `resize` | `herdr pane resize --pane <ID> --direction <left\|right\|up\|down> --cells <N>` | Adjusts split boundary. |
+| `resize` | `herdr pane resize --pane <ID> --direction <left\|right\|up\|down> --amount <FLOAT>` | Adjusts split boundary fractionally (per installed 0.9.0 help). |
 | `zoom` | `herdr pane zoom --pane <ID>` | Toggles full-tab maximization of the pane. |
 | `close` | `herdr pane close <PANE_ID>` | Terminates PTY session and destroys the pane. |
 
@@ -59,73 +59,30 @@ Manage Git worktree-backed workspaces over the socket API.
 
 | Subcommand | Syntax | Description |
 |---|---|---|
-| `create` | `herdr worktree create --cwd <REPO> --path <PATH> --branch <BRANCH> [--base <REF>] [--label <LBL>] [--no-focus] [--trust-repository]` | Creates a Git worktree, opens a dedicated Herdr workspace bound to it, and launches Pane 1 inside the checkout. |
-| `open` | `herdr worktree open --cwd <REPO> --path <PATH> [--branch <BRANCH>] [--label <LBL>] [--no-focus]` | Opens an existing worktree checkout as a Herdr workspace. |
-| `list` | `herdr worktree list` | Enumerates all worktree-backed workspaces. |
-| `remove` | `herdr worktree remove --workspace <WS_ID> [--force]` | Unlinks worktree checkout from disk and closes workspace. Refuses dirty trees unless `--force` is passed. |
+| `create` | `herdr worktree create --cwd <DIR> --path <PATH> --branch <BRANCH> [--base <REF>] [--label <LBL>] [--no-focus]` | Provisions Git worktree, dedicated workspace, and initial root pane. |
+| `open` | `herdr worktree open --cwd <DIR> --path <PATH> [--label <LBL>] [--no-focus]` | Attaches existing worktree directory as a Herdr workspace. |
+| `list` | `herdr worktree list [--json]` | Lists all active worktree-backed workspaces. |
+| `remove` | `herdr worktree remove --workspace <ID> [--force]` | Unlinks worktree checkout from disk and closes Herdr workspace. Refuses dirty trees unless `--force` is passed. |
 
 ---
 
 ## 4. Workspace & Tab Commands (`herdr workspace`, `herdr tab`)
 
-Organize top-level window groups and contained tabs.
-
-### Workspace:
-- `herdr workspace list`: Lists all active workspaces.
-- `herdr workspace create [--label <TEXT>]`: Creates a new independent workspace.
-- `herdr workspace get <WS_ID>`: Shows tabs and panes in workspace.
-- `herdr workspace close <WS_ID>`: Closes Herdr UI workspace and session processes. (Does NOT delete Git worktrees).
-
-### Tab:
-- `herdr tab create --workspace <WS_ID> [--cwd <DIR>] [--label <TEXT>] [--no-focus]`: Creates a new tab.
-- `herdr tab list`: Lists all tabs across workspaces.
-- `herdr tab get <TAB_ID>`: Inspects tab coordinates and contained panes.
-- `herdr tab close <TAB_ID>`: Closes the tab and all contained panes.
+| Subcommand | Syntax | Description |
+|---|---|---|
+| `workspace list` | `herdr workspace list` | Lists all active workspaces. |
+| `workspace create` | `herdr workspace create [--label <LBL>]` | Creates a new independent workspace. |
+| `workspace close` | `herdr workspace close <ID>` | Closes Herdr UI workspace and pane processes only (preserves Git worktree on disk). |
+| `tab list` | `herdr tab list [--workspace <ID>]` | Lists tabs within a workspace. |
+| `tab create` | `herdr tab create [--workspace <ID>] [--cwd <DIR>] [--label <LBL>] [--no-focus]` | Creates a new tab inside an existing workspace. |
+| `tab close` | `herdr tab close <ID>` | Closes a tab and its contained panes. |
 
 ---
 
-## 5. Saved SSH Machines (`herdr --machine`)
+## 5. Remote Forwarding Commands (`--machine`)
 
-Control a remote Herdr server instance via saved SSH connection profiles:
-
-```bash
-herdr --machine <label-or-id> agent list
-herdr --machine <label-or-id> pane list
-herdr --machine <label-or-id> agent prompt <remote-agent-name> "<PROMPT>" --wait
-```
-
-### Machine Invariants:
-1. **Profile Identification**: Selector must be an enabled saved profile ID or unique label. Do NOT pass raw SSH hostnames.
-2. **Dedicated Scope**: Commands run against the remote profile's session without an open TUI. Never combine `--machine` with `--session` or `--remote`.
-3. **ID Scope**: Identifiers (`w1:p1`, etc.) are scoped to that specific server; local IDs do not target remote panes.
-4. **Remote Paths**: Remote worktree paths must be absolute, `~`, or start with `~/`.
-5. **Connection Failure Recovery**: A connection drop does NOT prove a mutating command failed; inspect remote state before retrying.
-
----
-
-## 6. Notification Commands (`herdr notification`)
-
-Post desktop and TUI notifications to inform the human user of milestones.
-
-- `herdr notification show "<TITLE>" [--body "<TEXT>"] [--sound <none|done|request>]`: Displays a toast banner in Herdr with optional audio alert.
-
----
-
-## 7. Dynamic Coordinates & Recipe Extraction
-
-Always use dynamic queries with `--current` or explicit verified IDs:
-
-```bash
-# Capture live caller pane and tab explicitly:
-SELF_PANE="$(herdr pane current --current | jq -r .result.pane.pane_id)"
-SELF_TAB="$(herdr pane current --current | jq -r .result.pane.tab_id)"
-
-# Create worktree workspace and extract handles:
-WT_RES="$(herdr worktree create --cwd "$PWD" --path "../feature-x" --branch "feat/x" --label "feature-x" --no-focus)"
-WS_ID="$(echo "$WT_RES" | jq -r .result.workspace.workspace_id)"
-ROOT_PANE="$(echo "$WT_RES" | jq -r .result.root_pane.pane_id)"
-
-# Split pane using explicit parent handle:
-SPLIT_RES="$(herdr pane split --pane "$ROOT_PANE" --direction right --no-focus)"
-REV_PANE="$(echo "$SPLIT_RES" | jq -r .result.pane.pane_id)"
-```
+When executing across remote SSH machines:
+- Pass `--machine <PROFILE>` to direct commands to a saved SSH forwarding profile in Herdr.
+- Coordinates and IDs are server-scoped: a pane ID on machine `dev-box` is independent of a pane ID on machine `local`.
+- Paths must be expressed as absolute paths or tilde (`~`) paths on the target machine.
+- Remote operations execute headlessly over the socket protocol without requiring a local TUI window.

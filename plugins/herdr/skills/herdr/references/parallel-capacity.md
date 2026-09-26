@@ -12,6 +12,8 @@ This reference defines capacity management, concurrency bounds, resource locking
 2. **Genuine Independence**:
    - Concurrency is warranted ONLY when tasks produce disjoint verifiable deliverables, maintain stable contract interfaces, and touch strictly disjoint writable file surfaces.
    - Refill worker capacity dynamically as active workers publish completed handbacks.
+3. **Executor Authority Limit**:
+   - Assigned task executors do NOT infer managerial authority, coordinator roles, or nested subagent spawning without an explicit scope grant and verified native tool support.
 
 ---
 
@@ -22,7 +24,7 @@ This reference defines capacity management, concurrency bounds, resource locking
    - Never invent speculative tier names or enforce mandatory downgrades to "flash".
    - Never silently downgrade reasoning models without explicit user authorization.
 2. **Native Internal Subagent Accounting**:
-   - When workers spawn native internal subagents (where the runtime supports them), those subagents consume active host resources and API rate limits.
+   - When workers spawn native internal subagents (where the runtime supports them and scope is authorized), those subagents consume active host resources and API rate limits.
    - **Count internal subagents in total capacity**: Schedulers must account for internal worker subagents within host concurrency limits so that overall host load remains bounded.
 3. **Rate Limits & 429 Quota Throttling**:
    - If an agent encounters API rate limiting (`RESOURCE_EXHAUSTED` / 429), **immediately pause new lane dispatch**.
@@ -35,7 +37,7 @@ This reference defines capacity management, concurrency bounds, resource locking
 To avoid unnecessary approval bottlenecks during multi-part tasks:
 - **Local Scoped Composition**: A single designated writer with whole-change ownership may sequentially prepare, implement, generate/package, and execute authorized repository checks locally to produce a single integrated candidate for whole-candidate verification.
 - **Composition is NOT Release Approval**: Composing a candidate locally bypasses redundant per-file lane gates, but does NOT waive final candidate verification gates.
-- **Clean Independent Review**: Independent review remains strictly separate from writing. The candidate undergoes fresh technical review by an independent reviewer at its exact commit SHA.
+- **Clean Independent Review**: Independent review remains strictly separate from writing. The candidate undergoes fresh technical review by an independent reviewer at its exact verified commit object ID.
 
 ---
 
@@ -58,9 +60,13 @@ When managing scarce host resources (e.g. exclusive compiler instances, database
 
 ### Streaming Review Protocol:
 1. **Decoupled Per-Lane Transitions**:
-   - Reviews stream dynamically. The instant *any* worker reports `DONE` or submits candidate code, immediately split that task's pane right (`herdr pane split --direction right --no-focus`) and prompt its reviewer.
+   - Reviews stream dynamically without whole-wave barriers. As soon as a worker reports `DONE` or submits candidate code, provision reviewer capacity (subject to available host resources) and prompt the reviewer.
    - Finished tasks never sit idle waiting for slower tasks in the same wave.
-2. **Non-Blocking Supervisor Monitoring**:
+2. **Geometry-Aware Review Placement**:
+   - Check layout first: if the task pane width is $\ge 161$ columns, split horizontally (`herdr pane split --pane "$PANE" --direction right --no-focus`) to maintain $\ge 80$ columns each.
+   - If width $< 161$ columns but height $\ge 41$ lines, split vertically (`--direction down`).
+   - If neither threshold is met, open a dedicated review tab (`herdr tab create --workspace "$WS" --cwd "$PWD" --label "review-${TASK_ID}" --no-focus`). Never force repeated right splits that reduce panes below 80 columns.
+3. **Non-Blocking Supervisor Monitoring**:
    - Supervisors monitor active lanes using short, bounded timeouts (`herdr agent wait <lane> --timeout 5000`) or periodic inspection sweeps.
    - When a review passes, it enters the serial integration queue immediately.
 

@@ -1,6 +1,6 @@
 # Serial Merge & Conflict Resolution Pipeline
 
-This reference details the serial integration pipeline for landing candidate changes onto the mission-authorized target branch, including the self-contained 5-step conflict resolution engine, safe rebase aborts, and branch protection safeguards.
+This reference details the serial integration pipeline for landing candidate changes onto the mission-authorized target branch, including review delta verification after rebase, the self-contained 5-step conflict resolution engine, safe rebase aborts, and branch protection safeguards.
 
 ---
 
@@ -16,10 +16,10 @@ Candidates are merged **serially in sequence** ($Candidate_1 \to Candidate_2 \to
    Candidate #1 ───────►  Merge to target branch
                                     │
                                     ▼ (target branch advances)
-   Candidate #2 ───────►  Rebase onto target ───► Run Tests ───► Merge to target
-                                    ▲                      │
-                                    │ (conflict)           ▼ (target branch advances)
-                                Resolve Conflict  Candidate #3 ──► Rebase ...
+   Candidate #2 ───────►  Rebase onto target ───► Verify / Delta Review ───► Merge to target
+                                    ▲                                          │
+                                    │ (conflict)                               ▼ (target advances)
+                                Resolve Conflict                     Candidate #3 ──► Rebase ...
 ```
 
 ---
@@ -31,34 +31,46 @@ For each approved candidate in the queue:
 ### Step 1: Rebase Candidate onto Authorized Target Branch Baseline
 Target the branch authorized by the mission brief (e.g. `main`, `release/v2`, `docs/unify-herdr`). Never assume `main` without authorization:
 ```bash
+PRE_REBASE_SHA="$(git rev-parse HEAD)"
 git fetch origin "$TARGET_BRANCH"
 git rebase "origin/$TARGET_BRANCH"
+POST_REBASE_SHA="$(git rev-parse HEAD)"
 ```
 
-### Step 2: Validate Rebased Candidate
-Run repository typechecks, linters, and behavioral test suites on the rebased code:
-```bash
-npm run typecheck --if-present
-npm test --if-present
-```
+### Step 2: Compare Object IDs & Execute Required Delta Review
+- Compare `PRE_REBASE_SHA` and `POST_REBASE_SHA`.
+- If `PRE_REBASE_SHA == POST_REBASE_SHA`: the rebase was a clean no-op; prior review approval remains valid.
+- If `PRE_REBASE_SHA != POST_REBASE_SHA`: Git generated a new commit object ID. **Prior review approval is invalidated**.
+  - Execute repository-authorized check and validation commands on the new rebased HEAD:
+    ```bash
+    <AUTHORIZED_REPO_CHECK_COMMAND>
+    ```
+  - An independent reviewer must perform a focused delta review on the rebased candidate diff and issue an explicit approval decision before landing.
 
 ### Step 3: Push Verified Rebased HEAD
-Push rebased commits using lease (never unconditional force):
-```bash
-git push --force-with-lease -u origin "$BRANCH_NAME"
-```
+- For new candidate branches: use standard `git push -u origin "$BRANCH_NAME"`.
+- If an authorized task branch history rewrite occurred during rebase: use lease with verified expected remote state:
+  ```bash
+  git push --force-with-lease -u origin "$BRANCH_NAME"
+  ```
+  *Never push unconditional force (`git push -f`); never use force-with-lease unless a branch rewrite was explicitly required.*
 
 ### Step 4: Execute Authorized Delivery Action
 - **If merging via PR**:
   ```bash
-  gh pr merge "$PR_URL" --squash --delete-branch
+  gh pr merge "$PR_URL" --squash
   ```
-  *(Note: Git will delete the remote tracking branch, but will refuse to delete the local branch while it remains checked out in an active worktree. Local branch cleanup occurs during post-worktree teardown).*
+  *(Do not pass `--delete-branch` here; local branch retirement occurs strictly after the worktree checkout is unlinked during Stage 3 cleanup).*
 - **If merging locally**:
-  ```bash
-  git checkout "$TARGET_BRANCH"
-  git merge --ff-only "$BRANCH_NAME"
-  ```
+  Do NOT run `git checkout "$TARGET_BRANCH"` inside secondary worktrees! If `$TARGET_BRANCH` is checked out in the primary repository workspace, Git will abort. Instead:
+  - If operating from the primary workspace: fast-forward merge the verified branch:
+    ```bash
+    git -C "$REPO_ROOT" merge --ff-only "$BRANCH_NAME"
+    ```
+  - Or push the verified branch into the target ref:
+    ```bash
+    git push . "$BRANCH_NAME":"$TARGET_BRANCH"
+    ```
 
 ---
 
@@ -66,10 +78,11 @@ git push --force-with-lease -u origin "$BRANCH_NAME"
 
 If `git rebase` encounters conflict markers, resolve them directly in the worktree:
 
-### Step 1: Observe Exact Merge State
+### Step 1: Observe Exact Merge State & Identify Conflicting Files
+Path-safe conflict extraction (captures all unmerged states `UU`, `AA`, `DD`, `DU`, `UD`, `AU`, `UA`, handling spaces safely):
 ```bash
-# Check rebase status and extract conflicting files (UU):
-git status --porcelain | grep "^UU " | awk '{print $2}'
+# Check rebase status and list all unmerged files safely:
+git diff --name-only --diff-filter=U
 
 # Check conflict markers and boundaries:
 git diff --check
@@ -80,7 +93,7 @@ git log --oneline -n 5 HEAD
 ```
 
 ### Step 2: Understand Original Intent of Both Sides
-- Read commit messages and diffs for both upstream and candidate commits (`git log -p -1 <upstream_sha>` and `git log -p -1 <candidate_sha>`).
+- Read commit messages and diffs for both upstream and candidate commits (`git log -p -1 origin/$TARGET_BRANCH` and `git log -p -1 HEAD`).
 - Check tickets or architecture notes for both changes.
 - **Never guess**: Every conflict hunk represents two intentional decisions that collided.
 
@@ -93,25 +106,26 @@ git log --oneline -n 5 HEAD
   - **Never invent new, unrelated behavior** or opportunistic refactors during conflict resolution.
 
 ### Step 4: Run Automated Repository Checks
-Verify syntax, types, and test suites on the resolved code:
+Verify syntax, types, and test suites on the resolved code using repository-authorized commands:
 ```bash
-npm run typecheck --if-present
-npm test --if-present
+<AUTHORIZED_REPO_CHECK_COMMAND>
 ```
 
 ### Step 5: Complete Rebase Non-Interactively
-In automated or agent environments, `git rebase --continue` can launch interactive editors (`nano`, `vi`), hanging the pane. Always use `GIT_EDITOR=true`:
 ```bash
-git add <resolved_files>
+# Stage resolved files:
+git diff --name-only --diff-filter=U | xargs -r git add
+
+# Continue rebase non-interactively:
 GIT_EDITOR=true git rebase --continue
 ```
-Repeat Steps 1–5 if multiple commits are in the rebase sequence.
 
 ---
 
-## 4. Safe Rebase Abort (Authorized Rollback)
+## 4. Safe Rebase Abort Invariant
 
-Unlike rigid rules that prohibit aborting rebases under any circumstances:
-
-- **When to Abort**: If conflict analysis reveals that the target branch baseline is structurally invalid, the candidate was rebased onto the wrong branch, or the conflict scope exceeds the author's mandate, executing `git rebase --abort` is **fully authorized**.
-- **Preserve Evidence**: Before aborting, record the conflicting hunks and error log. Restore clean state and report the blocker to the supervisor.
+If conflict investigation reveals that the target branch baseline has shifted fundamentally, or that the candidate's core assumptions conflict irreparably with merged upstream architecture:
+```bash
+git rebase --abort
+```
+Safe abort is authorized to return the branch to its clean pre-rebase state. Record the technical conflict details and escalate to the supervisor.

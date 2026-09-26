@@ -36,12 +36,13 @@ Distinguish the four explicit states of a communication:
 ## 3. When to Use Immutable Reports vs. Native Messages
 
 - **Native message only** (Mode 1 / Mode 2 / routine coordination):
-  - Routine progress check-ins, plain technical questions, or lightweight task handbacks.
-  - Questions require only: Question ID, concise context, and sender's return route.
+  - **Ordinary Technical Q/A**: Asking a clarifying question about interface shapes, checking if an endpoint is ready, or requesting non-blocking information.
+  - Format: Concise question, brief context, and return route.
+  - **Mode 2 Task Handbacks**: Summary of changes, commit SHA, and test outputs delivered directly in native text to the supervisor.
 - **Immutable YAML report required** (Mode 3 Managed Missions):
-  - Handback of completed work deliverables.
-  - Formal technical review verdicts and hardening decisions.
-  - Material blockers requiring managerial decisions.
+  - Handback of completed work deliverables from workers.
+  - Formal technical review verdicts and hardening decisions from reviewers.
+  - **Formal Material Blockers**: Unresolvable specification collisions, missing external credentials, schema migration failures, or architectural choices requiring managerial decisions.
   - Risky recovery interventions and authority modifications.
 
 ---
@@ -83,8 +84,8 @@ evidence:
     result: <string>
 
 git:
-  base: <string>             # 40-character base commit SHA
-  head: <string>             # 40-character candidate commit SHA
+  base: <string>             # Full verified base commit object ID / SHA
+  head: <string>             # Full verified candidate commit object ID / SHA
   branch: <string>
   worktree: <string>
   pr: <integer|string|null>
@@ -100,71 +101,44 @@ requested_action: <string>   # review | merge | unblock_decision | integrate | n
 
 ## 5. Atomic Publication Pipeline (No-Clobber & Verified)
 
-To ensure no observer reads partially written or clobbered reports, producers strictly follow this 4-step pipeline:
+Producers author reports through a strict 4-step atomic pipeline:
 
 ```
-[ Step 1: Write .partial ]
-       │  Author report via editor/tool to:
-       │  <RUN_ROOT>/<report_id>.partial
-       ▼
-[ Step 2: Validate Syntax, Shape, & Digest ]
-       │  2a. Syntax Validation:
-       │      • PyYAML available: python3 -c "import yaml; yaml.safe_load(open('<PATH>'))"
-       │      • JSON-formatted YAML: python3 -c "import json; json.load(open('<PATH>'))"
-       │  2b. Shape Validation:
-       │      Required keys: schema_version, mission_id, task_id, attempt, report_id, producer, status.
-       │      Required mappings: producer, manager, cto.
-       │  2c. Compute SHA-256 Digest:
-       │      EXPECTED_DIGEST=$(shasum -a 256 <PATH> | awk '{print $1}')
-       ▼
-[ Step 3: Collision Pre-Flight & Atomic Rename ]
-       │  Verify destination does NOT exist:
-       │  test ! -e <RUN_ROOT>/<report_id>.yaml || { echo 'Destination exists!'; exit 1; }
-       │  POSIX atomic rename:
-       │  mv -n <RUN_ROOT>/<report_id>.partial <RUN_ROOT>/<report_id>.yaml
-       │  Verify all three post-rename conditions (abort notice on any failure):
-       │    1. Source removed: test ! -e <RUN_ROOT>/<report_id>.partial
-       │    2. Destination exists: test -f <RUN_ROOT>/<report_id>.yaml
-       │    3. Destination matches expected digest from Step 2c:
-       │       shasum -a 256 <RUN_ROOT>/<report_id>.yaml (matches EXPECTED_DIGEST)
-       │  If .partial still exists after mv -n exits 0, a TOCTOU race occurred: abort notice!
-       ▼
-[ Step 4: Native Prompt Notice (No-Wait) ]
-          herdr agent prompt "<MANAGER_PANE_ID>" "<NOTICE_TEXT>"
+[ Step 1: Write to .partial File ]
+  <RUN_ROOT>/reports/<REPORT_ID>.yaml.partial
+             │
+             ▼
+[ Step 2: In-Process Validation Gate ]
+  • YAML syntax parses cleanly
+  • Required top-level keys & mappings present
+  • Non-empty evidence & full commit object ID (git rev-parse HEAD)
+  • Compute SHA-256 digest
+             │ (Validation passes)
+             ▼
+[ Step 3: Atomic Rename ]
+  mv -n <REPORT_ID>.yaml.partial <REPORT_ID>.yaml
+             │
+             ▼
+[ Step 4: No-Wait Notice Delivery ]
+  herdr agent prompt "$MGR_PANE" \
+    "REPORT: report_id=<ID> path=<PATH> digest=<SHA256> status=completed"
+  (Omit --wait to prevent sender deadlock)
 ```
-
-### Publication Rules:
-1. **No Overwrites**: Once published, a report is permanently immutable.
-2. **No Producer Attempt Increments**: The manager/supervisor alone increments `attempt`. Producer corrections within an assigned attempt produce a new unique file with a descriptive suffix (e.g. `<task_id>-a1-correction.yaml`), leaving prior reports untouched.
 
 ---
 
-## 6. Concise Native Notice Format
+## 6. Manager Consumption Semantics & Deduplication
 
-Single-line notice format:
-```text
-REPORT NOTICE: mission_id=<MISSION_ID> task_id=<TASK_ID> attempt=<ATTEMPT> report_id=<REPORT_ID> pane_id=<ORIGIN_PANE_ID> tab_id=<ORIGIN_TAB_ID> report_path=<REPORT_PATH> status=<STATUS> requested_action=<REQUESTED_ACTION>
-```
-
-Producers **NEVER pass `--wait`** on notices.
-
----
-
-## 7. Manager Consumption Semantics & Pending-Effects Reconciliation
-
-When a report notice is received or discovered during state reconciliation:
-
-1. **Identity Gate (before advancing graph)**:
-   Verify `mission_id`, `task_id`, and `producer` fields (`pane_id`, `tab_id`, `terminal_id`, `role`, `runtime`) match the registered assignment in `state.yaml`. Unregistered, ambiguous, or mismatched reports are quarantined; explicit re-registration is required before evaluating evidence.
-2. **Attempt Gate**:
-   - `attempt == current`: process report.
-   - `attempt > current`: quarantine future attempt.
-   - `attempt < current`: reject obsolete attempt (log for historical audit; no graph advance).
-3. **Idempotent Digest Check**:
-   Compute SHA-256 of the report file.
-   - If `report_id` was already recorded in `state.yaml` with an identical digest, consume as an **idempotent duplicate**: acknowledge receipt with no new task graph transitions, no second dispatch, and no Git or ACK chain effects.
-   - If `report_id` exists with a different digest, flag `MUTATED_REPORT_REJECTED` and quarantine.
-4. **Pending-Effect Reconciliation Gate**:
-   Before dispatching dependent work or advancing a milestone, confirm that all prior tasks' `unresolved_effects` are either resolved or explicitly accepted and tracked in `state.yaml`. Never advance the graph over un-reconciled side effects.
-5. **Receipt is NOT Approval**:
-   Acknowledging receipt only records evidence in `state.yaml`. Advancing a task to `approved` or `integrated` requires independent technical verification (fresh review, check execution, or authorized sign-off).
+When an Engineering Manager receives a report notice:
+1. **Assignment & Identity Verification**:
+   A report digest alone cannot independently authenticate a notice. The manager verifies that `task_id`, `attempt`, and `producer` match the active task assignment.
+2. **Read Directly from Disk**:
+   Read the target file from `<RUN_ROOT>/reports/<REPORT_ID>.yaml`. Never trust text transmitted through terminal argv alone.
+3. **Deduplication Gate**:
+   - Compute `sha256sum <PATH>`.
+   - If `report_id` was already recorded with an **identical** digest: treat as a duplicate notice and consume idempotently (no-op).
+   - If `report_id` was previously recorded with a **different** digest: flag `MUTATED_REPORT_REJECTED`, quarantine the file, and log a defect.
+4. **Pending Effects Gate (`unresolved_effects`)**:
+   If the report declares non-empty `unresolved_effects` (e.g. unlinked temp files, dangling background jobs, unmerged git locks), the manager **must NOT advance the dependent graph** until those side effects are explicitly reconciled.
+5. **Update Checkpoint (`state.yaml`)**:
+   Record receipt in `state.yaml` under the task entry. Receipt proves consumption; technical acceptance occurs only when required review gates pass.

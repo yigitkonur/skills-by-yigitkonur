@@ -24,11 +24,11 @@ Select the operating mode based on task scope and complexity. Unified Herdr elim
 Use for:
 - Environment inspection, discovery, or executing a single verification command.
 - Quick bug investigation or short independent research.
-- Genuinely small, bounded fixes (e.g. fixing a typo, updating a config constant, correcting a documentation link).
-- *Boundary*: Direct path is reserved for genuinely small/bounded work, NOT arbitrary single-file work. A single-file modification that introduces architectural restructuring, protocol changes, or breaking interface shifts requires Mode 2 Task Execution.
+- Genuinely small, bounded fixes with low blast radius (e.g. fixing a typo, updating a config constant, correcting a documentation link, self-contained test fix).
+- *Boundary*: Direct path is reserved for genuinely small/bounded work, NOT arbitrary single-file work. A single-file modification that introduces architectural restructuring, protocol changes, breaking interface shifts, or auth changes requires Mode 2 Task Execution.
 
 ### Topology & Execution
-- **Topology**: Operate inside the caller's current pane, or split a single sibling pane in the same tab (`herdr pane split --current --direction right --no-focus`).
+- **Topology**: Operate inside the caller's current pane, or split a single sibling pane in the same tab, choosing split direction from projected geometry (horizontal if width $\ge 161$ cols, vertical if height $\ge 41$ lines; pass `--no-focus`).
 - **Ceremony**: Zero ceremony.
   - Do NOT spawn an Engineering Manager (EM) agent.
   - Do NOT decompose into GitHub issues.
@@ -46,15 +46,16 @@ Use for:
 
 ### Topology & Execution
 - **Authority**: The parent/root agent directly supervises workers and reviewers.
+  - *Authority Invariant*: Assigned executors do NOT infer managerial authority, coordinator roles, or nested subagent spawning without an explicit scope grant and verified native tool support.
 - **Topology**:
-  - Coupled work: A single writer pane with whole-change ownership, plus an optional side-by-side reviewer pane in the same tab.
+  - Coupled work: A single writer pane with whole-change ownership, plus an optional side-by-side reviewer pane in the same tab (or separate review tab if width $< 161$ columns).
   - Dirty/concurrent writes: An isolated worktree created via `herdr worktree create`.
   - Read-only research: A separate tab or pane in the existing checkout.
 - **Ceremony**: Lightweight engineering discipline.
   - No Engineering Manager agent.
   - Clear task brief detailing objective, owned files, and check commands.
   - Single writer per coupled change; independent reviewer when deliverable requires external verification.
-  - Verifiable evidence bound to exact commit SHA.
+  - Verifiable evidence bound to exact verified commit object ID. Concise native text handback reports.
 
 ---
 
@@ -71,7 +72,7 @@ Use for:
 - **Topology**:
   - **Write Isolation**: Worker lanes requiring dirty or concurrent write isolation use dedicated worktree workspaces (`herdr worktree create`).
   - **Read-Only Lanes**: Passive audits, research scouts, and non-mutating inspections **retain the tab or pane route within the existing checkout**, preventing workspace sprawl.
-  - **Streaming Reviews**: Side-by-side reviewer panes spawned inside the task's tab as soon as candidate code is ready.
+  - **Streaming Reviews**: Reviewer panes spawned inside the task's tab (or review tab) as soon as candidate code is ready.
 - **Ceremony**: Full durable reporting contract.
   - Mutable manager checkpoint (`state.yaml`) maintained exclusively by the EM at the run root.
   - Immutable YAML reports (`<task>-a<attempt>-<purpose>.yaml`) authored by workers outside disposable worktrees.

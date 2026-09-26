@@ -65,12 +65,12 @@ When an agent enters an interactive menu, question, or confirmation prompt, Herd
    ```bash
    herdr agent read <TARGET> --source visible --lines 20
    ```
-2. **Select Targeted Keystrokes**:
+2. **Select Targeted Keystrokes Based on Visible Choice**:
    ```bash
    herdr agent send-keys <TARGET> <KEYS...>
    ```
    Valid logical tokens: `esc`, `enter`, `up`, `down`, `tab`, `ctrl+c`.
-   **Never guess**: Read the visible dialog to determine the correct selection before sending keys.
+   **Never guess**: Read the visible dialog to determine the authorized selection (e.g. navigating to "Trust this directory" or "Allow once") before sending keys.
 
 ---
 
@@ -94,9 +94,20 @@ When Herdr detection reports `unknown` for an active Antigravity process:
 
 ---
 
-## 6. The 10-Minute Silent Boundary
+## 6. Targeted Intervention
 
-If an agent executes for ten minutes without visible output or notification:
+- **`esc`**: Interrupts stuck prompts or turns under explicit pre-inspection safety rules. May leave background child processes running. Inspect process inventory and visible composer state afterwards.
+- **`ctrl+c`**: In raw-mode TUIs the terminal passes raw byte 0x03 to the application; in cooked mode it sends SIGINT. The actual effect depends on the foreground application. Verify resulting state by reading the visible screen before assuming prompt returned.
+- **No Blind Kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
+
+---
+
+## 7. Discovery, Bootstrap & Model Verification
+
+All panes identify live topology via `herdr pane current --current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
+
+### The 10-Minute Silent Boundary:
+If an agent executes for ten minutes without visible output or external notification:
 - Perform **ONE status check** (`herdr agent read <TARGET> --source recent-unwrapped --lines 30`) at the next safe tool boundary.
 - Do NOT enter tight polling loops.
 - Do NOT generate artificial heartbeat messages or timer schedules.
