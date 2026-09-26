@@ -7,13 +7,17 @@ description: Use if orchestrating coding agents, parallel worktrees, split panes
 
 Herdr is a terminal workspace manager for AI coding agents. It organizes execution surfaces into workspaces, tabs, and split panes, recognizes coding agents running inside panes, and exposes session control through the `herdr` CLI over a local socket API.
 
-Before issuing control commands, verify that this agent runs inside a Herdr-managed pane:
+Before issuing control commands, verify execution surface and supervisory authority:
 
-```bash
-test "${HERDR_ENV:-}" = 1
-```
+1. **In-Pane Agents (Default)**: Verify running inside a Herdr-managed pane:
+   ```bash
+   test "${HERDR_ENV:-}" = 1
+   ```
+   If verified, resolve live coordinates via `herdr pane current --current`.
+2. **External Supervisors (Root / Non-Pane CTO)**: An external controller operating outside Herdr (e.g. from a Root PTY or external controller ledger) lacks `HERDR_ENV=1` (`cto.pane_id: null`). Under explicitly established supervisory authority, it may execute CLI operations targeting explicit IDs (`--pane "$TARGET_PANE"`, `--workspace "$WS_ID"`) and consume reports directly from disk (`RETURN_ROUTE: "artifact_only"`). It must never rely on implicit UI focus or assume native prompt callbacks exist.
+3. **Fail-Closed Boundary**: If `HERDR_ENV != 1` and you lack explicit external supervisory authority, **stop**. Do not control Herdr from outside Herdr without explicit authority.
 
-If the check fails, stop. Do not control Herdr from outside Herdr without explicit authority. When verified, the installed `herdr` CLI in `PATH` is the authority for syntax. Discover available commands with `herdr --help`, `herdr agent`, `herdr pane`, and `herdr worktree`. Read identifiers and state from structured JSON output instead of predicting them.
+When verified, the installed `herdr` CLI in `PATH` is the authority for syntax. Discover available commands with `herdr --help`, `herdr agent`, `herdr pane`, and `herdr worktree`. Read identifiers and state from structured JSON output instead of predicting them.
 
 ---
 

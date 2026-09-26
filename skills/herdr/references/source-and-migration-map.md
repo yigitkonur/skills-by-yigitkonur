@@ -50,7 +50,7 @@ The unified deliverable accounts for all original source entry points and refere
 
 | Real Section Heading / Topic | Disposition | Target Reference | Rationale & Mapped Obligations |
 |---|---|---|---|
-| `## Learn the current CLI` (`HERDR_ENV=1` Check) | Retained | `SKILL.md`, `operating-modes.md` | Verification gate ensuring control commands execute only within Herdr-managed panes. |
+| `## Learn the current CLI` (`HERDR_ENV=1` Check) | Retained | `SKILL.md`, `operating-modes.md` | Verification gate ensuring control commands execute only within Herdr-managed panes or under authorized external supervision. |
 | `## Learn the current CLI` (Installed Help Authority) | Retained | `SKILL.md`, `herdr-primitives.md` | Installed CLI binary is authoritative for flags and syntax; prohibits inventing flags. |
 | `## Use IDs and caller context` (Opaque ID Handles) | Merged | `topology-and-worktrees.md` §3, `herdr-primitives.md` | Stable opaque IDs (`w1`, `w1:t1`, `w1:p1`); dynamic coordinates via `herdr pane current --current`. |
 | `## Use IDs and caller context` (Saved SSH Machines `--machine`) | Retained | `herdr-primitives.md` §6 | Dedicated `--machine` forwarding rules, server-scoped IDs, absolute/tilde paths, no TUI required. |
