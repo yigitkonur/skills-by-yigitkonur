@@ -1,6 +1,6 @@
 {
   "name": "compare-anything",
-  "version": "1.0.80",
+  "version": "1.0.81",
   "description": "Use if turning documents, tools, or candidates into an interactive, weighted comparison matrix and executable Astro canvas comparison page.",
   "author": {
     "name": "Yigit Konur",

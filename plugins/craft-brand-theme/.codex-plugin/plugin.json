@@ -1,6 +1,6 @@
 {
   "name": "craft-brand-theme",
-  "version": "1.0.80",
+  "version": "1.0.81",
   "description": "Use if reverse-engineering, crafting, or deploying production-grade brand design themes, semantic CSS tokens, and self-hosted fonts without ad-hoc element selectors.",
   "author": {
     "name": "Yigit Konur",
