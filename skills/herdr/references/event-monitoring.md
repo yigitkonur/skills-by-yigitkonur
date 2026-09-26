@@ -1,54 +1,102 @@
-# Event Monitoring & Communication
+# Event Monitoring & Terminal Physics
 
-## 1. Live Coordinates
-Always resolve live coordinates via `herdr pane current` (returns JSON). Do NOT rely on static startup env vars (e.g. `HERDR_TAB_ID`) for topology decisions — they freeze at process creation and become stale when panes move.
+This reference details the mechanics of monitoring pane states, reading terminal buffers, tracking agent lifecycles, and managing communication timing across Herdr sessions.
 
-`herdr pane current` gives physical pane/tab/terminal IDs. It does NOT prove the active model, effort tier, or that a composer is ready to receive input. Verify identity separately via the runtime's own identity query.
+---
 
-## 2. Reading Pane State
+## 1. Terminal Screen Snapshot Sources
 
-| Source | Syntax | Use |
+Select the snapshot source that matches the inspection objective:
+
+| Source | Command Syntax | When to Use |
 |---|---|---|
-| `recent-unwrapped` | `herdr agent read <T> --source recent-unwrapped --lines <N>` | **Default**: transcripts, code, LLM output. Merges soft wraps. |
-| `visible` | `herdr agent read <T> --source visible --lines <N>` | **Modals**: questionnaires, spinners, confirmation prompts. |
-| `recent` | `herdr agent read <T> --source recent --lines <N>` | **Columnar**: ASCII diagrams, tables, aligned grids. |
-| `detection` | `herdr agent read <T> --source detection` | **Heuristic**: regex rule introspection only. |
+| `recent-unwrapped` | `herdr agent read <T> --source recent-unwrapped --lines <N>` | **Default**: Code blocks, tool output, test logs, and transcripts. Joins soft-wrapped lines into continuous text. |
+| `visible` | `herdr agent read <T> --source visible --lines <N>` | **Modals & Spinners**: Approval dialogs, questionnaires, active spinners, interactive menus, and confirmation prompts. |
+| `recent` | `herdr agent read <T> --source recent --lines <N>` | **Columnar Data**: Aligned tables, ASCII diagrams, diff grids, and fixed-width formatting. Preserves rendered soft wraps. |
+| `detection` | `herdr agent read <T> --source detection` | **Heuristics**: Raw bottom-buffer snapshot used by Herdr's regex classifier to detect agent lifecycle states. |
 
-`herdr agent wait <TARGET> --until idle --until done --until blocked --timeout 60000` blocks until a stable state. A wait timeout is not itself evidence of worker failure. `blocked` state is included because a worker waiting on a modal is stable.
+### Formatting:
+- Pass `--format ansi` when color coding, terminal styling, or syntax highlighting are essential evidence. Otherwise, use default plain text.
 
-## 3. Communication & Prompt Delivery
+---
+
+## 2. Agent State Tracking & Settle-Waits
+
+Track agent lifecycle progression with `herdr agent wait`:
+
+```bash
+herdr agent wait <TARGET> [--until <STATUS>] [--timeout <MS>]
+```
+
+1. **Default Settlement Gate**:
+   - Omitting `--until` matches `idle`, `done`, or `blocked`.
+   - `blocked` is included because an agent paused at an interactive modal is stable and awaiting human/supervisor input.
+2. **Server-Side Seen State vs. TUI Badges**:
+   - `idle` and `done` both indicate the agent is ready for input.
+   - The Herdr server marks an agent `done` upon completion of a turn; explicit focus transitions mark it `idle`.
+   - Each TUI client tracks viewed completions independently, so a badge on one screen may differ from CLI query output.
+3. **Timeout Interpretation**:
+   - An expired wait timeout does NOT prove agent failure. It indicates the agent is still running a long turn, executing heavy tests, or waiting at an unhandled prompt. Inspect `process-info` and visible output before acting.
+
+---
+
+## 3. Communication & Prompt Delivery Timing
 
 ```bash
 herdr agent prompt <TARGET> "<PROMPT_TEXT>"
 ```
 
-- **Bracketed Paste Mechanics**: Wraps text in DEC Mode 2004 (`\x1b[200~...\x1b[201~`). Staged pacing delay (~300ms) before Enter; does not eliminate all PTY race conditions under heavy load.
-- **Worker Notices Omit `--wait`**: Passing `--wait` blocks the worker and risks deadlock.
+### Critical PTY Constraints:
+1. **Bracketed Paste Mechanics**:
+   Herdr wraps text in DEC Mode 2004 bracketed paste escapes (`\x1b[200~...\x1b[201~`) with an internal pacing delay (~300ms) before the trailing Enter.
+2. **Never Pass `--wait` on Worker Notices**:
+   When a worker or reviewer notifies an orchestrator or peer, **omit `--wait`**. Passing `--wait` blocks the sender's own process and creates callback deadlocks.
+3. **Targeted Waits vs. Whole-Fleet Blocking Deadlock**:
+   Never run an unbounded blocking wait across an entire fleet. Wait on specific individual targets using short, bounded timeouts (e.g. 5000ms–15000ms), allowing the supervisor to observe progress and stream reviews without stalling.
 
-### Runtime-Aware Notice Qualification
-- **Codex**: Buffers incoming PTY text during tool execution and reads it at the next turn boundary. Short operational notices to a busy Codex manager may be queued safely, **but busy delivery is not a guaranteed, loss-free synchronization mechanism** under rapid PTY churn. Where timing matters, wait for `idle` first or use the report sweep as fallback.
-- **AGY**: Injecting prompt text into an active AGY writer while it is synthesizing code or generating tool calls can disrupt the turn, corrupt composer state, or collide with file writes. **Wait for `idle`** before sending prompts to an active AGY writer. This is a qualified operational constraint, not an invented corruption guarantee; the reviewer's claim that any busy notice corrupts file reads is not established.
+---
 
-## 4. Modal Bridge
-When an agent is `blocked`, Herdr rejects `herdr agent prompt` with `error.code: agent_blocked`. Resolve mechanically:
-1. Inspect first: `herdr agent read <target> --source visible --lines 20`
-2. Choose keystrokes based on what you read: `herdr agent send-keys <target> <keys...>`
-   Valid tokens: `up`, `down`, `enter`, `esc`, `tab`, `ctrl+c`. Read the modal before choosing; do not default to `down enter` without confirming the option.
+## 4. Modal Bridge & Resolution
+
+When an agent enters an interactive menu, question, or confirmation prompt, Herdr flags it as `blocked` and rejects new prompt submissions with `error.code: agent_blocked`.
+
+### Resolution Sequence:
+1. **Inspect First**:
+   ```bash
+   herdr agent read <TARGET> --source visible --lines 20
+   ```
+2. **Select Targeted Keystrokes**:
+   ```bash
+   herdr agent send-keys <TARGET> <KEYS...>
+   ```
+   Valid logical tokens: `esc`, `enter`, `up`, `down`, `tab`, `ctrl+c`.
+   **Never guess**: Read the visible dialog to determine the correct selection before sending keys.
+
+---
 
 ## 5. Degraded AGY Mode (`herdr pane run`)
-When Herdr detection reports `unknown` for a known AGY process:
-1. Verify foreground process: `herdr pane process-info --pane <PANE_ID>`
-2. Confirm visible input-ready composer with no modal: `herdr pane read --source visible --lines 10 <PANE_ID>`
-   Foreground process alone is insufficient — a modal or alt-screen can be open.
-3. If confirmed, use fallback: `herdr pane run <PANE_ID> <TEXT>...`
-   This injects literal text followed by Enter into the pane (keystroke injection, not OS shell execution). Never use on an unverified foreground program or relaunch over a live TUI.
 
-## 6. Targeted Intervention
-- **`esc`**: Interrupts stuck prompts. May leave background work running. Inspect process inventory and owned effects afterwards.
-- **`ctrl+c`**: In raw-mode TUIs the terminal passes raw byte 0x03 to the application. In cooked mode it sends SIGINT. The actual effect depends on the foreground application. Verify the resulting state by reading the visible screen before assuming the prompt returned.
-- **No blind kills**: Never use blanket `kill -9` or `pkill`. Reconcile state before restart.
+When Herdr detection reports `unknown` for an active Antigravity process:
+1. **Verify Foreground Program**:
+   ```bash
+   herdr pane process-info --pane "$PANE_ID"
+   ```
+2. **Confirm Clean Input State**:
+   Inspect the visible screen to verify an input-ready composer with no open modal or alternate-screen buffer:
+   ```bash
+   herdr pane read --source visible --lines 10 "$PANE_ID"
+   ```
+3. **Execute Fallback Keystroke Injection**:
+   ```bash
+   herdr pane run "$PANE_ID" "<TEXT>"
+   ```
+   *Caution*: `herdr pane run` injects literal text followed by Enter into the PTY. It is keystroke injection, not shell command execution. Never use on unverified foreground programs.
 
-## 7. Discovery, Bootstrap & Model Verification
-All panes identify live topology via `herdr pane current` before registering. Verify both runtime binary and model/effort tier through the runtime's own identity method (e.g. inspect the TUI header or query the process). Report mismatches before starting engineering work.
+---
 
-The 10-Minute Silent Boundary: If an agent operates without an external notification for ten minutes, the supervisor or agent performs ONE status check at the next safe tool boundary—not a mandatory checkpoint report, timer, heartbeat loop, or endless wait.
+## 6. The 10-Minute Silent Boundary
+
+If an agent executes for ten minutes without visible output or notification:
+- Perform **ONE status check** (`herdr agent read <TARGET> --source recent-unwrapped --lines 30`) at the next safe tool boundary.
+- Do NOT enter tight polling loops.
+- Do NOT generate artificial heartbeat messages or timer schedules.

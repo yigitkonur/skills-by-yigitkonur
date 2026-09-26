@@ -108,6 +108,7 @@ Later consolidations (post-rewrite):
 | Old | New | Reason |
 |---|---|---|
 | `run-research-and-save-files` + `run-research-and-save-files-by-codex` | `run-deep-research` | Two corpus skills merged into one; codex is now a per-run executor *mode* chosen at the intake `AskUserQuestion` batch, not a separate skill. `run-deep-research` also subsumes the earlier `run-corpus-research` + `run-industry-research`. `run-research` (single-question) stays distinct. |
+| `herdr` + `herdr-lite` | `herdr` | Consolidated into a single unified skill with size-based operating modes (Direct Operation, Task Execution, Managed Mission). `herdr-lite` retired. |
 
 ## Dropped Verbs (and why)
 

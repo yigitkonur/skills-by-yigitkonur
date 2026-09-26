@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 59 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 58 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.79",
       "category": "bundle",
       "strict": false,
@@ -49,7 +49,6 @@
         "./skills/craft-brand-theme",
         "./skills/deploy-coolify-cloud",
         "./skills/herdr",
-        "./skills/herdr-lite",
         "./skills/init-agent-config",
         "./skills/init-jean-json",
         "./skills/init-makefiles",
@@ -248,7 +247,6 @@
       "strict": false,
       "skills": [
         "./skills/herdr",
-        "./skills/herdr-lite",
         "./skills/project-manager",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
@@ -672,23 +670,12 @@
     {
       "name": "herdr",
       "source": "./",
-      "description": "Use if orchestrating coding agents, parallel subagents, isolated Git worktrees, and clean-context PR reviews using the Herdr multiplexer.",
+      "description": "Use if orchestrating coding agents, parallel worktrees, split panes, or session lifecycle via Herdr CLI across direct, task, or managed workflows.",
       "version": "1.0.79",
       "category": "automation",
       "strict": false,
       "skills": [
         "./skills/herdr"
-      ]
-    },
-    {
-      "name": "herdr-lite",
-      "source": "./",
-      "description": "Use if orchestrating coding agents via Herdr with native Git worktrees, PR-driven state, and side-by-side review-and-fix panes.",
-      "version": "1.0.79",
-      "category": "automation",
-      "strict": false,
-      "skills": [
-        "./skills/herdr-lite"
       ]
     },
     {

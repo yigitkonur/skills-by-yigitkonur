@@ -195,7 +195,7 @@ answer questions and find things with real web evidence. ships the `internet-res
 
 drive a browser, a phone, or a terminal workspace mid-session.
 
-- **[herdr](skills/herdr/)** — control herdr panes, tabs, workspaces, worktrees, commands, and coding agents without stealing focus.
+- **[herdr](skills/herdr/)** — orchestrate coding agents, parallel worktrees, split panes, and session lifecycle.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
 - **[project-manager](skills/project-manager/)** — supervise coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
