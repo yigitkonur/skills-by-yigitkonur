@@ -7,15 +7,15 @@ description: Use if orchestrating coding agents, parallel worktrees, split panes
 
 Herdr is a terminal workspace manager for AI coding agents. It organizes execution surfaces into workspaces, tabs, and split panes, recognizes coding agents running inside panes, and exposes session control through the `herdr` CLI over a local socket API.
 
-Before issuing control commands, verify execution surface and supervisory authority:
+Before dispatching work, establish a visible Herdr pane and supervisory authority:
 
 1. **In-Pane Agents (Default)**: Verify running inside a Herdr-managed pane:
    ```bash
    test "${HERDR_ENV:-}" = 1
    ```
    If verified, resolve live coordinates via `herdr pane current --current`.
-2. **External Supervisors (Root / Non-Pane CTO)**: An external controller operating outside Herdr (e.g. from a Root PTY or external controller ledger) lacks `HERDR_ENV=1` (`cto.pane_id: null`). Under explicitly established supervisory authority, it may execute CLI operations targeting explicit IDs (`--pane "$TARGET_PANE"`, `--workspace "$WS_ID"`) and consume reports directly from disk (`RETURN_ROUTE: "artifact_only"`). It must never rely on implicit UI focus or assume native prompt callbacks exist.
-3. **Fail-Closed Boundary**: If `HERDR_ENV != 1` and you lack explicit external supervisory authority, **stop**. Do not control Herdr from outside Herdr without explicit authority.
+2. **Outside-Herdr Bootstrap**: An explicitly authorized controller outside Herdr discovers or creates a workspace, then creates a visible control pane (or tab when a split is too small). Start the supervisor agent there and verify its live pane ID before dispatching work. Bootstrap commands target explicit IDs; subsequent prompts, scrollback inspection, and handbacks use the visible pane IDs. Do not infer UI focus from the external terminal.
+3. **Fail-Closed Boundary**: If `HERDR_ENV != 1` and you lack explicit authority to bootstrap a Herdr pane, **stop**. Do not control another session by guessing a target.
 
 When verified, the installed `herdr` CLI in `PATH` is the authority for syntax. Discover available commands with `herdr --help`, `herdr agent`, `herdr pane`, and `herdr worktree`. Read identifiers and state from structured JSON output instead of predicting them.
 
@@ -69,9 +69,8 @@ Distinguish published, submitted, consumed, and acted states. Successful CLI exi
   - **Resuming**: Reconcile surviving child processes vs. interrupted turns. Always use exact conversation ID (`agy --conversation "$ID"`), never `--continue`.
   - Detailed AGY procedures: [references/harness-antigravity.md](references/harness-antigravity.md).
 - **OpenAI Codex**:
-  - Enter delivers steering at the next tool boundary; Tab enqueues deferred follow-up.
-  - Native queue: use `codex queue --thread <THREAD> --message <TEXT>` when thread UUID is known.
-  - Do NOT apply AGY Escape mechanics to Codex. Fallback to plain language if slash parser fails.
+  - Start and steer Codex in a visible Herdr pane. Deliver a prompt once with `herdr agent prompt <PANE> <TEXT>`; inspect pane scrollback and agent state to verify receipt and action.
+  - Enter steering can reach the next tool boundary. Avoid a second prompt while the first is pending. Do NOT apply AGY Escape mechanics to Codex; use plain language if its slash parser fails.
   - Detailed Codex procedures: [references/harness-codex.md](references/harness-codex.md).
 - **Universal Harnesses (Claude, Gemini, Cursor, etc.)**:
   - Verify interactive shell readiness (`$ `, `% `) before `agent start`.
@@ -128,9 +127,9 @@ Every topic has an authoritative reference. Consult when the matching trigger oc
 | [references/herdr-primitives.md](references/herdr-primitives.md) | Looking up CLI commands, syntax, or flags | Selected command reference for agent, pane, worktree, workspace, tab, notification, jq parsing. |
 | [references/event-monitoring.md](references/event-monitoring.md) | Reading buffers, monitoring turns, handling modals | Read sources (unwrapped, visible, recent), settle-waits, modal bridge, 10-minute boundary. |
 | [references/harness-antigravity.md](references/harness-antigravity.md) | Operating or unblocking Antigravity (AGY) sessions | Queue prevention, pre-Escape safety, staged-after-Escape single submit, exact resume. |
-| [references/harness-codex.md](references/harness-codex.md) | Operating or steering OpenAI Codex agents | Enter steering at tool boundary, Tab enqueue, native codex queue CLI, slash parser recovery. |
+| [references/harness-codex.md](references/harness-codex.md) | Operating or steering OpenAI Codex agents | Pane-based prompt delivery, scrollback verification, and slash parser recovery. |
 | [references/harness-other.md](references/harness-other.md) | Driving Claude Code, Gemini, Cursor, or other agents | Shell readiness gate, startup timeout vs live agent, bounded quota retries, model fidelity. |
-| [references/mission-briefs.md](references/mission-briefs.md) | Dispatching tasks or formatting agent briefs | Authority block, plain-language briefs, role additions (impl/reviewer/integrator), artifact-only returns. |
+| [references/mission-briefs.md](references/mission-briefs.md) | Dispatching tasks or formatting agent briefs | Authority block, plain-language briefs, role additions (impl/reviewer/integrator), pane-bound return routes. |
 | [references/parallel-capacity.md](references/parallel-capacity.md) | Sizing concurrency or managing resource locks | Disjoint parallelism, measured capacity, model fidelity, internal subagent accounting, streaming reviews. |
 | [references/ticket-decomposition-and-waves.md](references/ticket-decomposition-and-waves.md) | Decomposing tasks or scheduling multi-wave DAGs | Vertical tracer-bullet slicing, dynamic DAG waves, expand-contract refactors, edge-driven advance. |
 | [references/report-contract.md](references/report-contract.md) | Authoring or consuming durable mission artifacts | Two artifact kinds (state.yaml vs YAML), 4-step atomic publication, no-wait notices, dedupe digest. |

@@ -1,30 +1,23 @@
 # Codex Harness Physics & Steering Protocols
 
-This reference defines the operational physics, native queue commands, steering behavior, and parser recovery protocols for OpenAI Codex agents operating within Herdr.
+This reference defines pane-based prompt delivery, steering behavior, and parser recovery for OpenAI Codex agents operating within Herdr.
 
 ---
 
-## 1. Steering at Tool Boundaries vs. Follow-Up Enqueue
+## 1. Visible Pane Steering
 
 In the interactive Codex TUI:
-- **Enter Steering**: Pressing Enter delivers steering that the model evaluates at its next tool boundary or decision point.
-- **Tab Enqueue**: Pressing Tab enqueues input as a deferred follow-up turn to be executed after the current turn sequence completes.
+- **Prompt Delivery**: Verify the target pane and agent identity, then deliver a single instruction with `herdr agent prompt <PANE_ID> <TEXT>` without `--wait`. If Codex is busy, inspect its visible buffer and wait for the current tool boundary before deciding whether any follow-up is needed.
+- **Receipt**: A successful prompt command proves submission only. Read `herdr agent read <PANE_ID> --source visible` or recent scrollback and confirm Codex consumed the instruction or produced the expected checkpoint before acting on it.
 - **Never Apply AGY Escape Mechanics to Codex**: The Escape key does NOT behave like AGY's composer-staging mechanism in Codex. Sending Escape blindly to a busy Codex session can close dialogs, cancel active prompts unexpectedly, or leave unhandled PTY state.
 
 ---
 
-## 2. Native Queue Delivery (`codex queue`)
+## 2. Pending Prompt Discipline
 
-On hosts where the Codex CLI provides native queue support (verified on this host):
-
-```bash
-codex queue --thread <THREAD_UUID_OR_NAME> --message "<TEXT>"
-```
-
-### Usage Rules:
-1. **Thread Identification**: Always target an explicit, verified thread UUID or exact session name. Do not guess identifiers.
-2. **Enqueue is NOT Consumption**: A successful exit code ($0$) from `codex queue` proves only that the transport accepted the message into the thread's queue buffer. It does NOT prove the agent has read, parsed, or acted on the text. Always inspect agent output or wait for completion to confirm consumption.
-3. **No Double Delivery**: Do not send the same message through both `codex queue` and raw PTY keystroke injection (`herdr agent prompt`). Choose one transport channel.
+1. **One Target, One Message**: Keep one verified pane ID and one pending instruction per decision. Do not submit the same brief again because Codex has not reached a tool boundary yet.
+2. **Inspect Before Recovery**: Use pane scrollback, `herdr agent get`, and `herdr pane process-info --pane <PANE_ID>` to distinguish an active turn from an idle composer or a blocked modal.
+3. **Continue in the Same Pane**: Once the earlier instruction is visibly consumed or the agent is input-ready, send the next concise prompt to that pane. Preserve the session and its scrollback.
 
 ---
 

@@ -72,7 +72,7 @@ manager:
   tab_id: <string|null>
 
 cto:
-  pane_id: <string|null>     # null when supervisor operates outside Herdr (Root PTY)
+  pane_id: <string|null>     # initiating controller may be outside Herdr; callback uses the live manager/supervisor pane
   tab_id: <string|null>
 
 status: <string>             # in_progress | completed | blocked | failed | milestone | registered

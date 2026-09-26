@@ -68,7 +68,7 @@ Quota or hang recovery is invoked **only for observed quota exhaustion (429) or 
 4. **Targeted Interruption via Harness-Specific Gates**:
    - If a genuine hang or 429 stall is established outside mutating boundaries, dispatch recovery to the canonical harness reference:
      - **Antigravity (AGY)**: Follow [harness-antigravity.md](harness-antigravity.md) (single targeted `esc` or `ctrl+c`, visible check, single Enter on promoted prompt, child process reconciliation).
-     - **Codex**: Follow [harness-codex.md](harness-codex.md) (Enter tool-boundary vs. Tab enqueue; native thread queue; do NOT apply AGY Escape mechanics).
+     - **Codex**: Follow [harness-codex.md](harness-codex.md) (single pane-targeted prompt, scrollback receipt check, and no AGY Escape mechanics).
      - **Other Harnesses**: Follow [harness-other.md](harness-other.md).
    - Reconcile child processes via `herdr pane process-info --pane "$TARGET_PANE"`.
 5. **Exact Session Resume Gate (Harness-Specific)**:

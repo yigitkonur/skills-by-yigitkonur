@@ -15,12 +15,12 @@ This reference documents the 12 concrete operational scenario specifications req
 
 - **Context**: A user requests a single-command inspection, a quick bug diagnosis, or a minor bounded fix.
 - **Expected Behavior**:
-  - Operates inside the caller's current pane or creates a single sibling pane in the same tab (evaluating projected geometry: width $\ge 161$ cols for horizontal split, height $\ge 41$ lines for vertical split).
+  - Operates inside the caller's current pane or creates a single sibling pane in the same tab (evaluating projected geometry: width $\ge 161$ cols for horizontal split, height $\ge 41$ lines for vertical split). A caller starting outside Herdr first creates a visible control pane or tab and verifies its ID.
   - Zero Engineering Manager (EM) spawned.
   - Zero GitHub issues or PRs created.
   - No dedicated worktree workspace opened unless concurrent write isolation is explicitly needed.
   - Reports outcome directly in plain text.
-- **Acceptance Criteria**: Pass if no management artifacts, issues, or workspaces are created.
+- **Acceptance Criteria**: Pass if work has a visible pane and no unnecessary management artifacts, issues, or workspaces are created.
 
 ---
 
@@ -79,16 +79,16 @@ This reference documents the 12 concrete operational scenario specifications req
 
 ---
 
-## 6. Scenario 6: Codex Tool-Boundary Receipt & Thread Queue
+## 6. Scenario 6: Codex Pane Prompt & Tool-Boundary Receipt
 *(Status: Cold-Reader Specification / Decision Walkthrough)*
 
 - **Context**: Delivering steering or follow-up instructions to an active Codex session.
 - **Expected Behavior**:
-  - Distinguishes Enter tool-boundary steering from Tab follow-up enqueue.
+  - Targets the verified live Codex pane with one `herdr agent prompt` instruction.
   - Does NOT apply AGY Escape mechanics to Codex.
-  - If native queue is supported, uses `codex queue --thread <UUID> --message <TEXT>` with verified thread ID.
-  - Treats queue CLI exit 0 as transport acceptance, not proof of consumption.
-- **Acceptance Criteria**: Pass if steering reaches tool boundary without PTY corruption.
+  - Reads visible or recent pane scrollback and confirms the instruction was consumed before sending a follow-up.
+  - Treats prompt CLI exit 0 as submission, not proof of consumption.
+- **Acceptance Criteria**: Pass if steering reaches a tool boundary in the same pane without duplicate delivery or PTY corruption.
 
 ---
 
@@ -185,7 +185,7 @@ This reference documents the 12 concrete operational scenario specifications req
 | **Workspace & Worktree Topology** | Shared checkout tabs for read-only tasks vs. isolated worktrees for concurrent writes. | Scenario 3 |
 | **AGY Keystroke Injection & Composer** | Single wakeup owner, pause gate, explicit target verification, single Escape, no duplicate prompts. | Scenario 4 |
 | **Modal & Notification Safety** | Visible modal resolution (no blind Enter), waitless notices to prevent deadlocks, idempotent digests. | Scenario 5 |
-| **Codex Steering & Queues** | Tool-boundary Enter vs. Tab enqueue; native thread queue; no AGY Escape applied to Codex. | Scenario 6 |
+| **Codex Pane Steering** | Single pane-targeted prompt, scrollback receipt verification, no AGY Escape applied to Codex. | Scenario 6 |
 | **Startup & Process Monitoring** | Inspect live process tree before kill on startup timeout; active tool progress allowed to run. | Scenario 7 |
 | **Quota & Rate Limiting (Rule of Two)** | Preflight gates, same-session continuation first, harness routing, max 2 failures before escalation. | Scenario 8 |
 | **Report Verification & Quarantining** | Verified commit SHA existence; SHA-256 digest matching; `MUTATED_REPORT_REJECTED` quarantine. | Scenario 9 |

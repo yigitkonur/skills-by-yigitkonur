@@ -22,7 +22,7 @@ Every structured mission brief must establish clear boundaries and coordinates:
 - EXECUTION_SKILL_PATH: "<PATH_TO_SKILL>/SKILL.md"
 - EXPECTED_RUNTIME: "<RUNTIME>"  # agy | codex | claude
 - EXPECTED_MODEL: "<MODEL_ID>"
-- RETURN_ROUTE: "artifact_only" | "herdr agent prompt '<SUPERVISOR_PANE_ID>' '<NOTICE>'" (no --wait)
+- RETURN_ROUTE: "herdr agent prompt '<SUPERVISOR_PANE_ID>' '<NOTICE>'" (no --wait)
 
 ## 2. Objective & Delivery Authority
 - OBJECTIVE: "<CONCISE_TASK_GOAL>"
@@ -38,7 +38,7 @@ Every structured mission brief must establish clear boundaries and coordinates:
 ```
 
 ### Return Route Invariant:
-When the supervisor operates outside Herdr (such as Root running in an external terminal or controller ledger), set `RETURN_ROUTE: "artifact_only"`. In this case, the assigned agent publishes its handback report at the run root and yields idle immediately without prompting any other pane.
+Verify a live supervisor pane before dispatch. If the caller began outside Herdr, bootstrap that pane first. The assigned agent publishes its handback report at the run root, sends one short notice to the supervisor pane without `--wait`, and yields idle. The supervisor reads the report and reconciles the notice against pane scrollback.
 
 ---
 
