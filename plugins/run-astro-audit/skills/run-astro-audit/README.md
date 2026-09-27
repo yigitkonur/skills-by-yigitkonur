@@ -1,8 +1,15 @@
 # run-astro-audit
 
-End-to-end Astro audits, AST static linting with Astro Sentinel, multi-wave subagent remediation in isolated worktrees, PR review comment harvesting, and conflict-free serial merge queues.
+Enterprise-grade end-to-end Astro audits, deterministic AST & contract linting with **Astro Sentinel**, modern ESLint Flat Config & Prettier alignment, multi-wave subagent remediation in isolated Git worktrees, PR review comment harvesting, and conflict-free serial merge queues.
 
-**Category:** Frontend / Architecture & Audit
+**Category:** Frontend / Architecture & Quality Engineering
+
+## Key Capabilities
+
+- **Astro Sentinel Linter Engine**: Deterministic AST static analysis via `@astrojs/compiler` catching virtual DOM leaks, secret prop serialization, unoptimized images, and Content Layer contract violations in sub-seconds.
+- **Modern ESLint & Prettier Blueprint**: Production Flat Config aligning `eslint-plugin-astro`, 34 WCAG 2.2 accessibility rules (`astro/jsx-a11y-recommended`), and strict Tailwind v4 plugin ordering.
+- **Knowledge Base**: 170 atomic Astro architectural rule cards across 10 domains and 70 modular workload briefs across 7 thematic layers.
+- **Autonomous Remediation Lifecycle**: Multi-wave subagent dispatching, isolated worktree provisioning (`.worktrees/wt-*`), GitHub issue hierarchy, and parent-controlled serial rebase/merge queues.
 
 ## Install
 

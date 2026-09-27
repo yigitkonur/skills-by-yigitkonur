@@ -1,6 +1,6 @@
 {
   "name": "publish-npm-package",
-  "version": "1.0.83",
+  "version": "1.0.84",
   "description": "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release.",
   "author": {
     "name": "Yigit Konur",
