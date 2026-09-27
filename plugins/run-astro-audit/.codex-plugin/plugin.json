@@ -1,0 +1,35 @@
+{
+  "name": "run-astro-audit",
+  "version": "1.0.78",
+  "description": "Use if conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge queues.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-astro-audit"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-astro-audit",
+    "shortDescription": "Use if conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge queues.",
+    "longDescription": "Install only the run-astro-audit workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-astro-audit skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

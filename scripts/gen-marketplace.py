@@ -62,7 +62,7 @@ GROUPS = {
     ),
     "yk-frontend": (
         "frontend",
-        "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, brand themes, UI/UX/Laws-of-UX audits.",
+        "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, Astro audit & Sentinel linter, brand themes, UI/UX/Laws-of-UX audits.",
         [
             "convert-url-to-nextjs",
             "optimize-nextjs-fluidity",
@@ -70,6 +70,7 @@ GROUPS = {
             "audit-ui-and-save-files",
             "audit-ux-and-save-files",
             "craft-brand-theme",
+            "run-astro-audit",
         ],
     ),
     "yk-mcp": (
