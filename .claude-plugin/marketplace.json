@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 58 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 59 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.82",
       "category": "bundle",
       "strict": false,
@@ -58,6 +58,7 @@
         "./skills/publish-npm-package",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
+        "./skills/run-astro-audit",
         "./skills/run-codex-review-loop",
         "./skills/run-deep-research",
         "./skills/run-ego-e2e",
@@ -128,7 +129,7 @@
     {
       "name": "yk-frontend",
       "source": "./",
-      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, brand themes, UI/UX/Laws-of-UX audits.",
+      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, Astro audit & Sentinel linter, brand themes, UI/UX/Laws-of-UX audits.",
       "version": "1.0.82",
       "category": "bundle",
       "tags": [
@@ -141,7 +142,8 @@
         "./skills/audit-ux-laws",
         "./skills/audit-ui-and-save-files",
         "./skills/audit-ux-and-save-files",
-        "./skills/craft-brand-theme"
+        "./skills/craft-brand-theme",
+        "./skills/run-astro-audit"
       ],
       "agents": [
         "./subagents/claude/nextjs-perf-auditor.md",
@@ -783,6 +785,17 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-device"
+      ]
+    },
+    {
+      "name": "run-astro-audit",
+      "source": "./",
+      "description": "Use if conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge queues.",
+      "version": "1.0.82",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/run-astro-audit"
       ]
     },
     {

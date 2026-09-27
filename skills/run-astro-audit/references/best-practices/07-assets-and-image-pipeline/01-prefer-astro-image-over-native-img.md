@@ -1,0 +1,1 @@
+02-use-astro-image-component-over-raw-img.md
