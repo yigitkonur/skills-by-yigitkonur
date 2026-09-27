@@ -1,6 +1,6 @@
 {
   "name": "convert-url-to-nextjs",
-  "version": "1.0.82",
+  "version": "1.0.83",
   "description": "Use if rebuilding a live URL or .html snapshot as a pixel-faithful AS-IS Next.js project.",
   "author": {
     "name": "Yigit Konur",

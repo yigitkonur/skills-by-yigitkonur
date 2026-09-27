@@ -1,6 +1,6 @@
 {
   "name": "build-cloudflare-access-sso",
-  "version": "1.0.82",
+  "version": "1.0.83",
   "description": "Use if protecting a subdomain with Cloudflare Access + Google SSO, or locking an origin against Access bypass.",
   "author": {
     "name": "Yigit Konur",
