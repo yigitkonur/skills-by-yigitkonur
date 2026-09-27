@@ -36,6 +36,16 @@ export const CONTRACT_RULES = {
     description: 'Cloudflare Worker edge entry and client bundles must not import "node:*" runtime modules.',
     ref: '05-data-fetching-and-endpoints/11-server-adapters-and-runtime-environment.md',
   },
+  '04-content/no-deprecated-getentrybyslug': {
+    severity: 'error',
+    description: 'Astro 5+ deprecated getEntryBySlug in favor of getEntry(collection, id).',
+    ref: '04-content-layer-and-collections/02-use-entry-id-instead-of-slug.md',
+  },
+  '03-routing/no-prerender-outside-pages': {
+    severity: 'warn',
+    description: '"export const prerender" is only valid in page entrypoints (src/pages/**). In leaf components it is a no-op.',
+    ref: '03-routing-and-pages/07-ssr-on-demand-routes-vs-prerendering.md',
+  },
 }
 
 export function lintContracts(projectRoot = process.cwd()) {
@@ -166,6 +176,60 @@ export function lintContracts(projectRoot = process.cwd()) {
         })
       }
     })
+  }
+
+  // ─── 5. Deprecated getEntryBySlug Guard ────────────────────────────────────
+  const srcFiles = getFilesRecursive(join(projectRoot, 'src'), ['.astro', '.ts', '.js', '.tsx', '.jsx']).filter(
+    (f) => !f.includes('node_modules') && !f.includes('.test.') && !f.includes('__tests__')
+  )
+
+  for (const file of srcFiles) {
+    const rel = relative(projectRoot, file)
+    const content = readFileSync(file, 'utf8')
+    if (content.includes('getEntryBySlug(')) {
+      const lines = content.split('\n')
+      lines.forEach((line, idx) => {
+        if (line.includes('getEntryBySlug(') && !line.includes('@astro-allow')) {
+          diagnostics.push({
+            ruleId: '04-content/no-deprecated-getentrybyslug',
+            severity: CONTRACT_RULES['04-content/no-deprecated-getentrybyslug'].severity,
+            filePath: rel,
+            line: idx + 1,
+            column: 1,
+            message: `Deprecated "getEntryBySlug" detected. Astro 5+ Content Layer uses "getEntry(collection, id)".`,
+            ref: CONTRACT_RULES['04-content/no-deprecated-getentrybyslug'].ref,
+          })
+        }
+      })
+    }
+  }
+
+  // ─── 6. Prerender Directive Outside Pages Guard ────────────────────────────
+  const nonPageComponents = [
+    ...getFilesRecursive(join(projectRoot, 'src/components'), ['.astro', '.ts', '.js']),
+    ...getFilesRecursive(join(projectRoot, 'src/layouts'), ['.astro', '.ts', '.js']),
+    ...getFilesRecursive(join(projectRoot, 'src/features'), ['.astro', '.ts', '.js']),
+  ]
+
+  for (const file of nonPageComponents) {
+    const rel = relative(projectRoot, file)
+    const content = readFileSync(file, 'utf8')
+    if (content.includes('export const prerender')) {
+      const lines = content.split('\n')
+      lines.forEach((line, idx) => {
+        if (line.includes('export const prerender') && !line.includes('@astro-allow')) {
+          diagnostics.push({
+            ruleId: '03-routing/no-prerender-outside-pages',
+            severity: CONTRACT_RULES['03-routing/no-prerender-outside-pages'].severity,
+            filePath: rel,
+            line: idx + 1,
+            column: 1,
+            message: `"export const prerender" defined in component outside src/pages/. In Astro, prerendering flags only take effect in route entrypoints (src/pages/**).`,
+            ref: CONTRACT_RULES['03-routing/no-prerender-outside-pages'].ref,
+          })
+        }
+      })
+    }
   }
 
   return diagnostics

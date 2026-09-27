@@ -40,6 +40,8 @@ skills/run-astro-audit/
 │   ├── worktree-manager.sh                # Worktree lifecycle automation (provision, list, prune, sweep)
 │   └── review-harvest.sh                  # Pull request review and comment harvester for feedback triage
 └── references/
+    ├── tooling/                           # Modern static analysis, ESLint & Prettier architecture
+    │   └── eslint-and-prettier-alignment.md # 4-layer hierarchy, Flat Config, A11y, Prettier ordering
     ├── audit-taxonomy/                    # Thematic layer classification and scoping rules
     │   └── thematic-layers.md             # 7-layer architecture taxonomy (Layer 01 through Layer 07)
     ├── orchestration/                     # Multi-wave autonomous agent lifecycle protocols
@@ -60,7 +62,7 @@ skills/run-astro-audit/
 
 ## The 6-Phase Operating Loop
 
-### Phase 1: Static AST & Contract Linting (Astro Sentinel)
+### Phase 1: Deterministic AST & Contract Linting (Astro Sentinel)
 
 Before deploying subagents or manual inspection, execute the **Astro Sentinel** linter engine to deterministically catch syntax flaws, deprecated patterns, missing fallback slots, and schema leaks.
 
@@ -82,16 +84,55 @@ node scripts/astro-sentinel-runner.mjs --rule=01-arch/no-virtual-dom-handlers
 ```
 
 #### Rule Invariant Coverage (Astro Sentinel)
-- **Component AST Guard (`astro-sentinel-guard.mjs`)**: Prevents virtual DOM event handler typos (`onClick` instead of native `onclick`), unscoped global CSS leaks, blind `client:load` on below-the-fold components, missing `client:only` fallback slots, and plain unoptimized `<img>` tags.
-- **Contract & Schema Guard (`astro-contract-guard.mjs`)**: Enforces Content Layer date coercion (`z.coerce.date()`), strict `entry.id` identification contracts, `node:*` runtime import bans on edge workers, and middleware static asset bypass filters (`/_astro/`).
-- **Suppression Syntax**: Conscious architectural exceptions can be suppressed with inline pragmas:
-  ```astro
-  ---
-  // @astro-allow 02-islands/no-blind-client-load
-  ---
-  <!-- @astro-allow 07-assets/prefer-astro-image -->
-  <img src="/assets/preview.png" alt="Preview" />
-  ```
+
+**1. Component AST Guard (`astro-sentinel-guard.mjs`)**:
+- `01-arch/no-virtual-dom-handlers`: Prohibits synthetic JSX events (`onClick`, `onChange`) in `.astro` templates. Use native Web Components or `<script>`.
+- `01-arch/no-unscoped-global-styles`: Prohibits unscoped `<style is:global>` leaks in leaf components. Encapsulate CSS or relocate to layout root.
+- `01-arch/no-process-env`: Prohibits legacy Node `process.env.*` in frontmatter; enforces standard Astro `import.meta.env.*`.
+- `02-islands/no-blind-client-load`: Prevents hydration bottlenecking with `client:load` on below-the-fold components; enforces `client:idle` or `client:visible`.
+- `02-islands/no-sensitive-props-leak`: Flags sensitive/gated props (`token`, `secret`, `apiKey`, `fileUrl`) passed into client islands serialized to public HTML.
+- `02-islands/require-client-only-fallback`: Enforces slotted fallback markup for `client:only` components to prevent layout shift before hydration.
+- `06-security/no-set-html-directive`: Guards against unescaped XSS injections via raw `set:html` (exempting structured `application/ld+json` scripts).
+- `07-assets/prefer-astro-image`: Recommends `<Image />` or `<Picture />` over native unoptimized `<img>` tags.
+- `07-assets/require-image-dimensions`: Mandates explicit `width` and `height` on images to eliminate Cumulative Layout Shift (CLS).
+- `07-assets/require-image-alt`: Enforces WCAG 2.2 SC 1.1.1 descriptive `alt` attributes on all image elements.
+- `08-i18n/no-hardcoded-locale-routes`: Prohibits hardcoded `/en/` or `/tr/` prefixes; enforces localized route helpers.
+- `09-perf/no-blanket-viewport-prefetch`: Flags aggressive `data-astro-prefetch="viewport"` on anchor tags to prevent bandwidth exhaustion.
+- `10-migration/no-nextjs-ghost-imports`: Prohibits residual Next.js imports (`next/image`, `next/link`, `next/router`).
+- `10-migration/no-raw-css-file-imports`: Flags raw CSS file imports in `.astro` frontmatter.
+
+**2. Contract & Schema Guard (`astro-contract-guard.mjs`)**:
+- `04-content/require-zod-date-coercion`: Enforces `z.coerce.date()` over raw `z.date()` in Content Layer schemas.
+- `04-content/enforce-entry-id-contract`: Enforces `entry.id` identification contracts and prevents direct `fs.readFileSync` in dynamic routes.
+- `04-content/no-deprecated-getentrybyslug`: Flags deprecated `getEntryBySlug` in favor of `getEntry(collection, id)`.
+- `06-middleware/static-asset-bypass-integrity`: Verifies `/_astro/` and `/assets/` bypass paths in edge middleware to prevent static chunk stalls.
+- `05-edge/node-runtime-import-closure`: Prohibits `node:*` runtime imports in Cloudflare Workers and client surfaces without `nodejs_compat`.
+- `03-routing/no-prerender-outside-pages`: Flags `export const prerender` defined outside `src/pages/` route entrypoints.
+
+**3. Suppression Syntax**: Conscious architectural exceptions can be suppressed with inline pragmas:
+```astro
+---
+// @astro-allow 02-islands/no-blind-client-load
+---
+<!-- @astro-allow 07-assets/prefer-astro-image -->
+<img src="/assets/preview.png" alt="Preview" width="800" height="600" />
+```
+
+---
+
+### Phase 1b: Production ESLint, Prettier & Quality Tooling Alignment
+
+Astro Sentinel operates as **Layer 1** of a holistic 4-layer static quality architecture. Consult [`references/tooling/eslint-and-prettier-alignment.md`](file:///root/dev/skills-main/skills/run-astro-audit/references/tooling/eslint-and-prettier-alignment.md) for full configuration specs:
+
+| Layer | Engine | Target Scope | Key Focus |
+| :--- | :--- | :--- | :--- |
+| **Layer 1** | **Astro Sentinel** | `.astro`, `content.config.ts`, `edge/` | AST rules, secret prop leaks, Content Layer schemas, edge runtime purity |
+| **Layer 2** | **ESLint Flat Config** | `.astro`, `.ts`, `.tsx`, `.js`, `.mjs` | `eslint-plugin-astro`, `astro/jsx-a11y-recommended` (34 WCAG 2.2 rules), Tailwind utility class order |
+| **Layer 3** | **`@astrojs/check`** | TypeScript & Astro templates | Type invariants, props types, Content Layer schema types |
+| **Layer 4** | **Prettier Suite** | Entire repo | Astro template formatting, import sorting, Tailwind v4 class sorting |
+
+> [!IMPORTANT]
+> **Tailwind v4 Prettier Plugin Ordering Law**: `prettier-plugin-tailwindcss` MUST be the **final plugin** in `.prettierrc.json` (`prettier-plugin-astro` → `@ianvs/prettier-plugin-sort-imports` → `prettier-plugin-tailwindcss`). For Tailwind v4 without `tailwind.config.js`, specify `tailwindStylesheet: "./src/styles/globals.css"`.
 
 ---
 

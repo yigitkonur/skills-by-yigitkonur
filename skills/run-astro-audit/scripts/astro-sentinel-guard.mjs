@@ -10,19 +10,41 @@
  * Astro Best Practices knowledge base.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
-// Lazy-resolve compiler via Astro's dependency tree
+// Lazy-resolve compiler via target projectRoot or local dependency tree
 let compilerInstance = null
-function getCompiler() {
+function getCompiler(projectRoot = process.cwd()) {
   if (!compilerInstance) {
-    const astroPath = require.resolve('astro')
-    const compilerPath = require.resolve('@astrojs/compiler', { paths: [astroPath] })
-    compilerInstance = require(compilerPath)
+    const candidateBases = [
+      join(projectRoot, 'node_modules', 'astro', 'package.json'),
+      join(projectRoot, 'package.json'),
+      import.meta.url,
+    ]
+    for (const base of candidateBases) {
+      try {
+        const req = createRequire(base)
+        try {
+          const astroPath = req.resolve('astro')
+          const compilerPath = req.resolve('@astrojs/compiler', { paths: [astroPath] })
+          compilerInstance = req(compilerPath)
+          break
+        } catch {
+          const direct = req.resolve('@astrojs/compiler')
+          compilerInstance = req(direct)
+          break
+        }
+      } catch {
+        // continue to next base
+      }
+    }
+    if (!compilerInstance) {
+      throw new Error(`Could not resolve @astrojs/compiler from ${projectRoot} or runtime environment.`)
+    }
   }
   return compilerInstance
 }
@@ -89,6 +111,21 @@ export const AST_RULES = {
     description: 'Do not import legacy Next.js packages (next/router, next/navigation, next/image, next/link).',
     ref: '10-auditing-testing-and-nextjs-migration/13-replace-next-navigation-with-native-web-standards.md',
   },
+  '01-arch/no-process-env': {
+    severity: 'warn',
+    description: 'Avoid legacy process.env.* in Astro frontmatter. Use standard import.meta.env.* for safe bundling.',
+    ref: '01-architecture-and-philosophy/02-import-meta-env-over-process-env.md',
+  },
+  '06-security/no-set-html-directive': {
+    severity: 'warn',
+    description: 'Raw set:html bypasses HTML escaping and introduces XSS risks. Ensure input is sanitized or use standard Astro expressions.',
+    ref: '06-middleware-and-auth/10-sanitize-raw-html-in-dynamic-rendering.md',
+  },
+  '07-assets/require-image-alt': {
+    severity: 'error',
+    description: '<img> elements must specify an alt attribute for accessibility (WCAG 2.2 SC 1.1.1). Use alt="" for decorative images.',
+    ref: '07-assets-and-image-pipeline/01-prefer-astro-image-over-native-img.md',
+  },
 }
 
 // ─── Path Allowlists ─────────────────────────────────────────────────────────
@@ -142,7 +179,7 @@ export async function lintAstroFile(filePath, projectRoot = process.cwd()) {
   const relPath = relative(projectRoot, filePath)
   const content = readFileSync(filePath, 'utf8')
   const lines = content.split('\n')
-  const compiler = getCompiler()
+  const compiler = getCompiler(projectRoot)
   const diagnostics = []
 
   let ast
@@ -198,6 +235,26 @@ export async function lintAstroFile(filePath, projectRoot = process.cwd()) {
           column: 1,
           message: 'Root catch-all route returns empty string or "/" for home param. Must return undefined to match root.',
           ref: AST_RULES['03-routing/catch-all-undefined-home'].ref,
+        })
+      }
+    }
+
+    // Rule: 01-arch/no-process-env
+    const processEnvRegex = /\bprocess\.env\.([A-Z0-9_]+)\b/g
+    let peMatch
+    while ((peMatch = processEnvRegex.exec(frontmatterValue)) !== null) {
+      const matchIdx = peMatch.index
+      const relLine = frontmatterValue.slice(0, matchIdx).split('\n').length
+      const lineNum = (fmNode.position?.start?.line ?? 1) + relLine - 1
+      if (!hasSuppression(lines, lineNum - 1, '01-arch/no-process-env')) {
+        diagnostics.push({
+          ruleId: '01-arch/no-process-env',
+          severity: AST_RULES['01-arch/no-process-env'].severity,
+          filePath: relPath,
+          line: lineNum,
+          column: 1,
+          message: `Legacy "process.env.${peMatch[1]}" used in Astro frontmatter. Migrate to standard "import.meta.env.${peMatch[1]}".`,
+          ref: AST_RULES['01-arch/no-process-env'].ref,
         })
       }
     }
@@ -368,6 +425,40 @@ export async function lintAstroFile(filePath, projectRoot = process.cwd()) {
             })
           }
         }
+
+        // Rule: 07-assets/require-image-alt
+        const hasAlt = attrs.some((a) => a.name === 'alt')
+        if (!hasAlt && !isPathAllowed('07-assets/require-image-alt', relPath)) {
+          if (!hasSuppression(lines, line - 1, '07-assets/require-image-alt')) {
+            diagnostics.push({
+              ruleId: '07-assets/require-image-alt',
+              severity: AST_RULES['07-assets/require-image-alt'].severity,
+              filePath: relPath,
+              line,
+              column: node.position?.start?.column ?? 1,
+              message: '<img> element missing required "alt" attribute. Provide descriptive alt text or alt="" for decorative images (WCAG 2.2 SC 1.1.1).',
+              ref: AST_RULES['07-assets/require-image-alt'].ref,
+            })
+          }
+        }
+      }
+
+      // Rule: 06-security/no-set-html-directive
+      const setHtmlAttr = attrs.find((a) => a.name === 'set:html')
+      const isJsonScript = node.name === 'script' && attrs.some((a) => a.name === 'type' && a.value?.includes('json'))
+      if (setHtmlAttr && !isJsonScript && !isPathAllowed('06-security/no-set-html-directive', relPath)) {
+        const line = setHtmlAttr.position?.start?.line ?? node.position?.start?.line ?? 1
+        if (!hasSuppression(lines, line - 1, '06-security/no-set-html-directive')) {
+          diagnostics.push({
+            ruleId: '06-security/no-set-html-directive',
+            severity: AST_RULES['06-security/no-set-html-directive'].severity,
+            filePath: relPath,
+            line,
+            column: setHtmlAttr.position?.start?.column ?? 1,
+            message: `Raw "set:html" directive on <${node.name}> bypasses Astro HTML escaping and poses an XSS risk. Ensure input is sanitized or use standard Astro expressions.`,
+            ref: AST_RULES['06-security/no-set-html-directive'].ref,
+          })
+        }
       }
 
       // Rule: 09-perf/no-blanket-viewport-prefetch
@@ -404,6 +495,7 @@ export async function lintAstroFile(filePath, projectRoot = process.cwd()) {
 
 // ─── Directory Walker ────────────────────────────────────────────────────────
 export function walkAstroFiles(dir, fileList = []) {
+  if (!existsSync(dir)) return fileList
   const entries = readdirSync(dir, { withFileTypes: true })
   for (const entry of entries) {
     const fullPath = join(dir, entry.name)
