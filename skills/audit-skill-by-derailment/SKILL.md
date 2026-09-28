@@ -1,6 +1,6 @@
 ---
 name: audit-skill-by-derailment
-description: "Use if hardening a SKILL.md by running a fresh subagent on a real task, orchestrating worker agents in Herdr tabs, or analyzing live agent execution scrollbacks across repositories."
+description: "Use if testing a skill with an agent execution trace; never for ordinary code, PR, or workflow review."
 ---
 
 # Audit Skill by Derailment: The Native Two-Tier Auditor

@@ -1,6 +1,6 @@
 # audit-skill-by-derailment
 
-Harden a SKILL.md by running a fresh subagent on a real task, orchestrating worker agents in Herdr tabs, or analyzing live agent execution scrollbacks across repositories.
+Test a skill with an agent execution trace to improve its instructions. Use only during skill testing, never for ordinary code, PR, or workflow review.
 
 **Category:** productivity
 
