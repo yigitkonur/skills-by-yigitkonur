@@ -1,0 +1,21 @@
+# Replace examples with the actual assigned scope and source references.
+schema_version: 1
+kind: feature
+record_id: FT0001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00001
+actor_id: A00001
+features:
+  - id: FEATURE-projects
+    title: Project lifecycle
+    source:
+      type: user_request
+      reference: Replace with the actual scoped discovery request or product contract.
+    subfeatures:
+      - Create a project through the user interface.
+unknowns:
+  - Replace with actual unresolved product behavior, or use an empty list.
+artifacts:
+  - path: discovery/feature-map.md
+    type: markdown

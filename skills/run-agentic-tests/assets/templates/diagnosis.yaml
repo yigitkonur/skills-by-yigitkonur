@@ -1,0 +1,16 @@
+# Replace examples with allocated identities and actual causal evidence.
+schema_version: 1
+kind: diagnosis
+record_id: DIAG-F0001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00007
+actor_id: A00007
+finding_id: F0001
+conclusion: blocked
+summary: The unavailable account prevented exercising the behavior; no implementation defect is established.
+evidence_record_ids: [EXEC-T0001-R001, VERIFY-T0001-R001-A]
+artifacts: []
+# For a confirmed cause, use conclusion: confirmed and add root_cause with
+# concrete causal support. For unproven explanations use conclusion: hypothesis.
+# Supporting artifacts contain real campaign-relative paths and type values.

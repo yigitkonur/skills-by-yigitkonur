@@ -1,0 +1,27 @@
+# Replace examples with accepted case/spec/target IDs and real scope sources.
+# Controller acceptance freezes actual spec_hashes; do not invent them.
+schema_version: 1
+kind: plan
+record_id: P001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00002
+actor_id: A00002
+target_id: G001
+scope:
+  in_scope:
+    - Project creation for the assigned account under the approved product contract.
+  out_of_scope: []
+cases:
+  - case_id: T0001
+    spec_revision: S001
+    target_id: G001
+    depends_on: []
+    resources:
+      - name: runtime-G001
+        mode: read
+      - name: test-account-example
+        mode: write
+coverage:
+  - source: Replace with the accepted source requirement locator.
+    case_ids: [T0001]

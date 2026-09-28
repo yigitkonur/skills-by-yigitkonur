@@ -1,0 +1,35 @@
+{
+  "name": "run-agentic-tests",
+  "version": "1.0.86",
+  "description": "Use if orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-agentic-tests"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-agentic-tests",
+    "shortDescription": "Use if orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops.",
+    "longDescription": "Install only the run-agentic-tests workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-agentic-tests skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

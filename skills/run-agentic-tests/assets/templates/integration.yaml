@@ -1,0 +1,18 @@
+# Replace values with the actual serial merge and controller-assigned new target.
+schema_version: 1
+kind: integration
+record_id: INTEGRATE-F0001-A001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00010
+actor_id: A00010
+finding_id: F0001
+implementation_record_id: IMPL-F0001-A001
+new_target_id: G002
+commit: REPLACE_WITH_EXACT_INTEGRATED_COMMIT
+affected_case_ids: [T0001]
+retest_obligations:
+  - case_id: T0001
+    reason: Independently execute and review the failed expectation on the new integrated source.
+artifacts: []
+# This record never asserts independent retest PASS or closes the original finding.

@@ -1,0 +1,35 @@
+# Evidence-gap review example corresponding to the NOT_RUN execution template.
+# Review the actual assigned artifacts; never copy this as a completed inspection.
+schema_version: 1
+kind: verification
+record_id: VERIFY-T0001-R001-A
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00005
+actor_id: A00005
+case_id: T0001
+spec_revision: S001
+round_id: R001
+target_id: G001
+execution_record_id: EXEC-T0001-R001
+reviews:
+  - expectation_id: E01
+    verdict: INCONCLUSIVE
+    expected: One submitted unique project exists exactly once and belongs to the signed-in account.
+    observed: No application action or resulting state was captured.
+    evidence_ids: []
+    reason: The required image and structured response are explicitly unavailable; no PASS can be supported.
+inspected_evidence: []
+findings:
+  - class: EVIDENCE_GAP
+    summary: Fresh executor capture is needed after the account access blocker is resolved.
+    expectation_ids: [E01]
+    reason_code: MISSING_CREDENTIAL
+# For each actual inspected artifact, add its ID, real 64-character sha256,
+# method (for example image viewer or parsed JSON), and concrete observation:
+# inspected_evidence:
+#   - id: EV01
+#     sha256: REPLACE_WITH_ACTUAL_DIGEST
+#     method: Opened the saved image using the available image viewer.
+#     observation: Describe the actual visible state supporting this expectation.
+# Verifier B uses a different assigned record/task/actor and sees no peer review.

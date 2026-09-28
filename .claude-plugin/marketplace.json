@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 59 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 60 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.86",
       "category": "bundle",
       "strict": false,
@@ -58,6 +58,7 @@
         "./skills/publish-npm-package",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
+        "./skills/run-agentic-tests",
         "./skills/run-astro-audit",
         "./skills/run-codex-review-loop",
         "./skills/run-deep-research",
@@ -176,7 +177,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Frontend and backend testing — create, diagnose, and release-gate TestSprite journeys, agentic ego-browser E2E flows, and API contracts against deployed services.",
+      "description": "Testing — independent agentic E2E campaigns across web, CLI, MCP, and mobile runtimes, plus TestSprite and ego-browser journeys.",
       "version": "1.0.86",
       "category": "bundle",
       "tags": [
@@ -184,9 +185,10 @@
       ],
       "strict": false,
       "skills": [
+        "./skills/run-agentic-tests",
+        "./skills/run-ego-e2e",
         "./skills/run-testsprite-backend",
-        "./skills/run-testsprite-frontend",
-        "./skills/run-ego-e2e"
+        "./skills/run-testsprite-frontend"
       ]
     },
     {
@@ -785,6 +787,17 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-device"
+      ]
+    },
+    {
+      "name": "run-agentic-tests",
+      "source": "./",
+      "description": "Use if orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops.",
+      "version": "1.0.86",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/run-agentic-tests"
       ]
     },
     {
