@@ -401,18 +401,6 @@
       "category": "Productivity"
     },
     {
-      "name": "herdr-lite",
-      "source": {
-        "source": "local",
-        "path": "./plugins/herdr-lite"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "init-agent-config",
       "source": {
         "source": "local",
@@ -513,6 +501,18 @@
       "source": {
         "source": "local",
         "path": "./plugins/run-agent-device"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-astro-audit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-astro-audit"
       },
       "policy": {
         "installation": "AVAILABLE",
