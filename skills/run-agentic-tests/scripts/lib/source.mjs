@@ -67,9 +67,14 @@ async function sourceRoot(environment) {
     ...(config_files.length ? { config_files: [...new Set(config_files)].sort() } : {}) } };
 }
 
-async function manifest(root, paths, excluded, { required = false } = {}) {
+async function manifest(root, paths, excluded, { required = false, gitObjects, gitAlgorithm = 'sha1' } = {}) {
   const entries = new Map();
   const visiting = new Set();
+  const rememberBlob = (name, contents, mode) => {
+    if (!gitObjects) return;
+    const bytes = Buffer.isBuffer(contents) ? contents : Buffer.from(contents);
+    gitObjects.set(name, { mode, object: createHash(gitAlgorithm).update(`blob ${bytes.length}\0`).update(bytes).digest('hex') });
+  };
   const visit = async (relativePath, explicitlyRequired = false) => {
     const absolute = path.resolve(root, relativePath);
     if (!inside(root, absolute)) fail('INVALID_SOURCE_PROVIDER', 'Source path escapes its root.');
@@ -93,6 +98,7 @@ async function manifest(root, paths, excluded, { required = false } = {}) {
     if (stat.isSymbolicLink()) {
       const link = await readlink(absolute);
       entries.set(relativePath, { path: relativePath, kind: 'symlink', mode, sha256: sha(link) });
+      rememberBlob(relativePath, link, '120000');
       let target;
       try { target = await realpath(absolute); } catch { return; }
       if (!inside(root, target) || excluded.some(directory => inside(directory, target))) fail('INVALID_SOURCE_PROVIDER', 'Source symlinks must resolve inside product source, outside campaign outputs.', [{ path: relativePath }]);
@@ -105,7 +111,9 @@ async function manifest(root, paths, excluded, { required = false } = {}) {
       }
       visiting.delete(relativePath);
     } else if (stat.isFile()) {
-      entries.set(relativePath, { path: relativePath, kind: 'file', mode, sha256: sha(await readFile(absolute)) });
+      const bytes = await readFile(absolute);
+      entries.set(relativePath, { path: relativePath, kind: 'file', mode, sha256: sha(bytes) });
+      rememberBlob(relativePath, bytes, mode & 0o111 ? '100755' : '100644');
     } else fail('INVALID_SOURCE_PROVIDER', 'Source manifests support regular files, directories and symlinks only.', [{ path: relativePath }]);
   };
   for (const item of paths) await visit(item, required);
@@ -146,6 +154,7 @@ export async function attestSource(campaign, environment) {
     let revision = environment.source.revision;
     let gitHead;
     let gitClean;
+    let tree = [];
     let paths = [];
     if (provider.type === 'git') {
       try {
@@ -153,24 +162,33 @@ export async function attestSource(campaign, environment) {
         const requested = (await git(root, 'rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`)).trim();
         if (requested !== gitHead) fail('SOURCE_REVISION_MISMATCH', 'Declared source revision is not the actual worktree HEAD.', pathIssue('source.revision', 'Use the actual checked-out commit or prepare its isolated worktree.'));
         revision = gitHead;
+        tree = (await git(root, 'ls-tree', '-r', '-z', 'HEAD')).split('\0').filter(Boolean).map(entry => {
+          const [header, ...filename] = entry.split('\t');
+          const [mode, type, object] = header.split(' ');
+          return { path: filename.join('\t'), mode, type, object };
+        });
         paths = [...new Set([
-          ...(await git(root, 'ls-tree', '-r', '-z', '--name-only', 'HEAD')).split('\0'),
+          ...tree.map(entry => entry.path),
           ...(await git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')).split('\0'),
         ].filter(Boolean))].sort();
-        const changed = [
-          ...(await git(root, 'diff', '--name-only', '-z', 'HEAD', '--')).split('\0'),
-          ...(await git(root, 'ls-files', '-z', '--others', '--exclude-standard')).split('\0'),
-        ].filter(Boolean);
-        gitClean = changed.every(file => excluded.some(directory => inside(directory, path.resolve(root, file))));
       } catch (error) {
         if (error instanceof CliError) throw error;
         fail('SOURCE_REVISION_MISMATCH', 'Cannot resolve the declared source revision against the actual Git worktree.', pathIssue('source.revision', 'Declare the current committed HEAD; caller-provided labels are not Git proof.'));
       }
     }
-    const implicit = await manifest(root, paths, excluded);
+    const gitObjects = new Map();
+    const implicit = await manifest(root, paths, excluded, { gitObjects, gitAlgorithm: gitHead?.length === 64 ? 'sha256' : 'sha1' });
+    if (gitHead) {
+      const productPath = file => !excluded.some(directory => inside(directory, path.resolve(root, file)));
+      const committedPaths = new Set(tree.map(entry => entry.path));
+      gitClean = tree.filter(entry => productPath(entry.path)).every(entry => {
+        const actual = gitObjects.get(entry.path);
+        return actual?.object === entry.object && actual.mode === entry.mode;
+      }) && paths.filter(productPath).every(file => committedPaths.has(file));
+    }
     const declared = await manifest(root, provider.paths || [], excluded, { required: true });
     const files = [...new Map([...implicit, ...declared].map(entry => [entry.path, entry])).values()].sort((a, b) => a.path.localeCompare(b.path));
-    if (!files.some(entry => entry.kind !== 'missing')) fail('SOURCE_MISSING', 'The source manifest contains no actual product files.');
+    if (!files.some(entry => entry.kind === 'file')) fail('SOURCE_MISSING', 'The source manifest contains no actual product files.');
     const config = await manifest(root, provider.config_files || [], excluded, { required: true });
     const source_digest = digest({ type: provider.type, revision, manifest: files });
     const configuration_digest = digest({ command: environment.command, cwd, readiness: environment.readiness,

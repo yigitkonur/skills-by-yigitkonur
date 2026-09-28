@@ -261,3 +261,20 @@ test('managed process ownership is bound to the frozen target source identity', 
     assert.equal(process.kill(started.environment.process.pid, 0), true);
   } finally { await writeFile(recordPath, historical); }
 });
+
+test('Git index optimization flags cannot hide modified integrated source from attestation', async t => {
+  const f = await fixture(t);
+  await integrated(f);
+  git(f.project, 'update-index', '--assume-unchanged', 'app.mjs');
+  await writeFile(path.join(f.project, 'app.mjs'), "console.log('application ready'); // hidden working-tree edit\n");
+  assert.equal(git(f.project, 'diff', '--name-only', 'HEAD', '--', 'app.mjs'), '');
+  assert.equal(f.start().data.error?.code, 'TARGET_DRIFT');
+});
+
+test('a dangling source symlink cannot stand in for actual source files', async t => {
+  const f = await fixture(t, 'files');
+  await symlink('missing-source.mjs', path.join(f.project, 'source-entry.mjs'));
+  f.draft.source.provider.paths = ['source-entry.mjs'];
+  await f.save();
+  assert.equal(f.start().data.error?.code, 'SOURCE_MISSING');
+});
