@@ -54,6 +54,117 @@ Organize terminal layout using Herdr's native hierarchy:
 
 For geometry decisions, dynamic coordinates, and workspace primitives, see [references/topology-and-worktrees.md](references/topology-and-worktrees.md) and [references/herdr-primitives.md](references/herdr-primitives.md).
 
+### 2a. Cold Bootstrap Sequence (CTO First-Wave Handover & EM Autonomous Orchestration)
+
+Herdr establishes an explicit, two-tier leadership pair in the primary control workspace: CTO on the LEFT (Pane 1), EM on the RIGHT (Pane 2). Workers and reviewers run in separate per-task worktree workspaces.
+
+1. **CTO captures coordinates and launches the EM pane**:
+   ```bash
+   # Discover CTO own coordinates and leadership tab:
+   CTO_PANE_ID="$(herdr pane current | jq -r .result.pane.pane_id)"
+   LEADERSHIP_TAB_ID="$(herdr pane current | jq -r .result.pane.tab_id)"
+
+   # Split right from CTO, capturing the returned EM pane ID:
+   EM_PANE_ID="$(herdr pane split --pane "$CTO_PANE_ID" --direction right --cwd "$RUN_ROOT" --no-focus | jq -r .result.pane.pane_id)"
+
+   # Launch EM into returned shell pane with chosen harness (defaults to ambient/agy):
+   EM_KIND="${HERDR_AGENT_KIND:-agy}"
+   herdr agent start "herdr-engineering-manager" --kind "$EM_KIND" --pane "$EM_PANE_ID" -- --model "$EM_MODEL" --dangerously-skip-permissions
+   ```
+
+2. **CTO orchestrates the First Wave**:
+   The CTO initializes the environment, decomposes the initial tasks, and opens task environments:
+   ```bash
+   # CRITICAL LAW: Workspaces MUST be worktree-backed. NEVER create independent workspaces
+   # via `herdr workspace create` or loose shell `git worktree add` tabs.
+   # Always use Herdr's native worktree command:
+   WORKTREE_JSON="$(herdr worktree create --cwd "$REPO_ROOT" --path "$WORKTREE_PATH" --branch "$BRANCH" --label "task-${TASK_ID}" --no-focus)"
+   WS_ID="$(echo "$WORKTREE_JSON" | jq -er .result.workspace.workspace_id)"
+   WORKER_PANE_ID="$(echo "$WORKTREE_JSON" | jq -er .result.root_pane.pane_id)"
+
+   # Launch initial worker:
+   herdr agent start "impl-${TASK_ID}" --kind "$WORKER_KIND" --pane "$WORKER_PANE_ID" -- --model "$WORKER_MODEL" --dangerously-skip-permissions
+
+   # Wait for worker harness to initialize to idle before prompting:
+   herdr agent wait "$WORKER_PANE_ID" --until idle --timeout 60000
+
+   # Dispatch task brief with mandatory /teamwork-preview /herdr prefix and inject $EM_PANE_ID as the return route:
+   herdr agent prompt "$WORKER_PANE_ID" "/teamwork-preview /herdr
+   <TASK_BRIEF>
+   When complete, WRITE BACK TO THE ENGINEERING MANAGER with:
+   herdr agent prompt \"$EM_PANE_ID\" \"REPORT: task_id=$TASK_ID pr_url=<URL> head_sha=\$(git rev-parse HEAD) status=DONE\""
+   ```
+
+3. **CTO Dispatches Handover to the Engineering Manager**:
+   The CTO instructs the EM to take over operational command of the running team:
+   ```bash
+   # Wait for EM harness to initialize to idle before prompting:
+   herdr agent wait "$EM_PANE_ID" --until idle --timeout 60000
+
+   herdr agent prompt "$EM_PANE_ID" "CTO HANDOVER & OPERATIONAL DIRECTIVE:
+   First-wave tasks are provisioned and workers are running. They will report directly to you at $EM_PANE_ID.
+   You now take full operational command:
+   - Organize and direct workers using their specialized skills (tdd, code-review, audit-completion).
+   - Manage streaming side-by-side reviews in their tabs (herdr pane split).
+   - Provision subsequent waves (Waves 2-5) natively via herdr worktree create.
+   - When all wave tasks pass review, emit:
+     WAVE_COMPLETE: wave=<WAVE_ID> prs=[<PRS>] shas=[<SHAS>] next_wave=<NEXT> next_issues=[<ISSUES>] status=AWAITING_SERIAL_MERGE"
+   ```
+
+4. **EM Autonomous Operational Takeover**:
+   - The Engineering Manager takes over all execution details: deciding review workflows, allocating reviewers via side-by-side splits (`herdr pane split --pane "$IMPL_PANE_ID" --direction right ...`), and assigning domain skills (`tdd`, `code-review`, `audit-completion`).
+   - For subsequent waves (Waves 2–5), the EM natively provisions worktree workspaces (`herdr worktree create`). Independent workspaces are strictly forbidden.
+   - Workers, reviewers, and EM orchestrate among themselves.
+
+5. **CTO Sole-Follower Invariant & Asynchronous Wait Tracking**:
+   - Once initialized, the **CTO tracks and follows ONLY the Engineering Manager**.
+   - **Mandatory Bounded Timeouts on All Scripted Waits (Zero Infinite Waits)**:
+     - EVERY scripted `herdr agent wait` and `herdr pane wait-output` command MUST specify an explicit bounded `--timeout <MS>` (recommended: 60000ms to 180000ms; maximum: 300000ms / 5m). Calling wait commands without an explicit `--timeout` in automated scripts or orchestration flows is strictly forbidden; relying on implicit CLI defaults is reserved strictly for interactive human terminal sessions.
+     - When matching output patterns, never wait on an overly fragile narrow regex without handling generic errors or timeouts. If `--timeout` expires, the agent MUST NOT hang silently; it must immediately read the live pane buffer (`herdr pane read <PANE_ID> --lines 50`), inspect foreground processes (`herdr pane process-info`), diagnose the actual state, and yield an actionable status update to the user.
+   - **Immediate Dispatch Acknowledgment & Conversational Cadence (Max 30–60s Silence Limit)**:
+     - Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. Agents must maintain a conversational heartbeat (max 30–60s silence limit).
+     - When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states.
+     - **Synchronous Dependency Gates vs Supervisory Waits**:
+       - *Dependency-gating waits* (such as waiting for an agent harness to initialize to `idle` before dispatching an initial prompt in steps 2 and 3 above) MUST run synchronously with a bounded timeout (`--timeout 30000` to `60000ms`), because the subsequent prompt depends directly on interactive readiness.
+       - *Supervisory monitoring waits* (monitoring an EM or worker through multi-minute tasks): Never block the session for minutes without conversational status. Output an immediate progress summary to the user first. If waiting in an interactive agent turn, either use bounded wait slices (30–60s) or background the wait (`herdr agent wait "$EM_PANE_ID" --until idle --timeout 180000 & WAIT_PID=$!`), yield ongoing status, and join via `wait $WAIT_PID` so the user does not experience a frozen session.
+   - **Automated Lifecycle Reaping & Workspace/Tab Cleanup**:
+     - Completed tasks must be automatically reaped immediately upon remote PR merge verification (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`).
+     - **Cleanliness Gate Before Pane Closure**: ALWAYS verify the worktree is clean (`test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"`) BEFORE closing panes or tearing down checkouts. If uncommitted changes exist, DO NOT close panes or hard-exit; escalate by diagnosing uncommitted diffs (`git -C "$WORKTREE_PATH" status -s`) and alerting the operator.
+     - Once cleanliness and PR merge are verified:
+       1. Retire reviewer and implementer agent panes: `herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true` and `herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true`.
+       2. Remove the worktree checkout and unregister workspace via Herdr: `herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; diagnosing..."; exit 1; }`.
+       3. Delete the local branch and prune remotes: `git -C "$REPO_ROOT" branch -D "$BRANCH"` and `git -C "$REPO_ROOT" remote prune origin`.
+       4. Close any lingering standalone workspaces or tabs: `herdr workspace close "$WS_ID" 2>/dev/null || true`.
+     - Never leave completed tasks or dead tabs/workspaces lingering open in Herdr.
+   - **Context Window Hygiene**:
+     - Do NOT run unbounded commands (e.g. `gh issue view <ID>` dumping >1,000 lines) that bloat context and cause inference lag. Rely on local `specs/*.md` files or targeted queries (`gh issue view <ID> --json title,number`).
+   - **Deterministic Agent Wait Tracking**: Every running agent MUST be tracked with `herdr agent wait <TARGET_PANE> [--until <STATUS>] [--timeout <MS>]` or `herdr pane wait-output`. Unhooked `sleep` loops and detached polling without agent state checks are strictly prohibited.
+   - When the EM emits `WAVE_COMPLETE`, the CTO verifies baseline gates, performs the serial squash-merges onto `main`, and signals the EM to proceed.
+
+6. **Proportional Worker Preflight**:
+   - Workers (`impl-*`) must NOT run heavyweight full-repo verification suites (e.g. full `eslint` or full test matrices) upfront as a blind pre-flight ritual. Pre-flight is strictly lightweight: verify git status, read spec, and run targeted tests. Heavy multi-minute suites belong strictly at the Definition of Done (DoD) PR review gate.
+
+7. **Session Invariant**: Preserve existing healthy sessions; never run duplicate bootstrap or launch a new agent over a live TUI. Check installed `--help` for syntax rather than guessing.
+8. **Non-Pane CTO Boundary**: When the CTO operates from a Root PTY outside Herdr, explicit-target CLI commands (`herdr agent read`, etc.) work, but native prompt callbacks targeting the CTO do not exist (`cto.pane_id: null`). The CTO reads reports and `state.yaml` directly from the shared run root on disk.
+
+### 2b. Live Coordinates & Model Verification (All Panes)
+
+Always resolve live coordinates via `herdr pane current`. Do NOT trust static startup environment variables (e.g. `HERDR_TAB_ID`) as panes may move:
+```bash
+SELF_PANE_ID="$(herdr pane current | jq -r .result.pane.pane_id)"
+SELF_TAB_ID="$(herdr pane current | jq -r .result.pane.tab_id)"
+SELF_TERM_ID="$(herdr pane current | jq -r .result.pane.terminal_id)"
+SELF_CWD="$(herdr pane current | jq -r .result.pane.cwd)"
+```
+
+`herdr pane current` confirms physical coordinates, but does NOT prove active model or composer readiness. Verify active model and effort independently via native runtime indicators (e.g. TUI footer/menu).
+
+### 2c. Registration & Acknowledgment
+
+Register confirmed identity with the manager's return address without `--wait`:
+- **Preflight match** (identity, model, and role verified as authorized): Proceed directly without waiting for explicit ACK.
+- **Preflight mismatch, unclear authority, or restart/relaunch context**: Preserve explicit acknowledgment before proceeding.
+
 ---
 
 ## 3. Communication & Harness Physics
