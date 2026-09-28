@@ -1,0 +1,25 @@
+# Implementation result shape; every URL/path/check must refer to real work.
+schema_version: 1
+kind: implementation
+record_id: IMPL-F0001-A001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00009
+actor_id: A00009
+finding_id: F0001
+attempt: 1
+commit: REPLACE_WITH_EXACT_IMPLEMENTATION_COMMIT
+worktree: /absolute/owned/fix-worktree
+pr_url: https://github.com/example/project/pull/2
+pr_body_path: findings/F0001-example/fixes/A001/pr-body.md
+changed_files: [REPLACE_WITH_ACTUAL_CHANGED_PATH]
+checks:
+  - command: REPLACE_WITH_EXECUTED_DEVELOPER_CHECK
+    exit_code: 0
+    artifact_path: findings/F0001-example/fixes/A001/developer-check.log
+summary: Replace with the bounded behavior change and causal explanation.
+artifacts:
+  - path: findings/F0001-example/fixes/A001/developer-check.log
+    type: log
+# attempt counts corrective implementation attempts (1..4), preserving lineage.
+# Developer checks do not replace independent integrated-target E2E retest.

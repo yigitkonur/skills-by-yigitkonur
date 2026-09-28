@@ -1,0 +1,21 @@
+# Controller-owned shape example; workers propose findings in their typed reports.
+# Do not publish this file manually or change lineage counters to enable a retry.
+schema_version: 1
+kind: finding
+record_id: FIND-F0001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+finding_id: F0001
+class: EVIDENCE_GAP
+reason_code: MISSING_CREDENTIAL
+priority: P1
+case_ids: [T0001]
+source_record_ids: [EXEC-T0001-R001, VERIFY-T0001-R001-A]
+scope: in_scope
+state: OPEN
+lineage_id: F0001
+attempts: 0
+attempt_rounds: []
+summary: Assigned access prevented execution and capture of the accepted case.
+# A NOT_RUN missing-credential report does not consume an E2E attempt.
+# A confirmed defect's actual failed/corrective rounds remain under one lineage.
