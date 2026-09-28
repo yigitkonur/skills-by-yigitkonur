@@ -62,7 +62,8 @@ async function campaignFixture(t, {
   const operator = await task({ role: 'environment-operator', requested_action: 'Probe the fixture CLI.' });
   const environment = path.join(root, 'environment.yaml');
   await writeFile(environment, YAML.stringify({ target_id: operator.target_id, task_id: operator.task_id, actor_id: operator.actor_id,
-    runtime_type: 'cli', source: { revision: `sha256:${sha(await readFile(app))}`, worktree: project },
+    runtime_type: 'cli', source: { revision: `sha256:${sha(await readFile(app))}`, worktree: project,
+      provider: { type: 'files', root: project, paths: ['app.mjs'] } },
     command: { argv: [process.execPath, app], cwd: project },
     readiness: { type: 'process', body_contains: 'message', timeout_ms: 3000 } }));
   await runtime('runtime start', { campaign, file: environment });
@@ -97,7 +98,7 @@ async function campaignFixture(t, {
     await publish(closer, { outcome: 'approved', findings: [], artifacts: [] });
     await command('reconcile');
   }
-  return { root, project, campaign, command, execution, body, artifactPath };
+  return { root, project, campaign, command, task, publish, expectation, app, execution, body, artifactPath };
 }
 
 async function build(f) {
@@ -285,4 +286,56 @@ test('publication issue metadata is screened before it enters public JSON or HTM
   assert.equal(html.includes(artifactId), false);
   assert.equal(JSON.stringify(result.publication).includes(artifactId), false);
   assert.deepEqual(model.publication, result.publication);
+});
+
+test('case reports share the canonical effective root after explicit association and immutable linking', async t => {
+  const f = await campaignFixture(t, { outcome: 'FAIL', observed: { message: 'Order rejected' }, reason: 'The response rejected the approved order.' });
+  const caseIds = ['T0001'];
+  async function addFailure(lineageId) {
+    const author = await f.task({ role: 'scenario-author', slug: `checkout-${caseIds.length + 1}`, requested_action: 'Write another approved checkout variant.' });
+    const caseId = author.case_ids[0];
+    caseIds.push(caseId);
+    const directory = path.dirname(path.join(f.campaign, author.outputs[0].path));
+    await writeFile(path.join(directory, '01-test-case.md'), 'Given checkout is ready\nWhen ordering\nThen [E1] the response confirms the order.\n');
+    await writeFile(path.join(directory, '03-how-to-run.md'), 'Run app.mjs and save its exact JSON output.');
+    await f.publish(author, { expectations: [f.expectation] });
+    const planner = await f.task({ role: 'planner', target_id: 'G001', requested_action: 'Include the newly approved checkout variant.' });
+    const plan = await f.publish(planner, { scope: { in_scope: ['checkout'], out_of_scope: [] },
+      cases: caseIds.map(case_id => ({ case_id, spec_revision: 'S001', target_id: 'G001', depends_on: [], resources: [] })),
+      coverage: [{ source: 'Approved checkout contract', case_ids: caseIds }] });
+    const auditor = await f.task({ role: 'plan-auditor', plan_id: plan.record_id, requested_action: 'Audit the expanded variant coverage.' });
+    await f.publish(auditor, { outcome: 'approved', findings: [], artifacts: [] });
+    await f.command('plan accept', { file: path.join(f.campaign, planner.outputs[0].path), audit: path.join(f.campaign, auditor.outputs[0].path) });
+    const executor = await f.task({ role: 'executor', case_ids: [caseId], requested_action: 'Capture the actual checkout failure.' });
+    const body = execFileSync(process.execPath, [f.app]);
+    const artifact = `${path.posix.dirname(executor.outputs[0].path)}/evidences/response.json`;
+    await writeFile(path.join(f.campaign, artifact), body);
+    const execution = await f.publish(executor, { execution_status: 'COMPLETED',
+      observations: [{ expectation_id: 'E1', observed: JSON.parse(body), evidence_ids: ['EV1'], gaps: [] }],
+      evidence: [{ id: 'EV1', path: artifact, type: 'json', expectation_ids: ['E1'], requirement_ids: ['ER1'] }] });
+    const verifier = await f.task({ role: 'verifier', case_ids: [caseId], round_id: executor.round_id, requested_action: 'Independently compare the saved response with the approved order.' });
+    await f.publish(verifier, { execution_record_id: execution.record_id,
+      reviews: [{ expectation_id: 'E1', verdict: 'FAIL', expected: f.expectation.statement, observed: JSON.parse(body), evidence_ids: ['EV1'], reason: 'The response rejected the approved order.' }],
+      inspected_evidence: [{ id: 'EV1', sha256: execution.evidence[0].sha256, method: 'Read saved JSON', observation: 'Order rejected.' }],
+      ...(lineageId ? { findings: [{ class: 'PRODUCT_DEFECT', summary: 'The same checkout handler rejects every variant.', lineage_id: lineageId, expectation_ids: ['E1'] }] } : {}) });
+    await f.command('reconcile');
+    return execution;
+  }
+  await addFailure('F0001');
+  const separate = await addFailure();
+  const linkRequest = path.join(f.root, 'link.json');
+  await writeFile(linkRequest, JSON.stringify({ from_finding_id: 'F0002', into_finding_id: 'F0001',
+    evidence_record_ids: [f.execution.record_id, separate.record_id], reason: 'Both independently reviewed failures identify the same checkout handler.' }));
+  await f.command('finding link', { file: linkRequest });
+  const before = await canonicalBytes(f.campaign);
+  const status = await f.command('status');
+  assert.equal(status.findings.length, 1);
+  assert.deepEqual(status.findings[0].related_finding_ids, ['F0001', 'F0002']);
+  assert.equal(status.findings[0].attempts, 1);
+  assert.deepEqual(status.findings[0].case_ids, caseIds);
+  const { result, model, html } = await build(f);
+  assert.equal(result.summary.overall, status.outcome);
+  for (const item of model.cases) assert.deepEqual(item.findings, status.findings, `${item.case_id} must use the controller's effective lineage.`);
+  assert.match(html, /Related finding IDs: F0001, F0002/);
+  assert.deepEqual(await canonicalBytes(f.campaign), before);
 });

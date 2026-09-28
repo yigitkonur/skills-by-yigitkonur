@@ -84,7 +84,9 @@ function renderCase(item) {
   return `<article data-case="${escape(item.case_id)}" data-outcome="${escape(item.outcome)}"><h2>${escape(item.case_id)} · ${escape(item.outcome)}</h2>` +
     `<p>Spec ${escape(item.spec_revision || 'unplanned')} · ${item.accepted ? 'Accepted coverage' : 'Outside accepted coverage'}</p>${list(item.gaps)}` +
     item.rounds.map(renderRound).join('') +
-    `<h3>Findings and delivery trail</h3>${item.findings.length ? item.findings.map(finding => `<p><strong>${escape(finding.finding_id)}</strong> ${escape(finding.class)} · ${escape(finding.state)} · ${escape(finding.scope)} · ${escape(finding.attempts)} attempts</p><p>${escape(finding.summary)}</p><p>${[finding.issue_url, ...(finding.pr_urls || [])].filter(Boolean).map(url => link(url)).join(' · ')}</p>`).join('') : '<p>None recorded.</p>'}</article>`;
+    `<h3>Findings and delivery trail</h3>${item.findings.length ? item.findings.map(finding => `<p><strong>${escape(finding.finding_id)}</strong> ${escape(finding.class)} · ${escape(finding.state)} · ${escape(finding.scope)} · ${escape(finding.attempts)} shared attempts</p>` +
+      `${finding.related_finding_ids?.length > 1 ? `<p>Related finding IDs: ${escape(finding.related_finding_ids.join(', '))}</p>` : ''}` +
+      `<p>${escape(finding.summary)}</p><p>${[...new Set([finding.issue_url, ...(finding.related_issue_urls || []), ...(finding.pr_urls || [])].filter(Boolean))].map(url => link(url)).join(' · ')}</p>`).join('') : '<p>None recorded.</p>'}</article>`;
 }
 
 async function build(campaign) {
@@ -200,7 +202,7 @@ async function build(campaign) {
     }
     if (assignment && !current) caseGaps.push('No execution and independent proof on the final target.');
     const outcome = current?.outcome || 'NOT_RUN';
-    const findings = all.filter(record => record.kind === 'finding' && record.case_ids.includes(case_id));
+    const findings = assessment.findings.filter(finding => finding.case_ids.includes(case_id));
     cases.push({ case_id, spec_revision: assignment?.spec_revision, accepted: Boolean(assignment), outcome, rounds, findings, gaps: caseGaps });
   }
   const counts = { PASS: 0, FAIL: 0, INCONCLUSIVE: 0, NOT_RUN: 0, NOT_ASSESSED: 0, INVALID_EVIDENCE: 0 };
