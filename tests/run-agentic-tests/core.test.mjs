@@ -124,8 +124,8 @@ async function prepared(t, expectationOptions = {}, options = {}) {
   return { ...c, authored, accepted };
 }
 
-async function execution(c, { status = 'COMPLETED', observed = { results: ['cats'] }, gap = false } = {}) {
-  const task = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Run the real search command' });
+async function execution(c, { status = 'COMPLETED', observed = { results: ['cats'] }, gap = false, request = {} } = {}) {
+  const task = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Run the real search command', ...request });
   await startTask(c, task);
   const draft = await readYaml(path.join(c.campaign, task.draft_paths[0]));
   const artifact = `${path.posix.dirname(task.outputs[0].path)}/evidences/search.json`;
@@ -229,8 +229,6 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   Object.assign(implementation, { commit: 'fix-commit', worktree, pr_url: 'https://github.com/example/project/pull/13', pr_body_path: prBody, changed_files: ['app.mjs'], checks: [{ command: 'node --test search.test.mjs', exit_code: 0, artifact_path: checks }], summary: 'Search now uses the correct key', artifacts: [] });
   await submitDraft(c, implementer, implementation);
   await finishTask(c, implementer);
-  await environment(c, 'G002');
-
   const integrator = await createTask(c, { role: 'integrator', finding_id: finding.finding_id, requested_action: 'Integrate and assign mandatory retest on G002' });
   await startTask(c, integrator);
   const integration = await readYaml(path.join(c.campaign, integrator.draft_paths[0]));
@@ -241,6 +239,8 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   assert.equal(status.latest_target_id, 'G002');
   assert.equal(status.complete, false);
   assert.ok(status.obligations.some(item => item.type === 'RETEST_REQUIRED'));
+  assert.ok(status.obligations.some(item => item.type === 'PREPARE_TARGET' && item.target_id === 'G002' && item.commit === 'revision-G002'));
+  await environment(c, 'G002');
 
   const retest = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G002', finding_id: finding.finding_id, purpose: 'retest', requested_action: 'Independently rerun search against merged code', prior_context: { previous_failure: 'Search returned an empty result', what_changed: 'Query key fixed in PR 13 and integrated on G002', hypothesis: 'The fixed key returns the cats record', do_not_repeat: ['Do not test the old G001 runtime'], remaining_attempts: 4, issue_url: ticketDraft.issue_url, pr_urls: [implementation.pr_url] } });
   await run('task dispatch', { campaign: c.campaign, 'task-id': retest.task_id });
@@ -268,6 +268,120 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   assert.equal(final.complete, true);
   assert.equal(final.outcome, 'PASS');
   assert.deepEqual(final.obligations, []);
+});
+
+test('DAG prerequisites block only dependent cases while resource claims and interrupted reservations enforce capacity', async t => {
+  const c = await campaign(t, { 'host-capacity': '2' });
+  const registration = await authorCase(c, 'registration');
+  const login = await authorCase(c, 'login');
+  const search = await authorCase(c, 'search');
+  await environment(c);
+  await acceptPlan(c, [registration, login, search], { dependencies: { T0002: ['T0001'] }, resources: { T0001: [{ name: 'auth-account', mode: 'write' }], T0003: [{ name: 'search-index', mode: 'read' }] } });
+  const first = await createTask(c, { role: 'executor', case_ids: ['T0001'], requested_action: 'Register an account' });
+  const dependent = await createTask(c, { role: 'executor', case_ids: ['T0002'], requested_action: 'Login to the registered account' });
+  const independent = await createTask(c, { role: 'executor', case_ids: ['T0003'], requested_action: 'Search public content' });
+  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': dependent.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.includes('CASE_PREREQUISITE:T0001'));
+  await startTask(c, first);
+  const shared = await createTask(c, { role: 'feature-scout', requested_action: 'Read account metadata', resources: [{ name: 'auth-account', mode: 'read' }] });
+  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': shared.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.some(item => item.startsWith('RESOURCE:auth-account')));
+  await startTask(c, independent);
+  await run('task interrupt', { campaign: c.campaign, 'task-id': first.task_id, reason: 'Host interrupted; worker termination not yet confirmed' });
+  assert.equal((await run('status', { campaign: c.campaign })).counts.active, 2);
+  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': shared.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.includes('CAPACITY'));
+  await run('task interrupt', { campaign: c.campaign, 'task-id': first.task_id, reason: 'Host confirms worker stopped', finished: true });
+  await run('task dispatch', { campaign: c.campaign, 'task-id': shared.task_id });
+  assert.equal((await run('status', { campaign: c.campaign })).complete, false);
+});
+
+test('saved artifacts can be reviewed after runtime shutdown and a withdrawn verifier is replaceable without rerunning execution', async t => {
+  const c = await campaign(t);
+  const authored = await authorCase(c);
+  const target = await environment(c);
+  await acceptPlan(c, [authored], { resources: { T0001: [{ name: 'shared-account', mode: 'write' }] } });
+  const executed = await execution(c);
+  await submitDraft(c, executed.task, executed.draft);
+  await finishTask(c, executed.task);
+  await writeRecord(c.campaign, 'environments/G001/00-environment.record.yaml', { ...target, status: 'STOPPED' }, { immutable: false });
+  const other = await createTask(c, { role: 'feature-scout', requested_action: 'Inspect a different live session', resources: [{ name: 'shared-account', mode: 'write' }] });
+  await startTask(c, other);
+  const leaked = await verification(c, executed.task, { verdict: 'FAIL' });
+  assert.deepEqual(leaked.task.resources, []);
+  await submitDraft(c, leaked.task, leaked.draft);
+  await run('task interrupt', { campaign: c.campaign, 'task-id': leaked.task.task_id, reason: 'Review context received peer conclusions; withdraw it', finished: true });
+  const replacement = await verification(c, executed.task);
+  assert.notEqual(replacement.draft.record_id, leaked.draft.record_id);
+  await assert.rejects(submitDraft(c, leaked.task, leaked.draft), { code: 'TASK_NOT_RUNNING' });
+  await submitDraft(c, replacement.task, replacement.draft);
+  await finishTask(c, replacement.task);
+  await run('reconcile', { campaign: c.campaign });
+  const verdicts = (await run('records', { campaign: c.campaign, kind: 'verdict' })).records;
+  assert.equal(verdicts[0].outcome, 'PASS');
+  assert.deepEqual(verdicts[0].verification_record_ids, [replacement.draft.record_id]);
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'verification' })).records.length, 2);
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'execution' })).records.length, 1);
+});
+
+test('one unresolved lineage has five actual execution attempts; unavailable credentials and invalid drafts do not spend them', async t => {
+  const c = await prepared(t);
+  let finding;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const request = attempt === 1 ? {} : { finding_id: finding.finding_id, prior_context: { previous_failure: 'Search returned no matching result', what_changed: `Corrective hypothesis ${attempt} applied`, hypothesis: `Trace evidence ${attempt} suggests this correction`, do_not_repeat: ['Do not repeat the prior unchanged correction'], remaining_attempts: 6 - attempt } };
+    if (attempt === 2) {
+      const blocked = await execution(c, { status: 'NOT_RUN', gap: true, request: { ...request, prior_context: { ...request.prior_context, what_changed: 'New test client configured; credentials missing' } } });
+      blocked.draft.blocker = { reason_code: 'MISSING_CREDENTIAL', detail: 'The dedicated test account is unavailable' };
+      await submitDraft(c, blocked.task, blocked.draft);
+      await finishTask(c, blocked.task);
+      const report = await verification(c, blocked.task, { verdict: 'NOT_ASSESSED' });
+      await submitDraft(c, report.task, report.draft);
+      await finishTask(c, report.task);
+      await run('reconcile', { campaign: c.campaign });
+      assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
+    }
+    const executed = await execution(c, { observed: { results: [] }, request });
+    if (attempt === 2) {
+      await assert.rejects(submitDraft(c, executed.task, { ...executed.draft, observations: [] }), { code: 'INVALID_RECORD' });
+      assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
+    }
+    await submitDraft(c, executed.task, executed.draft);
+    await finishTask(c, executed.task);
+    const verified = await verification(c, executed.task, { verdict: 'FAIL' });
+    await submitDraft(c, verified.task, verified.draft);
+    await finishTask(c, verified.task);
+    await run('reconcile', { campaign: c.campaign });
+    const findings = (await run('records', { campaign: c.campaign, kind: 'finding' })).records;
+    assert.equal(findings.length, 1);
+    finding = findings[0];
+    assert.equal(finding.attempts, attempt);
+  }
+  await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], purpose: 'final', requested_action: 'Try one more final sweep' }), { code: 'ATTEMPT_LIMIT' });
+  const final = await run('status', { campaign: c.campaign });
+  assert.equal(final.complete, false);
+  assert.ok(final.obligations.some(item => item.type === 'ATTEMPT_LIMIT' && item.finding_id === finding.finding_id));
+});
+
+test('side findings preserve the original PASS and require a durable scope decision without becoming confirmed defects', async t => {
+  const c = await prepared(t);
+  const executed = await execution(c);
+  executed.draft.findings = [{ class: 'SIDE_FINDING', summary: 'Unrelated settings link might be broken' }];
+  await submitDraft(c, executed.task, executed.draft);
+  await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task);
+  await submitDraft(c, reviewed.task, reviewed.draft);
+  await finishTask(c, reviewed.task);
+  let assessed = await run('reconcile', { campaign: c.campaign });
+  assert.equal(assessed.cases[0].outcome, 'PASS');
+  const finding = (await run('records', { campaign: c.campaign, kind: 'finding' })).records[0];
+  assert.equal(finding.class, 'SIDE_FINDING');
+  assert.equal(finding.scope, 'pending');
+  assert.ok(assessed.obligations.some(item => item.type === 'SCOPE_DECISION_REQUIRED'));
+  await run('finding decide', { campaign: c.campaign, 'finding-id': finding.finding_id, scope: 'in_scope', reason: 'Related settings flow merits confirmation', source: 'User approved independent confirmation' });
+  assessed = await run('status', { campaign: c.campaign });
+  assert.ok(assessed.obligations.some(item => item.type === 'CONFIRMATION_REQUIRED'));
+  await assert.rejects(createTask(c, { role: 'implementer', finding_id: finding.finding_id, requested_action: 'Fix speculative side report' }), { code: 'UNCONFIRMED_DEFECT' });
+  await run('finding decide', { campaign: c.campaign, 'finding-id': finding.finding_id, scope: 'out_of_scope', reason: 'User explicitly defers this unrelated settings flow', source: 'User decision in scope review' });
+  const decisions = (await run('records', { campaign: c.campaign, kind: 'scope_decision' })).records;
+  assert.equal(decisions.length, 2);
+  assert.equal((await run('status', { campaign: c.campaign })).cases[0].outcome, 'PASS');
 });
 
 test('a scenario author receives fixed paths and can bootstrap approved Gherkin into an accepted immutable specification', async t => {

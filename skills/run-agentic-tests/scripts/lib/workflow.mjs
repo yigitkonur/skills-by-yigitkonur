@@ -205,18 +205,18 @@ async function createTask(options, state) {
     task.plan_id = plan.record_id;
     task.purpose ||= 'initial';
     if (task.role === 'executor') {
-      const related = byKind(state.records, 'finding').map(item => item.record).filter(item => item.scope === 'in_scope' && item.state !== 'RESOLVED' && item.case_ids.some(id => task.case_ids.includes(id)));
+      const related = byKind(state.records, 'finding').map(item => item.record).filter(item => item.scope === 'in_scope' && item.state !== 'RESOLVED' && (item.class === 'SIDE_FINDING' ? item.confirmation_case_ids || [] : item.case_ids).some(id => task.case_ids.includes(id)));
       if (task.finding_id && !findingFor(state, task.finding_id)) fail('FINDING_NOT_FOUND', `Unknown finding ${task.finding_id}.`);
       task.finding_id ||= related[0]?.finding_id;
       if (task.finding_id) {
         const finding = findingFor(state, task.finding_id).record;
         if (finding.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'The unresolved finding exhausted its execution allowance; new specs, rounds, and final sweeps cannot reset it.');
-        if (!task.prior_context) fail('RETRY_CONTEXT_REQUIRED', 'Retry requires the previous failure, change, new hypothesis, do-not-repeat guidance, and remaining attempts.');
-        if (task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) fail('RETRY_CONTEXT_REQUIRED', 'Remaining attempts must match the durable finding history.');
+        if (!task.prior_context && finding.class !== 'SIDE_FINDING') fail('RETRY_CONTEXT_REQUIRED', 'Retry requires the previous failure, change, new hypothesis, do-not-repeat guidance, and remaining attempts.');
+        if (task.prior_context && task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) fail('RETRY_CONTEXT_REQUIRED', 'Remaining attempts must match the durable finding history.');
         const previous = state.tasks.filter(item => item.role === 'executor' && item.finding_id === task.finding_id).at(-1);
-        if (previous?.prior_context?.what_changed === task.prior_context.what_changed && previous?.prior_context?.hypothesis === task.prior_context.hypothesis) fail('BLIND_RETRY', 'Do not repeat an unchanged retry hypothesis and change description.');
-        if (finding.issue_url) task.prior_context.issue_url = finding.issue_url;
-        if (finding.pr_urls?.length) task.prior_context.pr_urls = finding.pr_urls;
+        if (task.prior_context && previous?.prior_context?.what_changed === task.prior_context.what_changed && previous?.prior_context?.hypothesis === task.prior_context.hypothesis) fail('BLIND_RETRY', 'Do not repeat an unchanged retry hypothesis and change description.');
+        if (task.prior_context && finding.issue_url) task.prior_context.issue_url = finding.issue_url;
+        if (task.prior_context && finding.pr_urls?.length) task.prior_context.pr_urls = finding.pr_urls;
       }
     }
     if (task.role === 'executor') task.round_id ||= next(byKind(state.records, 'round_context').filter(item => task.case_ids.includes(item.record.case_id)).map(item => item.record.round_id), 'R', 3);
@@ -229,7 +229,8 @@ async function createTask(options, state) {
       const caseRoot = spec.path.split('/').slice(0, 2).join('/');
       const root = `${caseRoot}/rounds/${task.round_id}`;
       task.required_inputs.push(...entry.spec_hashes.map(item => item.path), environment.path);
-      for (const claim of entry.resources) {
+      if (task.role === 'verifier') task.resources = [];
+      for (const claim of task.role === 'executor' ? entry.resources : []) {
         const previous = task.resources.find(item => item.name === claim.name);
         if (!previous) task.resources.push(claim);
         else if (claim.mode === 'write') previous.mode = 'write';
@@ -239,10 +240,12 @@ async function createTask(options, state) {
       } else {
         const execution = byKind(state.records, 'execution').find(item => item.record.case_id === entry.case_id && item.record.round_id === task.round_id);
         if (!execution || execution.record.target_id !== task.target_id || execution.record.spec_revision !== task.spec_revision) fail('EXECUTION_NOT_FOUND', 'Verify the exact accepted execution assigned to this target/spec/round.');
-        task.verification_slot ||= state.tasks.some(other => other.role === 'verifier' && other.case_ids.includes(entry.case_id) && other.round_id === task.round_id) ? 'b' : 'a';
+        task.verification_slot ||= state.tasks.some(other => other.role === 'verifier' && other.case_ids.includes(entry.case_id) && other.round_id === task.round_id && !['INTERRUPTED', 'CANCELLED'].includes(other.state)) ? 'b' : 'a';
         if (task.verification_slot === 'b' && !spec.record.expectations.some(item => item.review_count === 2)) fail('EXCESS_REVIEW', 'This case declares one review, not two.');
         task.required_inputs.push(execution.path, ...execution.record.evidence.map(item => item.path));
-        addOutput('verification', `VERIFY-${entry.case_id}-${task.round_id}-${task.verification_slot}`, `${root}/${task.verification_slot === 'a' ? '20-verification-a' : '21-verification-b'}.record.yaml`, entry.case_id);
+        const stem = task.verification_slot === 'a' ? '20-verification-a' : '21-verification-b';
+        const replacement = state.records.some(item => item.path === `${root}/${stem}.record.yaml`);
+        addOutput('verification', `VERIFY-${entry.case_id}-${task.round_id}-${task.verification_slot}${replacement ? `-${id}` : ''}`, `${root}/${stem}${replacement ? `-${id}` : ''}.record.yaml`, entry.case_id);
       }
     }
     task.required_inputs = [...new Set(task.required_inputs)];
@@ -273,6 +276,7 @@ async function createTask(options, state) {
       } else {
         const implementation = byKind(state.records, 'implementation').filter(item => item.record.finding_id === task.finding_id).at(-1);
         if (!implementation) fail('IMPLEMENTATION_REQUIRED', 'Integration needs an accepted implementation result.');
+        task.target_id ||= next([...state.tasks.map(item => item.target_id), ...byKind(state.records, 'environment').map(item => item.record.target_id), ...byKind(state.records, 'integration').map(item => item.record.new_target_id)], 'G', 3);
         task.resources.push({ name: 'campaign:integration', mode: 'write' });
         task.required_inputs.push(implementation.path);
         addOutput('integration', `INTEGRATION-${task.finding_id}-A${String(implementation.record.attempt).padStart(3, '0')}`, `${path.posix.dirname(implementation.path)}/20-integration.record.yaml`);
@@ -280,15 +284,19 @@ async function createTask(options, state) {
     }
   } else fail('UNSUPPORTED_ROLE', `${task.role} task allocation is not available.`);
   for (const output of task.outputs) {
-    if (state.tasks.some(existing => existing.outputs.some(other => other.path === output.path))) fail('OUTPUT_CONFLICT', `${output.path} is already assigned.`, [], 4);
+    if (state.tasks.some(existing => existing.outputs.some(other => other.path === output.path) && !(existing.worker_finished && ['INTERRUPTED', 'CANCELLED'].includes(existing.state)))) fail('OUTPUT_CONFLICT', `${output.path} is already assigned.`, [], 4);
   }
   validateRecord(task);
-  const drafts = task.outputs.map(output => ({ ...common(state.config, output.kind, output.record_id), task_id: id, actor_id: actor, ...(output.case_id ? { case_id: output.case_id } : {}), ...(task.spec_revision ? { spec_revision: task.spec_revision } : {}), ...(task.target_id ? { target_id: task.target_id } : {}), ...(task.round_id ? { round_id: task.round_id } : {}) }));
+  const drafts = task.outputs.map(output => ({ ...common(state.config, output.kind, output.record_id), task_id: id, actor_id: actor, ...(output.case_id ? { case_id: output.case_id } : {}), ...(task.spec_revision ? { spec_revision: task.spec_revision } : {}), ...(task.target_id ? { [output.kind === 'integration' ? 'new_target_id' : 'target_id']: task.target_id } : {}), ...(task.round_id ? { round_id: task.round_id } : {}) }));
+  if (task.role === 'environment-operator') {
+    const integration = byKind(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+    if (integration) drafts[0].source = { revision: integration.commit };
+  }
   if (task.role === 'plan-auditor') {
     const subject = state.records.find(item => item.record.record_id === task.plan_id).record;
     Object.assign(drafts[0], { phase: task.phase, subject_record_id: subject.record_id, subject_digest: task.phase === 'closure' ? (await assessState(state)).closure_subject_digest : digest(subject) });
   }
-  if (task.finding_id && !['executor', 'verifier'].includes(task.role)) {
+  if (task.finding_id && ['diagnostician', 'ticket-writer', 'implementer', 'integrator'].includes(task.role)) {
     drafts[0].finding_id = task.finding_id;
     if (task.role === 'implementer') drafts[0].attempt = Number(task.outputs[0].record_id.match(/-A(\d+)$/)[1]);
     if (task.role === 'integrator') drafts[0].implementation_record_id = byKind(state.records, 'implementation').filter(item => item.record.finding_id === task.finding_id).at(-1).record.record_id;
@@ -297,6 +305,12 @@ async function createTask(options, state) {
     const root = path.posix.dirname(task.outputs[0].path);
     drafts[0].author_actor_id = actor;
     drafts[0].expectations = [];
+    if (task.finding_id) {
+      const finding = findingFor(state, task.finding_id);
+      if (!finding || finding.record.class !== 'SIDE_FINDING' || finding.record.scope !== 'in_scope') fail('SCOPE_OBLIGATION', 'Confirmation scenarios require an explicitly in-scope side finding.');
+      drafts[0].confirms_finding_id = task.finding_id;
+      task.required_inputs.push(finding.path);
+    }
     if (request.scenario_source) {
       const source = request.scenario_source;
       const authored = await readYaml(source.expectations_path);
@@ -322,10 +336,19 @@ async function createTask(options, state) {
   return { task, task_id: id, actor_id: actor, handoff_path: `tasks/${id}/10-handoff.md`, draft_paths: task.draft_paths, outputs: task.outputs };
 }
 
-function eligibility(task, state) {
+async function eligibility(task, state) {
   const reasons = [];
   for (const id of task.dependencies) if (findTask(state, id).state !== 'DONE') reasons.push(`DEPENDENCY:${id}`);
-  for (const input of task.required_inputs) if (!existsSync(containedPath(state.campaign, input))) reasons.push(`MISSING_INPUT:${input}`);
+  for (const input of task.role === 'verifier' ? [] : task.required_inputs) if (!existsSync(containedPath(state.campaign, input))) reasons.push(`MISSING_INPUT:${input}`);
+  if (task.role === 'executor') for (const id of task.case_ids) {
+    const entry = planFor(state)?.cases.find(item => item.case_id === id);
+    for (const dependency of entry?.depends_on || []) {
+      const context = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === dependency && item.target_id === task.target_id).sort((a, b) => Number(b.round_id.slice(1)) - Number(a.round_id.slice(1)))[0];
+      const verdict = context && byKind(state.records, 'verdict').map(item => item.record).find(item => item.case_id === dependency && item.round_id === context.round_id && item.outcome === 'PASS');
+      const execution = verdict && byKind(state.records, 'execution').find(item => item.record.record_id === verdict.execution_record_id)?.record;
+      if (!execution || verdict.inputs_digest !== roundDigest(roundRecords(state, execution)) || (await proofProblems(state, roundRecords(state, execution))).length) reasons.push(`CASE_PREREQUISITE:${dependency}`);
+    }
+  }
   if (!state.config.host_capacity) reasons.push('AGENT_ISOLATION_UNAVAILABLE');
   if (state.tasks.filter(active).length >= Math.min(20, state.config.max_active, state.config.host_capacity)) reasons.push('CAPACITY');
   for (const other of state.tasks.filter(active)) for (const own of task.resources) for (const claimed of other.resources) {
@@ -338,9 +361,9 @@ async function transition(command, options, state) {
   const task = { ...findTask(state, required(options, 'task-id')) };
   if (command === 'task dispatch') {
     if (!['PLANNED', 'READY', 'BLOCKED'].includes(task.state)) fail('INVALID_TRANSITION', `Cannot dispatch ${task.state} task.`, [], 4);
-    const reasons = eligibility(task, state);
+    const reasons = await eligibility(task, state);
     if (reasons.length) fail('TASK_BLOCKED', `Task ${task.task_id} is not eligible.`, reasons, 4);
-    if (['executor', 'verifier'].includes(task.role)) {
+    if (task.role === 'executor') {
       for (const id of task.case_ids) await ensureFrozen(state, planFor(state).cases.find(item => item.case_id === id).spec_hashes);
       const environment = environmentFor(state, task.target_id);
       if (!environment || environment.record.status !== 'READY') fail('TARGET_NOT_READY', 'Assigned runtime is not ready.');
@@ -360,7 +383,7 @@ async function transition(command, options, state) {
     task.worker_finished = true;
     task.state = 'DONE';
   } else {
-    if (!['PLANNED', 'READY', 'BLOCKED', 'DISPATCHED', 'RUNNING', 'INTERRUPTED'].includes(task.state)) fail('INVALID_TRANSITION', 'Cannot interrupt a completed task.', [], 4);
+    if (!['PLANNED', 'READY', 'BLOCKED', 'DISPATCHED', 'RUNNING', 'INTERRUPTED'].includes(task.state) && !(task.state === 'DONE' && task.role === 'verifier')) fail('INVALID_TRANSITION', 'Cannot interrupt a completed task other than withdrawing a verifier.', [], 4);
     task.interrupt_reason = required(options, 'reason');
     task.worker_finished = trueFlag(options.finished) || !active(task);
     task.state = 'INTERRUPTED';
@@ -425,7 +448,7 @@ async function validateExecution(state, task, record, output) {
 
 function roundRecords(state, execution) {
   const spec = specFor(state, execution.case_id, execution.spec_revision)?.record;
-  const reviews = byKind(state.records, 'verification').map(item => item.record).filter(item => item.execution_record_id === execution.record_id).sort((a, b) => a.record_id.localeCompare(b.record_id));
+  const reviews = byKind(state.records, 'verification').map(item => item.record).filter(item => item.execution_record_id === execution.record_id && !['INTERRUPTED', 'CANCELLED'].includes(findTask(state, item.task_id).state)).sort((a, b) => a.record_id.localeCompare(b.record_id));
   const context = byKind(state.records, 'round_context').find(item => item.record.case_id === execution.case_id && item.record.round_id === execution.round_id)?.record;
   return { spec, execution, reviews, context };
 }
@@ -509,7 +532,7 @@ async function validateRoleResult(state, task, record) {
     const implementation = byKind(state.records, 'implementation').map(item => item.record).find(item => item.record_id === record.implementation_record_id && item.finding_id === record.finding_id);
     if (!implementation || !task.required_inputs.some(input => state.records.some(item => item.path === input && item.record.record_id === implementation.record_id))) fail('WRONG_ASSIGNMENT', 'Integrate the assigned accepted implementation.');
     const target = environmentFor(state, record.new_target_id)?.record;
-    if (!target || target.status !== 'READY' || target.source.revision !== record.commit) fail('TARGET_NOT_READY', 'Integrated target must be ready and identify the declared integrated commit.');
+    if (target && target.source.revision !== record.commit) fail('TARGET_DRIFT', 'An existing integrated target must identify the declared integrated commit.');
     const already = state.records.some(item => item.record.record_id === record.record_id);
     if (!already && Number(record.new_target_id.slice(1)) <= Number(state.config.final_target_id.slice(1))) fail('TARGET_DRIFT', 'Integration must allocate a new runtime generation.');
     const known = planFor(state).cases.map(item => item.case_id);
@@ -523,7 +546,7 @@ async function validateSubmission(state, task, draft) {
   const output = task.outputs.find(item => item.kind === draft.kind && item.record_id === draft.record_id && item.case_id === draft.case_id);
   if (!output) fail('WRONG_ASSIGNMENT', 'Result does not match an assigned output.');
   if (draft.campaign_id !== state.config.campaign_id || draft.task_id !== task.task_id || draft.actor_id !== task.actor_id) fail('WRONG_ASSIGNMENT', 'Result campaign, task, and actor must match the assignment.');
-  for (const field of ['spec_revision', 'round_id', 'target_id']) if (task[field] !== undefined && draft[field] !== task[field]) fail('WRONG_ASSIGNMENT', `Result ${field} differs from its assignment.`);
+  for (const field of ['spec_revision', 'round_id', 'target_id']) if (task[field] !== undefined && draft[field === 'target_id' && draft.kind === 'integration' ? 'new_target_id' : field] !== task[field]) fail('WRONG_ASSIGNMENT', `Result ${field} differs from its assignment.`);
   if (!task.handle || !['RUNNING', 'DONE'].includes(task.state)) fail('TASK_NOT_RUNNING', 'Bind a real dispatched worker context before submitting.');
   if (draft.kind === 'expectations') {
     if (draft.author_actor_id !== task.actor_id) fail('ACTOR_ISOLATION', 'The scenario author must be the assigned actor.');
@@ -577,6 +600,9 @@ async function assessState(state) {
   const cases = [];
   const obligations = [];
   if (!plan) obligations.push({ type: 'PLAN_REQUIRED' });
+  const integratedTarget = byKind(state.records, 'integration').find(item => item.record.new_target_id === state.config.final_target_id)?.record;
+  const runtime = environmentFor(state, state.config.final_target_id)?.record;
+  if (integratedTarget && (!runtime || runtime.status !== 'READY' || runtime.source.revision !== integratedTarget.commit)) obligations.push({ type: 'PREPARE_TARGET', target_id: integratedTarget.new_target_id, commit: integratedTarget.commit });
   for (const entry of plan?.cases || []) {
     const target = state.config.final_target_id;
     const contexts = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === entry.case_id && item.spec_revision === entry.spec_revision && item.target_id === target).sort((a, b) => b.round_id.localeCompare(a.round_id));
@@ -612,6 +638,7 @@ async function assessState(state) {
   }
   for (const { record: finding } of byKind(state.records, 'finding')) {
     if (finding.scope === 'pending') obligations.push({ type: 'SCOPE_DECISION_REQUIRED', finding_id: finding.finding_id });
+    else if (finding.scope === 'in_scope' && finding.class === 'SIDE_FINDING' && finding.state !== 'RESOLVED') obligations.push({ type: 'CONFIRMATION_REQUIRED', finding_id: finding.finding_id, case_ids: finding.confirmation_case_ids || [] });
     else if (finding.scope === 'in_scope' && !['RESOLVED', 'OUT_OF_SCOPE'].includes(finding.state)) obligations.push({ type: finding.attempts >= state.config.max_attempts ? 'ATTEMPT_LIMIT' : 'FINDING_OPEN', finding_id: finding.finding_id, remaining_attempts: Math.max(0, state.config.max_attempts - finding.attempts) });
   }
   for (const task of state.tasks) if (task.state !== 'DONE' && !(task.worker_finished && ['INTERRUPTED', 'CANCELLED'].includes(task.state))) obligations.push({ type: active(task) ? 'WORKER_ACTIVE' : 'TASK_PENDING', task_id: task.task_id, role: task.role });
@@ -619,8 +646,12 @@ async function assessState(state) {
   const closureDigest = digest(proof);
   const closure = byKind(state.records, 'plan_audit').map(item => item.record).find(item => item.phase === 'closure' && item.subject_record_id === plan?.record_id && item.subject_digest === closureDigest && item.outcome === 'approved' && !item.findings.length);
   if (plan && !closure) obligations.push({ type: 'CLOSURE_AUDIT_REQUIRED', subject_record_id: plan.record_id, subject_digest: closureDigest });
-  const ready = state.tasks.filter(task => ['PLANNED', 'READY', 'BLOCKED'].includes(task.state) && !eligibility(task, state).length).map(task => task.task_id);
-  const blocked = state.tasks.filter(task => ['PLANNED', 'READY', 'BLOCKED'].includes(task.state)).map(task => ({ task_id: task.task_id, reasons: eligibility(task, state) })).filter(task => task.reasons.length);
+  const ready = []; const blocked = [];
+  for (const task of state.tasks.filter(task => ['PLANNED', 'READY', 'BLOCKED'].includes(task.state))) {
+    const reasons = await eligibility(task, state);
+    if (reasons.length) blocked.push({ task_id: task.task_id, reasons });
+    else ready.push(task.task_id);
+  }
   const complete = Boolean(plan && cases.length && cases.every(item => item.outcome === 'PASS' && item.proof_valid) && !obligations.length);
   return { complete, outcome: complete ? 'PASS' : cases.some(item => item.outcome === 'FAIL') ? 'FAIL' : 'INCOMPLETE', latest_target_id: state.config.final_target_id, counts: { cases: cases.length, pass: cases.filter(item => item.outcome === 'PASS' && item.proof_valid).length, tasks: state.tasks.length, active: state.tasks.filter(active).length, ready: ready.length, blocked: blocked.length, obligations: obligations.length }, cases, ready, running: state.tasks.filter(active).map(task => task.task_id), blocked, obligations, closure_subject_record_id: plan?.record_id || null, closure_subject_digest: closureDigest, closure_audit_record_id: closure?.record_id || null };
 }
@@ -637,8 +668,14 @@ async function recordFinding(state, round, outcome, problems) {
   if (outcome === 'PASS') return null;
   const execution = round.execution;
   const contextFinding = round.context.finding_ids[0];
-  let existing = contextFinding ? findingFor(state, contextFinding) : byKind(state.records, 'finding').find(item => item.record.scope === 'in_scope' && item.record.state !== 'RESOLVED' && item.record.case_ids.includes(execution.case_id));
-  if (existing) return existing.record.finding_id;
+  let existing = contextFinding ? findingFor(state, contextFinding) : byKind(state.records, 'finding').find(item => item.record.scope === 'in_scope' && item.record.class !== 'SIDE_FINDING' && item.record.state !== 'RESOLVED' && item.record.case_ids.includes(execution.case_id));
+  if (existing) {
+    if (existing.record.class === 'SIDE_FINDING' && outcome === 'FAIL' && round.spec.confirms_finding_id === existing.record.finding_id) {
+      existing.record = { ...existing.record, class: 'PRODUCT_DEFECT', source_record_ids: [...new Set([...existing.record.source_record_ids, execution.record_id, ...round.reviews.map(item => item.record_id)])] };
+      await writeRecord(state.campaign, existing.path, existing.record, { immutable: false });
+    }
+    return existing.record.finding_id;
+  }
   const id = next(byKind(state.records, 'finding').map(item => item.record.finding_id), 'F', 4);
   const disagree = round.spec.expectations.some(expected => new Set(round.reviews.map(item => item.reviews.find(review => review.expectation_id === expected.id).verdict)).size > 1);
   const proposed = round.reviews.flatMap(item => item.findings || []).find(item => item.class !== 'SIDE_FINDING');
@@ -654,6 +691,37 @@ async function recordFinding(state, round, outcome, problems) {
   return id;
 }
 
+async function recordSideFindings(state, round) {
+  const ids = [];
+  for (const source of [round.execution, ...round.reviews]) for (const proposed of source.findings || []) {
+    if (proposed.class !== 'SIDE_FINDING') continue;
+    const previous = byKind(state.records, 'finding').find(item => item.record.summary === proposed.summary && item.record.case_ids.includes(round.execution.case_id));
+    if (previous) { ids.push(previous.record.finding_id); continue; }
+    const id = next(byKind(state.records, 'finding').map(item => item.record.finding_id), 'F', 4);
+    const finding = { ...common(state.config, 'finding', id), finding_id: id, class: 'SIDE_FINDING', priority: proposed.priority || 'P2', case_ids: [round.execution.case_id], source_record_ids: [source.record_id], scope: 'pending', state: 'OPEN', lineage_id: id, attempts: 0, attempt_rounds: [], summary: proposed.summary, confirmation_case_ids: [] };
+    const relative = `findings/${id}-${round.execution.case_id.toLowerCase()}/00-finding.record.yaml`;
+    await writeRecord(state.campaign, relative, finding);
+    state.records.push({ record: finding, path: relative });
+    ids.push(id);
+  }
+  return [...new Set(ids)];
+}
+
+async function decideFinding(options, state) {
+  const finding = findingFor(state, required(options, 'finding-id'));
+  if (!finding) fail('FINDING_NOT_FOUND', 'Scope decisions need a known finding.');
+  const scope = required(options, 'scope');
+  if (!['in_scope', 'out_of_scope'].includes(scope)) fail('USAGE', '--scope must be in_scope or out_of_scope.', [], 2);
+  const reason = required(options, 'reason'); const source = required(options, 'source');
+  const previous = byKind(state.records, 'scope_decision').filter(item => item.record.finding_id === finding.record.finding_id).at(-1);
+  if (previous && previous.record.scope === scope && previous.record.reason === reason && previous.record.source === source) return { decision: previous.record, finding_id: finding.record.finding_id };
+  const suffix = next(byKind(state.records, 'scope_decision').filter(item => item.record.finding_id === finding.record.finding_id).map(item => item.record.record_id.split('-').at(-1)), 'D', 3);
+  const decision = { ...common(state.config, 'scope_decision', `DECISION-${finding.record.finding_id}-${suffix}`), finding_id: finding.record.finding_id, scope, reason, source };
+  await writeRecord(state.campaign, `${path.posix.dirname(finding.path)}/decisions/${suffix}.record.yaml`, decision);
+  await synchronizeDerived(await snapshot(state.campaign));
+  return { decision, finding_id: finding.record.finding_id, next_actions: scope === 'in_scope' && finding.record.class === 'SIDE_FINDING' ? ['AUTHOR_INDEPENDENT_CONFIRMATION_SCENARIO'] : ['RECONCILE'] };
+}
+
 async function synchronizeDerived(state) {
   const integrations = byKind(state.records, 'integration').map(item => item.record);
   const latest = integrations.sort((a, b) => Number(b.new_target_id.slice(1)) - Number(a.new_target_id.slice(1)))[0];
@@ -663,6 +731,10 @@ async function synchronizeDerived(state) {
   }
   for (const entry of byKind(state.records, 'finding')) {
     const finding = structuredClone(entry.record);
+    const decision = byKind(state.records, 'scope_decision').filter(item => item.record.finding_id === finding.finding_id).at(-1)?.record;
+    if (decision) { finding.scope = decision.scope; finding.scope_decision = { decision: decision.scope, reason: decision.reason, source: decision.source }; }
+    const confirmations = byKind(state.records, 'expectations').filter(item => item.record.confirms_finding_id === finding.finding_id).map(item => item.record.case_id);
+    if (confirmations.length) { finding.confirmation_case_ids = [...new Set(confirmations)]; finding.case_ids = [...new Set([...finding.case_ids, ...confirmations])]; }
     for (const { record: execution } of byKind(state.records, 'execution')) {
       const task = findTask(state, execution.task_id);
       if (task.finding_id === finding.finding_id && execution.execution_status !== 'NOT_RUN' && !finding.attempt_rounds.some(item => item.execution_record_id === execution.record_id)) finding.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id });
@@ -676,14 +748,16 @@ async function synchronizeDerived(state) {
     if (ticket) { finding.issue_url = ticket.issue_url; finding.state = 'TICKETED'; }
     if (implementations.length) { finding.pr_urls = [...new Set(implementations.map(item => item.pr_url))]; finding.state = 'IMPLEMENTED'; }
     if (integrated) finding.state = 'RETEST_PENDING';
-    const passing = await Promise.all(finding.case_ids.map(async caseId => {
+    const relevantCases = finding.class === 'SIDE_FINDING' ? finding.confirmation_case_ids || [] : finding.case_ids;
+    const passing = await Promise.all(relevantCases.map(async caseId => {
       const latest = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === caseId && item.target_id === state.config.final_target_id).sort((a, b) => b.round_id.localeCompare(a.round_id))[0];
       const verdict = latest && byKind(state.records, 'verdict').map(item => item.record).find(item => item.case_id === caseId && item.round_id === latest.round_id && item.target_id === state.config.final_target_id);
       if (!verdict || verdict.outcome !== 'PASS') return false;
       const execution = byKind(state.records, 'execution').find(item => item.record.record_id === verdict.execution_record_id)?.record;
       return execution && !(await proofProblems(state, roundRecords(state, execution))).length;
     }));
-    if (finding.scope === 'in_scope' && passing.every(Boolean)) finding.state = 'RESOLVED';
+    if (finding.scope === 'out_of_scope') finding.state = 'OUT_OF_SCOPE';
+    else if (finding.scope === 'in_scope' && relevantCases.length && passing.every(Boolean)) finding.state = 'RESOLVED';
     else if (finding.scope === 'in_scope' && finding.attempts >= state.config.max_attempts) finding.state = 'EXHAUSTED';
     await writeRecord(state.campaign, entry.path, finding, { immutable: false });
     entry.record = finding;
@@ -709,8 +783,9 @@ async function reconcile(state) {
       return { expectation_id: expected.id, outcome, reason };
     });
     const outcome = expectationVerdicts.some(item => item.outcome === 'FAIL') ? 'FAIL' : expectationVerdicts.every(item => item.outcome === 'PASS') ? 'PASS' : execution.execution_status === 'NOT_RUN' ? 'NOT_RUN' : 'INCONCLUSIVE';
+    const sideFindings = await recordSideFindings(state, round);
     const finding = await recordFinding(state, round, outcome, problems);
-    const verdict = { ...common(state.config, 'verdict', `VERDICT-${execution.case_id}-${execution.round_id}`), case_id: execution.case_id, spec_revision: execution.spec_revision, round_id: execution.round_id, target_id: execution.target_id, outcome, verification_record_ids: round.reviews.map(item => item.record_id), execution_record_id: execution.record_id, finding_ids: finding ? [finding] : [], evidence_hashes: execution.evidence.map(item => ({ path: item.path, sha256: item.sha256 })), inputs_digest: roundDigest(round), expectation_verdicts: expectationVerdicts };
+    const verdict = { ...common(state.config, 'verdict', `VERDICT-${execution.case_id}-${execution.round_id}`), case_id: execution.case_id, spec_revision: execution.spec_revision, round_id: execution.round_id, target_id: execution.target_id, outcome, verification_record_ids: round.reviews.map(item => item.record_id), execution_record_id: execution.record_id, finding_ids: [...new Set([...(finding ? [finding] : []), ...sideFindings])], evidence_hashes: execution.evidence.map(item => ({ path: item.path, sha256: item.sha256 })), inputs_digest: roundDigest(round), expectation_verdicts: expectationVerdicts };
     const relative = `${path.posix.dirname(executionPath)}/30-verdict--${outcome}.record.yaml`;
     await writeRecord(state.campaign, relative, verdict);
   }
@@ -738,6 +813,7 @@ export async function run(command, options = {}) {
     if (['task dispatch', 'task bind', 'task close', 'task interrupt'].includes(command)) return transition(command, options, state);
     if (command === 'submit') return submit(options, state);
     if (command === 'plan accept') return acceptPlanCommand(options, state);
+    if (command === 'finding decide') return decideFinding(options, state);
     if (command === 'status') return assessState(state);
     if (command === 'reconcile') return reconcile(state);
     if (command === 'records') {

@@ -49,6 +49,9 @@
     },
     {
       "$ref": "#/definitions/integration"
+    },
+    {
+      "$ref": "#/definitions/scope_decision"
     }
   ],
   "definitions": {
@@ -1150,6 +1153,10 @@
             ]
           },
           "minItems": 1
+        },
+        "confirms_finding_id": {
+          "type": "string",
+          "pattern": "^F[0-9]{4,}$"
         }
       },
       "required": [
@@ -2373,33 +2380,28 @@
                 "out_of_scope"
               ]
             },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
             "source": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "type": {
-                  "enum": [
-                    "user_request",
-                    "product_contract",
-                    "approved_scenario",
-                    "general_invariant"
-                  ]
-                },
-                "reference": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "required": [
-                "type",
-                "reference"
-              ]
+              "type": "string",
+              "minLength": 1
             }
           },
           "required": [
             "decision",
+            "reason",
             "source"
           ]
+        },
+        "confirmation_case_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^T[0-9]{4,}$"
+          },
+          "uniqueItems": true
         }
       },
       "required": [
@@ -3183,6 +3185,62 @@
         "affected_case_ids",
         "retest_obligations",
         "artifacts"
+      ]
+    },
+    "scope_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "scope_decision"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "finding_id": {
+          "type": "string",
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "scope": {
+          "enum": [
+            "in_scope",
+            "out_of_scope"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "finding_id",
+        "scope",
+        "reason",
+        "source"
       ]
     }
   }
