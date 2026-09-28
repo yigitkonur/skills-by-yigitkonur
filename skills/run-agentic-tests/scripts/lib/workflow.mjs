@@ -74,6 +74,22 @@ function findTask(state, id) {
   return task;
 }
 
+function replacementAncestors(state, task) {
+  const ancestors = new Set();
+  let cursor = task.replaces_task_id;
+  while (cursor && !ancestors.has(cursor)) { ancestors.add(cursor); cursor = state.tasks.find(item => item.task_id === cursor)?.replaces_task_id; }
+  return ancestors;
+}
+
+function hasCompletedReplacement(state, taskId, visited = new Set()) {
+  if (visited.has(taskId)) return false;
+  visited.add(taskId);
+  return state.tasks.filter(task => task.replaces_task_id === taskId).some(task => {
+    const completed = task.state === 'DONE' && task.worker_finished && task.outputs.every(output => state.records.some(item => item.path === output.path && item.record.record_id === output.record_id && item.record.task_id === task.task_id && isCompleteResult(item.record)));
+    return completed || hasCompletedReplacement(state, task.task_id, visited);
+  });
+}
+
 function specFor(state, caseId, revision) {
   const specs = completedRecords(state.records, 'expectations').filter(item => item.record.case_id === caseId && (!revision || item.record.spec_revision === revision));
   return specs.sort((a, b) => b.record.spec_revision.localeCompare(a.record.spec_revision))[0];
@@ -144,6 +160,8 @@ async function acceptPlanCommand(options, state) {
   await validatePlan(state, plan);
   if (audit.phase !== 'plan' || audit.subject_record_id !== plan.record_id || audit.subject_digest !== digest(plan) || audit.outcome !== 'approved' || audit.findings.length) fail('PLAN_NOT_APPROVED', 'Plan requires an independent approval of this exact frozen revision without unresolved findings.');
   if (audit.actor_id === plan.actor_id || findTask(state, audit.task_id).handle === findTask(state, plan.task_id).handle) fail('ACTOR_ISOLATION', 'The plan auditor must use a separate real context.');
+  const integrated = completedRecords(state.records, 'integration').map(item => item.record).sort((a, b) => Number(b.new_target_id.slice(1)) - Number(a.new_target_id.slice(1)))[0];
+  if (integrated && plan.target_id !== integrated.new_target_id) fail('TARGET_DRIFT', 'A plan cannot roll final proof back from the latest integrated runtime generation.');
   if (state.config.active_plan_id && state.config.active_plan_id !== plan.record_id && byKind(state.records, 'execution').length) {
     const previous = planFor(state);
     const omitted = previous.cases.filter(item => !plan.cases.some(next => next.case_id === item.case_id));
@@ -197,7 +215,8 @@ async function createTask(options, state) {
     const subject = state.records.find(item => item.record.kind === 'plan' && item.record.record_id === task.plan_id);
     if (!subject) fail('PLAN_NOT_FOUND', 'Submit the plan before assigning its audit.');
     task.required_inputs = [...new Set([...task.required_inputs, subject.path])];
-    addOutput('plan_audit', `AUDIT-${task.plan_id}-${task.phase}-${id}`, `plans/${task.plan_id}/${task.phase === 'plan' ? '20-audit' : `30-closure-${id}`}.record.yaml`);
+    const reviewedBefore = state.tasks.some(item => item.role === 'plan-auditor' && item.plan_id === task.plan_id && item.phase === task.phase);
+    addOutput('plan_audit', `AUDIT-${task.plan_id}-${task.phase}-${id}`, `plans/${task.plan_id}/${task.phase === 'plan' ? `20-audit${reviewedBefore ? `-${id}` : ''}` : `30-closure-${id}`}.record.yaml`);
   } else if (task.role === 'environment-operator') {
     task.target_id ||= next([...state.tasks.map(item => item.target_id), ...byKind(state.records, 'environment').map(item => item.record.target_id)], 'G', 3);
     addOutput('environment', `ENV-${task.target_id}`, `environments/${task.target_id}/00-environment.record.yaml`);
@@ -218,6 +237,7 @@ async function createTask(options, state) {
       task.finding_id ||= related[0]?.finding_id;
       if (task.finding_id) {
         const finding = findingFor(state, task.finding_id).record;
+        task.resources.push({ name: `finding:${task.finding_id}`, mode: 'write' });
         if (finding.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'The unresolved finding exhausted its execution allowance; new specs, rounds, and final sweeps cannot reset it.');
         if (!task.prior_context && finding.class !== 'SIDE_FINDING') fail('RETRY_CONTEXT_REQUIRED', 'Retry requires the previous failure, change, new hypothesis, do-not-repeat guidance, and remaining attempts.');
         if (task.prior_context && task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) fail('RETRY_CONTEXT_REQUIRED', 'Remaining attempts must match the durable finding history.');
@@ -229,14 +249,14 @@ async function createTask(options, state) {
     }
     if (task.role === 'executor') task.round_id ||= next(byKind(state.records, 'round_context').filter(item => task.case_ids.includes(item.record.case_id)).map(item => item.record.round_id), 'R', 3);
     if (!task.round_id) fail('INVALID_REQUEST', 'Verifiers require an assigned round_id.');
-    task.required_inputs = [];
+    if (task.role === 'verifier') task.required_inputs = [];
     for (const entry of entries) {
       await ensureFrozen(state, entry.spec_hashes);
       if (entry.depends_on.some(id => task.case_ids.includes(id))) fail('INVALID_GROUP', 'Grouped variants cannot depend on each other.');
       const spec = specFor(state, entry.case_id, task.spec_revision);
       const caseRoot = spec.path.split('/').slice(0, 2).join('/');
       const root = `${caseRoot}/rounds/${task.round_id}`;
-      task.required_inputs.push(...entry.spec_hashes.map(item => item.path), environment.path);
+      task.required_inputs.push(...entry.spec_hashes.map(item => item.path), environment.path, `${root}/00-context.record.yaml`);
       if (task.role === 'verifier') task.resources = [];
       for (const claim of task.role === 'executor' ? entry.resources : []) {
         const previous = task.resources.find(item => item.name === claim.name);
@@ -293,7 +313,7 @@ async function createTask(options, state) {
   } else fail('UNSUPPORTED_ROLE', `${task.role} task allocation is not available.`);
   for (const output of task.outputs) {
     const previous = state.records.find(item => item.path === output.path);
-    if (previous && !isCompleteResult(previous.record) && previous.record.task_id === task.replaces_task_id) {
+    if (previous && !isCompleteResult(previous.record) && replacementAncestors(state, task).has(previous.record.task_id)) {
       output.path = output.path.replace(/\.record\.yaml$/, `-${id}.record.yaml`);
       output.record_id += `-${id}`;
     }
@@ -353,13 +373,39 @@ async function eligibility(task, state) {
   const reasons = [];
   for (const id of task.dependencies) if (findTask(state, id).state !== 'DONE') reasons.push(`DEPENDENCY:${id}`);
   for (const input of task.role === 'verifier' ? [] : task.required_inputs) if (!existsSync(containedPath(state.campaign, input))) reasons.push(`MISSING_INPUT:${input}`);
+  if (task.role === 'executor') {
+    const environment = environmentFor(state, task.target_id)?.record;
+    if (!environment || environment.status !== 'READY') reasons.push('TARGET_NOT_READY');
+    const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+    if (integration && environment?.source.revision !== integration.commit) reasons.push('TARGET_DRIFT');
+    for (const id of task.case_ids) {
+      const context = byKind(state.records, 'round_context').find(item => item.record.case_id === id && item.record.round_id === task.round_id)?.record;
+      if (!context) reasons.push('MISSING_PROVENANCE');
+      else {
+        if (environment && context.target_source_digest !== targetDigest(environment)) reasons.push('TARGET_DRIFT');
+        try { await ensureFrozen(state, context.spec_hashes); } catch (error) { if (error.code === 'SPEC_CHANGED') reasons.push('SPEC_CHANGED'); else throw error; }
+      }
+    }
+  }
   if (task.role === 'executor') for (const id of task.case_ids) {
     const entry = planFor(state)?.cases.find(item => item.case_id === id);
     for (const dependency of entry?.depends_on || []) {
       const context = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === dependency && item.target_id === task.target_id).sort((a, b) => Number(b.round_id.slice(1)) - Number(a.round_id.slice(1)))[0];
-      const verdict = context && byKind(state.records, 'verdict').map(item => item.record).find(item => item.case_id === dependency && item.round_id === context.round_id && item.outcome === 'PASS');
+      const verdict = context && latestVerdict(state, item => item.case_id === dependency && item.round_id === context.round_id);
       const execution = verdict && byKind(state.records, 'execution').find(item => item.record.record_id === verdict.execution_record_id)?.record;
-      if (!execution || verdict.inputs_digest !== roundDigest(roundRecords(state, execution)) || (await proofProblems(state, roundRecords(state, execution))).length) reasons.push(`CASE_PREREQUISITE:${dependency}`);
+      if (!execution || verdict.outcome !== 'PASS' || (await sealedProofProblems(state, execution, verdict)).length) reasons.push(`CASE_PREREQUISITE:${dependency}`);
+    }
+  }
+  if (task.role === 'executor' && task.finding_id) {
+    const finding = findingFor(state, task.finding_id)?.record;
+    if (!finding) reasons.push('FINDING_NOT_FOUND');
+    else {
+      if (finding.attempts + task.case_ids.length > state.config.max_attempts) reasons.push('ATTEMPT_LIMIT');
+      if (task.prior_context && task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) reasons.push('RETRY_CONTEXT_STALE');
+      for (const { record: execution } of byKind(state.records, 'execution')) {
+        const assigned = state.tasks.find(item => item.task_id === execution.task_id);
+        if (assigned?.finding_id === task.finding_id && !latestVerdict(state, item => item.execution_record_id === execution.record_id)) reasons.push(`VERIFICATION_REQUIRED:${execution.record_id}`);
+      }
     }
   }
   if (!state.config.host_capacity) reasons.push('AGENT_ISOLATION_UNAVAILABLE');
@@ -375,11 +421,14 @@ async function transition(command, options, state) {
   if (command === 'task dispatch') {
     if (!['PLANNED', 'READY', 'BLOCKED'].includes(task.state)) fail('INVALID_TRANSITION', `Cannot dispatch ${task.state} task.`, [], 4);
     const reasons = await eligibility(task, state);
+    for (const code of ['TARGET_NOT_READY', 'TARGET_DRIFT', 'SPEC_CHANGED']) if (reasons.includes(code)) fail(code, `Task ${task.task_id} no longer has its assigned ready target and frozen source.`, reasons);
     if (reasons.length) fail('TASK_BLOCKED', `Task ${task.task_id} is not eligible.`, reasons, 4);
     if (task.role === 'executor') {
       for (const id of task.case_ids) await ensureFrozen(state, planFor(state).cases.find(item => item.case_id === id).spec_hashes);
       const environment = environmentFor(state, task.target_id);
       if (!environment || environment.record.status !== 'READY') fail('TARGET_NOT_READY', 'Assigned runtime is not ready.');
+      const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+      if (integration && environment.record.source.revision !== integration.commit) fail('TARGET_DRIFT', 'Assigned runtime source differs from its integrated commit.');
     }
     task.state = 'DISPATCHED';
   } else if (command === 'task bind') {
@@ -402,6 +451,7 @@ async function transition(command, options, state) {
     task.state = 'INTERRUPTED';
   }
   await writeRecord(state.campaign, taskPath(task.task_id), task, { immutable: false });
+  if (task.role === 'verifier' && task.state === 'INTERRUPTED') await synchronizeDerived(await snapshot(state.campaign));
   return { task, reservation_active: active(task) };
 }
 
@@ -424,12 +474,20 @@ async function hashArtifact(state, relative) {
   }
 }
 
+function coversRequirement(evidence, expected, requirement) {
+  return evidence.type === requirement.type && evidence.expectation_ids.includes(expected.id) && (evidence.requirement_ids ? evidence.requirement_ids.includes(requirement.id) : expected.evidence_requirements.filter(item => item.type === evidence.type).length === 1);
+}
+
 async function validateExecution(state, task, record, output) {
   const spec = specFor(state, record.case_id, record.spec_revision)?.record;
   if (!spec) fail('SPEC_NOT_FOUND', 'Execution requires accepted expectations.');
   if (spec.author_actor_id === record.actor_id || findTask(state, spec.task_id).handle === task.handle) fail('ACTOR_ISOLATION', 'The author cannot execute their own scenario.');
   const context = byKind(state.records, 'round_context').find(item => item.record.case_id === record.case_id && item.record.round_id === record.round_id)?.record;
   if (!context || context.execution_task_id !== task.task_id) fail('WRONG_ASSIGNMENT', 'Execution has no assigned round context.');
+  if (task.finding_id && record.execution_status !== 'NOT_RUN' && !state.records.some(item => item.record.record_id === record.record_id)) {
+    const finding = findingFor(state, task.finding_id)?.record;
+    if (!finding || finding.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'This finding has no remaining actual execution allowance; preserve this draft and artifacts for the controller.');
+  }
   await ensureFrozen(state, context.spec_hashes);
   const environment = environmentFor(state, record.target_id)?.record;
   if (!environment || targetDigest(environment) !== context.target_source_digest) fail('TARGET_DRIFT', 'Runtime provenance changed during this execution.');
@@ -440,6 +498,10 @@ async function validateExecution(state, task, record, output) {
   for (const evidence of record.evidence) {
     if (!evidence.path.startsWith(evidenceRoot)) fail('UNSAFE_ARTIFACT', 'Save executor evidence only under its assigned round evidences directory.');
     if (new Set(evidence.expectation_ids).size !== evidence.expectation_ids.length || evidence.expectation_ids.some(id => !spec.expectations.some(item => item.id === id))) fail('EXPECTATION_COVERAGE', 'Evidence references an unknown or duplicate expectation.');
+    const expectations = spec.expectations.filter(item => evidence.expectation_ids.includes(item.id));
+    if (evidence.requirement_ids) {
+      if (new Set(evidence.requirement_ids).size !== evidence.requirement_ids.length || evidence.requirement_ids.some(id => !expectations.some(item => item.evidence_requirements.some(requirement => requirement.id === id && requirement.type === evidence.type)))) fail('INVALID_EVIDENCE', 'Evidence requirement IDs must name assigned requirements of the declared evidence type.');
+    } else if (expectations.some(item => item.evidence_requirements.filter(requirement => requirement.type === evidence.type).length > 1)) fail('AMBIGUOUS_EVIDENCE_REQUIREMENT', 'Multiple captures use this type; provide explicit requirement_ids rather than implicitly covering them all.');
     const computed = await hashArtifact(state, evidence.path);
     if (evidence.sha256 && evidence.sha256 !== computed.sha256) fail('EVIDENCE_CHANGED', `Evidence hash differs: ${evidence.path}`);
     if (evidence.size !== undefined && evidence.size !== computed.size) fail('EVIDENCE_CHANGED', `Evidence size differs: ${evidence.path}`);
@@ -451,7 +513,7 @@ async function validateExecution(state, task, record, output) {
     const attached = observation.evidence_ids.map(id => record.evidence.find(item => item.id === id && item.expectation_ids.includes(expected.id)) || fail('INVALID_EVIDENCE', `Observation references unassigned evidence ${id}.`));
     if (observation.gaps.some(gap => !expected.evidence_requirements.some(requirement => requirement.id === gap.requirement_id))) fail('INVALID_EVIDENCE', 'Gap references an unknown evidence requirement.');
     for (const requirement of expected.evidence_requirements) {
-      if (!observation.gaps.some(gap => gap.requirement_id === requirement.id) && !attached.some(item => item.type === requirement.type && (!item.requirement_ids || item.requirement_ids.includes(requirement.id)))) fail('EVIDENCE_COVERAGE', `Expectation ${expected.id}/${requirement.id} needs captured evidence or an explicit gap.`);
+      if (!observation.gaps.some(gap => gap.requirement_id === requirement.id) && !attached.some(item => coversRequirement(item, expected, requirement))) fail('EVIDENCE_COVERAGE', `Expectation ${expected.id}/${requirement.id} needs captured evidence or an explicit gap.`);
     }
     if (record.execution_status === 'COMPLETED' && observation.gaps.length) fail('INVALID_EXECUTION_STATUS', 'A completed execution cannot omit required evidence; use PARTIAL.');
     if (record.execution_status === 'NOT_RUN' && !observation.gaps.length) fail('INVALID_EXECUTION_STATUS', 'A not-run execution must mark expectation evidence as unavailable.');
@@ -467,6 +529,17 @@ function roundRecords(state, execution) {
 }
 
 const roundDigest = round => digest({ expectations: round.spec, execution: round.execution, verifications: round.reviews, context: round.context });
+const latestVerdict = (state, predicate) => byKind(state.records, 'verdict').map(item => item.record).filter(predicate).sort((a, b) => b.created_at.localeCompare(a.created_at) || b.record_id.localeCompare(a.record_id))[0];
+
+async function sealedProofProblems(state, execution, verdict) {
+  const round = roundRecords(state, execution);
+  const problems = await proofProblems(state, round);
+  if (!verdict || verdict.inputs_digest !== roundDigest(round)) problems.push({ type: 'RECORDS_CHANGED', message: 'Sealed verdict inputs no longer match current accepted records.' });
+  if (!round.spec || round.reviews.length < Math.max(...round.spec.expectations.map(item => item.review_count))) problems.push({ type: 'VERIFICATION_REQUIRED', message: 'Current independent review quorum is incomplete.' });
+  if (verdict?.outcome === 'PASS' && (execution.execution_status !== 'COMPLETED' || execution.observations.some(item => item.gaps.length) || round.spec?.expectations.some(expected => round.reviews.some(review => review.reviews.find(item => item.expectation_id === expected.id)?.verdict !== 'PASS')))) problems.push({ type: 'INCOMPLETE_PROOF', message: 'Passing verdict disagrees with current execution or independent reviews.' });
+  if (verdict?.outcome === 'PASS' && round.spec?.expectations.some(expected => expected.evidence_requirements.some(requirement => round.reviews.some(review => !review.reviews.find(item => item.expectation_id === expected.id)?.evidence_ids.some(id => execution.evidence.some(evidence => evidence.id === id && coversRequirement(evidence, expected, requirement))))))) problems.push({ type: 'EVIDENCE_COVERAGE', message: 'Current passing reviews do not explicitly cover every required capture.' });
+  return problems;
+}
 
 async function proofProblems(state, round) {
   const problems = [];
@@ -482,6 +555,8 @@ async function proofProblems(state, round) {
   if (new Set(handles).size !== handles.length) problems.push({ type: 'ACTOR_ISOLATION', message: 'Author, executor, and reviewers must have distinct real context handles.' });
   const target = environmentFor(state, round.execution.target_id)?.record;
   if (!target || targetDigest(target) !== round.context?.target_source_digest) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime provenance differs from the assigned generation.' });
+  const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === round.execution.target_id)?.record;
+  if (integration && target?.source.revision !== integration.commit) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime source does not identify the integrated commit.' });
   for (const evidence of round.execution.evidence) {
     try {
       const current = await hashArtifact(state, evidence.path);
@@ -515,7 +590,7 @@ async function validateVerification(state, task, record) {
     if (review.verdict === 'PASS') {
       const observed = execution.observations.find(item => item.expectation_id === expected.id);
       if (problems.length || execution.execution_status !== 'COMPLETED' || observed.gaps.length) fail('INCOMPLETE_PROOF', 'A stale, partial, not-run, or evidence-gap execution cannot pass.', problems);
-      for (const requirement of expected.evidence_requirements) if (!attached.some(item => item.type === requirement.type && (!item.requirement_ids || item.requirement_ids.includes(requirement.id)))) fail('EVIDENCE_COVERAGE', 'A passing review must inspect every required evidence type.');
+      for (const requirement of expected.evidence_requirements) if (!attached.some(item => coversRequirement(item, expected, requirement))) fail('EVIDENCE_COVERAGE', 'A passing review must inspect every required capture.');
     }
     if (review.verdict === 'FAIL' && problems.length) fail('INCOMPLETE_PROOF', 'Changed or missing artifacts cannot establish a product failure; report INCONCLUSIVE.', problems);
   }
@@ -607,6 +682,7 @@ async function validateSubmission(state, task, draft) {
 async function submit(options, state) {
   const task = findTask(state, required(options, 'task-id'));
   const draft = await readYaml(required(options, 'file'));
+  draft.created_at = state.records.find(item => item.record.record_id === draft.record_id)?.record.created_at || task.created_at;
   const { record, output } = await validateSubmission(state, task, draft);
   const existing = state.records.find(item => item.path === output.path);
   if (existing && stableStringify(existing.record) !== stableStringify(record)) fail('RECORD_CONFLICT', 'A different result was already accepted for this assignment.', [], 4);
@@ -636,15 +712,14 @@ async function assessState(state) {
     else {
       current.execution_record_id = execution.record_id;
       const round = roundRecords(state, execution);
-      const verdict = byKind(state.records, 'verdict').map(item => item.record).find(item => item.execution_record_id === execution.record_id);
-      const problems = await proofProblems(state, round);
+      const verdict = latestVerdict(state, item => item.execution_record_id === execution.record_id);
+      const problems = verdict ? await sealedProofProblems(state, execution, verdict) : await proofProblems(state, round);
       if (!verdict) {
         current.outcome = 'PENDING_VERIFICATION';
         current.blockers.push({ type: 'VERIFICATION_REQUIRED', case_id: entry.case_id, round_id: execution.round_id, required_reviews: round.spec ? Math.max(...round.spec.expectations.map(item => item.review_count)) : null, accepted_reviews: round.reviews.length });
       } else {
         current.verdict_record_id = verdict.record_id;
         current.outcome = verdict.outcome;
-        if (verdict.inputs_digest !== roundDigest(round)) problems.push({ type: 'RECORDS_CHANGED', message: 'Sealed verdict inputs no longer match the accepted records.' });
         if (problems.length) current.outcome = 'INCONCLUSIVE';
         current.proof_valid = !problems.length;
         if (current.outcome !== 'PASS') current.blockers.push({ type: current.outcome === 'FAIL' ? 'FIX_REQUIRED' : 'FRESH_EXECUTION_REQUIRED', case_id: entry.case_id, round_id: execution.round_id });
@@ -666,8 +741,7 @@ async function assessState(state) {
   }
   for (const task of state.tasks) if (task.state !== 'DONE' && !(task.worker_finished && ['INTERRUPTED', 'CANCELLED'].includes(task.state))) obligations.push({ type: active(task) ? 'WORKER_ACTIVE' : 'TASK_PENDING', task_id: task.task_id, role: task.role });
   for (const { record } of state.records.filter(item => !isCompleteResult(item.record))) {
-    const replacement = state.tasks.find(task => task.replaces_task_id === record.task_id && task.outputs.every(output => state.records.some(item => item.path === output.path && isCompleteResult(item.record))));
-    if (!replacement) obligations.push({ type: 'ROLE_BLOCKED', task_id: record.task_id, record_id: record.record_id, reason_code: record.blocker.reason_code, detail: record.blocker.detail });
+    if (!hasCompletedReplacement(state, record.task_id)) obligations.push({ type: 'ROLE_BLOCKED', task_id: record.task_id, record_id: record.record_id, reason_code: record.blocker.reason_code, detail: record.blocker.detail });
   }
   const proof = { plan_id: plan?.record_id || null, final_target_id: state.config.final_target_id, cases, findings: byKind(state.records, 'finding').map(item => item.record), integrations: completedRecords(state.records, 'integration').map(item => item.record.record_id).sort() };
   const closureDigest = digest(proof);
@@ -768,6 +842,7 @@ async function synchronizeDerived(state) {
   }
   for (const entry of byKind(state.records, 'finding')) {
     const finding = structuredClone(entry.record);
+    finding.state = 'OPEN';
     const decision = byKind(state.records, 'scope_decision').filter(item => item.record.finding_id === finding.finding_id).at(-1)?.record;
     if (decision) { finding.scope = decision.scope; finding.scope_decision = { decision: decision.scope, reason: decision.reason, source: decision.source }; }
     const confirmations = byKind(state.records, 'expectations').filter(item => item.record.confirms_finding_id === finding.finding_id).map(item => item.record.case_id);
@@ -787,11 +862,12 @@ async function synchronizeDerived(state) {
     if (integrated) finding.state = 'RETEST_PENDING';
     const relevantCases = finding.class === 'SIDE_FINDING' ? finding.confirmation_case_ids || [] : finding.case_ids;
     const passing = await Promise.all(relevantCases.map(async caseId => {
-      const latest = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === caseId && item.target_id === state.config.final_target_id).sort((a, b) => b.round_id.localeCompare(a.round_id))[0];
-      const verdict = latest && byKind(state.records, 'verdict').map(item => item.record).find(item => item.case_id === caseId && item.round_id === latest.round_id && item.target_id === state.config.final_target_id);
+      const revision = planFor(state)?.cases.find(item => item.case_id === caseId)?.spec_revision;
+      const latest = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === caseId && item.spec_revision === revision && item.target_id === state.config.final_target_id).sort((a, b) => Number(b.round_id.slice(1)) - Number(a.round_id.slice(1)))[0];
+      const verdict = latest && latestVerdict(state, item => item.case_id === caseId && item.round_id === latest.round_id && item.target_id === state.config.final_target_id);
       if (!verdict || verdict.outcome !== 'PASS') return false;
       const execution = byKind(state.records, 'execution').find(item => item.record.record_id === verdict.execution_record_id)?.record;
-      return execution && !(await proofProblems(state, roundRecords(state, execution))).length;
+      return execution && !(await sealedProofProblems(state, execution, verdict)).length;
     }));
     if (finding.scope === 'out_of_scope') finding.state = 'OUT_OF_SCOPE';
     else if (finding.scope === 'in_scope' && relevantCases.length && passing.every(Boolean)) finding.state = 'RESOLVED';
@@ -803,8 +879,13 @@ async function synchronizeDerived(state) {
 
 async function reconcile(state) {
   for (const { record: execution, path: executionPath } of byKind(state.records, 'execution')) {
-    if (byKind(state.records, 'verdict').some(item => item.record.execution_record_id === execution.record_id)) continue;
     const round = roundRecords(state, execution);
+    const prior = latestVerdict(state, item => item.execution_record_id === execution.record_id);
+    if (prior && prior.inputs_digest === roundDigest(round)) continue;
+    if (prior && !prior.verification_record_ids.some(id => {
+      const review = byKind(state.records, 'verification').find(item => item.record.record_id === id)?.record;
+      return review && ['INTERRUPTED', 'CANCELLED'].includes(state.tasks.find(task => task.task_id === review.task_id)?.state);
+    })) continue;
     if (!round.spec || round.reviews.length < Math.max(...round.spec.expectations.map(item => item.review_count))) continue;
     const problems = await proofProblems(state, round);
     const expectationVerdicts = round.spec.expectations.map(expected => {
@@ -822,8 +903,9 @@ async function reconcile(state) {
     const outcome = expectationVerdicts.some(item => item.outcome === 'FAIL') ? 'FAIL' : expectationVerdicts.every(item => item.outcome === 'PASS') ? 'PASS' : execution.execution_status === 'NOT_RUN' ? 'NOT_RUN' : 'INCONCLUSIVE';
     const sideFindings = await recordSideFindings(state, round);
     const finding = await recordFinding(state, round, outcome, problems);
-    const verdict = { ...common(state.config, 'verdict', `VERDICT-${execution.case_id}-${execution.round_id}`), case_id: execution.case_id, spec_revision: execution.spec_revision, round_id: execution.round_id, target_id: execution.target_id, outcome, verification_record_ids: round.reviews.map(item => item.record_id), execution_record_id: execution.record_id, finding_ids: [...new Set([...(finding ? [finding] : []), ...sideFindings])], evidence_hashes: execution.evidence.map(item => ({ path: item.path, sha256: item.sha256 })), inputs_digest: roundDigest(round), expectation_verdicts: expectationVerdicts };
-    const relative = `${path.posix.dirname(executionPath)}/30-verdict--${outcome}.record.yaml`;
+    const revision = prior ? `V${String(byKind(state.records, 'verdict').filter(item => item.record.execution_record_id === execution.record_id).length + 1).padStart(3, '0')}` : null;
+    const verdict = { ...common(state.config, 'verdict', `VERDICT-${execution.case_id}-${execution.round_id}${revision ? `-${revision}` : ''}`), case_id: execution.case_id, spec_revision: execution.spec_revision, round_id: execution.round_id, target_id: execution.target_id, outcome, verification_record_ids: round.reviews.map(item => item.record_id), execution_record_id: execution.record_id, finding_ids: [...new Set([...(finding ? [finding] : []), ...sideFindings])], evidence_hashes: execution.evidence.map(item => ({ path: item.path, sha256: item.sha256 })), inputs_digest: roundDigest(round), expectation_verdicts: expectationVerdicts, ...(prior ? { supersedes_record_id: prior.record_id } : {}) };
+    const relative = `${path.posix.dirname(executionPath)}/30-verdict--${outcome}${revision ? `--${revision}` : ''}.record.yaml`;
     await writeRecord(state.campaign, relative, verdict);
   }
   const fresh = await snapshot(state.campaign);
@@ -835,7 +917,7 @@ async function reconcile(state) {
     for (const file of await readdir(containedPath(state.campaign, root))) if (/^00-current--[A-Z_]+\.view\.yaml$/.test(file)) await rm(containedPath(state.campaign, `${root}/${file}`));
     await writeText(state.campaign, `${root}/00-current--${item.outcome}.view.yaml`, getDependencies().YAML.stringify(item), { overwrite: true });
   }
-  await writeText(state.campaign, '01-notebook.view.yaml', getDependencies().YAML.stringify({ schema_version: 1, campaign_id: state.config.campaign_id, generated_at: now(), ...assessed }), { overwrite: true });
+  await writeText(state.campaign, '01-notebook.view.yaml', getDependencies().YAML.stringify({ schema_version: 1, campaign_id: state.config.campaign_id, generated_at: now(), ...assessed }, { aliasDuplicateObjects: false }), { overwrite: true });
   return { ...assessed, next_actions: assessed.obligations };
 }
 

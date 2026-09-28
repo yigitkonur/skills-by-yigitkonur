@@ -16,6 +16,14 @@ export function renderHandoff(task) {
     const prior = task.prior_context;
     lines.push('', '## Retry context', `Previous failure: ${prior.previous_failure}`, `What changed: ${prior.what_changed}`, `New hypothesis/evidence: ${prior.hypothesis}`, `Do not repeat: ${prior.do_not_repeat.join('; ')}`, `Remaining execution attempts: ${prior.remaining_attempts}`, `Issue: ${prior.issue_url || '(local only)'}`, `PRs: ${(prior.pr_urls || []).join(', ') || '(none)'}`);
   }
-  lines.push('', 'Run submit --check first if useful, then submit. Stop only after receipt.worker_may_finish is true. The controller records actual worker termination separately.', '');
+  if (task.role === 'environment-operator') {
+    lines.push('', 'Run runtime start with the assigned environment draft. Preserve its record_id, task_id, actor_id, and target_id. Runtime publication writes the canonical environment result. Return its path and READY or FAILED status to the controller; the controller closes the task after confirmed worker termination.');
+  } else {
+    lines.push('', 'Run submit --check first if useful, then submit. Finish the assigned work after receipt.worker_may_finish is true; the controller records confirmed worker termination separately. Accepted means a valid report, not a passing test.');
+  }
+  const unavailable = task.role === 'environment-operator'
+    ? 'Report unavailable work using the runtime command result and its saved diagnostics.'
+    : 'Report unavailable work honestly: execution uses PARTIAL or NOT_RUN; verification uses INCONCLUSIVE or NOT_ASSESSED; other structured roles may use result_status: BLOCKED with blocker, summary, and artifacts.';
+  lines.push('', `${unavailable} If a valid report is impossible, retain the draft and artifacts, report the concrete blocker to the controller, and let it interrupt the task and confirm host termination. Never invent missing URLs, commits, evidence, or outcomes.`, '');
   return lines.join('\n');
 }

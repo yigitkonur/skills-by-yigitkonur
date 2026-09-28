@@ -63,8 +63,8 @@ async function finishTask(c, task) {
   return run('task close', { campaign: c.campaign, 'task-id': task.task_id, finished: true });
 }
 
-async function authorCase(c, slug = 'search', expectationOptions = {}) {
-  const task = await createTask(c, { role: 'scenario-author', slug, requested_action: `Write the approved ${slug} case` });
+async function authorCase(c, slug = 'search', expectationOptions = {}, request = {}) {
+  const task = await createTask(c, { role: 'scenario-author', slug, requested_action: `Write the approved ${slug} case`, ...request });
   await startTask(c, task);
   const root = path.dirname(path.join(c.campaign, task.outputs[0].path));
   await writeFile(path.join(root, '01-test-case.md'), '# Approved search\nGiven the CLI is ready\nWhen searching cats\nThen [E1] JSON contains cats.\n');
@@ -82,11 +82,11 @@ async function environment(c, target = 'G001') {
   return record;
 }
 
-async function acceptPlan(c, cases, { dependencies = {}, resources = {} } = {}) {
-  const planner = await createTask(c, { role: 'planner', target_id: 'G001', requested_action: 'Plan these sourced E2E cases' });
+async function acceptPlan(c, cases, { dependencies = {}, resources = {}, target = 'G001' } = {}) {
+  const planner = await createTask(c, { role: 'planner', target_id: target, requested_action: 'Plan these sourced E2E cases' });
   await startTask(c, planner);
   const plan = await readYaml(path.join(c.campaign, planner.draft_paths[0]));
-  Object.assign(plan, { target_id: 'G001', scope: { in_scope: ['Search E2E'], out_of_scope: [] }, cases: cases.map(item => ({ case_id: item.record.case_id, spec_revision: item.record.spec_revision, target_id: 'G001', depends_on: dependencies[item.record.case_id] || [], resources: resources[item.record.case_id] || [] })), coverage: [{ source: 'Approved search requirement', case_ids: cases.map(item => item.record.case_id) }] });
+  Object.assign(plan, { target_id: target, scope: { in_scope: ['Search E2E'], out_of_scope: [] }, cases: cases.map(item => ({ case_id: item.record.case_id, spec_revision: item.record.spec_revision, target_id: target, depends_on: dependencies[item.record.case_id] || [], resources: resources[item.record.case_id] || [] })), coverage: [{ source: 'Approved search requirement', case_ids: cases.map(item => item.record.case_id) }] });
   await submitDraft(c, planner, plan);
   await finishTask(c, planner);
   const auditor = await createTask(c, { role: 'plan-auditor', plan_id: planner.plan_id, requested_action: 'Audit the frozen DAG and coverage' });
@@ -145,11 +145,13 @@ test('honest partial reports are accepted while missing coverage, claimed missin
   await rm(path.join(c.campaign, artifact));
   await assert.rejects(submitDraft(c, task, draft, true), { code: 'MISSING_ARTIFACT' });
   Object.assign(draft, { execution_status: 'PARTIAL', evidence: [], observations: [{ expectation_id: 'E1', observed: 'The command ran but JSON capture failed', evidence_ids: [], gaps: [{ requirement_id: 'ER1', reason: 'Output capture was unavailable' }] }] });
+  draft.created_at = '2099-01-01T00:00:00.000Z';
   assert.equal((await submitDraft(c, task, draft, true)).submission_status, 'VALIDATED');
   assert.equal((await run('records', { campaign: c.campaign, kind: 'execution' })).records.length, 0);
   const accepted = await submitDraft(c, task, draft);
   assert.equal(accepted.submission_status, 'ACCEPTED');
   assert.equal(accepted.test_verdict, 'NOT_DECIDED');
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'execution' })).records[0].created_at, task.created_at);
   assert.equal((await submitDraft(c, task, draft)).record_id, accepted.record_id);
   await assert.rejects(submitDraft(c, task, { ...draft, observations: [{ ...draft.observations[0], observed: 'Changed claim' }] }), { code: 'RECORD_CONFLICT' });
   assert.equal((await run('records', { campaign: c.campaign, kind: 'verdict' })).records.length, 0);
@@ -270,6 +272,8 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   assert.equal(final.complete, true);
   assert.equal(final.outcome, 'PASS');
   assert.deepEqual(final.obligations, []);
+  await assert.rejects(run('plan accept', { campaign: c.campaign, file: path.join(c.campaign, c.accepted.planner.outputs[0].path), audit: path.join(c.campaign, c.accepted.auditor.outputs[0].path) }), { code: 'TARGET_DRIFT' });
+  assert.equal((await run('status', { campaign: c.campaign })).latest_target_id, 'G002');
 });
 
 test('DAG prerequisites block only dependent cases while resource claims and interrupted reservations enforce capacity', async t => {
@@ -321,11 +325,20 @@ test('saved artifacts can be reviewed after runtime shutdown and a withdrawn ver
   assert.deepEqual(verdicts[0].verification_record_ids, [replacement.draft.record_id]);
   assert.equal((await run('records', { campaign: c.campaign, kind: 'verification' })).records.length, 2);
   assert.equal((await run('records', { campaign: c.campaign, kind: 'execution' })).records.length, 1);
+  await run('task interrupt', { campaign: c.campaign, 'task-id': replacement.task.task_id, reason: 'Later host audit found peer leakage; withdraw sealed review', finished: true });
+  const finalReviewer = await verification(c, executed.task);
+  await submitDraft(c, finalReviewer.task, finalReviewer.draft); await finishTask(c, finalReviewer.task);
+  await run('reconcile', { campaign: c.campaign });
+  const revised = (await run('records', { campaign: c.campaign, kind: 'verdict' })).records;
+  assert.equal(revised.length, 2);
+  assert.ok(revised.some(item => item.verification_record_ids.includes(finalReviewer.draft.record_id)));
+  assert.equal((await run('status', { campaign: c.campaign })).cases[0].outcome, 'PASS');
 });
 
 test('one unresolved lineage has five actual execution attempts; unavailable credentials and invalid drafts do not spend them', async t => {
   const c = await prepared(t);
   let finding;
+  let queued;
   for (let attempt = 1; attempt <= 5; attempt++) {
     const request = attempt === 1 ? {} : { finding_id: finding.finding_id, prior_context: { previous_failure: 'Search returned no matching result', what_changed: `Corrective hypothesis ${attempt} applied`, hypothesis: `Trace evidence ${attempt} suggests this correction`, do_not_repeat: ['Do not repeat the prior unchanged correction'], remaining_attempts: 6 - attempt } };
     if (attempt === 2) {
@@ -339,7 +352,9 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
       await run('reconcile', { campaign: c.campaign });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
     }
+    if (attempt === 5) queued = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Queued alternate corrective attempt', ...request, prior_context: { ...request.prior_context, what_changed: 'Alternate fifth correction prepared' } });
     const executed = await execution(c, { observed: { results: [] }, request });
+    if (queued) await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.some(item => item.startsWith(`RESOURCE:finding:${finding.finding_id}`)));
     if (attempt === 2) {
       await assert.rejects(submitDraft(c, executed.task, { ...executed.draft, observations: [] }), { code: 'INVALID_RECORD' });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
@@ -356,6 +371,7 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
     assert.equal(finding.attempts, attempt);
   }
   await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], purpose: 'final', requested_action: 'Try one more final sweep' }), { code: 'ATTEMPT_LIMIT' });
+  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.includes('ATTEMPT_LIMIT'));
   const final = await run('status', { campaign: c.campaign });
   assert.equal(final.complete, false);
   assert.ok(final.obligations.some(item => item.type === 'ATTEMPT_LIMIT' && item.finding_id === finding.finding_id));
@@ -460,6 +476,155 @@ test('missing actor provenance is an explicit proof gap and supplied report reco
   const incomplete = await run('status', { campaign: c.campaign });
   assert.equal(incomplete.cases[0].proof_valid, false);
   assert.ok(incomplete.obligations.some(item => item.type === 'MISSING_PROVENANCE'));
+});
+
+test('a fresh plan auditor can review an already audited immutable plan without overwriting the previous report', async t => {
+  const c = await prepared(t);
+  const auditor = await createTask(c, { role: 'plan-auditor', plan_id: c.accepted.planner.plan_id, requested_action: 'Recheck the previous audit in a fresh context' });
+  assert.notEqual(auditor.outputs[0].path, c.accepted.auditor.outputs[0].path);
+  await startTask(c, auditor);
+  const draft = await readYaml(path.join(c.campaign, auditor.draft_paths[0]));
+  Object.assign(draft, { outcome: 'approved', findings: [], artifacts: [] });
+  await submitDraft(c, auditor, draft); await finishTask(c, auditor);
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'plan_audit' })).records.length, 2);
+});
+
+test('environment handoffs use runtime publication and give an honest termination path for unavailable work', async t => {
+  const c = await campaign(t);
+  const task = await createTask(c, { role: 'environment-operator', requested_action: 'Start the owned CLI target and prove readiness' });
+  const handoff = await readFile(path.join(c.campaign, `tasks/${task.task_id}/10-handoff.md`), 'utf8');
+  assert.match(handoff, /runtime start/);
+  assert.match(handoff, /confirmed worker termination/);
+  assert.match(handoff, /retain.*draft.*artifacts/i);
+  assert.doesNotMatch(handoff, /Stop only after receipt\.worker_may_finish/);
+  assert.doesNotMatch(handoff, /result_status: BLOCKED/);
+});
+
+test('blind verifier disagreement is inconclusive and honest evidence gaps cannot receive PASS', async t => {
+  const c = await prepared(t, { critical: true, review_count: 2 });
+  const executed = await execution(c);
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const first = await verification(c, executed.task);
+  await submitDraft(c, first.task, first.draft); await finishTask(c, first.task);
+  const second = await verification(c, executed.task, { verdict: 'FAIL' });
+  await submitDraft(c, second.task, second.draft); await finishTask(c, second.task);
+  const status = await run('reconcile', { campaign: c.campaign });
+  assert.equal(status.cases[0].outcome, 'INCONCLUSIVE');
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].class, 'VERIFIER_DISAGREEMENT');
+  const gapCampaign = await prepared(t);
+  const gap = await execution(gapCampaign, { status: 'PARTIAL', gap: true });
+  await submitDraft(gapCampaign, gap.task, gap.draft); await finishTask(gapCampaign, gap.task);
+  const unfounded = await verification(gapCampaign, gap.task);
+  await assert.rejects(submitDraft(gapCampaign, unfounded.task, unfounded.draft), { code: 'UNINSPECTED_EVIDENCE' });
+});
+
+test('a historical assigned target result remains accepted but cannot prove a newer plan target, and views rebuild from records', async t => {
+  const c = await prepared(t);
+  const old = await execution(c);
+  await environment(c, 'G002');
+  await acceptPlan(c, [c.authored], { target: 'G002' });
+  assert.equal((await submitDraft(c, old.task, old.draft)).submission_status, 'ACCEPTED');
+  await finishTask(c, old.task);
+  const reviewed = await verification(c, old.task);
+  await submitDraft(c, reviewed.task, reviewed.draft); await finishTask(c, reviewed.task);
+  const historical = await run('reconcile', { campaign: c.campaign });
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'verdict' })).records[0].outcome, 'PASS');
+  assert.equal(historical.cases[0].target_id, 'G002');
+  assert.equal(historical.cases[0].outcome, 'NOT_RUN');
+  assert.equal(historical.complete, false);
+  await rm(path.join(c.campaign, '01-notebook.view.yaml'));
+  await writeFile(path.join(c.campaign, 'cases/T0001-search/00-current--PASS.view.yaml'), 'outcome: PASS\n');
+  await run('reconcile', { campaign: c.campaign });
+  assert.equal((await readYaml(path.join(c.campaign, '01-notebook.view.yaml'))).cases[0].outcome, 'NOT_RUN');
+  await assert.rejects(readFile(path.join(c.campaign, 'cases/T0001-search/00-current--PASS.view.yaml')), { code: 'ENOENT' });
+});
+
+test('a scoped side finding becomes a product defect only after a separate sourced scenario and independent failed review', async t => {
+  const c = await prepared(t);
+  const original = await execution(c);
+  original.draft.findings = [{ class: 'SIDE_FINDING', summary: 'A second search mode may drop matching items' }];
+  await submitDraft(c, original.task, original.draft); await finishTask(c, original.task);
+  const originalReview = await verification(c, original.task);
+  await submitDraft(c, originalReview.task, originalReview.draft); await finishTask(c, originalReview.task);
+  await run('reconcile', { campaign: c.campaign });
+  const side = (await run('records', { campaign: c.campaign, kind: 'finding' })).records[0];
+  await run('finding decide', { campaign: c.campaign, 'finding-id': side.finding_id, scope: 'in_scope', reason: 'Confirm the related alternate search mode', source: 'User-authorized search scope' });
+  const confirmation = await authorCase(c, 'alternate-search', {}, { finding_id: side.finding_id });
+  assert.equal(confirmation.record.confirms_finding_id, side.finding_id);
+  await acceptPlan(c, [c.authored, confirmation]);
+  const executed = await execution(c, { observed: { results: [] }, request: { case_ids: confirmation.task.case_ids } });
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task, { verdict: 'FAIL' });
+  await submitDraft(c, reviewed.task, reviewed.draft); await finishTask(c, reviewed.task);
+  const assessed = await run('reconcile', { campaign: c.campaign });
+  const confirmed = (await run('records', { campaign: c.campaign, kind: 'finding' })).records[0];
+  assert.equal(confirmed.finding_id, side.finding_id);
+  assert.equal(confirmed.class, 'PRODUCT_DEFECT');
+  assert.deepEqual(confirmed.case_ids, ['T0001', 'T0002']);
+  assert.equal(confirmed.attempts, 1);
+  assert.equal(assessed.cases.find(item => item.case_id === 'T0001').outcome, 'PASS');
+});
+
+test('replacement chains retain blocked ancestors until a complete finished descendant resolves the assignment', async t => {
+  const c = await campaign(t);
+  let previous;
+  for (let index = 1; index <= 4; index++) {
+    const task = await createTask(c, { role: 'feature-scout', requested_action: `Discover approved surfaces, context ${index}`, ...(previous ? { replaces_task_id: previous.task_id } : {}) });
+    await startTask(c, task);
+    const draft = await readYaml(path.join(c.campaign, task.draft_paths[0]));
+    if (index <= 2) Object.assign(draft, { result_status: 'BLOCKED', blocker: { reason_code: 'TOOL_UNAVAILABLE', detail: 'Discovery tool unavailable in this context' }, summary: 'Unable to inspect the requested surface', artifacts: [] });
+    else Object.assign(draft, { features: [{ id: 'search', title: 'Search surface', source: { type: 'user_request', reference: 'User approved search discovery' }, subfeatures: [] }], unknowns: [], artifacts: [] });
+    await submitDraft(c, task, draft);
+    if (index === 3) {
+      await run('task interrupt', { campaign: c.campaign, 'task-id': task.task_id, reason: 'Context terminated before a valid finish', finished: true });
+      assert.equal((await run('status', { campaign: c.campaign })).obligations.filter(item => item.type === 'ROLE_BLOCKED').length, 2);
+    } else await finishTask(c, task);
+    previous = task;
+  }
+  assert.equal((await run('status', { campaign: c.campaign })).obligations.filter(item => item.type === 'ROLE_BLOCKED').length, 0);
+});
+
+test('one artifact cannot implicitly satisfy two different captures of the same evidence type', async t => {
+  const c = await prepared(t, { evidence_requirements: [{ id: 'ER1', type: 'json', capture: 'Capture API response JSON' }, { id: 'ER2', type: 'json', capture: 'Capture the independently persisted row JSON' }] });
+  const executed = await execution(c);
+  await assert.rejects(submitDraft(c, executed.task, executed.draft), { code: 'AMBIGUOUS_EVIDENCE_REQUIREMENT' });
+  executed.draft.evidence[0].requirement_ids = ['MISSING'];
+  await assert.rejects(submitDraft(c, executed.task, executed.draft), { code: 'INVALID_EVIDENCE' });
+  executed.draft.evidence[0].requirement_ids = ['ER1'];
+  await assert.rejects(submitDraft(c, executed.task, executed.draft), { code: 'EVIDENCE_COVERAGE' });
+  const secondPath = `${path.posix.dirname(executed.artifact)}/persisted.json`;
+  await writeFile(path.join(c.campaign, secondPath), '{"persisted":["cats"]}');
+  executed.draft.evidence.push({ id: 'EV2', path: secondPath, type: 'json', expectation_ids: ['E1'], requirement_ids: ['ER2'] });
+  executed.draft.observations[0].evidence_ids.push('EV2');
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task);
+  await submitDraft(c, reviewed.task, reviewed.draft); await finishTask(c, reviewed.task);
+  assert.equal((await run('reconcile', { campaign: c.campaign })).cases[0].outcome, 'PASS');
+});
+
+test('executor bounded inputs preserve supplied history and both execution roles receive the allocated round context', async t => {
+  const c = await prepared(t);
+  const executed = await execution(c, { request: { required_inputs: ['02-decisions.md'] } });
+  assert.ok(executed.task.required_inputs.includes('02-decisions.md'));
+  const context = `${path.posix.dirname(executed.task.outputs[0].path)}/00-context.record.yaml`;
+  assert.ok(executed.task.required_inputs.includes(context));
+  assert.match(await readFile(path.join(c.campaign, `tasks/${executed.task.task_id}/10-handoff.md`), 'utf8'), /02-decisions\.md/);
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task);
+  assert.ok(reviewed.task.required_inputs.includes(context));
+  assert.ok(!reviewed.task.required_inputs.includes('02-decisions.md'));
+});
+
+test('ready queries and dispatch agree when the assigned runtime stops', async t => {
+  const c = await prepared(t);
+  const task = await createTask(c, { role: 'executor', case_ids: ['T0001'], requested_action: 'Execute search after readiness' });
+  const target = (await run('records', { campaign: c.campaign, kind: 'environment' })).records[0];
+  await writeRecord(c.campaign, 'environments/G001/00-environment.record.yaml', { ...target, status: 'STOPPED' }, { immutable: false });
+  const status = await run('status', { campaign: c.campaign });
+  assert.ok(!status.ready.includes(task.task_id));
+  assert.ok(status.blocked.some(item => item.task_id === task.task_id && item.reasons.includes('TARGET_NOT_READY')));
+  assert.ok(!(await run('records', { campaign: c.campaign, ready: true })).records.some(item => item.task_id === task.task_id));
+  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': task.task_id }), { code: 'TARGET_NOT_READY' });
 });
 
 test('a scenario author receives fixed paths and can bootstrap approved Gherkin into an accepted immutable specification', async t => {

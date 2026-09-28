@@ -2441,6 +2441,10 @@
             ]
           },
           "minItems": 1
+        },
+        "supersedes_record_id": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
