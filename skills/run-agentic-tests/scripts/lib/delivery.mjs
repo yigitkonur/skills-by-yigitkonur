@@ -13,7 +13,9 @@ export function githubRepository(value) {
 export async function discoverRepository(project, remote = 'origin') {
   if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith('-')) throw new CliError('GITHUB_REMOTE_REQUIRED', 'Select a named remote of the tested project.');
   try {
-    const { stdout } = await execute('git', ['-C', project, 'remote', 'get-url', remote], { timeout: 3000 });
+    const env = { ...process.env, GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' };
+    for (const name of Object.keys(env)) if (/^GIT_CONFIG(?:_|$)/.test(name) || ['GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE'].includes(name)) delete env[name];
+    const { stdout } = await execute('git', ['-C', project, 'remote', 'get-url', remote], { env, timeout: 3000 });
     const repository = githubRepository(stdout);
     return repository ? { remote, repository } : null;
   } catch { return null; }

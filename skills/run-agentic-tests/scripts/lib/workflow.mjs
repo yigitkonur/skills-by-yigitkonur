@@ -27,6 +27,15 @@ const byKind = (records, kind) => records.filter(item => item.record.kind === ki
 const isCompleteResult = record => !['PARTIAL', 'BLOCKED'].includes(record.result_status);
 const completedRecords = (records, kind) => byKind(records, kind).filter(item => isCompleteResult(item.record));
 
+// A snapshot is scoped to one public command. Reuse inspection across its cases,
+// never across commands, so current source is checked again at every boundary.
+async function currentSourceProof(state, environment) {
+  state.sourceProofs ||= new Map();
+  const key = digest({ target_id: environment.target_id, source: environment.source, command: environment.command, readiness: environment.readiness });
+  if (!state.sourceProofs.has(key)) state.sourceProofs.set(key, verifySource(state.campaign, environment));
+  return state.sourceProofs.get(key);
+}
+
 async function snapshot(campaign) {
   const records = await readRecords(campaign);
   const config = records.find(item => item.record.kind === 'campaign')?.record;
@@ -185,15 +194,17 @@ async function acceptPlanCommand(options, state) {
 async function createTask(options, state, suppliedRequest) {
   const request = suppliedRequest || await readYaml(required(options, 'request'));
   validateShape('task_request', request);
+  if (request.role === 'verifier' && ['prior_context', 'finding_id', 'intervention'].some(field => request[field] !== undefined)) fail('BLIND_INPUT', 'Blind verifiers cannot receive corrective history, finding assignments, or intervention narratives. Supply only assigned case/spec/target/round and approved saved inputs.');
   const id = request.task_id || next(state.tasks.map(task => task.task_id), 'J', 5);
   if (state.tasks.some(task => task.task_id === id)) fail('TASK_CONFLICT', `Task ${id} already exists.`, [], 4);
   const actor = next(state.tasks.map(task => task.actor_id), 'A', 5);
   const task = { ...common(state.config, 'task', id), task_id: id, actor_id: actor, role: request.role, state: 'PLANNED', case_ids: request.case_ids || [], dependencies: request.dependencies || [], resources: request.resources || [], required_inputs: request.required_inputs || [], outputs: [], draft_paths: [], requested_action: request.requested_action, worker_finished: false };
   for (const key of ['spec_revision', 'round_id', 'target_id', 'prior_context', 'finding_id', 'plan_id', 'phase', 'purpose', 'verification_slot', 'group', 'replaces_task_id', 'intervention']) if (request[key] !== undefined) task[key] = request[key];
+  if (task.role === 'verifier' && task.group) task.group = { shared_setup: 'Independent review of saved artifacts only', reset: 'Keep each case review separate; do not execute or reset runtimes', independent: true };
   if (task.finding_id) task.finding_id = lineageRoot(state, task.finding_id);
   if (task.replaces_task_id) {
     const previous = findTask(state, task.replaces_task_id);
-    if (previous.role !== task.role || previous.finding_id !== task.finding_id || !previous.worker_finished) fail('INVALID_REPLACEMENT', 'Replacement requires the same role/finding and a confirmed finished previous context.');
+    if (previous.role !== task.role || lineageRoot(state, previous.finding_id) !== task.finding_id || !previous.worker_finished) fail('INVALID_REPLACEMENT', 'Replacement requires the same role/finding and a confirmed finished previous context.');
     if (!request.case_ids) task.case_ids = previous.case_ids;
     else if (stableStringify(request.case_ids) !== stableStringify(previous.case_ids)) fail('INVALID_REPLACEMENT', 'A replacement must retain the assigned cases.');
   }
@@ -243,7 +254,8 @@ async function createTask(options, state, suppliedRequest) {
     task.plan_id = plan.record_id;
     task.purpose ||= 'initial';
     if (task.role === 'executor') {
-      const related = effectiveFindings(state).map(item => item.record).filter(item => item.scope === 'in_scope' && item.state !== 'RESOLVED' && (item.class === 'SIDE_FINDING' ? item.confirmation_case_ids || [] : item.case_ids).some(id => task.case_ids.includes(id)));
+      const related = effectiveFindings(state).map(item => item.record).filter(item => item.scope === 'in_scope' && (item.state !== 'RESOLVED' || task.purpose === 'final') && (item.class === 'SIDE_FINDING' ? item.confirmation_case_ids || [] : item.case_ids).some(id => task.case_ids.includes(id)));
+      if (new Set(related.map(item => item.finding_id)).size > 1 || task.finding_id && related.some(item => item.finding_id !== task.finding_id)) fail('LINEAGE_CONFLICT', 'Cases already belong to conflicting roots. Link supported roots before grouping their corrective work.');
       if (task.finding_id && !findingFor(state, task.finding_id)) fail('FINDING_NOT_FOUND', `Unknown finding ${task.finding_id}.`);
       task.finding_id ||= related[0]?.finding_id;
       const reservation = caseReservationProblems(state, task);
@@ -253,11 +265,9 @@ async function createTask(options, state, suppliedRequest) {
       validateIntervention(state, task);
       if (task.finding_id) {
         const finding = findingFor(state, task.finding_id).record;
+        if (finding.attempt_mapping_problems.length) fail('ATTEMPT_MAPPING_REQUIRED', 'Historical corrective executions have no proven shared intervention identity.', finding.attempt_mapping_problems);
         task.resources.push({ name: `finding:${task.finding_id}`, mode: 'write' });
         if (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(task.attempt_id)) fail('ATTEMPT_LIMIT', 'The unresolved finding exhausted its execution allowance; new specs, rounds, and final sweeps cannot reset it.');
-
-
-        const previous = state.tasks.filter(item => item.role === 'executor' && lineageRoot(state, item.finding_id) === task.finding_id).at(-1);
 
         if (task.prior_context && finding.issue_url) task.prior_context.issue_url = finding.issue_url;
         if (task.prior_context && finding.pr_urls?.length) task.prior_context.pr_urls = finding.pr_urls;
@@ -313,6 +323,7 @@ async function createTask(options, state, suppliedRequest) {
         if (finding.record.issue_url) fail('TICKET_EXISTS', `Finding already has issue ${finding.record.issue_url}.`, [], 4);
         addOutput('ticket', `TICKET-${task.finding_id}`, `${root}/20-ticket.record.yaml`);
       } else if (task.role === 'implementer') {
+        if (finding.record.attempt_mapping_problems.length) fail('ATTEMPT_MAPPING_REQUIRED', 'Resolve ambiguous historical intervention identity before allocating another correction.', finding.record.attempt_mapping_problems);
         if (finding.record.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'Do not begin another fix when no independent retest attempts remain.');
         if (!finding.record.issue_url) fail('TICKET_REQUIRED', 'A confirmed implementation-bound defect needs its deduplicated ticket.');
         const attempt = Math.max(0, ...completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).map(item => item.record.attempt)) + 1;
@@ -328,6 +339,10 @@ async function createTask(options, state, suppliedRequest) {
       }
     }
   } else fail('UNSUPPORTED_ROLE', `${task.role} task allocation is not available.`);
+  if (task.prior_context) {
+    task.prior_context.previous_failure ||= 'No previous linked failure is assigned to this task.';
+    task.prior_context.remaining_attempts ??= state.config.max_attempts;
+  }
   if (isDeliveryRole(task.role)) task.github_repository = await verifyRepository(state.config);
   if (task.finding_id && ['executor', 'diagnostician', 'implementer', 'ticket-writer', 'integrator'].includes(task.role)) attachHistory(state, task);
   for (const output of task.outputs) {
@@ -390,6 +405,7 @@ async function createTask(options, state, suppliedRequest) {
 
 async function eligibility(task, state) {
   const reasons = [];
+  if (task.role === 'verifier' && (task.prior_context || task.finding_id || task.intervention || task.history_basis)) reasons.push('BLIND_INPUT');
   for (const id of task.dependencies) if (findTask(state, id).state !== 'DONE') reasons.push(`DEPENDENCY:${id}`);
   for (const input of task.required_inputs) {
     try { if (!existsSync(await resolveInput(state.campaign, state.config.project, input))) reasons.push(`MISSING_INPUT:${inputLabel(input)}`); }
@@ -399,7 +415,7 @@ async function eligibility(task, state) {
     reasons.push(...caseReservationProblems(state, task).map(item => `${item.code}:${item.task_id || item.record_id}`));
     const environment = environmentFor(state, task.target_id)?.record;
     if (!environment || environment.status !== 'READY') reasons.push('TARGET_NOT_READY');
-    if (environment) { const proof = await verifySource(state.campaign, environment); if (!proof.valid) reasons.push(proof.code); }
+    if (environment) { const proof = await currentSourceProof(state, environment); if (!proof.valid) reasons.push(proof.code); }
     if (byKind(state.records, 'runtime_recovery').some(item => item.record.successor_target_id === task.target_id) && planFor(state)?.target_id !== task.target_id) reasons.push('TARGET_PLAN_REQUIRED');
     const integration = integrationForTarget(state, task.target_id);
     if (integration && environment?.source.revision !== integration.commit) reasons.push('TARGET_DRIFT');
@@ -450,6 +466,7 @@ async function transition(command, options, state) {
   if (command === 'task dispatch') {
     if (!['PLANNED', 'READY', 'BLOCKED'].includes(task.state)) fail('INVALID_TRANSITION', `Cannot dispatch ${task.state} task.`, [], 4);
     const reasons = await eligibility(task, state);
+    if (reasons.includes('BLIND_INPUT')) fail('BLIND_INPUT', 'This legacy verifier packet contains corrective narrative. Withdraw it and allocate a fresh blind verifier.', reasons);
     if (reasons.includes('STALE_RETRY_CONTEXT')) fail('STALE_RETRY_CONTEXT', 'Corrective evidence changed after allocation. Interrupt this planned task and create its replacement to receive the current history.', [{ ...historyFor(state, task).basis, paths: historyFor(state, task).paths }], 4);
     if (reasons.some(reason => reason.startsWith('CASE_RESERVED:') || reason.startsWith('VERIFICATION_REQUIRED:'))) fail(reasons.some(reason => reason.startsWith('CASE_RESERVED:')) ? 'CASE_RESERVED' : 'VERIFICATION_REQUIRED', 'Reserved case work or pending verification must finish before another execution.', reasons, 4);
     for (const code of ['GITHUB_REMOTE_REQUIRED', 'GITHUB_REMOTE_DRIFT']) if (reasons.includes(code)) fail(code, 'Restore the selected tested-project GitHub remote before delivery. Local work may continue.', reasons, 4);
@@ -523,7 +540,7 @@ async function validateExecution(state, task, record, output) {
   await ensureFrozen(state, context.spec_hashes);
   const environment = environmentFor(state, record.target_id)?.record;
   if (!environment || targetDigest(environment) !== context.target_source_digest) fail('TARGET_DRIFT', 'Runtime provenance changed during this execution.');
-  const sourceProof = await verifySource(state.campaign, environment);
+  const sourceProof = await currentSourceProof(state, environment);
   if (!sourceProof.valid) fail(sourceProof.code, sourceProof.message, sourceProof.details || []);
   exactCoverage(record.observations, spec.expectations, 'Execution observations');
   if (record.execution_status === 'NOT_RUN' && !record.blocker) fail('NOT_RUN_REASON', 'NOT_RUN needs an explicit blocker and reason.');
@@ -585,7 +602,7 @@ async function proofProblems(state, round) {
   for (const [record, role] of proofWorkers) {
     const task = state.tasks.find(item => item.task_id === record?.task_id);
     if (!task || !task.handle || task.role !== role || task.actor_id !== record?.actor_id || !task.outputs.some(output => output.record_id === record?.record_id && output.kind === record?.kind)) problems.push({ type: 'MISSING_PROVENANCE', message: `No matching bound ${role} assignment for ${record?.record_id || 'missing record'}.` });
-    else handles.push(task.handle);
+    else { handles.push(task.handle); if (role === 'verifier' && (task.prior_context || task.finding_id || task.intervention || task.history_basis)) problems.push({ type: 'BLIND_INPUT', message: 'Verifier assignment contains corrective narrative and needs an independent replacement.' }); }
   }
   if (new Set(handles).size !== handles.length) problems.push({ type: 'ACTOR_ISOLATION', message: 'Author, executor, and reviewers must have distinct real context handles.' });
   for (const review of round.reviews) for (const item of review.reviews) {
@@ -594,7 +611,7 @@ async function proofProblems(state, round) {
   }
   const target = environmentFor(state, round.execution.target_id)?.record;
   if (!target || targetDigest(target) !== round.context?.target_source_digest) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime provenance differs from the assigned generation.' });
-  if (target) { const sourceProof = await verifySource(state.campaign, target); if (!sourceProof.valid) problems.push({ type: sourceProof.code, message: sourceProof.message }); }
+  if (target) { const sourceProof = await currentSourceProof(state, target); if (!sourceProof.valid) problems.push({ type: sourceProof.code, message: sourceProof.message }); }
   const integration = integrationForTarget(state, round.execution.target_id);
   if (integration && target?.source.revision !== integration.commit) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime source does not identify the integrated commit.' });
   for (const evidence of round.execution.evidence) {
@@ -617,6 +634,7 @@ async function hasSupportingFailure(state, root) {
 }
 
 async function validateVerification(state, task, record) {
+  if (task.prior_context || task.finding_id || task.intervention || task.history_basis) fail('BLIND_INPUT', 'Corrective context is not valid input for a blind verifier.');
   const execution = byKind(state.records, 'execution').map(item => item.record).find(item => item.record_id === record.execution_record_id);
   if (!execution || ['case_id', 'spec_revision', 'round_id', 'target_id'].some(key => execution[key] !== record[key])) fail('WRONG_EXECUTION', 'Review must reference the assigned execution, target, spec, and round.');
   const round = roundRecords(state, execution);
@@ -689,7 +707,7 @@ async function validateRoleResult(state, task, record) {
     const implementation = completedRecords(state.records, 'implementation').map(item => item.record).find(item => item.record_id === record.implementation_record_id && item.finding_id === record.finding_id);
     if (!implementation || !task.required_inputs.some(input => state.records.some(item => item.path === input && item.record.record_id === implementation.record_id))) fail('WRONG_ASSIGNMENT', 'Integrate the assigned accepted implementation.');
     const target = environmentFor(state, record.new_target_id)?.record;
-    if (target && target.source.revision !== record.commit) fail('TARGET_DRIFT', 'An existing integrated target must identify the declared integrated commit.');
+    if (target && (target.source.revision !== record.commit || record.source_identity && sourceIdentity(target) !== record.source_identity)) fail('TARGET_DRIFT', 'An existing integrated target must identify the declared integrated commit.');
     const already = state.records.some(item => item.record.record_id === record.record_id);
     if (!already && Number(record.new_target_id.slice(1)) <= Number(state.config.final_target_id.slice(1))) fail('TARGET_DRIFT', 'Integration must allocate a new runtime generation.');
     const known = planFor(state).cases.map(item => item.case_id);
@@ -772,7 +790,7 @@ async function assessState(state) {
   if (!plan) obligations.push({ type: 'PLAN_REQUIRED' });
   const integratedTarget = integrationForTarget(state, state.config.final_target_id);
   const runtime = environmentFor(state, state.config.final_target_id)?.record;
-  if (runtime) { const sourceProof = await verifySource(state.campaign, runtime); if (!sourceProof.valid) obligations.push({ type: sourceProof.code, target_id: runtime.target_id, message: sourceProof.message }); }
+  if (runtime) { const sourceProof = await currentSourceProof(state, runtime); if (!sourceProof.valid) obligations.push({ type: sourceProof.code, target_id: runtime.target_id, message: sourceProof.message }); }
   if (byKind(state.records, 'runtime_recovery').some(item => item.record.successor_target_id === state.config.final_target_id) && plan?.target_id !== state.config.final_target_id) obligations.push({ type: 'TARGET_PLAN_REQUIRED', target_id: state.config.final_target_id });
   if (integratedTarget && (!runtime || runtime.status !== 'READY' || runtime.source.revision !== integratedTarget.commit)) obligations.push({ type: 'PREPARE_TARGET', target_id: state.config.final_target_id, commit: integratedTarget.commit });
   for (const entry of plan?.cases || []) {
@@ -795,7 +813,8 @@ async function assessState(state) {
         current.outcome = verdict.outcome;
         if (problems.length) current.outcome = 'INCONCLUSIVE';
         current.proof_valid = !problems.length;
-        const reviewOnlyRecovery = problems.some(item => item.type === 'VERIFICATION_REQUIRED') && problems.every(item => ['VERIFICATION_REQUIRED', 'RECORDS_CHANGED'].includes(item.type));
+        const reviewOnlyRecovery = problems.some(item => ['VERIFICATION_REQUIRED', 'BLIND_INPUT'].includes(item.type)) && problems.every(item => ['VERIFICATION_REQUIRED', 'RECORDS_CHANGED', 'BLIND_INPUT'].includes(item.type));
+        if (problems.some(item => item.type === 'BLIND_INPUT')) current.blockers.push({ type: 'VERIFICATION_REQUIRED', case_id: entry.case_id, round_id: execution.round_id, message: 'Withdraw the contaminated verifier and allocate a fresh independent review.' });
         if (current.outcome !== 'PASS' && !reviewOnlyRecovery) current.blockers.push({ type: current.outcome === 'FAIL' ? 'FIX_REQUIRED' : 'FRESH_EXECUTION_REQUIRED', case_id: entry.case_id, round_id: execution.round_id });
       }
       current.blockers.push(...problems.map(item => ({ ...item, case_id: entry.case_id, round_id: execution.round_id })));
@@ -809,6 +828,7 @@ async function assessState(state) {
     cases.push(current);
   }
   for (const { record: finding } of effectiveFindings(state)) {
+    if (finding.attempt_mapping_problems.length) obligations.push({ type: 'ATTEMPT_MAPPING_REQUIRED', finding_id: finding.finding_id, execution_record_ids: finding.attempt_mapping_problems });
     if (finding.scope === 'pending') obligations.push({ type: 'SCOPE_DECISION_REQUIRED', finding_id: finding.finding_id });
     else if (finding.scope === 'in_scope' && finding.class === 'SIDE_FINDING' && finding.state !== 'RESOLVED') obligations.push({ type: 'CONFIRMATION_REQUIRED', finding_id: finding.finding_id, case_ids: finding.confirmation_case_ids || [] });
     else if (finding.scope === 'in_scope' && !['RESOLVED', 'OUT_OF_SCOPE'].includes(finding.state)) obligations.push({ type: finding.attempts >= state.config.max_attempts ? 'ATTEMPT_LIMIT' : 'FINDING_OPEN', finding_id: finding.finding_id, remaining_attempts: Math.max(0, state.config.max_attempts - finding.attempts) });
@@ -881,7 +901,7 @@ function interventionFor(state, task) {
   if (task.intervention) return task.intervention;
   const integration = integrationForTarget(state, task.target_id);
   if (integration) return { kind: 'INTEGRATION', ref: integration.record_id };
-  if (task.prior_context) return { kind: 'EXECUTION_APPROACH', ref: digest({ what_changed: task.prior_context.what_changed, hypothesis: task.prior_context.hypothesis }) };
+  if (task.prior_context) return { kind: 'EXECUTION_APPROACH', ref: `task:${task.task_id || 'legacy-unknown'}` };
   return { kind: 'BASELINE', ref: 'initial-assessment' };
 }
 
@@ -965,6 +985,7 @@ async function recoverRuntime(options, state) {
   const request = await readYaml(required(options, 'file')); validateShape('runtime_recovery_request', request);
   const integration = integrationForTarget(state, predecessorId);
   const expectedRevision = integration?.commit || predecessor.record.source.revision;
+  if (request.source?.revision && request.source.revision !== expectedRevision) fail('TARGET_DRIFT', 'Recovery preserves its existing integrated source revision; new code requires a new integration.');
   const taskResult = await createTask({}, state, { role: 'environment-operator', requested_action: request.requested_action || `Recover ${predecessorId}: ${request.reason}`, required_inputs: [...new Set([predecessor.path, ...(request.required_inputs || [])])], ...(request.prior_context ? { prior_context: request.prior_context } : {}) });
   const task = taskResult.task;
   const source = { ...structuredClone(predecessor.record.source), ...(request.source || {}), revision: expectedRevision };
@@ -976,7 +997,7 @@ async function recoverRuntime(options, state) {
   const newRoot = source.provider?.root || source.worktree;
   if (oldRoot && newRoot && oldRoot !== newRoot) draft.command.cwd = path.resolve(newRoot, path.relative(oldRoot, predecessor.record.command.cwd));
   await writeText(state.campaign, task.draft_paths[0], getDependencies().YAML.stringify(draft), { overwrite: true });
-  const recovery = { ...common(state.config, 'runtime_recovery', `RECOVERY-${predecessorId}-${task.target_id}`), predecessor_target_id: predecessorId, successor_target_id: task.target_id, environment_task_id: task.task_id, reason: request.reason, expected_revision: expectedRevision, ...(sourceIdentity(predecessor.record) ? { source_identity: sourceIdentity(predecessor.record) } : {}), ...(integration ? { integration_record_id: integration.record_id } : {}) };
+  const recovery = { ...common(state.config, 'runtime_recovery', `RECOVERY-${predecessorId}-${task.target_id}`), predecessor_target_id: predecessorId, successor_target_id: task.target_id, environment_task_id: task.task_id, reason: request.reason, expected_revision: expectedRevision, ...(request.source_reference ? { source_reference: request.source_reference } : {}), ...(sourceIdentity(predecessor.record) ? { source_identity: sourceIdentity(predecessor.record) } : {}), ...(integration ? { integration_record_id: integration.record_id } : {}) };
   await writeRecord(state.campaign, `environments/recoveries/${recovery.record_id}.record.yaml`, recovery);
   if (state.config.final_target_id === predecessorId) await writeRecord(state.campaign, '00-campaign.record.yaml', { ...state.config, final_target_id: task.target_id, state: 'OPEN' }, { immutable: false });
   return { ...taskResult, recovery, predecessor_target_id: predecessorId, successor_target_id: task.target_id };
@@ -1016,7 +1037,7 @@ async function refreshFindings(state) {
       const task = state.tasks.find(item => item.task_id === execution.task_id);
       const intervention = interventionFor(state, task || {});
       const attemptId = task?.attempt_id || attemptIdentity(intervention);
-      if (!task?.attempt_id && task?.finding_id && !task.prior_context && intervention.kind === 'BASELINE' && task.purpose !== 'initial') record.attempt_mapping_problems.push(execution.record_id);
+      if (!task?.attempt_id && (intervention.kind === 'EXECUTION_APPROACH' || task?.finding_id && intervention.kind === 'BASELINE' && task.purpose !== 'initial')) record.attempt_mapping_problems.push(execution.record_id);
       record.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id, attempt_id: record.attempt_mapping_problems.includes(execution.record_id) ? `LEGACY-${execution.record_id}` : attemptId });
     }
     // Retain unresolvable historical entries rather than silently forgetting spent corrections.
@@ -1028,10 +1049,19 @@ async function refreshFindings(state) {
     if (record.related_issue_urls.length) record.issue_url ||= record.related_issue_urls[0];
     record.pr_urls = [...new Set([...members.flatMap(item => item.record.pr_urls || []), ...related('implementation').map(item => item.pr_url)])];
     record.authorized = false;
-    for (const execution of executions) {
-      const verdict = latestVerdict(state, item => item.execution_record_id === execution.record_id);
-      if (verdict?.outcome === 'FAIL' && execution.target_id === state.config.final_target_id && !(await sealedProofProblems(state, execution, verdict)).length) record.authorized = true;
+    const relevantCases = record.class === 'SIDE_FINDING' ? record.confirmation_case_ids || [] : record.case_ids;
+    const currentPassing = [];
+    for (const caseId of relevantCases) {
+      const revision = planFor(state)?.cases.find(item => item.case_id === caseId)?.spec_revision;
+      const context = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === caseId && item.target_id === state.config.final_target_id && item.spec_revision === revision).sort((a, b) => Number(b.round_id.slice(1)) - Number(a.round_id.slice(1)))[0];
+      const execution = context && byKind(state.records, 'execution').find(item => item.record.case_id === caseId && item.record.round_id === context.round_id)?.record;
+      const verdict = execution && latestVerdict(state, item => item.execution_record_id === execution.record_id);
+      const valid = Boolean(verdict && !(await sealedProofProblems(state, execution, verdict)).length);
+      if (valid && verdict.outcome === 'FAIL' && record.scope === 'in_scope') record.authorized = true;
+      currentPassing.push(valid && verdict.outcome === 'PASS' && environmentFor(state, state.config.final_target_id)?.record.status === 'READY');
     }
+    if (record.scope === 'in_scope' && relevantCases.length && currentPassing.every(Boolean)) { record.state = 'RESOLVED'; record.authorized = false; }
+    else if (record.state === 'RESOLVED') record.state = 'OPEN';
     if (!['RESOLVED', 'OUT_OF_SCOPE'].includes(record.state) && record.attempts >= state.config.max_attempts) record.state = 'EXHAUSTED';
     state.findings.push({ path: entry.path, record });
   }
@@ -1041,7 +1071,12 @@ export async function resolveFindings(campaign, records) {
   await loadDependencies();
   const state = records ? { campaign, records, config: records.find(item => item.record.kind === 'campaign')?.record, tasks: byKind(records, 'task').map(item => item.record) } : await snapshot(campaign);
   if (!state.config) fail('INVALID_CAMPAIGN', 'Campaign record is missing.');
-  if (records) await refreshFindings(state);
+  if (records) {
+    const actual = await readCampaign(campaign); const ids = new Set();
+    for (const item of records) { validateRecord(item.record); containedPath(campaign, item.path); if (item.record.campaign_id !== actual.campaign_id || state.config.campaign_id !== actual.campaign_id) fail('WRONG_CAMPAIGN', 'Finding snapshot belongs to another campaign.'); if (ids.has(item.record.record_id)) fail('DUPLICATE_RECORD', 'Finding snapshot contains duplicate records.'); ids.add(item.record.record_id); }
+    state.config = { ...state.config, final_target_id: effectiveTarget(state, state.config.final_target_id) };
+    await refreshFindings(state);
+  }
   return { findings: effectiveFindings(state).map(item => item.record), relationships: byKind(state.records, 'finding_link').map(item => item.record) };
 }
 

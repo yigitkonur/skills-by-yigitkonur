@@ -219,3 +219,43 @@ test('actual source changes block dispatch, submission, and current proof while 
   await writeFile(path.join(c.campaign, 'environments/G001/00-environment.record.yaml'), getDependencies().YAML.stringify(env));
   const legacy = call('status', { campaign: c.campaign }); assert.equal(legacy.complete, false); assert.ok(legacy.obligations.some(x => x.type === 'SOURCE_ATTESTATION_REQUIRED')); assert.equal(c.records({ kind: 'execution' }).length, 1);
 });
+
+test('five corrections share an explicit budget and one final sweep reuses the selected passing intervention', async t => {
+  const c = await setup(t), id = await author(c, 'fifth-correction'); await runtime(c); await plan(c, [id]);
+  for (let n = 1; n <= 5; n++) {
+    const task = await executeCase(c, [id], { request: n === 1 ? {} : { prior_context: { what_changed: `Corrective approach ${n}`, hypothesis: `Evidence for approach ${n}`, do_not_repeat: ['Previous failing corrections'] } } });
+    if (n > 1) assert.equal(task.intervention.ref, `task:${task.task_id}`, 'implicit correction IDs are controller allocations, never prose equivalence');
+    await reviewCase(c, task, n === 5 ? 'PASS' : 'FAIL');
+    assert.equal(c.records({ kind: 'finding' })[0].attempts, n);
+  }
+  const sweep = await executeCase(c, [id], { request: { purpose: 'final' } }); await reviewCase(c, sweep, 'PASS');
+  const finding = c.records({ kind: 'finding' })[0]; assert.equal(finding.attempts, 5); assert.equal(finding.state, 'RESOLVED'); assert.equal(sweep.prior_context.remaining_attempts, 0);
+  const bypass = await c.create({ role: 'executor', case_ids: [id], purpose: 'final', requested_action: 'Repeat final again' }, 3); assert.equal(bypass.error.code, 'ATTEMPT_LIMIT');
+});
+
+test('tested-project remote discovery ignores repository and injected configuration overrides from the host', async t => {
+  const c = await setup(t), installation = await setup(t);
+  assert.equal(spawnSync('git', ['remote', 'set-url', 'origin', 'https://github.com/installation/skills.git'], { cwd: installation.project }).status, 0);
+  const keys = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0']; const saved = Object.fromEntries(keys.map(k => [k, process.env[k]]));
+  try {
+    Object.assign(process.env, { GIT_DIR: path.join(installation.project, '.git'), GIT_WORK_TREE: installation.project, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'remote.origin.url', GIT_CONFIG_VALUE_0: 'https://github.com/injected/wrong.git' });
+    const bound = call('init', { project: c.project, slug: 'sanitized-identity', 'host-capacity': 2 }); assert.deepEqual(bound.campaign.github_repository, { remote: 'origin', repository: 'example/project' });
+  } finally { for (const key of keys) if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key]; }
+});
+
+test('a latest PASS removes repair authorization even though an older immutable FAIL remains', async t => {
+  const c = await setup(t), id = await author(c, 'authorization'); await runtime(c); await plan(c, [id]);
+  const failed = await executeCase(c, [id]); await reviewCase(c, failed);
+  const diagnosis = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Explain failure' })).task; c.start(diagnosis); const d = await c.draft(diagnosis); Object.assign(d, { conclusion: 'confirmed', summary: 'Fixture capture failed', root_cause: 'Wrong capture approach', evidence_record_ids: [failed.outputs[0].record_id], artifacts: [] }); await c.submit(diagnosis, d); c.close(diagnosis);
+  const fresh = await executeCase(c, [id], { request: { prior_context: { what_changed: 'Corrected capture', hypothesis: 'Actual output includes cats', do_not_repeat: ['Wrong capture'] } } }); await reviewCase(c, fresh, 'PASS');
+  const finding = c.records({ kind: 'finding' })[0]; assert.equal(finding.state, 'RESOLVED'); assert.equal(finding.authorized, false);
+  assert.equal((await c.create({ role: 'ticket-writer', finding_id: 'F0001', requested_action: 'Open a stale defect ticket' }, 3)).error.code, 'UNCONFIRMED_DEFECT');
+  assert.ok(c.records({ kind: 'verdict' }).some(x => x.outcome === 'FAIL'));
+});
+
+test('blind verifier packets reject corrective narrative fields before writing any handoff', async t => {
+  const c = await setup(t), id = await author(c, 'blind-context'); await runtime(c); await plan(c, [id]); const executed = await executeCase(c, [id]);
+  for (const extra of [{ prior_context: { previous_failure: 'Peer verdict FAIL', what_changed: 'PR fixed the defect', hypothesis: 'Prior reviewer expects PASS', do_not_repeat: ['Do not disagree'], remaining_attempts: 4 } }, { finding_id: 'F0001' }, { intervention: { kind: 'EXECUTION_APPROACH', ref: 'repair narrative' } }]) {
+    const rejected = await c.create({ role: 'verifier', case_ids: [id], target_id: 'G001', round_id: executed.round_id, requested_action: 'Blindly inspect saved evidence', ...extra }, 3); assert.equal(rejected.error.code, 'BLIND_INPUT');
+  }
+});

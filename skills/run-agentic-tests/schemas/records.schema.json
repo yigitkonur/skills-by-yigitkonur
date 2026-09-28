@@ -355,11 +355,9 @@
             }
           },
           "required": [
-            "previous_failure",
             "what_changed",
             "hypothesis",
-            "do_not_repeat",
-            "remaining_attempts"
+            "do_not_repeat"
           ]
         },
         "finding_id": {
@@ -4247,6 +4245,10 @@
         "integration_record_id": {
           "type": "string",
           "minLength": 1
+        },
+        "source_reference": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -4354,11 +4356,9 @@
             }
           },
           "required": [
-            "previous_failure",
             "what_changed",
             "hypothesis",
-            "do_not_repeat",
-            "remaining_attempts"
+            "do_not_repeat"
           ]
         }
       },
