@@ -367,9 +367,9 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
       await run('reconcile', { campaign: c.campaign });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
     }
-    if (attempt === 5) queued = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Queued alternate corrective attempt', ...request, prior_context: { ...request.prior_context, what_changed: 'Alternate fifth correction prepared' } });
+
     const executed = await execution(c, { observed: { results: [] }, request });
-    if (queued) await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.some(item => item.startsWith(`RESOURCE:finding:${finding.finding_id}`)));
+    if (attempt === 5) await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Queued alternate corrective attempt', ...request, prior_context: { ...request.prior_context, what_changed: 'Alternate fifth correction prepared' } }), { code: 'CASE_RESERVED' });
     if (attempt === 2) {
       await assert.rejects(submitDraft(c, executed.task, { ...executed.draft, observations: [] }), { code: 'INVALID_RECORD' });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
@@ -386,7 +386,7 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
     assert.equal(finding.attempts, attempt);
   }
   await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], purpose: 'final', requested_action: 'Try one more final sweep' }), { code: 'ATTEMPT_LIMIT' });
-  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.includes('ATTEMPT_LIMIT'));
+  await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], requested_action: 'Attempt sixth correction', prior_context: { previous_failure: 'Still fails', what_changed: 'Sixth correction', hypothesis: 'New sixth idea', do_not_repeat: ['Previous failures'], remaining_attempts: 0 } }), { code: 'ATTEMPT_LIMIT' });
   const final = await run('status', { campaign: c.campaign });
   assert.equal(final.complete, false);
   assert.ok(final.obligations.some(item => item.type === 'ATTEMPT_LIMIT' && item.finding_id === finding.finding_id));

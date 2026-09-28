@@ -413,6 +413,27 @@
         "replaces_task_id": {
           "type": "string",
           "pattern": "^J[0-9]{5,}$"
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
         }
       },
       "required": [
@@ -743,6 +764,31 @@
         "replaces_task_id": {
           "type": "string",
           "pattern": "^J[0-9]{5,}$"
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^ATT-[a-f0-9]{16}$"
         }
       },
       "required": [
@@ -2049,6 +2095,31 @@
             ]
           },
           "minItems": 3
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^ATT-[a-f0-9]{16}$"
         }
       },
       "required": [
@@ -2344,8 +2415,7 @@
         },
         "attempts": {
           "type": "integer",
-          "minimum": 0,
-          "maximum": 5
+          "minimum": 0
         },
         "attempt_rounds": {
           "type": "array",
@@ -2367,6 +2437,9 @@
                 "type": "string",
                 "minLength": 1,
                 "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+              },
+              "attempt_id": {
+                "type": "string"
               }
             },
             "required": [
@@ -2423,6 +2496,47 @@
           "items": {
             "type": "string",
             "pattern": "^T[0-9]{4,}$"
+          },
+          "uniqueItems": true
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "classification_history": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "related_finding_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "related_issue_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "attempt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "attempt_mapping_problems": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
           },
           "uniqueItems": true
         }
@@ -3846,6 +3960,167 @@
     },
     "environment": {
       "$ref": "runtime.schema.json#/definitions/environment"
+    },
+    "finding_classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "finding_classification"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "class": {
+          "enum": [
+            "PRODUCT_DEFECT",
+            "EXECUTION_ERROR",
+            "EVIDENCE_GAP",
+            "EVIDENCE_CONFLICT",
+            "SPEC_INVALID",
+            "ENVIRONMENT_BLOCKER",
+            "TARGET_DRIFT",
+            "VERIFIER_DISAGREEMENT",
+            "SIDE_FINDING"
+          ]
+        },
+        "execution_record_id": {
+          "type": "string"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "finding_id",
+        "class",
+        "execution_record_id",
+        "evidence_record_ids"
+      ]
+    },
+    "finding_link_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "into_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from_finding_id",
+        "into_finding_id",
+        "evidence_record_ids",
+        "reason"
+      ]
+    },
+    "finding_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "finding_link"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "from_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "into_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "from_finding_id",
+        "into_finding_id",
+        "evidence_record_ids",
+        "reason"
+      ]
     }
   }
 }

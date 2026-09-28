@@ -30,7 +30,9 @@ async function snapshot(campaign) {
   const config = records.find(item => item.record.kind === 'campaign')?.record;
   if (!config) fail('INVALID_CAMPAIGN', 'Campaign record is missing.');
   for (const { record } of records) if (record.campaign_id !== config.campaign_id) fail('WRONG_CAMPAIGN', `${record.record_id} belongs to another campaign.`);
-  return { campaign, config, records, tasks: byKind(records, 'task').map(item => item.record) };
+  const state = { campaign, config, records, tasks: byKind(records, 'task').map(item => item.record) };
+  await refreshFindings(state);
+  return state;
 }
 
 async function writeText(campaign, relative, contents, { overwrite = false } = {}) {
@@ -98,7 +100,8 @@ function specFor(state, caseId, revision) {
 
 const planFor = state => state.records.find(item => item.record.record_id === state.config.active_plan_id && item.record.kind === 'plan')?.record;
 const environmentFor = (state, targetId) => byKind(state.records, 'environment').find(item => item.record.target_id === targetId);
-const findingFor = (state, findingId) => byKind(state.records, 'finding').find(item => item.record.finding_id === findingId);
+const effectiveFindings = state => state.findings || byKind(state.records, 'finding');
+const findingFor = (state, findingId) => effectiveFindings(state).find(item => item.record.finding_id === lineageRoot(state, findingId));
 const targetDigest = environment => digest({ source: environment.source, command: environment.command, readiness: environment.readiness });
 
 async function specHashes(state, caseId, revision) {
@@ -180,7 +183,8 @@ async function createTask(options, state) {
   if (state.tasks.some(task => task.task_id === id)) fail('TASK_CONFLICT', `Task ${id} already exists.`, [], 4);
   const actor = next(state.tasks.map(task => task.actor_id), 'A', 5);
   const task = { ...common(state.config, 'task', id), task_id: id, actor_id: actor, role: request.role, state: 'PLANNED', case_ids: request.case_ids || [], dependencies: request.dependencies || [], resources: request.resources || [], required_inputs: request.required_inputs || [], outputs: [], draft_paths: [], requested_action: request.requested_action, worker_finished: false };
-  for (const key of ['spec_revision', 'round_id', 'target_id', 'prior_context', 'finding_id', 'plan_id', 'phase', 'purpose', 'verification_slot', 'group', 'replaces_task_id']) if (request[key] !== undefined) task[key] = request[key];
+  for (const key of ['spec_revision', 'round_id', 'target_id', 'prior_context', 'finding_id', 'plan_id', 'phase', 'purpose', 'verification_slot', 'group', 'replaces_task_id', 'intervention']) if (request[key] !== undefined) task[key] = request[key];
+  if (task.finding_id) task.finding_id = lineageRoot(state, task.finding_id);
   if (task.replaces_task_id) {
     const previous = findTask(state, task.replaces_task_id);
     if (previous.role !== task.role || previous.finding_id !== task.finding_id || !previous.worker_finished) fail('INVALID_REPLACEMENT', 'Replacement requires the same role/finding and a confirmed finished previous context.');
@@ -233,16 +237,21 @@ async function createTask(options, state) {
     task.plan_id = plan.record_id;
     task.purpose ||= 'initial';
     if (task.role === 'executor') {
-      const related = byKind(state.records, 'finding').map(item => item.record).filter(item => item.scope === 'in_scope' && item.state !== 'RESOLVED' && (item.class === 'SIDE_FINDING' ? item.confirmation_case_ids || [] : item.case_ids).some(id => task.case_ids.includes(id)));
+      const related = effectiveFindings(state).map(item => item.record).filter(item => item.scope === 'in_scope' && item.state !== 'RESOLVED' && (item.class === 'SIDE_FINDING' ? item.confirmation_case_ids || [] : item.case_ids).some(id => task.case_ids.includes(id)));
       if (task.finding_id && !findingFor(state, task.finding_id)) fail('FINDING_NOT_FOUND', `Unknown finding ${task.finding_id}.`);
       task.finding_id ||= related[0]?.finding_id;
+      const reservation = caseReservationProblems(state, task);
+      if (reservation.length) fail(reservation[0].code, 'This case/spec/target already has reserved work or evidence awaiting independent review.', reservation, 4);
+      task.intervention = interventionFor(state, task);
+      task.attempt_id = attemptIdentity(task.intervention);
+      validateIntervention(state, task);
       if (task.finding_id) {
         const finding = findingFor(state, task.finding_id).record;
         task.resources.push({ name: `finding:${task.finding_id}`, mode: 'write' });
-        if (finding.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'The unresolved finding exhausted its execution allowance; new specs, rounds, and final sweeps cannot reset it.');
+        if (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(task.attempt_id)) fail('ATTEMPT_LIMIT', 'The unresolved finding exhausted its execution allowance; new specs, rounds, and final sweeps cannot reset it.');
         if (!task.prior_context && finding.class !== 'SIDE_FINDING') fail('RETRY_CONTEXT_REQUIRED', 'Retry requires the previous failure, change, new hypothesis, do-not-repeat guidance, and remaining attempts.');
         if (task.prior_context && task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) fail('RETRY_CONTEXT_REQUIRED', 'Remaining attempts must match the durable finding history.');
-        const previous = state.tasks.filter(item => item.role === 'executor' && item.finding_id === task.finding_id).at(-1);
+        const previous = state.tasks.filter(item => item.role === 'executor' && lineageRoot(state, item.finding_id) === task.finding_id).at(-1);
         if (task.prior_context && previous?.prior_context?.what_changed === task.prior_context.what_changed && previous?.prior_context?.hypothesis === task.prior_context.hypothesis) fail('BLIND_RETRY', 'Do not repeat an unchanged retry hypothesis and change description.');
         if (task.prior_context && finding.issue_url) task.prior_context.issue_url = finding.issue_url;
         if (task.prior_context && finding.pr_urls?.length) task.prior_context.pr_urls = finding.pr_urls;
@@ -286,12 +295,12 @@ async function createTask(options, state) {
     task.case_ids = finding.record.case_ids.slice(0, 4);
     task.required_inputs = [...new Set([...task.required_inputs, finding.path, ...finding.record.source_record_ids.map(id => state.records.find(item => item.record.record_id === id)?.path).filter(Boolean)])];
     task.resources.push({ name: `finding:${task.finding_id}`, mode: 'write' });
-    const diagnosis = completedRecords(state.records, 'diagnosis').filter(item => item.record.finding_id === task.finding_id && item.record.conclusion === 'confirmed').at(-1);
+    const diagnosis = completedRecords(state.records, 'diagnosis').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id && item.record.conclusion === 'confirmed').at(-1);
     if (task.role === 'diagnostician') {
-      const existing = state.tasks.some(item => item.role === 'diagnostician' && item.finding_id === task.finding_id);
+      const existing = state.tasks.some(item => item.role === 'diagnostician' && lineageRoot(state, item.finding_id) === task.finding_id);
       addOutput('diagnosis', `DIAG-${task.finding_id}-${id}`, `${root}/${existing ? `diagnoses/${id}/` : ''}10-diagnosis.record.yaml`);
     } else {
-      if (finding.record.class !== 'PRODUCT_DEFECT' || !diagnosis) fail('UNCONFIRMED_DEFECT', 'Tickets and code delivery require an in-scope product defect with a confirmed diagnosis.');
+      if (finding.record.class !== 'PRODUCT_DEFECT' || !finding.record.authorized || !diagnosis) fail('UNCONFIRMED_DEFECT', 'Tickets and code delivery require an in-scope product defect with a confirmed diagnosis.');
       task.required_inputs.push(diagnosis.path);
       if (task.role === 'ticket-writer') {
         if (finding.record.issue_url) fail('TICKET_EXISTS', `Finding already has issue ${finding.record.issue_url}.`, [], 4);
@@ -299,11 +308,11 @@ async function createTask(options, state) {
       } else if (task.role === 'implementer') {
         if (finding.record.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'Do not begin another fix when no independent retest attempts remain.');
         if (!finding.record.issue_url) fail('TICKET_REQUIRED', 'A confirmed implementation-bound defect needs its deduplicated ticket.');
-        const attempt = Math.max(0, ...completedRecords(state.records, 'implementation').filter(item => item.record.finding_id === task.finding_id).map(item => item.record.attempt)) + 1;
+        const attempt = Math.max(0, ...completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).map(item => item.record.attempt)) + 1;
         if (attempt >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'No corrective implementation allowance remains.');
         addOutput('implementation', `IMPL-${task.finding_id}-A${String(attempt).padStart(3, '0')}`, `${root}/fixes/A${String(attempt).padStart(3, '0')}/10-implementation.record.yaml`);
       } else {
-        const implementation = completedRecords(state.records, 'implementation').filter(item => item.record.finding_id === task.finding_id).at(-1);
+        const implementation = completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).at(-1);
         if (!implementation) fail('IMPLEMENTATION_REQUIRED', 'Integration needs an accepted implementation result.');
         task.target_id ||= next([...state.tasks.map(item => item.target_id), ...byKind(state.records, 'environment').map(item => item.record.target_id), ...completedRecords(state.records, 'integration').map(item => item.record.new_target_id)], 'G', 3);
         task.resources.push({ name: 'campaign:integration', mode: 'write' });
@@ -333,7 +342,7 @@ async function createTask(options, state) {
   if (task.finding_id && ['diagnostician', 'ticket-writer', 'implementer', 'integrator'].includes(task.role)) {
     drafts[0].finding_id = task.finding_id;
     if (task.role === 'implementer') drafts[0].attempt = Number(task.outputs[0].record_id.match(/-A(\d+)(?:-J\d+)?$/)[1]);
-    if (task.role === 'integrator') drafts[0].implementation_record_id = completedRecords(state.records, 'implementation').filter(item => item.record.finding_id === task.finding_id).at(-1).record.record_id;
+    if (task.role === 'integrator') drafts[0].implementation_record_id = completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).at(-1).record.record_id;
   }
   if (task.role === 'scenario-author') {
     const root = path.posix.dirname(task.outputs[0].path);
@@ -361,7 +370,7 @@ async function createTask(options, state) {
   if (task.role === 'executor') for (const output of task.outputs) {
     const entry = planFor(state).cases.find(item => item.case_id === output.case_id);
     const root = path.posix.dirname(output.path);
-    const context = { ...common(state.config, 'round_context', `ROUND-${output.case_id}-${task.round_id}`), case_id: output.case_id, spec_revision: task.spec_revision, round_id: task.round_id, target_id: task.target_id, execution_task_id: task.task_id, expectations_record_id: specFor(state, output.case_id, task.spec_revision).record.record_id, plan_id: task.plan_id, purpose: task.purpose, finding_ids: task.finding_id ? [task.finding_id] : [], target_source_digest: targetDigest(environmentFor(state, task.target_id).record), spec_hashes: entry.spec_hashes };
+    const context = { ...common(state.config, 'round_context', `ROUND-${output.case_id}-${task.round_id}`), case_id: output.case_id, spec_revision: task.spec_revision, round_id: task.round_id, target_id: task.target_id, execution_task_id: task.task_id, expectations_record_id: specFor(state, output.case_id, task.spec_revision).record.record_id, plan_id: task.plan_id, purpose: task.purpose, attempt_id: task.attempt_id, intervention: task.intervention, finding_ids: task.finding_id ? [task.finding_id] : [], target_source_digest: targetDigest(environmentFor(state, task.target_id).record), spec_hashes: entry.spec_hashes };
     await writeRecord(state.campaign, `${root}/00-context.record.yaml`, context);
     await mkdir(containedPath(state.campaign, `${root}/evidences`), { recursive: true });
   }
@@ -378,6 +387,7 @@ async function eligibility(task, state) {
     catch (error) { reasons.push(`${error.code || 'MISSING_INPUT'}:${inputLabel(input)}`); }
   }
   if (task.role === 'executor') {
+    reasons.push(...caseReservationProblems(state, task).map(item => `${item.code}:${item.task_id || item.record_id}`));
     const environment = environmentFor(state, task.target_id)?.record;
     if (!environment || environment.status !== 'READY') reasons.push('TARGET_NOT_READY');
     const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
@@ -404,7 +414,8 @@ async function eligibility(task, state) {
     const finding = findingFor(state, task.finding_id)?.record;
     if (!finding) reasons.push('FINDING_NOT_FOUND');
     else {
-      if (finding.attempts + task.case_ids.length > state.config.max_attempts) reasons.push('ATTEMPT_LIMIT');
+      if (finding.attempt_mapping_problems.length) reasons.push('ATTEMPT_MAPPING_REQUIRED');
+      if (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(task.attempt_id)) reasons.push('ATTEMPT_LIMIT');
       if (task.prior_context && task.prior_context.remaining_attempts !== state.config.max_attempts - finding.attempts) reasons.push('RETRY_CONTEXT_STALE');
       for (const { record: execution } of byKind(state.records, 'execution')) {
         const assigned = state.tasks.find(item => item.task_id === execution.task_id);
@@ -425,6 +436,7 @@ async function transition(command, options, state) {
   if (command === 'task dispatch') {
     if (!['PLANNED', 'READY', 'BLOCKED'].includes(task.state)) fail('INVALID_TRANSITION', `Cannot dispatch ${task.state} task.`, [], 4);
     const reasons = await eligibility(task, state);
+    if (reasons.some(reason => reason.startsWith('CASE_RESERVED:') || reason.startsWith('VERIFICATION_REQUIRED:'))) fail(reasons.some(reason => reason.startsWith('CASE_RESERVED:')) ? 'CASE_RESERVED' : 'VERIFICATION_REQUIRED', 'Reserved case work or pending verification must finish before another execution.', reasons, 4);
     for (const code of ['TARGET_NOT_READY', 'TARGET_DRIFT', 'SPEC_CHANGED']) if (reasons.includes(code)) fail(code, `Task ${task.task_id} no longer has its assigned ready target and frozen source.`, reasons);
     if (reasons.length) fail('TASK_BLOCKED', `Task ${task.task_id} is not eligible.`, reasons, 4);
     if (task.role === 'executor') {
@@ -490,7 +502,7 @@ async function validateExecution(state, task, record, output) {
   if (!context || context.execution_task_id !== task.task_id) fail('WRONG_ASSIGNMENT', 'Execution has no assigned round context.');
   if (task.finding_id && record.execution_status !== 'NOT_RUN' && !state.records.some(item => item.record.record_id === record.record_id)) {
     const finding = findingFor(state, task.finding_id)?.record;
-    if (!finding || finding.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'This finding has no remaining actual execution allowance; preserve this draft and artifacts for the controller.');
+    if (!finding || (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(task.attempt_id))) fail('ATTEMPT_LIMIT', 'This finding has no remaining actual execution allowance; preserve this draft and artifacts for the controller.');
   }
   await ensureFrozen(state, context.spec_hashes);
   const environment = environmentFor(state, record.target_id)?.record;
@@ -598,6 +610,14 @@ async function validateVerification(state, task, record) {
     }
     if (review.verdict === 'FAIL' && problems.length) fail('INCOMPLETE_PROOF', 'Changed or missing artifacts cannot establish a product failure; report INCONCLUSIVE.', problems);
   }
+  const roots = new Set();
+  for (const proposed of record.findings || []) if (proposed.lineage_id && proposed.class !== 'SIDE_FINDING') {
+    const root = findingFor(state, proposed.lineage_id);
+    if (!root || root.record.scope !== 'in_scope' || !root.record.authorized || !record.reviews.some(item => item.verdict === 'FAIL')) fail('UNSUPPORTED_LINEAGE', 'Explicit lineage requires an in-scope root and independently inspected failure evidence for both cases.');
+    roots.add(root.record.finding_id);
+  }
+  const existingRoots = effectiveFindings(state).filter(item => item.record.scope === 'in_scope' && item.record.case_ids.includes(record.case_id)).map(item => item.record.finding_id);
+  if (roots.size > 1 || (roots.size && existingRoots.some(id => !roots.has(id)))) fail('LINEAGE_CONFLICT', 'Conflicting roots require finding link with evidence after conflicting work has stopped.');
   return record;
 }
 
@@ -739,7 +759,7 @@ async function assessState(state) {
     obligations.push(...current.blockers);
     cases.push(current);
   }
-  for (const { record: finding } of byKind(state.records, 'finding')) {
+  for (const { record: finding } of effectiveFindings(state)) {
     if (finding.scope === 'pending') obligations.push({ type: 'SCOPE_DECISION_REQUIRED', finding_id: finding.finding_id });
     else if (finding.scope === 'in_scope' && finding.class === 'SIDE_FINDING' && finding.state !== 'RESOLVED') obligations.push({ type: 'CONFIRMATION_REQUIRED', finding_id: finding.finding_id, case_ids: finding.confirmation_case_ids || [] });
     else if (finding.scope === 'in_scope' && !['RESOLVED', 'OUT_OF_SCOPE'].includes(finding.state)) obligations.push({ type: finding.attempts >= state.config.max_attempts ? 'ATTEMPT_LIMIT' : 'FINDING_OPEN', finding_id: finding.finding_id, remaining_attempts: Math.max(0, state.config.max_attempts - finding.attempts) });
@@ -748,7 +768,7 @@ async function assessState(state) {
   for (const { record } of state.records.filter(item => !isCompleteResult(item.record))) {
     if (!hasCompletedReplacement(state, record.task_id)) obligations.push({ type: 'ROLE_BLOCKED', task_id: record.task_id, record_id: record.record_id, reason_code: record.blocker.reason_code, detail: record.blocker.detail });
   }
-  const proof = { plan_id: plan?.record_id || null, final_target_id: state.config.final_target_id, cases, findings: byKind(state.records, 'finding').map(item => item.record), integrations: completedRecords(state.records, 'integration').map(item => item.record.record_id).sort() };
+  const proof = { plan_id: plan?.record_id || null, final_target_id: state.config.final_target_id, cases, findings: effectiveFindings(state).map(item => item.record), integrations: completedRecords(state.records, 'integration').map(item => item.record.record_id).sort() };
   const closureDigest = digest(proof);
   const closure = byKind(state.records, 'plan_audit').map(item => item.record).find(item => item.phase === 'closure' && item.subject_record_id === plan?.record_id && item.subject_digest === closureDigest && item.outcome === 'approved' && !item.findings.length);
   if (plan && !closure) obligations.push({ type: 'CLOSURE_AUDIT_REQUIRED', subject_record_id: plan.record_id, subject_digest: closureDigest });
@@ -759,7 +779,7 @@ async function assessState(state) {
     else ready.push(task.task_id);
   }
   const complete = Boolean(plan && cases.length && cases.every(item => item.outcome === 'PASS' && item.proof_valid) && !obligations.length);
-  return { complete, outcome: complete ? 'PASS' : cases.some(item => item.outcome === 'FAIL') ? 'FAIL' : 'INCOMPLETE', latest_target_id: state.config.final_target_id, counts: { cases: cases.length, pass: cases.filter(item => item.outcome === 'PASS' && item.proof_valid).length, tasks: state.tasks.length, active: state.tasks.filter(active).length, ready: ready.length, blocked: blocked.length, obligations: obligations.length }, cases, ready, running: state.tasks.filter(active).map(task => task.task_id), blocked, obligations, closure_subject_record_id: plan?.record_id || null, closure_subject_digest: closureDigest, closure_audit_record_id: closure?.record_id || null };
+  return { complete, outcome: complete ? 'PASS' : cases.some(item => item.outcome === 'FAIL') ? 'FAIL' : 'INCOMPLETE', latest_target_id: state.config.final_target_id, findings: effectiveFindings(state).map(item => item.record), counts: { cases: cases.length, pass: cases.filter(item => item.outcome === 'PASS' && item.proof_valid).length, tasks: state.tasks.length, active: state.tasks.filter(active).length, ready: ready.length, blocked: blocked.length, obligations: obligations.length }, cases, ready, running: state.tasks.filter(active).map(task => task.task_id), blocked, obligations, closure_subject_record_id: plan?.record_id || null, closure_subject_digest: closureDigest, closure_audit_record_id: closure?.record_id || null };
 }
 
 export async function assessCampaign(campaign, records) {
@@ -777,33 +797,172 @@ export async function assessCampaign(campaign, records) {
     if (ids.has(record.record_id)) fail('DUPLICATE_RECORD', `Duplicate record ${record.record_id}.`);
     ids.add(record.record_id);
   }
-  return assessState({ campaign, records, config, tasks: byKind(records, 'task').map(item => item.record) });
+  const state = { campaign, records, config, tasks: byKind(records, 'task').map(item => item.record) };
+  await refreshFindings(state);
+  return assessState(state);
+}
+
+function lineageRoot(state, findingId) {
+  if (!findingId) return findingId;
+  const seen = new Set(); let id = findingId;
+  while (id) {
+    if (seen.has(id)) fail('LINEAGE_CYCLE', 'Finding relationships contain a cycle.');
+    seen.add(id);
+    const raw = byKind(state.records, 'finding').find(item => item.record.finding_id === id)?.record;
+    const links = byKind(state.records, 'finding_link').filter(item => item.record.from_finding_id === id);
+    const targets = [...new Set(links.map(item => item.record.into_finding_id))];
+    if (targets.length > 1) fail('LINEAGE_CONFLICT', 'A finding has conflicting effective roots.');
+    const parent = targets[0] || (raw?.lineage_id !== id ? raw?.lineage_id : null);
+    if (!parent) return id;
+    if (!byKind(state.records, 'finding').some(item => item.record.finding_id === parent)) fail('FINDING_NOT_FOUND', 'Finding relationship references a missing root.');
+    id = parent;
+  }
+  return id;
+}
+
+const attemptIdentity = intervention => `ATT-${digest(intervention).slice(0, 16)}`;
+function interventionFor(state, task) {
+  if (task.purpose === 'final' && !task.intervention && !task.prior_context) {
+    const previous = state.tasks.filter(item => item.role === 'executor' && item.target_id === task.target_id && item.case_ids.some(id => task.case_ids.includes(id)) && item.attempt_id).at(-1);
+    if (previous) { if (previous.prior_context) task.prior_context = structuredClone(previous.prior_context); return previous.intervention; }
+  }
+  if (task.intervention) return task.intervention;
+  const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+  if (integration) return { kind: 'INTEGRATION', ref: integration.record_id };
+  if (task.prior_context) return { kind: 'EXECUTION_APPROACH', ref: digest({ what_changed: task.prior_context.what_changed, hypothesis: task.prior_context.hypothesis }) };
+  return { kind: 'BASELINE', ref: 'initial-assessment' };
+}
+
+function caseReservationProblems(state, task) {
+  if (task.role !== 'executor') return [];
+  const problems = [];
+  for (const other of state.tasks) {
+    if (other.task_id === task.task_id || other.role !== 'executor' || other.target_id !== task.target_id || other.spec_revision !== task.spec_revision || !other.case_ids.some(id => task.case_ids.includes(id))) continue;
+    if (active(other) || ['PLANNED', 'READY', 'BLOCKED'].includes(other.state)) problems.push({ code: 'CASE_RESERVED', task_id: other.task_id, case_ids: other.case_ids.filter(id => task.case_ids.includes(id)) });
+    else for (const { record: execution } of byKind(state.records, 'execution').filter(item => item.record.task_id === other.task_id && task.case_ids.includes(item.record.case_id))) {
+      const verdict = latestVerdict(state, item => item.execution_record_id === execution.record_id);
+      if (!verdict || verdict.inputs_digest !== roundDigest(roundRecords(state, execution))) problems.push({ code: 'VERIFICATION_REQUIRED', record_id: execution.record_id });
+    }
+  }
+  return problems;
+}
+
+function validateIntervention(state, task) {
+  const intervention = task.intervention;
+  if (intervention.kind === 'BASELINE' && intervention.ref !== 'initial-assessment') fail('INVALID_INTERVENTION', 'All initial baseline cases share ref initial-assessment.');
+  if (intervention.kind === 'INTEGRATION' && !completedRecords(state.records, 'integration').some(item => item.record.record_id === intervention.ref && item.record.new_target_id === task.target_id)) fail('INVALID_INTERVENTION', 'Integration basis must identify the accepted integration for this target.');
+  if (intervention.kind === 'EXECUTION_APPROACH' && !task.prior_context) fail('RETRY_CONTEXT_REQUIRED', 'A changed execution approach requires concrete what_changed, hypothesis and do_not_repeat.');
+  for (const other of state.tasks.filter(item => item.role === 'executor' && item.task_id !== task.task_id)) {
+    const runs = byKind(state.records, 'execution').filter(item => item.record.task_id === other.task_id && item.record.execution_status !== 'NOT_RUN' && task.case_ids.includes(item.record.case_id));
+    if (!runs.length) continue;
+    const sameAttempt = (other.attempt_id || attemptIdentity(interventionFor(state, other))) === task.attempt_id;
+    const repeatedApproach = task.prior_context && other.prior_context && task.prior_context.what_changed === other.prior_context.what_changed && task.prior_context.hypothesis === other.prior_context.hypothesis;
+    if (!sameAttempt && !repeatedApproach) continue;
+    const finalAllowed = task.purpose === 'final' && other.purpose !== 'final' && runs.every(item => latestVerdict(state, verdict => verdict.execution_record_id === item.record.record_id)?.outcome === 'PASS');
+    const recoveredTarget = sameAttempt && task.target_id !== other.target_id && effectiveTarget(state, other.target_id) === task.target_id;
+    if (!finalAllowed && !recoveredTarget) {
+      const finding = task.finding_id && findingFor(state, task.finding_id)?.record;
+      fail(finding?.attempts >= state.config.max_attempts ? 'ATTEMPT_LIMIT' : 'REPEAT_INTERVENTION', 'This case already exercised the intervention. Use a genuinely changed correction; final sweeps cannot repeat failed work.');
+    }
+  }
+}
+
+function effectiveTarget(state, target) {
+  const seen = new Set(); let current = target;
+  while (current) {
+    if (seen.has(current)) fail('RECOVERY_CYCLE', 'Runtime recovery chain contains a cycle.');
+    seen.add(current);
+    const links = byKind(state.records, 'runtime_recovery').filter(item => item.record.predecessor_target_id === current);
+    if (!links.length) return current;
+    if (links.length > 1) fail('RECOVERY_CONFLICT', 'Runtime generation has conflicting successors.');
+    current = links[0].record.successor_target_id;
+  }
+  return current;
+}
+
+async function refreshFindings(state) {
+  state.findings = [];
+  const roots = [...new Set(byKind(state.records, 'finding').map(item => lineageRoot(state, item.record.finding_id)))];
+  for (const id of roots) {
+    const entry = byKind(state.records, 'finding').find(item => item.record.finding_id === id);
+    const members = byKind(state.records, 'finding').filter(item => lineageRoot(state, item.record.finding_id) === id);
+    const record = structuredClone(entry.record);
+    record.lineage_id = id;
+    record.related_finding_ids = members.map(item => item.record.finding_id);
+    record.case_ids = [...new Set(members.flatMap(item => item.record.case_ids))].sort();
+    record.source_record_ids = [...new Set(members.flatMap(item => item.record.source_record_ids))];
+    record.priority = members.map(item => item.record.priority).sort()[0];
+    const history = byKind(state.records, 'finding_classification').map(item => item.record).filter(item => lineageRoot(state, item.finding_id) === id).sort((a, b) => a.created_at.localeCompare(b.created_at) || a.record_id.localeCompare(b.record_id));
+    record.classification_history = history;
+    if (history.some(item => item.class === 'PRODUCT_DEFECT') || members.some(item => item.record.class === 'PRODUCT_DEFECT')) record.class = 'PRODUCT_DEFECT';
+    const executions = byKind(state.records, 'execution').map(item => item.record).filter(execution => record.source_record_ids.includes(execution.record_id) || lineageRoot(state, state.tasks.find(task => task.task_id === execution.task_id)?.finding_id) === id);
+    record.attempt_rounds = []; record.attempt_mapping_problems = [];
+    for (const execution of executions.filter(item => item.execution_status !== 'NOT_RUN')) {
+      const task = state.tasks.find(item => item.task_id === execution.task_id);
+      const intervention = interventionFor(state, task || {});
+      const attemptId = task?.attempt_id || attemptIdentity(intervention);
+      if (!task?.attempt_id && task?.finding_id && !task.prior_context && intervention.kind === 'BASELINE' && task.purpose !== 'initial') record.attempt_mapping_problems.push(execution.record_id);
+      record.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id, attempt_id: record.attempt_mapping_problems.includes(execution.record_id) ? `LEGACY-${execution.record_id}` : attemptId });
+    }
+    // Retain unresolvable historical entries rather than silently forgetting spent corrections.
+    for (const round of members.flatMap(item => item.record.attempt_rounds)) if (!record.attempt_rounds.some(item => item.execution_record_id === round.execution_record_id)) { record.attempt_rounds.push({ ...round, attempt_id: round.attempt_id || `LEGACY-${round.execution_record_id}` }); record.attempt_mapping_problems.push(round.execution_record_id); }
+    record.attempt_ids = [...new Set(record.attempt_rounds.map(item => item.attempt_id))];
+    record.attempts = record.attempt_ids.length;
+    const related = kind => completedRecords(state.records, kind).map(item => item.record).filter(item => lineageRoot(state, item.finding_id) === id);
+    record.related_issue_urls = [...new Set([...members.map(item => item.record.issue_url), ...related('ticket').map(item => item.issue_url)].filter(Boolean))];
+    if (record.related_issue_urls.length) record.issue_url ||= record.related_issue_urls[0];
+    record.pr_urls = [...new Set([...members.flatMap(item => item.record.pr_urls || []), ...related('implementation').map(item => item.pr_url)])];
+    record.authorized = false;
+    for (const execution of executions) {
+      const verdict = latestVerdict(state, item => item.execution_record_id === execution.record_id);
+      if (verdict?.outcome === 'FAIL' && execution.target_id === state.config.final_target_id && !(await sealedProofProblems(state, execution, verdict)).length) record.authorized = true;
+    }
+    if (!['RESOLVED', 'OUT_OF_SCOPE'].includes(record.state) && record.attempts >= state.config.max_attempts) record.state = 'EXHAUSTED';
+    state.findings.push({ path: entry.path, record });
+  }
+}
+
+export async function resolveFindings(campaign, records) {
+  await loadDependencies();
+  const state = records ? { campaign, records, config: records.find(item => item.record.kind === 'campaign')?.record, tasks: byKind(records, 'task').map(item => item.record) } : await snapshot(campaign);
+  if (!state.config) fail('INVALID_CAMPAIGN', 'Campaign record is missing.');
+  if (records) await refreshFindings(state);
+  return { findings: effectiveFindings(state).map(item => item.record), relationships: byKind(state.records, 'finding_link').map(item => item.record) };
 }
 
 async function recordFinding(state, round, outcome, problems) {
   if (outcome === 'PASS') return null;
   const execution = round.execution;
   const contextFinding = round.context.finding_ids[0];
-  let existing = contextFinding ? findingFor(state, contextFinding) : byKind(state.records, 'finding').find(item => item.record.scope === 'in_scope' && item.record.class !== 'SIDE_FINDING' && item.record.state !== 'RESOLVED' && item.record.case_ids.includes(execution.case_id));
-  if (existing) {
-    if (existing.record.class === 'SIDE_FINDING' && outcome === 'FAIL' && round.spec.confirms_finding_id === existing.record.finding_id) {
-      existing.record = { ...existing.record, class: 'PRODUCT_DEFECT', source_record_ids: [...new Set([...existing.record.source_record_ids, execution.record_id, ...round.reviews.map(item => item.record_id)])] };
-      await writeRecord(state.campaign, existing.path, existing.record, { immutable: false });
-    }
-    return existing.record.finding_id;
-  }
-  const id = next(byKind(state.records, 'finding').map(item => item.record.finding_id), 'F', 4);
+  let existing = contextFinding ? findingFor(state, contextFinding) : effectiveFindings(state).find(item => item.record.scope === 'in_scope' && item.record.class !== 'SIDE_FINDING' && item.record.state !== 'RESOLVED' && item.record.case_ids.includes(execution.case_id));
   const disagree = round.spec.expectations.some(expected => new Set(round.reviews.map(item => item.reviews.find(review => review.expectation_id === expected.id).verdict)).size > 1);
   const proposed = round.reviews.flatMap(item => item.findings || []).find(item => item.class !== 'SIDE_FINDING');
   let classification = problems.length ? 'EVIDENCE_CONFLICT' : execution.execution_status === 'NOT_RUN' ? 'ENVIRONMENT_BLOCKER' : disagree ? 'VERIFIER_DISAGREEMENT' : outcome === 'FAIL' ? 'PRODUCT_DEFECT' : 'EVIDENCE_GAP';
-  if (proposed && !problems.length && !disagree && outcome !== 'NOT_RUN') classification = proposed.class;
-  const attempts = execution.execution_status === 'NOT_RUN' ? 0 : 1;
-  const finding = { ...common(state.config, 'finding', id), finding_id: id, class: classification, priority: round.spec.expectations.map(item => item.priority).sort()[0], case_ids: [execution.case_id], source_record_ids: [execution.record_id, ...round.reviews.map(item => item.record_id)], scope: 'in_scope', state: attempts >= state.config.max_attempts ? 'EXHAUSTED' : 'OPEN', lineage_id: id, attempts, attempt_rounds: attempts ? [{ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id }] : [], summary: proposed?.summary || `${execution.case_id}/${execution.round_id}: ${classification.toLowerCase().replaceAll('_', ' ')}` };
-  if (problems.length) finding.reason_code = problems.some(item => item.type === 'MISSING_ARTIFACT') ? 'MISSING_ARTIFACT' : 'EVIDENCE_CHANGED';
-  else if (execution.blocker) finding.reason_code = execution.blocker.reason_code;
-  const relative = `findings/${id}-${execution.case_id.toLowerCase()}/00-finding.record.yaml`;
-  await writeRecord(state.campaign, relative, finding);
-  state.records.push({ record: finding, path: relative });
+  if (proposed && proposed.class !== 'PRODUCT_DEFECT' && !problems.length && !disagree && outcome !== 'NOT_RUN' && outcome !== 'FAIL') classification = proposed.class;
+  const requestedRoots = [...new Set(round.reviews.flatMap(item => item.findings || []).filter(item => item.class !== 'SIDE_FINDING' && item.lineage_id).map(item => lineageRoot(state, item.lineage_id)))];
+  if (requestedRoots.length > 1 || (existing && requestedRoots.length && requestedRoots[0] !== existing.record.finding_id)) fail('LINEAGE_CONFLICT', 'Conflicting finding roots require a supported finding link after conflicting work is quiescent.');
+  if (requestedRoots.length && classification === 'PRODUCT_DEFECT') existing = findingFor(state, requestedRoots[0]);
+  const id = existing?.record.finding_id || next(byKind(state.records, 'finding').map(item => item.record.finding_id), 'F', 4);
+  const sources = [execution.record_id, ...round.reviews.map(item => item.record_id)];
+  if (!existing) {
+    const attempts = execution.execution_status === 'NOT_RUN' ? 0 : 1;
+    const finding = { ...common(state.config, 'finding', id), finding_id: id, class: classification, priority: round.spec.expectations.map(item => item.priority).sort()[0], case_ids: [execution.case_id], source_record_ids: sources, scope: 'in_scope', state: attempts >= state.config.max_attempts ? 'EXHAUSTED' : 'OPEN', lineage_id: id, attempts, attempt_rounds: attempts ? [{ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id }] : [], summary: proposed?.summary || `${execution.case_id}/${execution.round_id}: ${classification.toLowerCase().replaceAll('_', ' ')}` };
+    if (problems.length) finding.reason_code = problems.some(item => item.type === 'MISSING_ARTIFACT') ? 'MISSING_ARTIFACT' : 'EVIDENCE_CHANGED';
+    else if (execution.blocker) finding.reason_code = execution.blocker.reason_code;
+    existing = { record: finding, path: `findings/${id}-${execution.case_id.toLowerCase()}/00-finding.record.yaml` };
+    await writeRecord(state.campaign, existing.path, finding); state.records.push(existing);
+  } else {
+    const raw = byKind(state.records, 'finding').find(item => item.record.finding_id === id);
+    raw.record = { ...raw.record, case_ids: [...new Set([...existing.record.case_ids, execution.case_id])], source_record_ids: [...new Set([...existing.record.source_record_ids, ...sources])], class: existing.record.class === 'PRODUCT_DEFECT' ? 'PRODUCT_DEFECT' : classification };
+    await writeRecord(state.campaign, raw.path, raw.record, { immutable: false });
+  }
+  const historyId = `CLASS-${id}-${execution.record_id}-${digest(sources).slice(0, 8)}`;
+  if (!state.records.some(item => item.record.record_id === historyId)) {
+    const record = { ...common(state.config, 'finding_classification', historyId), finding_id: id, class: classification, execution_record_id: execution.record_id, evidence_record_ids: sources };
+    const relative = `${path.posix.dirname(existing.path)}/classifications/${historyId}.record.yaml`;
+    await writeRecord(state.campaign, relative, record); state.records.push({ record, path: relative });
+  }
+  await refreshFindings(state);
   return id;
 }
 
@@ -821,6 +980,31 @@ async function recordSideFindings(state, round) {
     ids.push(id);
   }
   return [...new Set(ids)];
+}
+
+async function linkFinding(options, state) {
+  const request = await readYaml(required(options, 'file')); validateShape('finding_link_request', request);
+  const from = findingFor(state, request.from_finding_id), into = findingFor(state, request.into_finding_id);
+  if (!from || !into) fail('FINDING_NOT_FOUND', 'Link only findings owned by this campaign.');
+  if (from.record.finding_id === into.record.finding_id) fail('LINEAGE_CYCLE', 'Findings already share a root; a reverse or self link would create a cycle.');
+  if (from.record.scope !== 'in_scope' || into.record.scope !== 'in_scope') fail('SCOPE_OBLIGATION', 'Both linked roots must be in scope.');
+  const ids = [from.record.finding_id, into.record.finding_id];
+  const busy = state.tasks.filter(task => ids.includes(lineageRoot(state, task.finding_id)) && !task.worker_finished && !['DONE', 'CANCELLED'].includes(task.state));
+  if (busy.length) fail('LINEAGE_BUSY', 'Finish or interrupt conflicting root work and confirm host termination before linking.', busy.map(item => item.task_id), 4);
+  const evidence = request.evidence_record_ids.map(id => state.records.find(item => item.record.record_id === id) || fail('MISSING_PROVENANCE', 'Link evidence must name accepted records in this campaign.'));
+  for (const root of [from.record, into.record]) {
+    let supported = false;
+    for (const item of evidence) {
+      const execution = item.record.kind === 'execution' ? item.record : byKind(state.records, 'execution').find(e => e.record.record_id === item.record.execution_record_id)?.record;
+      const verdict = execution && latestVerdict(state, v => v.execution_record_id === execution.record_id);
+      if (execution && root.case_ids.includes(execution.case_id) && verdict?.outcome === 'FAIL' && !(await sealedProofProblems(state, execution, verdict)).length) supported = true;
+    }
+    if (!supported) fail('UNSUPPORTED_LINEAGE', 'Link evidence must support a current independently reviewed failure on each root.');
+  }
+  const record = { ...common(state.config, 'finding_link', `LINK-${from.record.finding_id}-${into.record.finding_id}`), ...request, from_finding_id: from.record.finding_id, into_finding_id: into.record.finding_id };
+  await writeRecord(state.campaign, `findings/relationships/${record.record_id}.record.yaml`, record);
+  await synchronizeDerived(await snapshot(state.campaign));
+  return { relationship: record, effective_finding_id: into.record.finding_id, next_actions: ['RECONCILE'] };
 }
 
 async function decideFinding(options, state) {
@@ -845,22 +1029,23 @@ async function synchronizeDerived(state) {
     state.config = { ...state.config, final_target_id: latest.new_target_id, state: 'OPEN' };
     await writeRecord(state.campaign, '00-campaign.record.yaml', state.config, { immutable: false });
   }
-  for (const entry of byKind(state.records, 'finding')) {
+  await refreshFindings(state);
+  for (const entry of effectiveFindings(state)) {
     const finding = structuredClone(entry.record);
     finding.state = 'OPEN';
-    const decision = byKind(state.records, 'scope_decision').filter(item => item.record.finding_id === finding.finding_id).at(-1)?.record;
+    const decision = byKind(state.records, 'scope_decision').filter(item => lineageRoot(state, item.record.finding_id) === finding.finding_id).at(-1)?.record;
     if (decision) { finding.scope = decision.scope; finding.scope_decision = { decision: decision.scope, reason: decision.reason, source: decision.source }; }
     const confirmations = byKind(state.records, 'expectations').filter(item => item.record.confirms_finding_id === finding.finding_id).map(item => item.record.case_id);
     if (confirmations.length) { finding.confirmation_case_ids = [...new Set(confirmations)]; finding.case_ids = [...new Set([...finding.case_ids, ...confirmations])]; }
     for (const { record: execution } of byKind(state.records, 'execution')) {
       const task = findTask(state, execution.task_id);
-      if (task.finding_id === finding.finding_id && execution.execution_status !== 'NOT_RUN' && !finding.attempt_rounds.some(item => item.execution_record_id === execution.record_id)) finding.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id });
+      if (lineageRoot(state, task.finding_id) === finding.finding_id && execution.execution_status !== 'NOT_RUN' && !finding.attempt_rounds.some(item => item.execution_record_id === execution.record_id)) finding.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id });
     }
-    finding.attempts = finding.attempt_rounds.length;
-    const diagnoses = completedRecords(state.records, 'diagnosis').filter(item => item.record.finding_id === finding.finding_id && item.record.conclusion === 'confirmed');
-    const ticket = completedRecords(state.records, 'ticket').find(item => item.record.finding_id === finding.finding_id)?.record;
-    const implementations = completedRecords(state.records, 'implementation').map(item => item.record).filter(item => item.finding_id === finding.finding_id);
-    const integrated = integrations.some(item => item.finding_id === finding.finding_id);
+    finding.attempts = finding.attempt_ids.length;
+    const diagnoses = completedRecords(state.records, 'diagnosis').filter(item => lineageRoot(state, item.record.finding_id) === finding.finding_id && item.record.conclusion === 'confirmed');
+    const ticket = completedRecords(state.records, 'ticket').find(item => lineageRoot(state, item.record.finding_id) === finding.finding_id)?.record;
+    const implementations = completedRecords(state.records, 'implementation').map(item => item.record).filter(item => lineageRoot(state, item.finding_id) === finding.finding_id);
+    const integrated = integrations.some(item => lineageRoot(state, item.finding_id) === finding.finding_id);
     if (diagnoses.length) finding.state = 'DIAGNOSED';
     if (ticket) { finding.issue_url = ticket.issue_url; finding.state = 'TICKETED'; }
     if (implementations.length) { finding.pr_urls = [...new Set(implementations.map(item => item.pr_url))]; finding.state = 'IMPLEMENTED'; }
@@ -879,7 +1064,10 @@ async function synchronizeDerived(state) {
     else if (finding.scope === 'in_scope' && finding.attempts >= state.config.max_attempts) finding.state = 'EXHAUSTED';
     await writeRecord(state.campaign, entry.path, finding, { immutable: false });
     entry.record = finding;
+    const raw = byKind(state.records, 'finding').find(item => item.record.finding_id === finding.finding_id);
+    raw.record = finding;
   }
+  await refreshFindings(state);
 }
 
 async function reconcile(state) {
@@ -915,6 +1103,7 @@ async function reconcile(state) {
   }
   const fresh = await snapshot(state.campaign);
   await synchronizeDerived(fresh);
+  await refreshFindings(fresh);
   const assessed = await assessState(fresh);
   for (const item of assessed.cases) {
     const spec = specFor(fresh, item.case_id, item.spec_revision);
@@ -937,15 +1126,24 @@ export async function run(command, options = {}) {
     if (['task dispatch', 'task bind', 'task close', 'task interrupt'].includes(command)) return transition(command, options, state);
     if (command === 'submit') return submit(options, state);
     if (command === 'plan accept') return acceptPlanCommand(options, state);
+    if (command === 'finding link') return linkFinding(options, state);
     if (command === 'finding decide') return decideFinding(options, state);
     if (command === 'status') return assessState(state);
     if (command === 'reconcile') return reconcile(state);
     if (command === 'records') {
-      let records = state.records.map(item => item.record);
+      let records = state.records.filter(item => item.record.kind !== 'finding').map(item => item.record).concat(effectiveFindings(state).map(item => item.record));
+      let effectiveId;
+      if (options['finding-id']) {
+        const root = findingFor(state, options['finding-id']);
+        if (!root) fail('FINDING_NOT_FOUND', 'No matching finding in this campaign.');
+        effectiveId = root.record.finding_id;
+        const sources = new Set(root.record.source_record_ids);
+        records = records.filter(record => record.kind === 'finding' ? record.finding_id === effectiveId : lineageRoot(state, record.finding_id) === effectiveId || record.kind === 'finding_link' && lineageRoot(state, record.into_finding_id) === effectiveId || sources.has(record.record_id) || record.case_id && root.record.case_ids.includes(record.case_id));
+      }
       for (const field of ['kind', 'record-id', 'case-id', 'round-id']) if (options[field]) records = records.filter(record => record[field.replaceAll('-', '_')] === options[field]);
       if (trueFlag(options.ready)) { const ready = (await assessState(state)).ready; records = records.filter(record => record.kind === 'task' && ready.includes(record.task_id)); }
       if (options.format && !['json', 'yaml-stream'].includes(options.format)) fail('USAGE', '--format must be json or yaml-stream.', [], 2);
-      return options.format === 'yaml-stream' ? { yaml_stream: records.map(record => `---\n${getDependencies().YAML.stringify(record)}`).join('') } : { records };
+      return options.format === 'yaml-stream' ? { yaml_stream: records.map(record => `---\n${getDependencies().YAML.stringify(record)}`).join('') } : { records, ...(effectiveId ? { effective_finding_id: effectiveId } : {}) };
     }
     fail('USAGE', `Unknown core command ${command}.`, [], 2);
   };
