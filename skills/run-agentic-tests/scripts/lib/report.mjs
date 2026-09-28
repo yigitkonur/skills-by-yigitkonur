@@ -97,7 +97,7 @@ async function build(campaign) {
     for (const { record: execution, path: executionPath } of executions) {
       const verdict = all.find(record => record.kind === 'verdict' && record.execution_record_id === execution.record_id);
       const spec = all.find(record => record.kind === 'expectations' && record.case_id === case_id && record.spec_revision === execution.spec_revision);
-      const verifications = verdict ? verdict.verification_record_ids.map(id => byId.get(id)).filter(Boolean) :
+      const verifications = verdict ? verdict.verification_record_ids.map(id => byId.get(id)).filter(record => record?.kind === 'verification') :
         all.filter(record => record.kind === 'verification' && record.execution_record_id === execution.record_id);
       const roundGaps = [];
       let invalidEvidence = false;

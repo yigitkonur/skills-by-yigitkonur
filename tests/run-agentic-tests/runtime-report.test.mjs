@@ -526,3 +526,15 @@ test('a partially reviewed round shows its accepted observations and review whil
   assert.match(html, /First independent review inspected this current response/);
   assert.match(html, /VERIFICATION_REQUIRED/);
 });
+
+test('a verdict pointing at the wrong record kind produces an invalid-evidence report instead of aborting', async t => {
+  const f = await fixture(t);
+  await reportFixture(f);
+  const file = path.join(f.campaign, 'cases/T0001-checkout/rounds/R002/30-verdict--FAIL.record.yaml');
+  const verdict = await readYaml(file);
+  verdict.verification_record_ids = ['F0001'];
+  await writeFile(file, JSON.stringify(verdict));
+  const built = await report('report build', { campaign: f.campaign });
+  assert.equal(built.summary.counts.INVALID_EVIDENCE, 1);
+  assert.ok(built.summary.gaps.some(gap => /verifier record is missing/i.test(gap)));
+});
