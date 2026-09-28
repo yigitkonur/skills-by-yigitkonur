@@ -70,6 +70,23 @@ When managing scarce host resources (e.g. exclusive compiler instances, database
    - Supervisors monitor active lanes using short, bounded timeouts (`herdr agent wait <lane> --timeout 5000`) or periodic inspection sweeps.
    - When a review passes, it enters the serial integration queue immediately.
 
+### 5b. Worktree Removal Gate & Herdr Defaults (Integration Authority)
+- Worktree cleanup is a separate engineering gate; terminal closure does NOT authorize deleting checkouts.
+- **Understanding Herdr's Default Worktree Behavior**:
+  - `herdr worktree remove --workspace <WS_ID>` deletes the checkout directory on disk and unregisters the workspace from Herdr.
+  - **Never Deletes Branch**: Neither Herdr nor Git deletes the local branch when removing a worktree. Local branch deletion must be done after checkout removal (`git branch -D <BRANCH>`).
+  - **Refuses Dirty Trees**: Removal fails if uncommitted changes exist (never pass `--force` without verifying changes are disposable).
+  - **`workspace close` vs `worktree remove`**: Running `herdr workspace close <WS_ID>` alone closes *only* Herdr UI/session state, leaving the physical directory and Git worktree tracking orphaned on disk. Always use `herdr worktree remove --workspace <WS_ID>`.
+- **Mandatory Merge Integrity Gate**: NEVER remove a worktree until the PR is confirmed merged into `main` (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`). Removing a worktree with unmerged commits permanently destroys work.
+- **Clean Teardown Sequence**:
+  1. Confirm PR status is MERGED: `gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || exit 1`.
+  2. Confirm clean tree: `test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || exit 1`.
+  3. Retire agent panes: `herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true` and `herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true`.
+  4. Remove checkout and workspace: `herdr worktree remove --workspace "$WS_ID"` (or `git worktree remove "$WORKTREE_PATH"` + `herdr workspace close "$WS_ID"`).
+  5. Delete local branch: `git -C "$REPO_ROOT" branch -D "$BRANCH"`.
+  6. Prune remote references: `git -C "$REPO_ROOT" remote prune origin`.
+  7. Verify zero lingering worktrees: `git -C "$REPO_ROOT" worktree list` (only primary root remains).
+
 ---
 
 ## 6. Finite Review Bounds & Failure Budgets

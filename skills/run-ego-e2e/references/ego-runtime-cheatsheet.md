@@ -167,3 +167,41 @@ const isDismissed = await js(String.raw`(() => {
 if (!isDismissed) throw new Error('Modal failed to close on Escape key');
 ```
 
+### Trap 7: Portfolio Landing Route vs Entity View Disambiguation
+When navigating to the root path (`/`), modern SPAs frequently load a portfolio summary or multi-brand index rather than a single project's overview dashboard:
+```js
+// Probe whether the view is at the top-level collection or an active entity:
+const viewInfo = await js(String.raw`(() => {
+  const isPortfolio = !!document.querySelector('.home, .all-assets-toolbar, .all-assets-table');
+  const hasAssetCards = document.querySelectorAll('.asset-card, .brand-card').length;
+  const hasScorecards = document.querySelectorAll('.kpi-card, .metric-card, .ov-kpi-card').length;
+  return { isPortfolio, hasAssetCards, hasScorecards };
+})()`);
+
+// If on portfolio view, either assert portfolio coverage or navigate into an entity:
+if (viewInfo.isPortfolio && viewInfo.hasAssetCards > 0) {
+  cliLog(`Portfolio detected with ${viewInfo.hasAssetCards} assets. Navigating to primary asset...`);
+  await click('.asset-card:first-child', { label: 'Open First Brand Asset' });
+  await wait(2);
+}
+```
+
+### Trap 8: Dynamic Dev Auth Gate & Test Bypass Interception
+Preview environments or test builds may present an authentication gate or dev bypass screen that blocks route navigation:
+```js
+const snapshot = await snapshotText();
+if (snapshot.includes('Bypass login gate') || snapshot.includes('Sign in')) {
+  cliLog('Auth gate detected. Triggering test bypass...');
+  await js(String.raw`(() => {
+    if (typeof window.zeoBypassLogin === 'function') {
+      window.zeoBypassLogin();
+    } else {
+      const btn = Array.from(document.querySelectorAll('button, a')).find(el => el.innerText.includes('Bypass'));
+      if (btn) btn.click();
+    }
+  })()`);
+  await wait(2);
+}
+```
+
+

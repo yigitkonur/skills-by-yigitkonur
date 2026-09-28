@@ -135,3 +135,76 @@ If conflict investigation reveals that the target branch baseline has shifted fu
 git rebase --abort
 ```
 Safe abort is authorized to return the branch to its clean pre-rebase state. Record the technical conflict details and escalate to the supervisor.
+
+---
+
+## 5. Worktree Teardown & Lifecycle Retirement Sequence
+
+Execute these stages in strict order:
+
+### Stage 1: Merge Confirmation Gate
+> [!CAUTION]
+> **NEVER remove a worktree until the PR is confirmed submitted and merged into `main`** (or explicitly abandoned). Removing a worktree with unmerged, unpushed commits permanently destroys work.
+```bash
+# Confirm PR status is MERGED on remote (abort if not merged):
+gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED" || { echo "PR $PR_URL is not MERGED; aborting teardown"; exit 1; }
+```
+
+### Stage 2: Cleanliness Verification
+Confirm zero uncommitted or untracked work remains in the checkout (abort if dirty):
+```bash
+test -z "$(git -C "$WORKTREE_PATH" status --porcelain)" || { echo "Worktree $WORKTREE_PATH is dirty; aborting teardown"; exit 1; }
+```
+
+### Stage 3: Retire Agent Panes in Workspace
+```bash
+herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true
+herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true
+```
+
+### Stage 4: Remove Worktree & Workspace
+Safely delete the checkout and unregister from Herdr:
+```bash
+# Preferred (Herdr socket API):
+herdr worktree remove --workspace "$WS_ID"
+
+# Fallback (Manual Git + Herdr):
+git worktree remove "$WORKTREE_PATH"
+herdr workspace close "$WS_ID"
+```
+
+### Stage 5: Delete Local Branch & Prune Tracking
+Now that the branch is no longer checked out anywhere, delete it locally:
+```bash
+git -C "$REPO_ROOT" branch -d "$BRANCH" 2>/dev/null || git -C "$REPO_ROOT" branch -D "$BRANCH"
+git -C "$REPO_ROOT" remote prune origin
+```
+
+### Stage 6: Verify Zero Lingering Worktrees
+```bash
+git -C "$REPO_ROOT" worktree list
+# Must only output the primary repo root!
+```
+
+### Stage 7: Close Parent Meta/Tracking Issues
+Close the tracking or umbrella issue with evidence:
+```bash
+gh issue close "$ISSUE_ID" --comment "Issue resolved by $PR_URL, rebased and merged into main."
+```
+
+### Stage 8: Post-Milestone Pane & Agent Retirement (CTO Obligation)
+> [!IMPORTANT]
+> **Zero Idle Agent Policy**: When a wave or entire milestone is complete (all tickets closed, all PRs merged), **immediately close all unrelated panes, tabs, and agents**.
+> - **Engineering Manager Retirement**: If no further waves or dispatch tasks remain for the Engineering Manager, the CTO must cleanly close the EM agent pane:
+>   ```bash
+>   herdr pane close "$EM_PANE_ID"
+>   ```
+> - **Worker & Reviewer Pane Cleanup**: Close any lingering worker, reviewer, or temporary execution panes/tabs (`herdr pane close <PANE_ID>` or `herdr tab close <TAB_ID>`).
+> - Never leave idle, orphaned AI agents running in the background consuming memory, API context, and cluttering `herdr pane list`.
+
+### Stage 9: Notify Human User
+```bash
+herdr notification show "Integration & Teardown Complete" \
+  --body "All candidate PRs merged to main. Worktrees, branches, and finished agent panes cleanly retired." \
+  --sound done
+```
