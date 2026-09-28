@@ -364,7 +364,7 @@
     {
       "name": "audit-skill-by-derailment",
       "source": "./",
-      "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task or analyzing live Herdr agent pane execution scrollbacks across repositories.",
+      "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task, orchestrating worker agents in Herdr tabs, or analyzing live agent execution scrollbacks across repositories.",
       "version": "1.0.84",
       "category": "skills-meta",
       "strict": false,
