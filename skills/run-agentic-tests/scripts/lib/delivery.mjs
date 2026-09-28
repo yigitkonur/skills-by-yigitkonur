@@ -5,6 +5,19 @@ const execute = promisify(execFile);
 const deliveryRoles = new Set(['ticket-writer', 'implementer', 'integrator']);
 export const isDeliveryRole = role => deliveryRoles.has(role);
 
+function gitEnvironment() {
+  const env = { ...process.env, GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' };
+  for (const name of Object.keys(env)) if (/^GIT_CONFIG(?:_|$)/.test(name) || ['GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE'].includes(name)) delete env[name];
+  return env;
+}
+
+export async function resolveWorktreeBase(project, revision = 'HEAD') {
+  try {
+    const { stdout } = await execute('git', ['-C', project, 'rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`], { env: gitEnvironment(), timeout: 3000 });
+    return stdout.trim();
+  } catch { throw new CliError('WORKTREE_BASE_REQUIRED', 'Implementation requires a real Git commit in the tested project. Commit the approved baseline or restore the attested commit before assigning a worktree.', 4); }
+}
+
 export function githubRepository(value) {
   const match = String(value).trim().match(/^(?:git@github\.com:|(?:https?|ssh):\/\/(?:git@)?github\.com\/)([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/i);
   return match ? match[1].toLowerCase() : null;
@@ -13,9 +26,7 @@ export function githubRepository(value) {
 export async function discoverRepository(project, remote = 'origin') {
   if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith('-')) throw new CliError('GITHUB_REMOTE_REQUIRED', 'Select a named remote of the tested project.');
   try {
-    const env = { ...process.env, GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' };
-    for (const name of Object.keys(env)) if (/^GIT_CONFIG(?:_|$)/.test(name) || ['GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE'].includes(name)) delete env[name];
-    const { stdout } = await execute('git', ['-C', project, 'remote', 'get-url', remote], { env, timeout: 3000 });
+    const { stdout } = await execute('git', ['-C', project, 'remote', 'get-url', remote], { env: gitEnvironment(), timeout: 3000 });
     const repository = githubRepository(stdout);
     return repository ? { remote, repository } : null;
   } catch { return null; }

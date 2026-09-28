@@ -4,13 +4,14 @@ import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { tmpdir } from 'node:os';
 import { CliError, validateRecord, validateShape } from './contracts.mjs';
 import { loadDependencies, getDependencies, dependencyLocation } from './dependencies.mjs';
 import { readYaml, readCampaign, readRecords, writeRecord, withController, containedPath, stableStringify } from './store.mjs';
 import { renderHandoff } from './handoffs.mjs';
 import { resolveInput, inputLabel } from './inputs.mjs';
 import { verifySource, sourceIdentity } from './source.mjs';
-import { discoverRepository, verifyRepository, verifyDeliveryUrls, isDeliveryRole } from './delivery.mjs';
+import { discoverRepository, verifyRepository, verifyDeliveryUrls, isDeliveryRole, resolveWorktreeBase } from './delivery.mjs';
 
 const execute = promisify(execFile);
 const now = () => new Date().toISOString();
@@ -191,6 +192,56 @@ async function acceptPlanCommand(options, state) {
   return { plan_id: plan.record_id, target_id: plan.target_id, cases: plan.cases.length, subject_digest: digest(plan), next_actions: ['DISPATCH_READY_CASES'] };
 }
 
+const within = (root, location) => { const relative = path.relative(root, location); return !relative || !relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative); };
+async function futureRealpath(location) {
+  try { return await realpath(location); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return path.join(await futureRealpath(path.dirname(location)), path.basename(location));
+  }
+}
+
+async function allocateWorktree(state, task) {
+  const roots = await Promise.all([state.config.project, state.campaign, ...byKind(state.records, 'environment').map(item => item.record.source.provider?.root || item.record.source.worktree || item.record.command.cwd)].map(futureRealpath));
+  for (const base of [path.dirname(state.config.project), tmpdir()]) {
+    const candidate = await futureRealpath(path.join(base, '.agentic-test-worktrees', state.config.campaign_id, task.task_id));
+    if (!roots.some(root => within(root, candidate))) return candidate;
+  }
+  fail('WORKTREE_LOCATION_REQUIRED', 'No isolated implementation location exists outside the tested source roots. Narrow the declared source root before assigning implementation.');
+}
+
+async function auditInputs(state, subject, phase) {
+  const paths = [subject.path];
+  const add = item => {
+    if (!item) return;
+    paths.push(item.path, ...(item.record.evidence || []).map(artifact => artifact.path), ...(item.record.artifacts || []).map(artifact => artifact.path));
+  };
+  for (const entry of subject.record.cases) {
+    const spec = specFor(state, entry.case_id, entry.spec_revision);
+    if (spec) paths.push(...['01-test-case.md', '02-expectations.record.yaml', '03-how-to-run.md'].map(file => `${path.posix.dirname(spec.path)}/${file}`));
+    add(environmentFor(state, entry.target_id));
+  }
+  if (phase === 'closure') {
+    const assessment = await assessState(state);
+    add(environmentFor(state, assessment.latest_target_id));
+    for (const current of assessment.cases) {
+      const execution = state.records.find(item => item.record.record_id === current.execution_record_id);
+      if (!execution) continue;
+      for (const item of state.records.filter(item => item.record.case_id === current.case_id && item.record.round_id === execution.record.round_id && ['round_context', 'execution', 'verification', 'verdict'].includes(item.record.kind))) add(item);
+    }
+    const roots = new Set(effectiveFindings(state).filter(item => item.record.case_ids.some(id => subject.record.cases.some(entry => entry.case_id === id)) || assessment.obligations.some(obligation => obligation.finding_id === item.record.finding_id)).map(item => item.record.finding_id));
+    for (const item of state.records) {
+      if (['finding', 'finding_classification', 'scope_decision', 'diagnosis', 'ticket', 'implementation', 'integration'].includes(item.record.kind) && roots.has(lineageRoot(state, item.record.finding_id)) || item.record.kind === 'finding_link' && roots.has(lineageRoot(state, item.record.into_finding_id)) || item.record.kind === 'runtime_recovery') add(item);
+    }
+    for (const obligation of assessment.obligations) {
+      if (obligation.task_id) add(state.records.find(item => item.record.kind === 'task' && item.record.task_id === obligation.task_id));
+      if (obligation.record_id) add(state.records.find(item => item.record.record_id === obligation.record_id));
+    }
+  }
+  // Missing artifact bytes are an audit finding; their accepted record still routes
+  // the reference without making the auditor's task impossible to dispatch.
+  return [...new Set(paths)].filter(relative => existsSync(containedPath(state.campaign, relative)));
+}
+
 async function createTask(options, state, suppliedRequest) {
   const request = suppliedRequest || await readYaml(required(options, 'request'));
   validateShape('task_request', request);
@@ -236,7 +287,7 @@ async function createTask(options, state, suppliedRequest) {
     task.phase ||= 'plan';
     const subject = state.records.find(item => item.record.kind === 'plan' && item.record.record_id === task.plan_id);
     if (!subject) fail('PLAN_NOT_FOUND', 'Submit the plan before assigning its audit.');
-    task.required_inputs = [...new Set([...task.required_inputs, subject.path])];
+    task.required_inputs = [...new Set([...task.required_inputs, ...await auditInputs(state, subject, task.phase)])];
     const reviewedBefore = state.tasks.some(item => item.role === 'plan-auditor' && item.plan_id === task.plan_id && item.phase === task.phase);
     addOutput('plan_audit', `AUDIT-${task.plan_id}-${task.phase}-${id}`, `plans/${task.plan_id}/${task.phase === 'plan' ? `20-audit${reviewedBefore ? `-${id}` : ''}` : `30-closure-${id}`}.record.yaml`);
   } else if (task.role === 'environment-operator') {
@@ -261,7 +312,8 @@ async function createTask(options, state, suppliedRequest) {
       const reservation = caseReservationProblems(state, task);
       if (reservation.length) fail(reservation[0].code, 'This case/spec/target already has reserved work or evidence awaiting independent review.', reservation, 4);
       task.intervention = interventionFor(state, task);
-      task.attempt_id = attemptIdentity(task.intervention);
+      if (task.intervention.kind === 'EXECUTION_APPROACH') task.intervention_origin ||= task.finding_id || task.task_id;
+      task.attempt_id = attemptIdentity(task.intervention, task);
       validateIntervention(state, task);
       if (task.finding_id) {
         const finding = findingFor(state, task.finding_id).record;
@@ -310,6 +362,7 @@ async function createTask(options, state, suppliedRequest) {
     if (finding.record.scope !== 'in_scope') fail('SCOPE_OBLIGATION', 'Confirm the finding in scope before diagnosis, tickets, or fixes.');
     const root = path.posix.dirname(finding.path);
     task.case_ids = finding.record.case_ids.slice(0, 4);
+    task.related_case_ids = finding.record.case_ids;
     task.required_inputs = [...new Set([...task.required_inputs, finding.path, ...finding.record.source_record_ids.map(id => state.records.find(item => item.record.record_id === id)?.path).filter(Boolean)])];
     task.resources.push({ name: `finding:${task.finding_id}`, mode: 'write' });
     const diagnosis = completedRecords(state.records, 'diagnosis').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id && item.record.conclusion === 'confirmed').at(-1);
@@ -327,7 +380,6 @@ async function createTask(options, state, suppliedRequest) {
         if (finding.record.attempts >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'Do not begin another fix when no independent retest attempts remain.');
         if (!finding.record.issue_url) fail('TICKET_REQUIRED', 'A confirmed implementation-bound defect needs its deduplicated ticket.');
         const attempt = Math.max(0, ...completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).map(item => item.record.attempt)) + 1;
-        if (attempt >= state.config.max_attempts) fail('ATTEMPT_LIMIT', 'No corrective implementation allowance remains.');
         addOutput('implementation', `IMPL-${task.finding_id}-A${String(attempt).padStart(3, '0')}`, `${root}/fixes/A${String(attempt).padStart(3, '0')}/10-implementation.record.yaml`);
       } else {
         const implementation = completedRecords(state.records, 'implementation').filter(item => lineageRoot(state, item.record.finding_id) === task.finding_id).at(-1);
@@ -353,12 +405,24 @@ async function createTask(options, state, suppliedRequest) {
     }
     if (state.tasks.some(existing => existing.outputs.some(other => other.path === output.path) && !(existing.worker_finished && ['INTERRUPTED', 'CANCELLED'].includes(existing.state)))) fail('OUTPUT_CONFLICT', `${output.path} is already assigned.`, [], 4);
   }
+  task.artifact_directory = `tasks/${id}/artifacts`;
+  if (task.role === 'planner') task.companion_paths = { scope: `plans/${task.plan_id}/00-scope.md` };
+  if (task.role === 'ticket-writer') task.companion_paths = { body: `${task.artifact_directory}/issue-body.md` };
+  if (task.role === 'implementer') {
+    task.companion_paths = { pr_body: `${task.artifact_directory}/pr-body.md`, check: `${task.artifact_directory}/developer-check.log` };
+    task.worktree_path = await allocateWorktree(state, task);
+    const source = environmentFor(state, state.config.final_target_id)?.record.source;
+    task.worktree_base = await resolveWorktreeBase(state.config.project, source?.provider?.type === 'git' ? source.attestation?.git_head || source.revision : 'HEAD');
+  }
+  if (task.role === 'environment-operator') task.companion_paths = { setup: `${task.artifact_directory}/setup.md`, configuration: `${task.artifact_directory}/.env` };
   validateRecord(task);
   const drafts = task.outputs.map(output => ({ ...common(state.config, output.kind, output.record_id), task_id: id, actor_id: actor, ...(output.case_id ? { case_id: output.case_id } : {}), ...(task.spec_revision ? { spec_revision: task.spec_revision } : {}), ...(task.target_id ? { [output.kind === 'integration' ? 'new_target_id' : 'target_id']: task.target_id } : {}), ...(task.round_id ? { round_id: task.round_id } : {}) }));
   if (task.role === 'environment-operator') {
     const integration = integrationForTarget(state, task.target_id);
     if (integration) drafts[0].source = { revision: integration.commit };
   }
+  if (task.role === 'ticket-writer') drafts[0].body_path = task.companion_paths.body;
+  if (task.role === 'implementer') Object.assign(drafts[0], { worktree: task.worktree_path, pr_body_path: task.companion_paths.pr_body, checks: [{ artifact_path: task.companion_paths.check }] });
   if (task.role === 'plan-auditor') {
     const subject = state.records.find(item => item.record.record_id === task.plan_id).record;
     Object.assign(drafts[0], { phase: task.phase, subject_record_id: subject.record_id, subject_digest: task.phase === 'closure' ? (await assessState(state)).closure_subject_digest : digest(subject) });
@@ -390,6 +454,9 @@ async function createTask(options, state, suppliedRequest) {
       await writeText(state.campaign, `${root}/03-how-to-run.md`, '# TODO: Write real E2E steps and evidence capture instructions.\n');
     }
   }
+  await mkdir(containedPath(state.campaign, task.artifact_directory), { recursive: true });
+  if (task.role === 'environment-operator') await writeText(state.campaign, `${task.artifact_directory}/.gitignore`, '/.env\n');
+  if (task.companion_paths?.scope && !existsSync(containedPath(state.campaign, task.companion_paths.scope))) await writeText(state.campaign, task.companion_paths.scope, '# Scope\n\nExplain the approved inclusions, exclusions, and sources. The structured plan.scope is the authoritative acceptance contract.\n');
   await writeRecord(state.campaign, taskPath(id), task);
   if (task.role === 'executor') for (const output of task.outputs) {
     const entry = planFor(state).cases.find(item => item.case_id === output.case_id);
@@ -442,7 +509,7 @@ async function eligibility(task, state) {
     if (!finding) reasons.push('FINDING_NOT_FOUND');
     else {
       if (finding.attempt_mapping_problems.length) reasons.push('ATTEMPT_MAPPING_REQUIRED');
-      if (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(task.attempt_id)) reasons.push('ATTEMPT_LIMIT');
+      if (finding.attempts >= state.config.max_attempts && !finding.attempt_ids.includes(attemptIdentity(interventionFor(state, task), task))) reasons.push('ATTEMPT_LIMIT');
 
       for (const { record: execution } of byKind(state.records, 'execution')) {
         const assigned = state.tasks.find(item => item.task_id === execution.task_id);
@@ -675,6 +742,7 @@ async function validateVerification(state, task, record) {
 
 async function validateRoleResult(state, task, record) {
   for (const artifact of record.artifacts || []) {
+    if (task.artifact_directory && !within(containedPath(state.campaign, task.artifact_directory), containedPath(state.campaign, artifact.path)) && !task.required_inputs.includes(artifact.path)) fail('WRONG_ASSIGNMENT', 'Write supporting artifacts only in the assigned artifact directory, or cite an assigned read-only input.');
     const computed = await hashArtifact(state, artifact.path);
     if (artifact.sha256 && artifact.sha256 !== computed.sha256) fail('EVIDENCE_CHANGED', `Role artifact changed: ${artifact.path}`);
     artifact.sha256 = computed.sha256;
@@ -687,19 +755,23 @@ async function validateRoleResult(state, task, record) {
     if (record.conclusion === 'confirmed' && !record.root_cause) fail('UNCONFIRMED_DEFECT', 'A confirmed diagnosis needs a concrete root cause.');
     if (record.evidence_record_ids.some(id => !state.records.some(item => item.record.record_id === id))) fail('MISSING_PROVENANCE', 'Diagnosis references a missing evidence record.');
   } else if (record.kind === 'ticket') {
+    if (task.companion_paths?.body && record.body_path !== task.companion_paths.body) fail('WRONG_ASSIGNMENT', 'Use the assigned issue body path from the task draft.');
     if (record.dedup_marker !== `agentic-tests:${state.config.campaign_id}:${record.finding_id}`) fail('INVALID_DEDUP_MARKER', 'Ticket marker must include the campaign and stable finding ID.');
     await hashArtifact(state, record.body_path);
   } else if (record.kind === 'implementation') {
     const assignedAttempt = Number(task.outputs[0].record_id.match(/-A(\d+)(?:-J\d+)?$/)[1]);
     if (record.attempt !== assignedAttempt) fail('WRONG_ASSIGNMENT', 'Implementation attempt differs from the assigned attempt.');
-    const frozenRoots = byKind(state.records, 'environment').map(item => item.record.source.worktree || item.record.command.cwd);
+    const frozenRoots = byKind(state.records, 'environment').map(item => item.record.source.provider?.root || item.record.source.worktree || item.record.command.cwd);
     const worktree = await realpath(record.worktree);
-    if (frozenRoots.includes(worktree)) fail('FROZEN_SOURCE', 'Implement in a separate worktree from every running target.');
+    if (task.worktree_path && (path.resolve(record.worktree) !== task.worktree_path || worktree !== task.worktree_path)) fail('WRONG_ASSIGNMENT', 'Use the assigned isolated implementation worktree.');
+    if (frozenRoots.some(root => within(root, worktree))) fail('FROZEN_SOURCE', 'Implement in a separate worktree from every running target.');
     if (record.changed_files.some(file => path.isAbsolute(file) || file.split(/[\\/]/).some(part => part === '..' || (part !== '.env.example' && /^\.env(?:\.|$)/.test(part))))) fail('UNSAFE_PATH', 'Changed files must be safe source-relative paths without secrets; .env.example placeholders are allowed.');
+    if (task.companion_paths?.pr_body && record.pr_body_path !== task.companion_paths.pr_body) fail('WRONG_ASSIGNMENT', 'Use the assigned pull request body path from the task draft.');
     const body = await readFile(containedPath(state.campaign, record.pr_body_path), 'utf8');
     if (Array.from(body).length > 50000) fail('PR_BODY_TOO_LONG', 'PR body exceeds 50,000 Unicode characters.');
     if (/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+(?:#[0-9]+|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#[0-9]+|https:\/\/github\.com\/\S+\/issues\/\d+)/i.test(body)) fail('PREMATURE_ISSUE_CLOSURE', 'Use related-issue references until independent retest confirms resolution.');
     for (const check of record.checks) {
+      if (task.artifact_directory && !within(containedPath(state.campaign, task.artifact_directory), containedPath(state.campaign, check.artifact_path))) fail('WRONG_ASSIGNMENT', 'Save developer check output in the assigned artifact directory.');
       await hashArtifact(state, check.artifact_path);
       if (check.exit_code !== 0) fail('FAILED_DEVELOPER_CHECK', 'An implementation ready for integration must pass its declared developer checks.');
     }
@@ -892,16 +964,21 @@ function lineageRoot(state, findingId) {
   return id;
 }
 
-const attemptIdentity = intervention => `ATT-${digest(intervention).slice(0, 16)}`;
+const attemptIdentity = (intervention, task = {}) => `ATT-${digest({ ...intervention, ...(intervention.kind === 'EXECUTION_APPROACH' ? { origin: task.intervention_origin || task.finding_id || task.task_id || 'legacy-unknown' } : {}) }).slice(0, 16)}`;
 function interventionFor(state, task) {
   if (task.purpose === 'final' && !task.intervention && !task.prior_context) {
     const previous = state.tasks.filter(item => item.role === 'executor' && item.target_id === task.target_id && item.case_ids.some(id => task.case_ids.includes(id)) && item.attempt_id).at(-1);
-    if (previous) { if (previous.prior_context) task.prior_context = structuredClone(previous.prior_context); return previous.intervention; }
+    if (previous) {
+      if (previous.prior_context) task.prior_context = structuredClone(previous.prior_context);
+      if (previous.intervention.kind === 'EXECUTION_APPROACH') task.intervention_origin = previous.intervention_origin || previous.finding_id || previous.task_id;
+      return previous.intervention;
+    }
   }
   if (task.intervention) return task.intervention;
   const integration = integrationForTarget(state, task.target_id);
+  const exercisedTarget = byKind(state.records, 'execution').some(item => item.record.target_id === task.target_id && item.record.execution_status !== 'NOT_RUN' && (task.case_ids || []).includes(item.record.case_id));
+  if (task.prior_context && (!integration || exercisedTarget)) return { kind: 'EXECUTION_APPROACH', ref: `task:${task.task_id || 'legacy-unknown'}` };
   if (integration) return { kind: 'INTEGRATION', ref: integration.record_id };
-  if (task.prior_context) return { kind: 'EXECUTION_APPROACH', ref: `task:${task.task_id || 'legacy-unknown'}` };
   return { kind: 'BASELINE', ref: 'initial-assessment' };
 }
 
@@ -916,7 +993,7 @@ function historyFor(state, task) {
   const recordIds = related.map(item => item.record.record_id).sort();
   const reviewStates = related.filter(item => item.record.kind === 'verification').map(item => ({ record_id: item.record.record_id, state: state.tasks.find(task => task.task_id === item.record.task_id)?.state === 'INTERRUPTED' ? 'WITHDRAWN' : 'CURRENT' }));
   const basis = { digest: digest({ recordIds, reviewStates, aliases: root.related_finding_ids, attempts: root.attempt_ids }), record_ids: recordIds, latest_failure_record_ids: failures.map(item => item.record.record_id) };
-  const paths = [...new Set(related.flatMap(item => [item.path, ...(item.record.evidence || []).map(e => e.path), ...(item.record.artifacts || []).map(e => e.path), ...(item.record.checks || []).map(e => e.artifact_path), ...['body_path', 'pr_body_path'].map(k => item.record[k]).filter(Boolean)]))];
+  const paths = [...new Set(related.flatMap(item => [item.path, ...(item.record.evidence || []).map(e => e.path), ...(item.record.artifacts || []).map(e => e.path), ...(isCompleteResult(item.record) ? [...(item.record.checks || []).map(e => e.artifact_path), ...['body_path', 'pr_body_path'].map(k => item.record[k]).filter(Boolean)] : [])]))];
   return { root, basis, paths, failures, related };
 }
 
@@ -961,7 +1038,7 @@ function validateIntervention(state, task) {
   for (const other of state.tasks.filter(item => item.role === 'executor' && item.task_id !== task.task_id)) {
     const runs = byKind(state.records, 'execution').filter(item => item.record.task_id === other.task_id && item.record.execution_status !== 'NOT_RUN' && task.case_ids.includes(item.record.case_id));
     if (!runs.length) continue;
-    const sameAttempt = (other.attempt_id || attemptIdentity(interventionFor(state, other))) === task.attempt_id;
+    const sameAttempt = attemptIdentity(interventionFor(state, other), other) === task.attempt_id;
     const repeatedApproach = task.prior_context && other.prior_context && task.prior_context.what_changed === other.prior_context.what_changed && task.prior_context.hypothesis === other.prior_context.hypothesis;
     if (!sameAttempt && !repeatedApproach) continue;
     const finalAllowed = task.purpose === 'final' && other.purpose !== 'final' && runs.every(item => latestVerdict(state, verdict => verdict.execution_record_id === item.record.record_id)?.outcome === 'PASS');
@@ -1036,7 +1113,7 @@ async function refreshFindings(state) {
     for (const execution of executions.filter(item => item.execution_status !== 'NOT_RUN')) {
       const task = state.tasks.find(item => item.task_id === execution.task_id);
       const intervention = interventionFor(state, task || {});
-      const attemptId = task?.attempt_id || attemptIdentity(intervention);
+      const attemptId = attemptIdentity(intervention, task);
       if (!task?.attempt_id && (intervention.kind === 'EXECUTION_APPROACH' || task?.finding_id && intervention.kind === 'BASELINE' && task.purpose !== 'initial')) record.attempt_mapping_problems.push(execution.record_id);
       record.attempt_rounds.push({ case_id: execution.case_id, round_id: execution.round_id, execution_record_id: execution.record_id, attempt_id: record.attempt_mapping_problems.includes(execution.record_id) ? `LEGACY-${execution.record_id}` : attemptId });
     }

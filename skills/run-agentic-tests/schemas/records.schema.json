@@ -856,6 +856,60 @@
             "remote",
             "repository"
           ]
+        },
+        "artifact_directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_base": {
+          "type": "string",
+          "minLength": 1
+        },
+        "related_case_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^T[0-9]{4,}$"
+          },
+          "uniqueItems": true
+        },
+        "companion_paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pr_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "check": {
+              "type": "string",
+              "minLength": 1
+            },
+            "setup": {
+              "type": "string",
+              "minLength": 1
+            },
+            "configuration": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "intervention_origin": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -3534,8 +3588,7 @@
         },
         "attempt": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 4
+          "minimum": 1
         },
         "commit": {
           "type": "string",

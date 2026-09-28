@@ -82,6 +82,7 @@ async function plan(c, cases, target = 'G001', dependencies = {}) {
   const { task: auditor } = await c.create({ role: 'plan-auditor', plan_id: task.plan_id, requested_action: 'Audit plan' }); c.start(auditor);
   const a = await c.draft(auditor); Object.assign(a, { outcome: 'approved', findings: [], artifacts: [] }); await c.submit(auditor, a); c.close(auditor);
   call('plan accept', { campaign: c.campaign, file: path.join(c.campaign, task.outputs[0].path), audit: path.join(c.campaign, auditor.outputs[0].path) });
+  return { planner: task, auditor };
 }
 async function executeCase(c, cases, { gap = false, notRun = false, request = {} } = {}) {
   const { task } = await c.create({ role: 'executor', case_ids: cases, requested_action: 'Run actual case', ...request }); c.start(task);
@@ -135,6 +136,9 @@ test('explicit reviewer lineage joins cases and a supported immutable link joins
   findings = c.records({ kind: 'finding' }); assert.equal(findings.length, 1); assert.deepEqual(findings[0].case_ids, ids); assert.equal(findings[0].attempts, 1, 'six cases exercise one initial baseline intervention; variants cannot exhaust the five-correction budget');
   assert.deepEqual(c.records({ kind: 'verdict' }), before);
   const cycle = call('finding link', { campaign: c.campaign, file: await c.json({ ...request, from_finding_id: 'F0001', into_finding_id: 'F0002' }) }, 3); assert.equal(cycle.error.code, 'LINEAGE_CYCLE');
+  const diagnosis = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Diagnose all six affected cases' })).task;
+  assert.deepEqual(diagnosis.related_case_ids, ids); assert.equal(diagnosis.case_ids.length, 4);
+  const handoff = await readFile(path.join(c.campaign, `tasks/${diagnosis.task_id}/10-handoff.md`), 'utf8'); assert.ok(handoff.includes(ids.join(', ')));
 });
 
 test('case reservations block duplicate and overlapping groups through interrupted live workers and pending review', async t => {
@@ -180,7 +184,7 @@ test('delivery binds the tested project GitHub remote and remote drift leaves un
   const d = await c.draft(diagnosis); Object.assign(d, { conclusion: 'confirmed', summary: 'Shared filter is wrong', root_cause: 'Missing search filter', evidence_record_ids: [failed.outputs[0].record_id], artifacts: [] }); await c.submit(diagnosis, d); c.close(diagnosis);
   const { task: ticket, handoff_path } = await c.create({ role: 'ticket-writer', finding_id: 'F0001', requested_action: 'Create one project issue' }); c.start(ticket);
   const handoff = await readFile(path.join(c.campaign, handoff_path), 'utf8'); assert.ok(handoff.includes("--repo 'example/project'"));
-  const body_path = 'findings/issue.md'; await writeFile(path.join(c.campaign, body_path), 'Confirmed missing filter; independent failure evidence.');
+  const body_path = ticket.companion_paths.body; await writeFile(path.join(c.campaign, body_path), 'Confirmed missing filter; independent failure evidence.');
   const draft = await c.draft(ticket); Object.assign(draft, { issue_url: 'https://github.com/other/repo/issues/1', body_path, dedup_marker: `agentic-tests:${c.config.campaign_id}:F0001`, artifacts: [] });
   assert.equal((await c.submit(ticket, draft, 3)).error.code, 'GITHUB_REPOSITORY_MISMATCH'); draft.issue_url = 'https://github.com/example/project/issues/1'; await c.submit(ticket, draft); c.close(ticket);
   assert.equal(spawnSync('git', ['remote', 'set-url', 'origin', 'https://github.com/other/repo.git'], { cwd: c.project }).status, 0);
@@ -258,4 +262,109 @@ test('blind verifier packets reject corrective narrative fields before writing a
   for (const extra of [{ prior_context: { previous_failure: 'Peer verdict FAIL', what_changed: 'PR fixed the defect', hypothesis: 'Prior reviewer expects PASS', do_not_repeat: ['Do not disagree'], remaining_attempts: 4 } }, { finding_id: 'F0001' }, { intervention: { kind: 'EXECUTION_APPROACH', ref: 'repair narrative' } }]) {
     const rejected = await c.create({ role: 'verifier', case_ids: [id], target_id: 'G001', round_id: executed.round_id, requested_action: 'Blindly inspect saved evidence', ...extra }, 3); assert.equal(rejected.error.code, 'BLIND_INPUT');
   }
+});
+
+test('accepted patch revisions do not consume the independent execution budget before any retest runs', async t => {
+  const c = await setup(t), id = await author(c, 'patch-budget'); await runtime(c); await plan(c, [id]); const failed = await executeCase(c, [id]); await reviewCase(c, failed);
+  const diagnosis = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Diagnose search' })).task; c.start(diagnosis); const diagnosisDraft = await c.draft(diagnosis); assert.equal(diagnosis.artifact_directory, `tasks/${diagnosis.task_id}/artifacts`); Object.assign(diagnosisDraft, { conclusion: 'confirmed', summary: 'Wrong search filter', root_cause: 'Wrong comparison key', evidence_record_ids: [failed.outputs[0].record_id], artifacts: [] }); await c.submit(diagnosis, diagnosisDraft); c.close(diagnosis);
+  const ticket = (await c.create({ role: 'ticket-writer', finding_id: 'F0001', requested_action: 'Record one ticket' })).task; c.start(ticket); const issue = await c.draft(ticket); await writeFile(path.join(c.campaign, issue.body_path), 'Confirmed search failure with independent evidence.'); Object.assign(issue, { issue_url: 'https://github.com/example/project/issues/1', dedup_marker: `agentic-tests:${c.config.campaign_id}:F0001`, artifacts: [] }); await c.submit(ticket, issue); c.close(ticket);
+  for (let n = 1; n <= 5; n++) {
+    const task = (await c.create({ role: 'implementer', finding_id: 'F0001', requested_action: `Record patch revision ${n} before integration` })).task; c.start(task);
+    const d = await c.draft(task), body = d.pr_body_path, check = d.checks[0].artifact_path, worktree = d.worktree;
+    assert.equal(worktree, task.worktree_path); assert.equal(path.isAbsolute(worktree), true); assert.ok(!worktree.startsWith(c.project + path.sep)); assert.equal(d.pr_body_path, task.companion_paths.pr_body); assert.equal(check, task.companion_paths.check);
+    assert.ok((await readFile(path.join(c.campaign, `tasks/${task.task_id}/10-handoff.md`), 'utf8')).includes(worktree));
+    await mkdir(worktree, { recursive: true }); t.after(() => rm(worktree, { recursive: true, force: true })); await writeFile(path.join(c.campaign, body), 'Search correction. Related issue #1. Retest pending.'); await writeFile(path.join(c.campaign, check), 'Fixture developer check passed.');
+    Object.assign(d, { commit: `fixture-patch-${n}`, worktree, pr_url: `https://github.com/example/project/pull/${n + 1}`, pr_body_path: body, changed_files: ['app.mjs'], checks: [{ command: 'fixture-check', exit_code: 0, artifact_path: check }], summary: `Unexercised patch revision ${n}`, artifacts: [] });
+    if (n === 1) {
+      assert.equal((await c.submit(task, { ...d, worktree: c.project }, 3)).error.code, 'WRONG_ASSIGNMENT');
+      assert.equal((await c.submit(task, { ...d, pr_body_path: issue.body_path }, 3)).error.code, 'WRONG_ASSIGNMENT');
+      assert.equal((await c.submit(task, { ...d, checks: [{ ...d.checks[0], artifact_path: issue.body_path }] }, 3)).error.code, 'WRONG_ASSIGNMENT');
+    }
+    await c.submit(task, d); c.close(task);
+    assert.equal(c.records({ kind: 'finding' })[0].attempts, 1);
+  }
+  assert.equal(c.records({ kind: 'implementation' }).length, 5);
+});
+
+test('legacy ambiguous corrections and excess history remain visible without blocking unrelated discovery', async t => {
+  const c = await setup(t), id = await author(c, 'legacy-history'); await runtime(c); await plan(c, [id]); const initial = await executeCase(c, [id]); await reviewCase(c, initial);
+  const retry = await executeCase(c, [id], { request: { prior_context: { what_changed: 'Legacy correction', hypothesis: 'Capture the output', do_not_repeat: ['Initial approach'] } } }); await reviewCase(c, retry);
+  const taskFile = path.join(c.campaign, `tasks/${retry.task_id}/00-task.record.yaml`), task = getDependencies().YAML.parse(await readFile(taskFile, 'utf8')); delete task.attempt_id; delete task.intervention; await writeFile(taskFile, getDependencies().YAML.stringify(task));
+  const contextFile = path.join(c.campaign, path.dirname(retry.outputs[0].path), '00-context.record.yaml'), context = getDependencies().YAML.parse(await readFile(contextFile, 'utf8')); delete context.attempt_id; delete context.intervention; await writeFile(contextFile, getDependencies().YAML.stringify(context));
+  const findingFile = path.join(c.campaign, 'findings/F0001-t0001/00-finding.record.yaml'), finding = getDependencies().YAML.parse(await readFile(findingFile, 'utf8'));
+  for (let n = 0; n < 5; n++) finding.attempt_rounds.push({ case_id: id, round_id: `R90${n}`, execution_record_id: `LEGACY-EXEC-${n}` }); await writeFile(findingFile, getDependencies().YAML.stringify(finding));
+  const history = await readFile(findingFile, 'utf8'), before = c.records({ kind: 'execution' });
+  const status = call('status', { campaign: c.campaign }); assert.ok(status.obligations.some(x => x.type === 'ATTEMPT_MAPPING_REQUIRED')); assert.ok(status.obligations.some(x => x.type === 'ATTEMPT_LIMIT')); assert.equal(status.findings[0].attempts, 7); assert.equal(status.findings[0].state, 'EXHAUSTED');
+  const rejected = await c.create({ role: 'executor', case_ids: [id], requested_action: 'Unproven sixth retry', prior_context: { what_changed: 'New correction', hypothesis: 'Unproven mapping', do_not_repeat: ['Do not erase history'] } }, 4); assert.equal(rejected.error.code, 'VERIFICATION_REQUIRED');
+  const scout = (await c.create({ role: 'feature-scout', requested_action: 'Discover an independent feature' })).task; c.start(scout); assert.deepEqual(c.records({ kind: 'execution' }), before); assert.equal(await readFile(findingFile, 'utf8'), history);
+});
+
+test('replayed legacy duplicate executor reservations are surfaced and remain intact until explicitly interrupted', async t => {
+  const c = await setup(t), id = await author(c, 'legacy-reservations'); await runtime(c); await plan(c, [id]); const first = (await c.create({ role: 'executor', case_ids: [id], requested_action: 'Existing original reservation' })).task;
+  const duplicate = structuredClone(first); Object.assign(duplicate, { task_id: 'J90001', record_id: 'J90001', actor_id: 'A90001', requested_action: 'Historical duplicate reservation' }); await mkdir(path.join(c.campaign, 'tasks/J90001')); const file = path.join(c.campaign, 'tasks/J90001/00-task.record.yaml'); await writeFile(file, getDependencies().YAML.stringify(duplicate)); const original = await readFile(file, 'utf8');
+  const status = call('status', { campaign: c.campaign }); assert.ok(status.blocked.filter(x => [first.task_id, duplicate.task_id].includes(x.task_id)).every(x => x.reasons.some(r => r.startsWith('CASE_RESERVED:'))));
+  assert.equal(call('task dispatch', { campaign: c.campaign, 'task-id': first.task_id }, 4).error.code, 'CASE_RESERVED'); assert.equal(await readFile(file, 'utf8'), original);
+  call('task interrupt', { campaign: c.campaign, 'task-id': duplicate.task_id, reason: 'Controller confirmed unused duplicate context', finished: true }); c.start(first);
+});
+
+
+test('role packets allocate companion artifacts and route plan auditors to bounded current proof', async t => {
+  const c = await setup(t);
+  const planner = (await c.create({ role: 'planner', requested_action: 'Plan the approved case set' })).task;
+  assert.equal(planner.companion_paths?.scope, 'plans/P001/00-scope.md');
+  assert.ok((await readFile(path.join(c.campaign, planner.companion_paths.scope), 'utf8')).includes('Scope'));
+  assert.ok((await readFile(path.join(c.campaign, `tasks/${planner.task_id}/10-handoff.md`), 'utf8')).includes(path.join(c.campaign, planner.companion_paths.scope)));
+  const scout = (await c.create({ role: 'feature-scout', requested_action: 'Inspect unrelated feature' })).task;
+  assert.equal(scout.artifact_directory, `tasks/${scout.task_id}/artifacts`);
+  c.start(scout); const scoutDraft = await c.draft(scout), unrelated = 'discovery/unassigned.txt'; await writeFile(path.join(c.campaign, unrelated), 'Unassigned artifact');
+  Object.assign(scoutDraft, { features: [{ id: 'unrelated', title: 'Unrelated feature', source: { type: 'user_request', reference: 'Separate approved source' }, subfeatures: [] }], unknowns: [], artifacts: [{ path: unrelated, type: 'text' }] });
+  assert.equal((await c.submit(scout, scoutDraft, 3)).error.code, 'WRONG_ASSIGNMENT');
+  const note = `${scout.artifact_directory}/notes.md`; await writeFile(path.join(c.campaign, note), 'Unavailable external tool'); scoutDraft.artifacts = [{ path: note, type: 'text' }]; await c.submit(scout, scoutDraft); c.close(scout);
+  const id = await author(c, 'audit-inputs'); await runtime(c); const accepted = await plan(c, [id]);
+  const spec = c.records({ kind: 'expectations' })[0];
+  const specPath = `cases/${id}-audit-inputs/specs/${spec.spec_revision}`;
+  for (const input of [`${specPath}/01-test-case.md`, `${specPath}/02-expectations.record.yaml`, `${specPath}/03-how-to-run.md`, 'environments/G001/00-environment.record.yaml']) assert.ok(accepted.auditor.required_inputs.includes(input), input);
+  const executed = await executeCase(c, [id]); const reviewed = await reviewCase(c, executed);
+  const auditor = (await c.create({ role: 'plan-auditor', phase: 'closure', requested_action: 'Audit current proof' })).task;
+  for (const input of [executed.outputs[0].path, reviewed.outputs[0].path, `${path.dirname(executed.outputs[0].path)}/00-context.record.yaml`, `${path.dirname(executed.outputs[0].path)}/30-verdict--FAIL.record.yaml`, 'findings/F0001-t0001/00-finding.record.yaml']) assert.ok(auditor.required_inputs.includes(input), input);
+  assert.ok(!auditor.required_inputs.includes(scout.outputs[0].path)); assert.ok(!auditor.required_inputs.includes(note));
+});
+
+test('linking roots preserves distinct local correction labels while grouped members share one intervention', async t => {
+  const c = await setup(t), ids = [await author(c, 'label-a'), await author(c, 'label-b')]; await runtime(c); await plan(c, ids);
+  for (const id of ids) { const first = await executeCase(c, [id]); await reviewCase(c, first); }
+  const corrections = [];
+  for (let index = 0; index < ids.length; index++) {
+    const corrected = await executeCase(c, [ids[index]], { request: { intervention: { kind: 'EXECUTION_APPROACH', ref: 'retry-1' }, prior_context: { what_changed: ['Use a fresh session', 'Use corrected seed data'][index], hypothesis: ['Session expired', 'Seed omitted the record'][index], do_not_repeat: ['Original failing approach'] } } });
+    await reviewCase(c, corrected); corrections.push(corrected);
+  }
+  call('finding link', { campaign: c.campaign, file: await c.json({ from_finding_id: 'F0002', into_finding_id: 'F0001', evidence_record_ids: corrections.map(task => task.outputs[0].record_id), reason: 'Current independent failures establish the same shared root after distinct corrections' }) });
+  assert.equal(c.records({ kind: 'finding' })[0].attempts, 3, 'one baseline and two distinct corrections remain after linking');
+  assert.notEqual(corrections[0].attempt_id, corrections[1].attempt_id);
+  const shared = await executeCase(c, ids, { request: { group: { shared_setup: 'One corrected shared fixture', reset: 'Fresh process for each case', independent: true }, intervention: { kind: 'EXECUTION_APPROACH', ref: 'linked-correction' }, prior_context: { what_changed: 'One new shared fixture for both variants', hypothesis: 'The shared fixture captures each result', do_not_repeat: ['Previous separate corrections'] } } });
+  await reviewCase(c, shared); assert.equal(c.records({ kind: 'finding' })[0].attempts, 4);
+});
+
+test('a changed capture after an integrated inconclusive retest gets a fresh intervention', async t => {
+  const c = await setup(t), id = await author(c, 'integrated-capture'); await runtime(c); await plan(c, [id]);
+  const failed = await executeCase(c, [id]); await reviewCase(c, failed);
+  const deliver = async (role, fields) => {
+    const { task } = await c.create({ role, finding_id: 'F0001', requested_action: `Record synthetic ${role} boundary` }); c.start(task);
+    const draft = await c.draft(task); Object.assign(draft, await fields(task, draft)); await c.submit(task, draft); c.close(task); return draft;
+  };
+  await deliver('diagnostician', () => ({ conclusion: 'confirmed', summary: 'Fixture filter failed', root_cause: 'Filter key mismatch', evidence_record_ids: [failed.outputs[0].record_id], artifacts: [] }));
+  await deliver('ticket-writer', async (_task, draft) => { await writeFile(path.join(c.campaign, draft.body_path), 'Confirmed fixture mismatch.'); return { issue_url: 'https://github.com/example/project/issues/1', dedup_marker: `agentic-tests:${c.config.campaign_id}:F0001`, artifacts: [] }; });
+  const commit = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: c.project, encoding: 'utf8' }).stdout.trim();
+  const patch = await deliver('implementer', async (task, draft) => {
+    await mkdir(task.worktree_path, { recursive: true }); t.after(() => rm(task.worktree_path, { recursive: true, force: true }));
+    await writeFile(path.join(c.campaign, draft.pr_body_path), 'Related issue #1. Retest pending.'); await writeFile(path.join(c.campaign, draft.checks[0].artifact_path), 'Synthetic developer boundary passed.');
+    return { commit, pr_url: 'https://github.com/example/project/pull/2', changed_files: ['app.mjs'], checks: [{ ...draft.checks[0], command: 'fixture check', exit_code: 0 }], summary: 'Synthetic delivery boundary for controller retry state', artifacts: [] };
+  });
+  const integration = await deliver('integrator', () => ({ implementation_record_id: patch.record_id, new_target_id: 'G002', commit, affected_case_ids: [id], retest_obligations: [{ case_id: id, reason: 'Independently retest recorded correction' }], artifacts: [] }));
+  await runtime(c, 'G002'); await plan(c, [id], 'G002');
+  const initial = await executeCase(c, [id], { gap: true, request: { purpose: 'retest', prior_context: retryContext(1) } }); await reviewCase(c, initial, 'INCONCLUSIVE');
+  assert.deepEqual(initial.intervention, { kind: 'INTEGRATION', ref: integration.record_id }); assert.equal(c.records({ kind: 'finding' })[0].attempts, 2);
+  const changed = await executeCase(c, [id], { request: { purpose: 'retest', prior_context: { what_changed: 'Capture stdout using the correct descriptor', hypothesis: 'The original redirection lost JSON', do_not_repeat: ['Wrong descriptor'] } } });
+  assert.equal(changed.intervention.kind, 'EXECUTION_APPROACH'); assert.notEqual(changed.attempt_id, initial.attempt_id); await reviewCase(c, changed, 'PASS'); assert.equal(c.records({ kind: 'finding' })[0].attempts, 3);
+  const final = await executeCase(c, [id], { request: { purpose: 'final' } }); assert.equal(final.attempt_id, changed.attempt_id); await reviewCase(c, final, 'PASS'); assert.equal(c.records({ kind: 'finding' })[0].attempts, 3);
 });
