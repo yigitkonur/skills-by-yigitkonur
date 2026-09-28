@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { getDependencies } from './dependencies.mjs';
 
 const schema = JSON.parse(readFileSync(new URL('../../schemas/records.schema.json', import.meta.url), 'utf8'));
+const runtimeSchema = JSON.parse(readFileSync(new URL('../../schemas/runtime.schema.json', import.meta.url), 'utf8'));
+Object.assign(schema.definitions, runtimeSchema.definitions);
 const validators = new Map();
 
 export class CliError extends Error {
