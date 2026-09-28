@@ -213,19 +213,19 @@ async function build(campaign) {
   if (!accepted.size) gaps.push('No accepted cases have final-target proof.');
   const overall = assessment.outcome;
   const currentArtifacts = cases.filter(item => item.accepted).flatMap(item => item.rounds.filter(round => round.current)).flatMap(round => round.artifacts);
-  const publication = { status: publicationIssues.length ?
+  const rawPublication = { status: publicationIssues.length ?
     (currentArtifacts.length && !currentArtifacts.some(artifact => artifact.href) ? 'BLOCKED' : 'PARTIAL') : 'READY', issues: publicationIssues };
   let omissions = 0;
   const onOmit = () => { omissions++; };
   const model = publicData({ campaign: campaignRecord.slug, final_target_id: assessment.latest_target_id,
-    summary: { overall, total: accepted.size, counts, gaps }, cases,
+    summary: { overall, total: accepted.size, counts, gaps }, publication: rawPublication, cases,
     out_of_scope: plan?.scope.out_of_scope || [] }, onOmit);
+  const publication = model.publication;
   if (omissions) {
     if (publication.status === 'READY') publication.status = 'PARTIAL';
     publication.issues.push({ type: 'SENSITIVE_DATA_OMITTED', locations: omissions,
       message: `Sensitive content omitted from report data (${omissions} locations). Sealed records and original evidence remain unchanged.` });
   }
-  model.publication = publication;
   const summary = model.summary;
   const slots = {
     TITLE: escape(model.campaign),

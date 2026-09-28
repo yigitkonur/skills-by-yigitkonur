@@ -17,7 +17,7 @@ const sha = value => createHash('sha256').update(value).digest('hex');
 // fixtures model independent role records; they do not claim independent agents.
 async function campaignFixture(t, {
   observed = { message: 'Order confirmed' }, reason = 'The saved response confirms the order.',
-  outcome = 'PASS', closure = true, artifactName = 'response.json', reviewObserved = observed,
+  outcome = 'PASS', closure = true, artifactName = 'response.json', artifactId = 'EV1', reviewObserved = observed,
   supplementalCaptures = [],
 } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'agentic-publication-'));
@@ -78,7 +78,7 @@ async function campaignFixture(t, {
   const body = execFileSync(process.execPath, [app]);
   const artifactPath = `${path.posix.dirname(executor.outputs[0].path)}/evidences/${artifactName}`;
   await writeFile(path.join(campaign, artifactPath), body);
-  const evidence = [{ id: 'EV1', path: artifactPath, type: 'json', expectation_ids: ['E1'], requirement_ids: ['ER1'], source: 'fixture CLI stdout', tool: 'Node.js' }];
+  const evidence = [{ id: artifactId, path: artifactPath, type: 'json', expectation_ids: ['E1'], requirement_ids: ['ER1'], source: 'fixture CLI stdout', tool: 'Node.js' }];
   for (const [index, capture] of supplementalCaptures.entries()) {
     const relative = `${path.posix.dirname(executor.outputs[0].path)}/evidences/${capture.name}`;
     await writeFile(path.join(campaign, relative), capture.body);
@@ -274,4 +274,15 @@ test('a verified failure remains FAIL when the evidence publication is blocked',
   assert.equal(model.cases[0].outcome, 'FAIL');
   assert.equal(result.publication.status, 'BLOCKED');
   assert.equal(model.cases[0].findings[0].class, 'PRODUCT_DEFECT');
+});
+
+test('publication issue metadata is screened before it enters public JSON or HTML', async t => {
+  const artifactId = 'ghp_fixtureidentifierabcdefghijklmnopqrstuvwxyz';
+  const f = await campaignFixture(t, { artifactId, observed: { message: 'Order confirmed', token: 'fixture-sensitive-response-12345' } });
+  const { result, html, model } = await build(f);
+  assert.equal(result.summary.overall, 'PASS');
+  assert.equal(result.publication.status, 'BLOCKED');
+  assert.equal(html.includes(artifactId), false);
+  assert.equal(JSON.stringify(result.publication).includes(artifactId), false);
+  assert.deepEqual(model.publication, result.publication);
 });
