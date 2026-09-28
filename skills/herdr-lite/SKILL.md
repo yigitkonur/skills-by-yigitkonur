@@ -108,17 +108,25 @@ Herdr-Lite establishes an explicit, two-tier leadership division of responsibili
      ```bash
      herdr agent wait "$WORKER_PANE_ID" --until done --until idle --timeout 120000
      ```
-    - **Supervising the EM (CTO - Asynchronous & Decoupled with Bounded Timeout)**:
+    - **Supervising the EM (CTO Bounded Supervision & Conversational Cadence)**:
       ```bash
-      # Execute wait asynchronously in background with explicit bounded timeout (max 180000ms):
+      # Supervisory wait with explicit bounded timeout (recommended: 120000ms to 180000ms; maximum: 300000ms):
       herdr agent wait "$EM_PANE_ID" --until idle --timeout 180000
+
+      # Or when running backgrounded during interactive UI turns to maintain user progress heartbeats:
+      herdr agent wait "$EM_PANE_ID" --until idle --timeout 180000 &
+      WAIT_PID=$!
+      # Yield status update to user, then await wait result:
+      wait "$WAIT_PID"
       ```
-    - **Mandatory Bounded Timeouts on All Waits (Zero Infinite Waits)**:
-      EVERY `herdr agent wait` and `herdr pane wait-output` command MUST specify an explicit bounded `--timeout <MS>` (default 180000ms / 3m, maximum 300000ms / 5m). Calling wait commands without `--timeout` is strictly forbidden to prevent agents from being stuck indefinitely in the air.
+    - **Mandatory Bounded Timeouts on All Scripted Waits (Zero Infinite Waits)**:
+      EVERY scripted `herdr agent wait` and `herdr pane wait-output` command MUST specify an explicit bounded `--timeout <MS>` (recommended: 60000ms to 180000ms; maximum: 300000ms / 5m). Calling wait commands without an explicit `--timeout` in automated scripts or orchestration flows is strictly forbidden; relying on implicit CLI defaults is reserved strictly for interactive human terminal sessions.
     - **Resilient Pattern Matching & Fallback Diagnostics**:
       When using `herdr pane wait-output`, never match on an overly narrow or fragile pattern without handling timeouts. If `--timeout` expires, the agent MUST NOT hang silently; it must immediately read the live pane buffer (`herdr pane read <PANE_ID> --lines 50`), inspect foreground processes (`herdr pane process-info`), diagnose the actual state, and yield an actionable status update to the user.
-    - **Immediate Dispatch Acknowledgment & Conversational Cadence (Max 30s Silence Limit)**:
-      Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. Agents must maintain a conversational heartbeat (max 30–60s silence limit). When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states. Never block the interactive session with long synchronous waits (`--timeout 60000`). Run `herdr agent wait` or `herdr pane wait-output` asynchronously in the background so the user receives continuous status and does not experience a hung/frozen interface.
+    - **Immediate Dispatch Acknowledgment & Conversational Cadence (Max 30–60s Silence Limit)**:
+      Leadership agents (CTO and EM) must NEVER execute lengthy (>4 tool calls) unbroken chains without providing visible progress updates to the user. Agents must maintain a conversational heartbeat (max 30–60s silence limit). When dispatching a directive or advancing waves, immediately output a concise progress summary to the user before entering wait states.
+      - *Dependency-gating waits* (such as waiting for an agent harness to initialize to `idle` before dispatching an initial prompt, e.g. `--timeout 60000`) MUST run synchronously, because the subsequent prompt depends directly on interactive readiness.
+      - *Supervisory monitoring waits* (monitoring an EM or worker through multi-minute tasks): Never block the session for minutes without conversational status. Output an immediate progress summary to the user first. If waiting in an interactive agent turn, either use bounded wait slices (30–60s) or background the wait (`wait $WAIT_PID`) so the user does not experience a frozen session.
     - **Context Window Hygiene**:
       Do NOT run unbounded commands (e.g. `gh issue view <ID>` dumping >1,000 lines) that bloat context and cause inference lag. Rely on local `specs/*.md` files or targeted queries (`gh issue view <ID> --json title,number`).
     - **Proportional Worker Preflight**:
@@ -144,11 +152,12 @@ Antigravity operates a continuous, multi-wave streaming orchestration loop:
 7. **Automated Lifecycle Reaping & Full-Job Teardown**:
    Never leave completed task workspaces or tabs lingering open in Herdr. As soon as PR merge is confirmed, actively reap all resources:
    - *Merge Integrity Verification*: Confirm PR is MERGED on remote before touching checkouts (`gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"`).
-   - *Pane Closure*: Close reviewer and implementer panes (`herdr pane close "$REV_PANE_ID" 2>/dev/null || true`, `herdr pane close "$IMPL_PANE_ID" 2>/dev/null || true`).
-   - *Worktree Teardown*: Execute `herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; aborting teardown"; exit 1; }`.
-   - *Standalone Workspace/Tab Cleanup*: If standalone workspaces or tabs were opened, close them via `herdr workspace close "$WS_ID"` or `herdr tab close "$TAB_ID"`.
-   - *Branch Cleanup*: Delete local branch post-removal (`git branch -D "$BRANCH"`) and prune remotes (`git remote prune origin`).
-   - *Milestone Retirement*: When all waves/milestones conclude, retire the EM pane (`herdr pane close "$EM_PANE_ID"`).
+   - *Cleanliness Gate Before Pane Closure*: ALWAYS verify the worktree is clean (`test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"`) BEFORE closing panes or tearing down checkouts. If uncommitted changes exist, DO NOT close panes or hard-exit; escalate by diagnosing uncommitted diffs (`git -C "$WORKTREE_PATH" status -s`) and alerting the operator.
+   - *Pane Closure*: Close reviewer and implementer panes (`herdr pane close --pane "$REV_PANE_ID" 2>/dev/null || true`, `herdr pane close --pane "$IMPL_PANE_ID" 2>/dev/null || true`).
+   - *Worktree Teardown*: Execute `herdr worktree remove --workspace "$WS_ID" || { echo "Worktree removal failed; diagnosing..."; exit 1; }`.
+   - *Standalone Workspace/Tab Cleanup*: If standalone workspaces or tabs were opened, close them via `herdr workspace close "$WS_ID" 2>/dev/null || true` or `herdr tab close "$TAB_ID" 2>/dev/null || true`.
+   - *Branch Cleanup*: Delete local branch post-removal (`git -C "$REPO_ROOT" branch -D "$BRANCH"`) and prune remotes (`git -C "$REPO_ROOT" remote prune origin`).
+   - *Milestone Retirement*: When all waves/milestones conclude, retire the EM pane (`herdr pane close --pane "$EM_PANE_ID"`).
 
 ---
 

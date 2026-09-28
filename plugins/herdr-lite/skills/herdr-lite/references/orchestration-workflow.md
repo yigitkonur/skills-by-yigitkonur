@@ -188,9 +188,19 @@ Instructions:
 # For each running implementer, wait deterministically for task completion:
 herdr agent wait "$IMPL_PANE_ID" --until done --until idle --timeout 180000
 
-# Confirm PR is open before launching reviewer:
+# Confirm PR is open before launching reviewer (with bounded retry for API propagation lag):
 PR_URL="$(gh pr list --head "$BRANCH" --json url -q '.[0].url')"
-test -n "$PR_URL" || { echo "No PR open on $BRANCH; awaiting completion"; exit 1; }
+if [ -z "$PR_URL" ]; then
+  # Re-check implementer pane status or wait up to 30s for PR creation / propagation:
+  herdr agent wait "$IMPL_PANE_ID" --until done --timeout 30000 2>/dev/null || true
+  PR_URL="$(gh pr list --head "$BRANCH" --json url -q '.[0].url')"
+fi
+if [ -z "$PR_URL" ]; then
+  echo "Warning: No open PR found for branch $BRANCH on task $TASK_ID. Alerting EM and deferring reviewer launch."
+  # Alert EM and continue orchestration for other tasks without killing the runner:
+  herdr agent prompt "$EM_PANE_ID" "TASK_BLOCKED: task_id=$TASK_ID branch=$BRANCH reason=PR_NOT_FOUND"
+  continue
+fi
 
 # Immediately launch its reviewer in Pane 2 side-by-side:
 SPLIT_JSON="$(herdr pane split --pane "$IMPL_PANE_ID" --direction right --cwd "$WORKTREE_PATH" --no-focus)"
