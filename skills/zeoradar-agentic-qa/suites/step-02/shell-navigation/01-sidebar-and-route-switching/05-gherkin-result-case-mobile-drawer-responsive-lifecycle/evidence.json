@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-NAV-05-MOBILE-DRAWER-LIFECYCLE",
+  "executedAt": "2026-09-25T18:33:53Z",
+  "outcome": "PASSED",
+  "summary": "Mobile drawer verified on 390x844 viewport: .nav-toggle is visible and toggles .side-open on body, .side-backdrop renders with display:block and closes drawer on tap, and clicking any navigation item (.side-item) updates window.state.tab and automatically dismisses .side-open."
+}

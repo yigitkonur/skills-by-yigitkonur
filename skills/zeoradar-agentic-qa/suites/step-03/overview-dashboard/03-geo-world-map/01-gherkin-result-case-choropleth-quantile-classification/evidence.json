@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-MAP-04",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Choropleth quantile engine classifies regional search volume shares into 4 semantic token classes (.heat-q1 to .heat-q4)."
+}

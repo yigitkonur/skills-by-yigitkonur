@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-SNT-09",
+  "executedAt": "2026-09-25T18:33:17Z",
+  "outcome": "PASSED",
+  "summary": "Verified sentiment tab routing aliases ('tab=sentiment' -> 'tab=aei&workspace=perception') and anomaly spike threshold rules."
+}

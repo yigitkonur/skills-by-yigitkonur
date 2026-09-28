@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-05",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Interactive crosshair line.ov-cross and circle.ov-dot snap to nearest time bucket upon hovering rect.ov-hit."
+}

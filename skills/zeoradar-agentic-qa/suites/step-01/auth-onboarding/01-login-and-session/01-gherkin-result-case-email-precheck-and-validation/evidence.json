@@ -1,0 +1,42 @@
+{
+  "caseId": "TC-AUTH-01-EMAIL-PRECHECK",
+  "executedAt": "2026-09-25T19:29:10Z",
+  "outcome": "PASSED",
+  "summary": "Email pre-check, syntax regex validation, trimming, lowercase normalization, and dynamic button gating verified. Invalid emails keep continue button disabled, and submitting valid email Alex.Smith@Company.COM cleanly normalizes to alex.smith@company.com and transitions to step signin_password.",
+  "telemetry": {
+    "initialState": {
+      "step": "email",
+      "email": "",
+      "inputValue": "",
+      "btnDisabled": true,
+      "btnText": "Devam Et",
+      "title": "E-posta adresiniz nedir?"
+    },
+    "malformedTests": [
+      { "email": "invalid-email", "btnDisabled": true, "step": "email" },
+      { "email": "user@", "btnDisabled": true, "step": "email" },
+      { "email": "user@domain", "btnDisabled": true, "step": "email" },
+      { "email": "@nodomain.com", "btnDisabled": true, "step": "email" },
+      { "email": "user space@domain.com", "btnDisabled": true, "step": "email" },
+      { "email": "", "btnDisabled": true, "step": "email" }
+    ],
+    "validTests": [
+      { "input": "alex.smith@company.com", "expected": "alex.smith@company.com", "btnDisabled": false },
+      { "input": "  Alex.Smith@Company.COM  ", "expected": "alex.smith@company.com", "btnDisabled": false },
+      { "input": "user+tag@domain.co.uk", "expected": "user+tag@domain.co.uk", "btnDisabled": false },
+      { "input": "  TEST.USER@ZEO-RADAR.IO  ", "expected": "test.user@zeo-radar.io", "btnDisabled": false }
+    ],
+    "transitionResult": {
+      "step": "signin_password",
+      "authEmail": "alex.smith@company.com",
+      "readonlyEmail": "alex.smith@company.com",
+      "pwdInputExists": true,
+      "pwdType": "password"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-email-empty-state.png",
+    "screenshots/02-email-valid-enabled.png",
+    "screenshots/03-email-transition-password.png"
+  ]
+}

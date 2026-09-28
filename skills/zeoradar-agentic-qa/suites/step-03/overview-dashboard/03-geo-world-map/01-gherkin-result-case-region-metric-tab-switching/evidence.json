@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-MAP-09",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Regional metric tab segmented buttons switch active state (.on) between 'Visibility', 'Sentiment', and 'Share of Voice', updating state.expanded['region-metric']."
+}

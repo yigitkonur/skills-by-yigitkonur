@@ -1,0 +1,53 @@
+{
+  "caseId": "TC-AUTH-12-LOCALIZATION-TESTIMONIALS",
+  "executedAt": "2026-09-25T19:41:45Z",
+  "outcome": "PASSED",
+  "summary": "Bilingual internationalization (EN/TR title, buttons, inputs) and social proof carousel (AUTH_TESTIMONIALS across Linear, Ramp, TeachShare, Rocket55 quotes, authors, avatar initials) verified.",
+  "telemetry": {
+    "localization": {
+      "en": {
+        "title": "What's your email?",
+        "button": "Continue"
+      },
+      "tr": {
+        "title": "E-posta adresiniz nedir?",
+        "button": "Devam Et"
+      }
+    },
+    "socialProofCarousel": [
+      {
+        "idx": 0,
+        "badge": "Linear",
+        "author": "Karri Saarinen",
+        "avatar": "KS",
+        "quoteSnippet": "AI discovery channels now refer 15%"
+      },
+      {
+        "idx": 1,
+        "badge": "⚡ Ramp",
+        "author": "Luke Tubinis",
+        "avatar": "LT",
+        "quoteSnippet": "unprecedented visibility into"
+      },
+      {
+        "idx": 2,
+        "badge": "🎓 TeachShare",
+        "author": "Aryan Bhadouria",
+        "avatar": "AB",
+        "quoteSnippet": "Understanding our brand presence"
+      },
+      {
+        "idx": 3,
+        "badge": "🚀 Rocket55",
+        "author": "Sarah Jenkins",
+        "avatar": "SJ",
+        "quoteSnippet": "prompt fanout intelligence"
+      }
+    ]
+  },
+  "screenshots": [
+    "screenshots/01-auth-en-view.png",
+    "screenshots/02-auth-tr-view.png",
+    "screenshots/03-testimonial-carousel.png"
+  ]
+}

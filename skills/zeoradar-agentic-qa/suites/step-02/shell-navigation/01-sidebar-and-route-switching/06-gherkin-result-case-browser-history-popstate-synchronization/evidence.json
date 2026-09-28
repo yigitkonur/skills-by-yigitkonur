@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-NAV-06-BROWSER-HISTORY-POPSTATE",
+  "executedAt": "2026-09-25T18:34:49Z",
+  "outcome": "PASSED",
+  "summary": "Browser history pushState and popstate synchronization verified: navigating between overview -> visibility (aei) -> opportunities pushed entries, and triggering window.history.back() traversed back to aei and overview, updating active .side-item classes, state.tab, and URL faithfully. Forward traversal accurately restored state."
+}

@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CMD-07-REGEX-CHAR-IMMUNITY",
+  "executedAt": "2026-09-25T18:46:23Z",
+  "outcome": "PASSED",
+  "summary": "Command palette adversarial regex metacharacter immunity verified: queries with regex tokens execute safely using plain indexOf string matching without throwing SyntaxErrors, reliably rendering .cmd-empty (Sonuç bulunamadı.)."
+}

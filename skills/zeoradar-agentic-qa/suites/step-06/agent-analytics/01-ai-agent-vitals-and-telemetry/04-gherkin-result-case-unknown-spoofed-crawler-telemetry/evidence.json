@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-AA-04",
+  "executedAt": "2026-09-25T18:47:15Z",
+  "outcome": "PASSED",
+  "summary": "Unknown, spoofed, and blank User-Agent telemetry logs are parsed safely without runtime exceptions. In the User-Agents sub-view, custom scrapers and spoofed headers render accurately with computed visit share, and empty UA strings render the defensive fallback label 'Unknown'. (Note: Bot deep-dive fallback falls back to BOT_DB.chatgpt before generic fallback)."
+}

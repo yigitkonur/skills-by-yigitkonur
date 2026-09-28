@@ -1,0 +1,11 @@
+{
+  "totalClickEvents": 2,
+  "timeDeltaMs": 15,
+  "dispatchedNetworkRequests": 1,
+  "droppedInFlightEvents": 1,
+  "response": {
+    "status": 429,
+    "code": "rate_limited",
+    "message": "Too many attempts — try again shortly."
+  }
+}

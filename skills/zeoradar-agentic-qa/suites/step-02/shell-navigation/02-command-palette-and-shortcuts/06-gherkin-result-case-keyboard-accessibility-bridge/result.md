@@ -1,0 +1,8 @@
+# Test Execution Result: TC-CMD-06-KEYBOARD-BRIDGE
+
+- **Executed At**: 2026-09-25T18:45:43Z
+- **Outcome**: PASSED
+- **Summary**: Global keyboard accessibility bridge (assets/radar.js:6330-6344) verified: pressing Space on focused .side-item[data-key='kb'] activates tab 'kb' (.side-item.active applied, brand-hub loaded). Pressing Enter on focused .foot-btn.lang-btn cleanly toggles language (TR -> EN, badge text updated).
+
+## Observations & Telemetry
+Global keyboard accessibility bridge (assets/radar.js:6330-6344) verified: pressing Space on focused .side-item[data-key='kb'] activates tab 'kb' (.side-item.active applied, brand-hub loaded). Pressing Enter on focused .foot-btn.lang-btn cleanly toggles language (TR -> EN, badge text updated).

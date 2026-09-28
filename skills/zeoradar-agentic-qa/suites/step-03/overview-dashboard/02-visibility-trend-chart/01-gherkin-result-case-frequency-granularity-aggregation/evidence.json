@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-11",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Frequency granularity controls (daily vs weekly) update state.ov.freq and aggregate time buckets with bilingual date formatting."
+}

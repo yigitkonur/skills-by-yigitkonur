@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CMD-02-QUERY-FILTERING",
+  "executedAt": "2026-09-25T18:41:07Z",
+  "outcome": "PASSED",
+  "summary": "Command palette real-time query filtering verified: typing queries into #cmdPaletteInput updates state.commandPalette.query, dynamically filters registry across titles and categories (e.g. 'tema' yields 3 theme options under 'Tercihler'), marks first item with .selected class (idx=0), and preserves input caret."
+}

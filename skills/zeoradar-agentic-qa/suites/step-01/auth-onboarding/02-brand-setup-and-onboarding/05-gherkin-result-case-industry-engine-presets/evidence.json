@@ -1,0 +1,33 @@
+{
+  "caseId": "TC-ONB-05-ENGINE-PRESETS",
+  "executedAt": "2026-09-25T19:33:50Z",
+  "outcome": "PASSED",
+  "summary": "Industry engine presets grid (.ob-preset-grid) fully verified. Selecting E-Commerce (35/35/20/10), B2B SaaS (30/10/40/20), and Finance (40/30/20/10) instantly updates internal engineWeights state, toggles .active CSS class on the selected card, and synchronizes percentage readouts (#ob-val-chatgpt, #ob-val-gemini, #ob-val-perplexity, #ob-val-claude).",
+  "telemetry": {
+    "presets": {
+      "ecommerce": {
+        "preset": "ecommerce",
+        "cardActive": true,
+        "weights": { "chatgpt": 35, "gemini": 35, "perplexity": 20, "claude": 10 },
+        "readouts": { "chatgpt": "35%", "gemini": "35%", "ppx": "20%", "claude": "10%" }
+      },
+      "saas": {
+        "preset": "saas",
+        "cardActive": true,
+        "weights": { "chatgpt": 30, "gemini": 10, "perplexity": 40, "claude": 20 },
+        "readouts": { "chatgpt": "30%", "gemini": "10%", "ppx": "40%", "claude": "20%" }
+      },
+      "finance": {
+        "preset": "finance",
+        "cardActive": true,
+        "weights": { "chatgpt": 40, "gemini": 30, "perplexity": 20, "claude": 10 },
+        "readouts": { "chatgpt": "40%", "gemini": "30%", "ppx": "20%", "claude": "10%" }
+      }
+    }
+  },
+  "screenshots": [
+    "screenshots/01-preset-ecommerce-active.png",
+    "screenshots/02-preset-saas-active.png",
+    "screenshots/03-preset-finance-active.png"
+  ]
+}

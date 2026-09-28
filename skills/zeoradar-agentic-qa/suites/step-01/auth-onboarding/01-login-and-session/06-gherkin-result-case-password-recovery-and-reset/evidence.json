@@ -1,0 +1,40 @@
+{
+  "caseId": "TC-AUTH-06-PASSWORD-RESET",
+  "executedAt": "2026-09-25T19:36:40Z",
+  "outcome": "PASSED",
+  "summary": "Dedicated solo password recovery flow verified: full-bleed layout (.auth-solo-step, social panel hidden), dual independent eye visibility toggles, strict gating on matching 8+ char passwords and 6-digit OTP, and cancellation returning to signin_password.",
+  "telemetry": {
+    "step": "password_reset",
+    "soloLayout": {
+      "wrapperHasSoloStep": true,
+      "containerHasSolo": true,
+      "socialPanelHidden": true
+    },
+    "dualEyeToggles": {
+      "initial": { "pwdType": "password", "confirmType": "password" },
+      "afterFirstToggle": { "pwdType": "text", "confirmType": "password" },
+      "afterSecondToggle": { "pwdType": "text", "confirmType": "text" }
+    },
+    "gatingTests": [
+      { "otp": "246810", "p1": "Pass2026!", "p2": "Mismatched2026!", "btnDisabled": true },
+      { "otp": "246810", "p1": "Short1!", "p2": "Short1!", "btnDisabled": true },
+      { "otp": "12345", "p1": "BrandNewPass2026!", "p2": "BrandNewPass2026!", "btnDisabled": true },
+      { "otp": "", "p1": "BrandNewPass2026!", "p2": "BrandNewPass2026!", "btnDisabled": true }
+    ],
+    "validSubmission": {
+      "otp": "246810",
+      "newPassword": "BrandNewPass2026!",
+      "btnEnabled": true
+    },
+    "cancellation": {
+      "revertedStep": "signin_password",
+      "soloClassRemoved": true,
+      "socialPanelRestored": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-reset-solo-layout.png",
+    "screenshots/02-reset-eye-toggles.png",
+    "screenshots/03-reset-success-toast.png"
+  ]
+}

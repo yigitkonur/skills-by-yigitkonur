@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PCREAT-01-SINGLE-ADD-OPTIMISTIC",
+  "executedAt": "2026-09-25T18:54:25Z",
+  "outcome": "PASSED",
+  "summary": "Add Prompt modal dialog mounted cleanly with all required fields (Prompt Query Text, Topic, Prompt Type, Status, Language, Regions). All 7 active project topics were mapped into select options. Form submission dispatches optimistic projection tr.dg-row-pending and .dg-save-chip lifecycle."
+}

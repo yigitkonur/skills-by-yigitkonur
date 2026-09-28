@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-10",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Collapsible Technical Telemetry drawer (.ov-tech-drawer-wrap) expands/collapses cleanly via button[data-action='ov-toggle-tech-drawer'], updating button label ('▸ Göster' / '▾ Gizle') and displaying 4 metric cards."
+}

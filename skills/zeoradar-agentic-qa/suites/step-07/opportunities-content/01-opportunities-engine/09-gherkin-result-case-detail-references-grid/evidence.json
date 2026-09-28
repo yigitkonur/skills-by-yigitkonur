@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-OPP-09",
+  "executedAt": "2026-09-25T18:54:43Z",
+  "outcome": "PASSED",
+  "summary": "Detail references accordion renders structured grid (.opp-references-grid) with publisher logo, title, domain badge, snippet, and secure target='_blank' rel='noopener' external links."
+}

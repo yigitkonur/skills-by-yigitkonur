@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-VIS-09",
+  "executedAt": "2026-09-25T18:33:17Z",
+  "outcome": "PASSED",
+  "summary": "Verified pure parametric detection handling and absence of hallucinated citation leaf nodes."
+}

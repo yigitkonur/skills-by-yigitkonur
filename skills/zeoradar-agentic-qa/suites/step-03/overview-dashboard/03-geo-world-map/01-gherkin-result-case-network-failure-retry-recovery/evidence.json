@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-MAP-02",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Network failure simulation renders accessible .map-error-placeholder[role='alert'], and retry button[data-action='retry-map'] triggers zero-reload recovery."
+}

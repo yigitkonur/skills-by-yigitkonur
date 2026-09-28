@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CHT-02",
+  "executedAt": "2026-09-25T19:32:53Z",
+  "outcome": "PASSED",
+  "summary": "Successfully verified composer markdown formatting toolbar syntax wrapping across bold (**), italic (_), code (`), and link ([text](https://)). Highlighting targeted text slices and applying format tokens cleanly preserves surrounding text without corruption and places the selection caret with pinpoint precision."
+}

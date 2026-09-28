@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-DB-10",
+  "executedAt": "2026-09-25T19:42:05Z",
+  "outcome": "PASSED",
+  "summary": "Verified cross-tenant export invalidation on active workspace switch. Orchestrator generation tracker (orch.begin(['authGeneration', 'tenantGeneration', 'projectGeneration'])) detects tenant switch context invalidation via gen.isCurrent() transitioning to false, causing in-flight ZeoExport.run to abort with code 'stale_context', suppressing download anchor creation and preventing cross-tenant data leakage."
+}

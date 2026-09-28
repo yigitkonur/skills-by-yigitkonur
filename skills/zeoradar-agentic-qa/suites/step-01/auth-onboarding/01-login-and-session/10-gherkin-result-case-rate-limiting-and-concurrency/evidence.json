@@ -1,0 +1,28 @@
+{
+  "caseId": "TC-AUTH-10-RATE-LIMIT-CONCURRENCY",
+  "executedAt": "2026-09-25T19:40:28Z",
+  "outcome": "PASSED",
+  "summary": "Concurrency guard (auth.busy locking against rapid double-clicks dropping duplicate requests) and rate limit backoff handling (rate_limited banner, input-error outline, input preservation, busy lock release) verified.",
+  "telemetry": {
+    "concurrencyLocking": {
+      "clickEventsSimulated": 2,
+      "callsDispatchedImmediately": 1,
+      "busyDuringFirstClick": true,
+      "secondClickDropped": true
+    },
+    "rateLimitResponse": {
+      "errorCode": "rate_limited",
+      "errorBannerText": "⚠️ Çok fazla deneme — az sonra tekrar deneyin. (rate_limited)",
+      "inputErrorClassApplied": true,
+      "busyAfterResolution": false,
+      "submitButtonReenabled": true,
+      "passwordPreserved": "ZeoTest2026!"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-rate-limit-banner.png"
+  ],
+  "network": [
+    "network/requests.json"
+  ]
+}

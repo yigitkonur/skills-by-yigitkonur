@@ -1,0 +1,42 @@
+{
+  "caseId": "TC-ONB-01-SEED-BRIDGING",
+  "executedAt": "2026-09-25T19:30:23Z",
+  "outcome": "PASSED",
+  "summary": "Brand setup seed form successfully validated in auth view. Submit button remains disabled when domain is empty, enables when populated with [BRAND] and https://www.[DOMAIN], persists to state.onboardingSeed and localStorage seed, and properly hydrates into the guided onboarding wizard (activeStep 1).",
+  "telemetry": {
+    "initial": {
+      "route": "auth",
+      "authStep": "brand_setup",
+      "hasBrandInput": true,
+      "hasDomainInput": true,
+      "isBtnDisabled": true
+    },
+    "negative": {
+      "brandValue": "[BRAND]",
+      "domainValue": "",
+      "isBtnDisabled": true
+    },
+    "positive": {
+      "brandValue": "[BRAND]",
+      "domainValue": "https://www.[DOMAIN]",
+      "isBtnDisabled": false
+    },
+    "bridgedSeed": {
+      "brand": "[BRAND]",
+      "domain": "https://www.[DOMAIN]"
+    },
+    "landedWizard": {
+      "route": "onboarding",
+      "activeStep": 1,
+      "liveForm": {
+        "brand": "[BRAND]",
+        "domain": "https://www.[DOMAIN]"
+      }
+    }
+  },
+  "screenshots": [
+    "screenshots/01-brand-setup-seed-empty.png",
+    "screenshots/02-brand-setup-seed-filled.png",
+    "screenshots/03-onboarding-wizard-landed.png"
+  ]
+}

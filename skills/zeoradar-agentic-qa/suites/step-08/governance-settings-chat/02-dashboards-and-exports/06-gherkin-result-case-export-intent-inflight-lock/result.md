@@ -1,0 +1,8 @@
+# Test Execution Result: TC-DB-06
+
+- **Executed At**: 2026-09-25T19:39:37Z
+- **Outcome**: PASSED
+- **Summary**: Verified export intent in-flight lock (xpBusy[kind:format]) in assets/export-intent.js. Simultaneous double-clicks of identical export kind/format immediately return { ok: false, code: 'busy' } on the second promise, suppressing duplicate background worker RPCs, and cleanly releasing the lock upon promise settlement.
+
+## Observations & Telemetry
+Verified export intent in-flight lock (xpBusy[kind:format]) in assets/export-intent.js. Simultaneous double-clicks of identical export kind/format immediately return { ok: false, code: 'busy' } on the second promise, suppressing duplicate background worker RPCs, and cleanly releasing the lock upon promise settlement.

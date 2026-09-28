@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CHT-08",
+  "executedAt": "2026-09-25T19:35:12Z",
+  "outcome": "PASSED",
+  "summary": "Successfully verified composer keyboard navigation ergonomics (Shift+Enter vs Enter). Pressing plain Enter invokes preventDefault and dispatches the prompt, while Shift+Enter preserves default newline insertion without triggering dispatch and dynamically expands the textarea height from 80px up to 128px (capped at 190px)."
+}

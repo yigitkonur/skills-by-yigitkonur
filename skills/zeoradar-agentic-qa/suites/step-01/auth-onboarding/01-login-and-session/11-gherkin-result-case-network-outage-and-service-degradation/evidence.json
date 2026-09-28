@@ -1,0 +1,22 @@
+{
+  "caseId": "TC-AUTH-11-NETWORK-OUTAGE",
+  "executedAt": "2026-09-25T19:40:55Z",
+  "outcome": "PASSED",
+  "summary": "Backend network outage and service degradation handling verified: dependency_unavailable error banner rendered, user password input non-destructively preserved, auth.busy released, and submit button re-enabled for retry.",
+  "telemetry": {
+    "simulatedCondition": "HTTP 503 / Network Outage",
+    "errorCode": "dependency_unavailable",
+    "errorBannerText": "⚠️ Giriş servisi geçici olarak kullanılamıyor. (dependency_unavailable)",
+    "inputPreserved": {
+      "field": "#auth-password-input",
+      "preservedValue": "zeo-demo-2026"
+    },
+    "stateLocks": {
+      "busy": false,
+      "submitButtonEnabled": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-dependency-unavailable-banner.png"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-02",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Segmented controls toggle overview chart mode between 'line' and 'bar', synchronously updating state.overviewChartMode and active button .black class."
+}

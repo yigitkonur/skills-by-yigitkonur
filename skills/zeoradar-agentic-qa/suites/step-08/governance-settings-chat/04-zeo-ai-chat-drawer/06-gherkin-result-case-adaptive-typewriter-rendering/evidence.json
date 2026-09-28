@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CHT-06",
+  "executedAt": "2026-09-25T19:34:25Z",
+  "outcome": "PASSED",
+  "summary": "Successfully verified adaptive typewriter rendering loop (typeTick). Pacing adapts smoothly at 16ms intervals, dynamically dequeuing 1 char/tick (len<=25), 3 chars/tick (len>25), 5 chars/tick (len>90), and 9 chars/tick (len>220). The trailing blinking caret (.caret) renders cleanly alongside progressive markdown updates."
+}

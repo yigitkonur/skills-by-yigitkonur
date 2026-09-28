@@ -1,0 +1,33 @@
+{
+  "caseId": "TC-AUTH-04-OTP-VERIFICATION",
+  "executedAt": "2026-09-25T19:34:03Z",
+  "outcome": "PASSED",
+  "summary": "6-Digit OTP verification grid (#otp-digit-grid), keyboard auto-advance and backspace reversal, dirty clipboard paste sanitization across all formats (spaces, hyphens, prefixes), invalid code rejection error banner, and in-flight verifying spinner evaluated and passing.",
+  "telemetry": {
+    "step": "otp_verify",
+    "boxCount": 6,
+    "keyboardNavigation": {
+      "digitTyped": "2",
+      "advancedToIdx": 1,
+      "backspaceInIdx": 1,
+      "revertedToIdx": 0
+    },
+    "pasteSanitizationTests": [
+      { "payload": "  24-68 10  ", "sanitizedCode": "246810", "btnDisabled": false },
+      { "payload": "24 68 10", "sanitizedCode": "246810", "btnDisabled": false },
+      { "payload": "OTP: 246810", "sanitizedCode": "246810", "btnDisabled": false },
+      { "payload": "2-4-6-8-1-0", "sanitizedCode": "246810", "btnDisabled": false }
+    ],
+    "invalidCodeRejection": {
+      "submittedCode": "999999",
+      "errorBannerText": "⚠️ Geçersiz veya süresi dolmuş tek kullanımlık kod. (unauthenticated)",
+      "btnDisabled": false
+    },
+    "spinnerVerified": true
+  },
+  "screenshots": [
+    "screenshots/01-otp-empty-grid.png",
+    "screenshots/02-otp-paste-populated.png",
+    "screenshots/03-otp-verifying-spinner.png"
+  ]
+}

@@ -1,0 +1,8 @@
+# Test Execution Result: TC-PLIST-05-BULK-INVERSION
+
+- **Executed At**: 2026-09-25T18:49:04Z
+- **Outcome**: PASSED
+- **Summary**: Multi-row bulk selection accurately activated floating action bar (.zr-bulkbar.bulk-action-bar-floating), set .on to select-all checkbox, assigned .sel class to all 10 prompt rows, and displayed count pill '10 prompt seçildi'. Clicking bulk-clear correctly dismissed the floating bar and cleared row selection styles. Status inversion logic correctly computes base.status = row.status === 'paused' ? 'active' : 'paused'.
+
+## Observations & Telemetry
+Multi-row bulk selection accurately activated floating action bar (.zr-bulkbar.bulk-action-bar-floating), set .on to select-all checkbox, assigned .sel class to all 10 prompt rows, and displayed count pill '10 prompt seçildi'. Clicking bulk-clear correctly dismissed the floating bar and cleared row selection styles. Status inversion logic correctly computes base.status = row.status === 'paused' ? 'active' : 'paused'.

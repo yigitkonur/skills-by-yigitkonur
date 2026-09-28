@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-AA-12",
+  "executedAt": "2026-09-25T18:51:40Z",
+  "outcome": "PASSED",
+  "summary": "Telemetry CSV export enforces strict data provenance boundary: in demo mode, the sample logs export button is visible and actionable; in live mode (aaIsLive() === true), the sample export button is strictly omitted from the DOM to prevent misleading stakeholders."
+}

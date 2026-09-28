@@ -1,0 +1,8 @@
+# Test Execution Result: TC-PLIST-06-INTENT-FILTER
+
+- **Executed At**: 2026-09-25T18:49:41Z
+- **Outcome**: PASSED
+- **Summary**: AEI Prompts & Citations Studio cleanly implements 5-intent taxonomy chips (Tümü, Bilgi, Ticari, Satın Alma, Gezinme). Clicking 'Bilgi' isolated 3 informational prompts; clicking 'Satın Alma' isolated 2 transactional prompts. Zero-match search filter rendered .aei-empty-state with localized message 'Aktif filtrelere uyan prompt bulunamadı.'. Restoring 'Tümü' brought back all 10 prompts.
+
+## Observations & Telemetry
+AEI Prompts & Citations Studio cleanly implements 5-intent taxonomy chips (Tümü, Bilgi, Ticari, Satın Alma, Gezinme). Clicking 'Bilgi' isolated 3 informational prompts; clicking 'Satın Alma' isolated 2 transactional prompts. Zero-match search filter rendered .aei-empty-state with localized message 'Aktif filtrelere uyan prompt bulunamadı.'. Restoring 'Tümü' brought back all 10 prompts.

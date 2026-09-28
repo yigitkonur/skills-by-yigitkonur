@@ -1,0 +1,32 @@
+{
+  "caseId": "TC-ONB-08-CUSTOM-TOPIC-DUPLICATE",
+  "executedAt": "2026-09-25T19:37:18Z",
+  "outcome": "PASSED",
+  "summary": "Custom topic creation, duplicate rejection, and regeneration prompts banner verified. Inline input (#custom-topic-input) rejects duplicates case-insensitively with error toast ('Bu konu zaten listede.'). Unique custom topics ('AI Travel Search') are added, marked .topic-pill-selected, recorded in live.tp.custom, and trigger the .ob-topic-regen-note regeneration banner with data-action='ob-regen-topics'.",
+  "telemetry": {
+    "inlineInput": {
+      "rendered": true,
+      "placeholder": "Özel konu ekleyin"
+    },
+    "duplicateRejection": {
+      "inputAttempt": "[SAMPLE_TOPIC_1]",
+      "existingTopic": "[SAMPLE_TOPIC_1]",
+      "rejected": true,
+      "toastMessage": "Bu konu zaten listede.",
+      "listCountUnchanged": true
+    },
+    "uniqueCreation": {
+      "topicName": "AI Travel Search",
+      "pillCreated": true,
+      "pillSelected": true,
+      "customTrackedInState": ["AI Travel Search"],
+      "regenNoteVisible": true,
+      "regenButtonRendered": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-custom-topic-inline-input.png",
+    "screenshots/02-custom-topic-duplicate-toast.png",
+    "screenshots/03-custom-topic-added-regen-note.png"
+  ]
+}

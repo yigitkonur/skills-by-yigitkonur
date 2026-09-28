@@ -1,0 +1,43 @@
+{
+  "caseId": "TC-ONB-04-CCTLD-GEO-DEDUCTION",
+  "executedAt": "2026-09-25T19:33:24Z",
+  "outcome": "PASSED",
+  "summary": "ccTLD Geographic and Language auto-deduction engine verified. Detected market pill dynamically reflects TR (🇹🇷), UK (🇬🇧), and DE (🇩🇪) markets with respective flags and localized country/language descriptors. Manual user override immunity preserves dropdown selections ('regionTouched: true', 'localeTouched: true') when subsequent domain changes occur. Cross-field insight noted: obIsTurkishDomainOrBrand checks both brand name and domain against OB_KNOWN_TR_PATTERNS.",
+  "telemetry": {
+    "deductions": {
+      "turkey": {
+        "domain": "[DOMAIN]",
+        "marketPill": "Algılanan Pazar: 🇹🇷 Türkiye (TR) · Türkçe",
+        "expectedRegion": "TR",
+        "expectedLanguage": "tr"
+      },
+      "unitedKingdom": {
+        "domain": "bbc.co.uk",
+        "marketPill": "Algılanan Pazar: 🇬🇧 Birleşik Krallık (UK) · İngilizce",
+        "expectedRegion": "UK",
+        "expectedLanguage": "en"
+      },
+      "germany": {
+        "domain": "zalando.de",
+        "marketPill": "Algılanan Pazar: 🇩🇪 Almanya (DE) · Almanca",
+        "expectedRegion": "DE",
+        "expectedLanguage": "de"
+      }
+    },
+    "userOverrideImmunity": {
+      "manualRegionSet": "DE",
+      "manualLanguageSet": "de",
+      "regionTouched": true,
+      "localeTouched": true,
+      "domainEditedTo": "hepsiburada.com",
+      "preservedRegion": "DE",
+      "preservedLanguage": "de",
+      "overrideRespected": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-deduced-tr-market.png",
+    "screenshots/02-deduced-uk-market.png",
+    "screenshots/03-deduced-de-market.png"
+  ]
+}

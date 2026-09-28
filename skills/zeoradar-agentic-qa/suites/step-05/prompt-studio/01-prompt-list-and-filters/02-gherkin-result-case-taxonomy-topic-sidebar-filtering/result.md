@@ -1,0 +1,8 @@
+# Test Execution Result: TC-PLIST-02-TAXONOMY-FILTER
+
+- **Executed At**: 2026-09-25T18:46:57Z
+- **Outcome**: PASSED
+- **Summary**: Taxonomy topic sidebar properly isolates clusters. Selecting 'Akaryakıt' toggled .on class to topic row, removed it from 'All Topics', and filtered the master prompt table from 10 to exactly 4 rows matching the badge count. Re-selecting 'All Topics' immediately restored all 10 active rows.
+
+## Observations & Telemetry
+Taxonomy topic sidebar properly isolates clusters. Selecting 'Akaryakıt' toggled .on class to topic row, removed it from 'All Topics', and filtered the master prompt table from 10 to exactly 4 rows matching the badge count. Re-selecting 'All Topics' immediately restored all 10 active rows.

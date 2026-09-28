@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-11",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Single-market regional scoping handles unrepresented region filtering gracefully without uncaught exceptions and displays Türkiye location_code 2792 disclaimer."
+}

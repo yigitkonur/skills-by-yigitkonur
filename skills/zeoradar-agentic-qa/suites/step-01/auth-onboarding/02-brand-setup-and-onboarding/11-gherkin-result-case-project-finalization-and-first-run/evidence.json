@@ -1,0 +1,40 @@
+{
+  "caseId": "TC-ONB-11-PROJECT-FINALIZATION",
+  "executedAt": "2026-09-25T19:39:57Z",
+  "outcome": "PASSED",
+  "summary": "Project finalization confirmation modal, RPC loading state, success state, and dashboard handoff verified. Clicking 'Continue to finalize' opens .ob-exec-modal displaying accurate counts of Prompts (4), Personas (2), Keywords (2), and Persona prompt bindings (0). Confirming displays the loading state ('Oluşturuluyor…', disabled button). Upon finalization resolution (fz.phase === 'done'), modal updates to 'Your project is ready' ('Projeniz hazır') and 'Go to dashboard' ('Panele git') cleanly transitions the user to the active app route.",
+  "telemetry": {
+    "confirmationModal": {
+      "modalTitle": "Projeniz bu seçimlerle oluşturulsun mu?",
+      "promptsCount": 4,
+      "personasCount": 2,
+      "keywordsCount": 2,
+      "bindingsCount": 0
+    },
+    "cancellation": {
+      "modalDismissed": true,
+      "activeStepRemained": 5
+    },
+    "loadingState": {
+      "buttonText": "Oluşturuluyor…",
+      "buttonDisabled": true
+    },
+    "successResolution": {
+      "successTitle": "Projeniz hazır",
+      "projectName": "[BRAND]",
+      "firstRunDay": "2026-09-25",
+      "plannedAnswers": 32,
+      "ctaText": "Panele git"
+    },
+    "dashboardHandoff": {
+      "targetRoute": "app",
+      "navigatedSuccessfully": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-finalize-modal-opened.png",
+    "screenshots/02-finalize-loading-state.png",
+    "screenshots/03-finalize-success-screen.png",
+    "screenshots/04-dashboard-first-landed.png"
+  ]
+}

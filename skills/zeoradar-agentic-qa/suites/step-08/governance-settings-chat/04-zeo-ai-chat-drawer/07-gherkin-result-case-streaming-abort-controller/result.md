@@ -1,0 +1,8 @@
+# Test Execution Result: TC-CHT-07
+
+- **Executed At**: 2026-09-25T19:34:51Z
+- **Outcome**: PASSED
+- **Summary**: Successfully verified streaming response cancellation via AbortController and stop-chat-response RPC. Clicking Stop instantly dispatches the stop command, aborts network streaming, immediately flushes remaining typewriter queue characters, strips trailing carets, displays localized toast confirmation ('Yanıt durduruldu' / 'Response stopped'), and cleanly reverts the submit button to default send state without generating phantom message bubbles.
+
+## Observations & Telemetry
+Successfully verified streaming response cancellation via AbortController and stop-chat-response RPC. Clicking Stop instantly dispatches the stop command, aborts network streaming, immediately flushes remaining typewriter queue characters, strips trailing carets, displays localized toast confirmation ('Yanıt durduruldu' / 'Response stopped'), and cleanly reverts the submit button to default send state without generating phantom message bubbles.

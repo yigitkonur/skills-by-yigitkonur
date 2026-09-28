@@ -1,0 +1,8 @@
+# Test Execution Result: TC-OPP-13
+
+- **Executed At**: 2026-09-25T19:20:40Z
+- **Outcome**: PASSED
+- **Summary**: Clicking 'Export CSV' button (.opps-btn-export[data-action='opp-export']) successfully triggers client-side generation and download of 'zeo-radar-shell-opportunities.csv'. Confirmatory info toast ('CSV indirildi: fırsatlar') is displayed. CSV headers match schema ('Brand;Category;Title;ImpactScore;PerformanceScore;Effort;Status;Prompt'), data rows match all active opportunities (2 backlog items + 1 header row = 3 rows), UTF-8 BOM (\ufeff) is prepended for Excel compatibility, and formula injection characters (=, +, -, @) are sanitized with leading single quote via ZeoCSV.cell protection. Downloaded file verified on disk.
+
+## Observations & Telemetry
+Clicking 'Export CSV' button (.opps-btn-export[data-action='opp-export']) successfully triggers client-side generation and download of 'zeo-radar-shell-opportunities.csv'. Confirmatory info toast ('CSV indirildi: fırsatlar') is displayed. CSV headers match schema ('Brand;Category;Title;ImpactScore;PerformanceScore;Effort;Status;Prompt'), data rows match all active opportunities (2 backlog items + 1 header row = 3 rows), UTF-8 BOM (\ufeff) is prepended for Excel compatibility, and formula injection characters (=, +, -, @) are sanitized with leading single quote via ZeoCSV.cell protection. Downloaded file verified on disk.

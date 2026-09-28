@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-MAP-06",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Target-centered zoom calculates tr.getBBox() and clamps center offsets against base boundaries, focusing directly on the monitored market."
+}

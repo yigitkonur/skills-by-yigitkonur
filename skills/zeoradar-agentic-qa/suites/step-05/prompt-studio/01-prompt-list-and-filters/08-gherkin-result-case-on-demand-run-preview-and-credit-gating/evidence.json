@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PLIST-08-RUN-CREDIT-GATING",
+  "executedAt": "2026-09-25T18:50:55Z",
+  "outcome": "PASSED",
+  "summary": "On-Demand measurement run modal (ZeoRunNow) rendered accurately from Overview Cockpit. Computed cell breakdown: 10 active prompts x 4 engines = 40 baseline cells, 0 persona cells, yielding exactly 40 total planned cells. The action button strictly enforced 1 credit = 1 cell parity displaying 'Koşuyu başlat — 40 kredi'. Modal closed cleanly via rn-close."
+}

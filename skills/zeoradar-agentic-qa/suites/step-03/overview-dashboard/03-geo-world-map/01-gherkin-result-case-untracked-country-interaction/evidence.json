@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-MAP-08",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Clicking foreign untracked country paths (#us, #de) produces zero uncaught exceptions and displays the single-market location_code 2792 notice."
+}

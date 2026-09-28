@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-DB-05",
+  "executedAt": "2026-09-25T19:36:19Z",
+  "outcome": "PASSED",
+  "summary": "Verified PDF compilation export button state transition (.dash-spin, disabled = true) and graceful fallback upon server-side compilation error to window.print() with temporary document.body.classList.add('printing') styling, fallback notice toast display, and restoration of button to enabled status."
+}

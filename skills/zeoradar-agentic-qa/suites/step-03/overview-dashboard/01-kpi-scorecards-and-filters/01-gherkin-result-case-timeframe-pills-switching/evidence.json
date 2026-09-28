@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-02",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "In-card timeframe pills (7d, 14d, 30d, 90d) synchronously update state.ov.range and toggle active class .active with exactly 1 active button."
+}

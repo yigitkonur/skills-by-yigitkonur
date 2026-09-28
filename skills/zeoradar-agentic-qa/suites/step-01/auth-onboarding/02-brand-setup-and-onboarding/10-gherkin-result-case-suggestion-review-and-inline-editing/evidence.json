@@ -1,0 +1,30 @@
+{
+  "caseId": "TC-ONB-10-SUGGESTION-INLINE-EDIT",
+  "executedAt": "2026-09-25T19:38:55Z",
+  "outcome": "PASSED",
+  "summary": "Step 5 suggestion review accordion and inline editing verified. Inclusion toggling updates row class (.ob-row-off) and dynamically recalculates total accepted prompts badge. Inline editing (.ob-prompt-row-editing, #ob-live-edit-first) correctly updates DOM text and commits changes to window.state.onboarding.live.draft.prompts[0].text upon clicking save (.ob-action-check).",
+  "telemetry": {
+    "initial": {
+      "activeStep": 5,
+      "totalPrompts": 4,
+      "promptRowsRendered": 8
+    },
+    "toggleInclusion": {
+      "itemToggled": "p_1",
+      "rowOffApplied": true,
+      "recalculatedCount": 3
+    },
+    "inlineEdit": {
+      "originalText": "[BRAND] erken rezervasyon otel indirimleri nelerdir?",
+      "editedText": "[SAMPLE_SUGGESTION]",
+      "savedSuccessfully": true,
+      "committedToDraft": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-review-accordion-initial.png",
+    "screenshots/02-prompt-row-toggled-off.png",
+    "screenshots/03-prompt-inline-editing.png",
+    "screenshots/04-prompt-edited-saved.png"
+  ]
+}

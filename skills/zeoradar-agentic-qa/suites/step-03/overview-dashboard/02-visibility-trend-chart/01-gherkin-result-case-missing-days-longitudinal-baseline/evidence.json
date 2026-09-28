@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-07",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "ovBaselineSeries replicates m = 0 flat line baseline for single-run datasets, ensuring NaN-free SVG paths and displaying .ov-demo-badge."
+}

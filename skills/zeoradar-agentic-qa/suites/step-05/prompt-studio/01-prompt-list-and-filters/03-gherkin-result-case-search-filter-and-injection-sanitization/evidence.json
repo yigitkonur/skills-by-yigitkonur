@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PLIST-03-SEARCH-INJECTION",
+  "executedAt": "2026-09-25T18:48:09Z",
+  "outcome": "PASSED",
+  "summary": "Prompt search input correctly debounces (250ms) and performs case-insensitive substring filtering (searching 'helix' and 'HELIX' both isolated the Shell Helix prompt from 10 to 1 row). Malicious XSS vector '\"><img src=x onerror=\"window.__xss_vulnerable=true\">' was properly neutralized with 0 injected scripts/img tags, window.__xss_vulnerable remained false/undefined, and rendered the localized empty state message 'Geçerli filtrelere uyan prompt yok.'. Clearing the search input cleanly restored all 10 rows."
+}

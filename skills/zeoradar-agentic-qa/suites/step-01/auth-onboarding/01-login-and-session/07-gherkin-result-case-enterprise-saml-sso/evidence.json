@@ -1,0 +1,34 @@
+{
+  "caseId": "TC-AUTH-07-SAML-SSO",
+  "executedAt": "2026-09-25T19:37:45Z",
+  "outcome": "PASSED",
+  "summary": "Enterprise SAML SSO expandable drawer (.auth-sso-drawer) verified: toggle opening and dismissal, whitespace and empty domain button gating, valid corporate domain enabling continue CTA, and drawer unmounting upon toggle.",
+  "telemetry": {
+    "step": "email",
+    "drawerLifecycle": {
+      "initialDrawerExists": false,
+      "ssoBtnExists": true,
+      "openDrawerExists": true,
+      "inputPlaceholder": "company.com",
+      "initialBtnDisabled": true
+    },
+    "whitespaceGating": [
+      { "input": "", "btnDisabled": true },
+      { "input": "   ", "btnDisabled": true },
+      { "input": "  \t  ", "btnDisabled": true }
+    ],
+    "validCorporateDomain": {
+      "domain": "acmecorp.com",
+      "btnDisabled": false
+    },
+    "reclose": {
+      "drawerExists": false,
+      "ssoOpen": false
+    }
+  },
+  "screenshots": [
+    "screenshots/01-sso-drawer-closed.png",
+    "screenshots/02-sso-drawer-open-focused.png",
+    "screenshots/03-sso-domain-filled.png"
+  ]
+}

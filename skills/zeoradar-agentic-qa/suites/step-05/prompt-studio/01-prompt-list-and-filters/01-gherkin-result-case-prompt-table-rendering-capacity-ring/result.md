@@ -1,0 +1,8 @@
+# Test Execution Result: TC-PLIST-01-CAPACITY-RING
+
+- **Executed At**: 2026-09-25T18:45:47Z
+- **Outcome**: PASSED
+- **Summary**: Master prompt table successfully rendered all 10 baseline Shell prompts with correct headers (Promptlar, Konu, Prompt Tipi, Dil, Bölgeler, Ölçüm Motorları). The SVG capacity ring computed stroke-dasharray '4.02 40.2' matching the exact mathematical formula (40.2 * min(10, 100) / 100 = 4.02). Count pill reads '10 / 100 prompt'.
+
+## Observations & Telemetry
+Master prompt table successfully rendered all 10 baseline Shell prompts with correct headers (Promptlar, Konu, Prompt Tipi, Dil, Bölgeler, Ölçüm Motorları). The SVG capacity ring computed stroke-dasharray '4.02 40.2' matching the exact mathematical formula (40.2 * min(10, 100) / 100 = 4.02). Count pill reads '10 / 100 prompt'.

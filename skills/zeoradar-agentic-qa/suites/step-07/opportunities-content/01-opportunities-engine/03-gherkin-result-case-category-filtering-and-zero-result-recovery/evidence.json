@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-OPP-03",
+  "executedAt": "2026-09-25T18:50:42Z",
+  "outcome": "PASSED",
+  "summary": "Category filtering popover correctly opens, isolates cards to the selected category (reddit), and restores the full active backlog upon resetting category filters to 'all'."
+}

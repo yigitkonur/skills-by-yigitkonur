@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-OPP-04",
+  "executedAt": "2026-09-25T18:51:03Z",
+  "outcome": "PASSED",
+  "summary": "Sorting engine correctly re-orders backlog by Highest Impact (descending scores 87 -> 63 -> 42), Performance Score, and Category Type (alphabetical content -> outreach -> reddit)."
+}

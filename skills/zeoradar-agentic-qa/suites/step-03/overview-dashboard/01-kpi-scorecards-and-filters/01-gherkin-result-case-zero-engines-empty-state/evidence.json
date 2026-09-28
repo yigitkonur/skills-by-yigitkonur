@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-06",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Zero-engine and zero-answers empty state renders em-dash '–' cleanly and suppresses division-by-zero, maintaining .ov-skeleton-wrap integrity."
+}

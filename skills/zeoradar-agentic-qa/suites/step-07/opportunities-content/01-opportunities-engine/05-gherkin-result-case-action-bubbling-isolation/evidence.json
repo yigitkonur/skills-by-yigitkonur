@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-OPP-05",
+  "executedAt": "2026-09-25T18:52:30Z",
+  "outcome": "PASSED",
+  "summary": "Event bubbling isolation strictly enforced. Clicks originating within .op-card-actions (archive, dismiss, draft brief, actions padding) prevent opp-select-detail delegation, keeping viewMode as 'list' and preventing inadvertent detail navigation."
+}

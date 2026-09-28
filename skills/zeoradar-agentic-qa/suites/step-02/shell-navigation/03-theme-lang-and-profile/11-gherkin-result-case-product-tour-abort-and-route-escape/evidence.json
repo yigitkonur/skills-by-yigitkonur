@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PREF-11-TOUR-ABORT-ESCAPE",
+  "executedAt": "2026-09-25T19:50:00Z",
+  "outcome": "PASSED",
+  "summary": "Product tour abort pathways and route navigation escape PASSED: Aborting mid-flight via tooltip close button, SVG mask backdrop click, and route navigation via sidebar or tab switching now cleanly unmounts the tour, clears #productTourHolder, and sets state.tour.isActive=false. The previous defect at assets/radar.js:5465 was remediated by wiring endProductTour() directly into route and navigation transitions."
+}

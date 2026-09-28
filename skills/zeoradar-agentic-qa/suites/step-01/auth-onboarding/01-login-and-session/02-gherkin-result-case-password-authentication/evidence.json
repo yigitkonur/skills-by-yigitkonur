@@ -1,0 +1,41 @@
+{
+  "caseId": "TC-AUTH-02-PASSWORD-AUTH",
+  "executedAt": "2026-09-25T19:31:50Z",
+  "outcome": "PASSED",
+  "summary": "Password authentication, visibility toggle (masked to unmasked to masked), short password gating (<6 chars disabled), invalid credentials handling (unauthenticated error banner and preserved inputs), and valid credentials authentication successfully verified against live Supabase backend.",
+  "telemetry": {
+    "visibilityToggle": {
+      "initialType": "password",
+      "afterClickType": "text",
+      "afterSecondClickType": "password"
+    },
+    "shortPasswordValidation": [
+      { "pwd": "12345", "btnDisabled": true },
+      { "pwd": "abc", "btnDisabled": true },
+      { "pwd": "a", "btnDisabled": true },
+      { "pwd": "", "btnDisabled": true }
+    ],
+    "invalidCredentials": {
+      "email": "alexsmith@content-mobbin.com",
+      "attemptedPassword": "WrongPassword999!",
+      "errorCode": "unauthenticated",
+      "errorBannerText": "⚠️ E-posta veya parola hatalı. (unauthenticated)",
+      "inputErrorClass": true,
+      "buttonReenabled": true,
+      "valuePreserved": true
+    },
+    "validCredentials": {
+      "email": "e2e-agent@zeogen.com",
+      "mode": "live",
+      "transport": "supabase",
+      "userId": "24f58c12-5193-4ee7-afcd-e0c34e23891e",
+      "redirectRoute": "https://zeoradar.endpoints.lol/"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-password-masked.png",
+    "screenshots/02-password-unmasked.png",
+    "screenshots/03-password-error-banner.png",
+    "screenshots/04-auth-success-redirect.png"
+  ]
+}

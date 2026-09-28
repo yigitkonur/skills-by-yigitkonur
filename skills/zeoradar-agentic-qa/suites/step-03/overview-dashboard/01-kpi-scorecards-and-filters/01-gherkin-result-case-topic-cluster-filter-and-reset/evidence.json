@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-07",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "FAILED",
+  "summary": "Defect DEFECT-STEP03-02: Topic cluster chip (.fchip[data-pop='topics']) and global filter reset (.freset) are omitted on the Overview Dashboard because .filterbar is not rendered."
+}

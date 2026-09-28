@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-ACC-07",
+  "executedAt": "2026-09-25T19:39:29Z",
+  "outcome": "PASSED",
+  "summary": "Non-Destructive Member Suspension and Audit Provenance verified: Member suspension dispatches RPC command 'set-member-status' with status: 'suspended'. Zero hard DELETE or delete-member commands are issued. The member remains permanently in the roster with .acct-badge-suspended ('Askıda' / 'Suspended'), preserving historical audit authorship and attribution."
+}

@@ -1,0 +1,8 @@
+# Test Execution Result: TC-AA-05
+
+- **Executed At**: 2026-09-25T18:48:11Z
+- **Outcome**: FAILED
+- **Summary**: Ingesting 500 and 503 errors accurately calculates 200 OK Rate at 66.7%. However, two defects were discovered: (1) .aa-crawler-card[data-metric='200-ok-rate'] badge remains permanently positive with class '.aa-metric-badge.pos' and text 'Health' even when 200 OK Rate drops severely to 66.7%; (2) Missing log.method in telemetry renders unhandled 'undefined 500' in both logs table pill and drawer pill.
+
+## Observations & Telemetry
+Ingesting 500 and 503 errors accurately calculates 200 OK Rate at 66.7%. However, two defects were discovered: (1) .aa-crawler-card[data-metric='200-ok-rate'] badge remains permanently positive with class '.aa-metric-badge.pos' and text 'Health' even when 200 OK Rate drops severely to 66.7%; (2) Missing log.method in telemetry renders unhandled 'undefined 500' in both logs table pill and drawer pill.

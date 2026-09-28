@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PLIST-07-VOLUME-ENGINEDOTS",
+  "executedAt": "2026-09-25T18:50:08Z",
+  "outcome": "PASSED",
+  "summary": "Prompts & Citations Studio reliably renders the 5-engine outcome cluster (.aei-m-dots). Each prompt row rendered exactly 5 .aei-mini-dot elements for ChatGPT, Perplexity, Gemini, Claude, and Google AI Mode with valid status classes and informative tooltips ('ChatGPT: Ölçülmedi', etc.). Volume formats conformed strictly to the 3-tier fallback hierarchy."
+}

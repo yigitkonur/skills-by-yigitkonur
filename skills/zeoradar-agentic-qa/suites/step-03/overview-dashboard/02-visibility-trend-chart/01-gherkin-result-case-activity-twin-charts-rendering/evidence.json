@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-08",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Website Activity twin cards (AI Bot Citations & AI Referral Visits) correctly display .card.configure-website-card empty state CTA when allZeroSeries is true, avoiding empty graph frames."
+}

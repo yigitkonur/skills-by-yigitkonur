@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-OPP-02",
+  "executedAt": "2026-09-25T18:50:12Z",
+  "outcome": "PASSED",
+  "summary": "Status tabs properly segregate active, archived, and dismissed opportunities. Archiving an active opportunity immediately decremented active count from 3 to 2, incremented archived count to 1, and moved the card to the Archived tab with a functional Restore CTA. Restoring the card cleanly returned it to the active backlog with count synchronization."
+}

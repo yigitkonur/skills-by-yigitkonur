@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-VOL-01",
+  "executedAt": "2026-09-25T18:54:08Z",
+  "outcome": "PASSED",
+  "summary": "Universal Search input (#volUniversalSearchInput) and 4 intent filter pills (Info, Commercial, Transactional, Navigational) render in the explore cockpit and accurately filter prompt volume table queries."
+}

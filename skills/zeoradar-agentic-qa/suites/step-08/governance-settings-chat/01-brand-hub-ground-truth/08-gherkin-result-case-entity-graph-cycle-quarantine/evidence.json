@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-BH-08",
+  "executedAt": "2026-09-25T19:38:48Z",
+  "outcome": "PASSED",
+  "summary": "Verified Entity Hierarchy DAG cycle quarantine: ZeoEntityGraph.detectCycles correctly detected 3-node (brand_alpha -> beta -> gamma -> alpha) and 2-node cycles, and sanitizeHierarchyDAG successfully quarantined cyclic back-edges (quarantinedCount: 1, cleanCount: 2) preserving strictly acyclic clean edges without infinite loops or recursion faults."
+}

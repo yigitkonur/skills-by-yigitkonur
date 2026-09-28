@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-10",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Comparative switch .ct-switch[data-action='ov-compare'] toggles .on class and mutates state.ov.compare cleanly."
+}

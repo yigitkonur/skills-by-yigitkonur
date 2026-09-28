@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-AA-09",
+  "executedAt": "2026-09-25T18:50:16Z",
+  "outcome": "PASSED",
+  "summary": "Server logs filtering and path search accurately filters real-time log records by substring (e.g. '/pricing'). Filtered table displays only matching request paths."
+}

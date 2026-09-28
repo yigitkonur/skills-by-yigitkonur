@@ -1,0 +1,29 @@
+{
+  "caseId": "TC-AUTH-09-SIGNOUT-SWITCH",
+  "executedAt": "2026-09-25T19:39:46Z",
+  "outcome": "PASSED",
+  "summary": "Session sign-out (handleAuthSignOut, client.signOut) and account switching (handleAuthSwitchAccount) verified: tokens purged, form state cleansed to step email with blank inputs, and redirection to auth entry point.",
+  "telemetry": {
+    "authenticatedState": {
+      "url": "https://zeoradar.endpoints.lol/",
+      "dashboardRendered": true
+    },
+    "signoutAction": {
+      "revertedUrl": "https://zeoradar.endpoints.lol/auth",
+      "step": "email",
+      "emailCleared": true,
+      "passwordCleared": true,
+      "inputEmpty": true
+    },
+    "switchAccountAction": {
+      "originStep": "brand_setup",
+      "clearedStateAuth": true,
+      "resetStep": "email",
+      "brandFieldsCleared": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-authenticated-dashboard.png",
+    "screenshots/02-signout-auth-screen.png"
+  ]
+}

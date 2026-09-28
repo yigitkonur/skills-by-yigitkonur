@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CHT-01",
+  "executedAt": "2026-09-25T19:31:52Z",
+  "outcome": "PASSED",
+  "summary": "Successfully verified Zeo AI Copilot dual surface initiation and preset selection. Floating trigger / router navigation smoothly transitions to dedicated full-page assistant view at /#/shell/assistant. The composer textarea (#chatInput) renders visible and accessible, accompanied by 4 localized preset question cards (.preset-card) populated with brand-tailored telemetry prompts. Single-click dispatch targets streaming assistant."
+}

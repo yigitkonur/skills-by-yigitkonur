@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-CMD-10-MOBILE-VIEWPORT-SUPPRESSION",
+  "executedAt": "2026-09-25T18:48:13Z",
+  "outcome": "PASSED",
+  "summary": "Responsive suppression verified: topbar trigger .cmd-trigger-btn is cleanly hidden (display:none) on mobile 390px viewport to conserve header space. Command palette remains accessible via hardware Meta+K shortcut on mobile. Restoring desktop (1440px) cleanly restores .cmd-trigger-btn (display:flex)."
+}

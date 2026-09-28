@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-TREND-06",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "PASSED",
+  "summary": "Floating tooltip div.ov-tip enforces coordinate boundary clamping (left clamp x >= 4px, right collision flip lx = px - tw - 14) and mouseleave dismissal."
+}

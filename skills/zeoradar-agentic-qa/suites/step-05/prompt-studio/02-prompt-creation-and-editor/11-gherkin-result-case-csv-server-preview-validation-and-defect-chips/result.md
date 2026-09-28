@@ -1,0 +1,8 @@
+# Test Execution Result: TC-PCREAT-11-CSV-SERVER-DEFECTS
+
+- **Executed At**: 2026-09-25T19:22:49Z
+- **Outcome**: PASSED
+- **Summary**: Server-side CSV pre-flight validation pipeline executes via preview-prompts-csv. Defect diagnostic table accurately renders itemized row status badges: 'Dosya içi mükerrer' (span.dgcsv-st.dup / duplicate_in_file), 'Zaten mevcut' (span.dgcsv-st.dup / duplicate_existing), and 'Geçersiz' (span.dgcsv-st.bad / invalid with defect chips prompt: empty_prompt, locale: invalid_locale). The totals strip correctly reports counts ('İçe aktarılacak: 1 Mükerrer: 2 Geçersiz: 1') and import button gating permits committing only validated rows with verified previewHash.
+
+## Observations & Telemetry
+Server-side CSV pre-flight validation pipeline executes via preview-prompts-csv. Defect diagnostic table accurately renders itemized row status badges: 'Dosya içi mükerrer' (span.dgcsv-st.dup / duplicate_in_file), 'Zaten mevcut' (span.dgcsv-st.dup / duplicate_existing), and 'Geçersiz' (span.dgcsv-st.bad / invalid with defect chips prompt: empty_prompt, locale: invalid_locale). The totals strip correctly reports counts ('İçe aktarılacak: 1 Mükerrer: 2 Geçersiz: 1') and import button gating permits committing only validated rows with verified previewHash.

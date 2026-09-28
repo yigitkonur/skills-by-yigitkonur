@@ -1,0 +1,33 @@
+{
+  "caseId": "TC-AUTH-03-SIGNUP-REGISTRATION",
+  "executedAt": "2026-09-25T19:33:05Z",
+  "outcome": "PASSED",
+  "summary": "New user registration flow verified. Mandatory field validation gates submit button, Unicode/Turkish characters (Özgür Çağlayan) are fully supported and rendered, and duplicate registration error banner displays gracefully.",
+  "telemetry": {
+    "step": "signup_details",
+    "stepperDotsActive": 2,
+    "incompleteFieldGating": [
+      { "email": "test@zeogen.com", "fn": "Selin", "ln": "Kaya", "pwd": "Pass1234!", "terms": false, "btnDisabled": true },
+      { "email": "test@zeogen.com", "fn": "", "ln": "Kaya", "pwd": "Pass1234!", "terms": true, "btnDisabled": true },
+      { "email": "test@zeogen.com", "fn": "Selin", "ln": "", "pwd": "Pass1234!", "terms": true, "btnDisabled": true },
+      { "email": "test@zeogen.com", "fn": "Selin", "ln": "Kaya", "pwd": "short", "terms": true, "btnDisabled": true },
+      { "email": "invalid-email", "fn": "Selin", "ln": "Kaya", "pwd": "Pass1234!", "terms": true, "btnDisabled": true }
+    ],
+    "unicodeSupport": {
+      "firstName": "Özgür",
+      "lastName": "Çağlayan",
+      "email": "ozgur.caglayan@zeogen-test.com",
+      "termsAccepted": true,
+      "btnDisabled": false
+    },
+    "duplicateError": {
+      "errorBannerText": "⚠️ A user with this email address already exists. (user_already_exists)",
+      "errorCode": "user_already_exists"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-signup-empty-form.png",
+    "screenshots/02-signup-unicode-filled.png",
+    "screenshots/03-signup-duplicate-error.png"
+  ]
+}

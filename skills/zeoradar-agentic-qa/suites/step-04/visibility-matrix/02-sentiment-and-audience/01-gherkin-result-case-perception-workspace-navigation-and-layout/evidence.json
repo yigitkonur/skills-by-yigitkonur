@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-SNT-01",
+  "executedAt": "2026-09-25T18:33:17Z",
+  "outcome": "PASSED",
+  "summary": "Verified Perception workspace boot ('workspace=perception'), mounting all 4 primary sections: Brand Sentiment Polarity, Thematic Clusters, Audience Personas, and Hallucination Radar."
+}

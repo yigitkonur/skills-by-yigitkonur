@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-AA-07",
+  "executedAt": "2026-09-25T18:49:27Z",
+  "outcome": "PASSED",
+  "summary": "Synthetic vitals runner gracefully recovers from command failure/rejection: webVitalsLoading state cleanly resets to false, the Run Audit button re-enables without locking the interface, and error state is handled without uncaught exceptions."
+}

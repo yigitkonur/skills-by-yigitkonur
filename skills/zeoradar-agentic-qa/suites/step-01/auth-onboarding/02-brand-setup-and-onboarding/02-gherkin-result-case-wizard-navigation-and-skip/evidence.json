@@ -1,0 +1,41 @@
+{
+  "caseId": "TC-ONB-02-WIZARD-NAVIGATION",
+  "executedAt": "2026-09-25T19:31:42Z",
+  "outcome": "PASSED",
+  "summary": "Wizard navigation and skip walkthrough actions fully verified. Linear navigation accurately updates activeStep (1 -> 2 -> 3), indicator dots (.ob-step-dot.on), and header kicker copy. Back button preserves brand input state ('[BRAND]') upon returning. Skip walkthrough cleanly dismisses onboarding and transitions to main dashboard ('app').",
+  "telemetry": {
+    "step1": {
+      "activeStep": 1,
+      "kicker": "YAPAY ZEKA GÖRÜNÜRLÜK ALANINIZ",
+      "dot1On": true,
+      "hasWelcomeCta": true
+    },
+    "step2": {
+      "activeStep": 2,
+      "kicker": "5 ADIMIN 2.'Sİ · GÜNLÜK ANALİZ",
+      "dot2On": true,
+      "hasContinueBtn": true
+    },
+    "step3": {
+      "activeStep": 3,
+      "kicker": "5 ADIMIN 3.'SÜ · COĞRAFİ HEDEFLEME & MOTOR PROFİLİ",
+      "dot3On": true,
+      "brandInput": "[BRAND]"
+    },
+    "backNavigation": {
+      "stepAfterBack": 2,
+      "stepAfterReturn": 3,
+      "brandRetained": "[BRAND]"
+    },
+    "skipWalkthrough": {
+      "route": "app",
+      "hash": ""
+    }
+  },
+  "screenshots": [
+    "screenshots/01-step-1-welcome.png",
+    "screenshots/02-step-2-daily-demo.png",
+    "screenshots/03-step-3-targeting.png",
+    "screenshots/04-skip-dashboard-landing.png"
+  ]
+}

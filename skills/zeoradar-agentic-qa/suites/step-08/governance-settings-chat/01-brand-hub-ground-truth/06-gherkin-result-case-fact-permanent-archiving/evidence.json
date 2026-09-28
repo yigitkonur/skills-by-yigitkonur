@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-BH-06",
+  "executedAt": "2026-09-25T19:37:55Z",
+  "outcome": "PASSED",
+  "summary": "Exercised brand fact permanent archiving lifecycle: prompt archive displayed alertdialog modal .bh-confirm-modal with preview; cancel preserved active status; confirm archive dispatched mutation setting archivedAt, excluded fact from active list, and rendered it solely in 'archived' filter with .bh-status-pill.archived ('Arşivlendi') and zero action buttons in .bh-fact-head."
+}

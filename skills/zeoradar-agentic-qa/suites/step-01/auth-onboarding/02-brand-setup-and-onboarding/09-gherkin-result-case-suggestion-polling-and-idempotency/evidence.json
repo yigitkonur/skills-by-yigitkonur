@@ -1,0 +1,31 @@
+{
+  "caseId": "TC-ONB-09-POLLING-IDEMPOTENCY",
+  "executedAt": "2026-09-25T19:37:52Z",
+  "outcome": "PASSED",
+  "summary": "Asynchronous suggestion polling lifecycle, batch idempotency key caching, and 5-minute budget timeout handling verified. Idempotency key ('zeo-onboarding-sugkey:v1') persists in localStorage to prevent duplicate dispatches. Active polling renders .ob-live-progress-list with animated spinners. When polling exceeds OB_POLL_BUDGET_MS (300000ms), system transitions to 'timeout' phase rendering the 'This is taking longer than usual' (.ob-empty-state.card) recovery UI with data-action='ob-retry-suggest'.",
+  "telemetry": {
+    "idempotency": {
+      "storageKey": "zeo-onboarding-sugkey:v1",
+      "storedSignature": "sig_test_idempotency_123",
+      "batchId": "batch_ob_test_12345"
+    },
+    "pollingProgress": {
+      "phase": "polling",
+      "progressListRendered": true,
+      "kindsTracked": ["prompts", "personas", "keywords"]
+    },
+    "budgetTimeout": {
+      "budgetConstant": "OB_POLL_BUDGET_MS = 300000",
+      "budgetMinutes": 5,
+      "timeoutPhase": "timeout",
+      "emptyStateCard": true,
+      "cardTitle": "Bu işlem her zamankinden uzun sürüyor",
+      "retryAction": "ob-retry-suggest",
+      "retryButtonText": "Yeniden kontrol et"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-polling-progress-active.png",
+    "screenshots/02-timeout-recovery-card.png"
+  ]
+}

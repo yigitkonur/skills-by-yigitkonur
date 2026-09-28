@@ -1,0 +1,37 @@
+{
+  "caseId": "TC-AUTH-05-OTP-RESEND-TIMER",
+  "executedAt": "2026-09-25T19:35:45Z",
+  "outcome": "PASSED",
+  "summary": "55-Second OTP resend cooldown timer lifecycle (#resend-timer, #btn-otp-resend), countdown decrement, expiry span removal and button unlock (cursor: pointer), and re-dispatch with toast notification and timer reset (00:55) successfully verified.",
+  "telemetry": {
+    "step": "otp_verify",
+    "cooldownDuration": 55,
+    "initialCheck": {
+      "timerExists": true,
+      "timerText": "00:54",
+      "btnDisabled": true
+    },
+    "decrementCheck": {
+      "timerText": "00:47",
+      "btnDisabled": true,
+      "stateTimer": 47
+    },
+    "expiryCheck": {
+      "timerExists": false,
+      "btnDisabled": false,
+      "cursor": "pointer"
+    },
+    "reDispatchCheck": {
+      "timerExists": true,
+      "timerText": "00:55",
+      "btnDisabled": true,
+      "resendTimerState": 55,
+      "toast": "Yeni 6 haneli doğrulama kodu gönderildi.\n✕"
+    }
+  },
+  "screenshots": [
+    "screenshots/01-timer-active-55s.png",
+    "screenshots/02-timer-expired-clickable.png",
+    "screenshots/03-resend-toast-triggered.png"
+  ]
+}

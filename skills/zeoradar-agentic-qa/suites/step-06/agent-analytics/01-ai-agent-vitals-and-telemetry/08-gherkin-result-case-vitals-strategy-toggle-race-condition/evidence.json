@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-AA-08",
+  "executedAt": "2026-09-25T18:49:27Z",
+  "outcome": "PASSED",
+  "summary": "Audit runner enforces strict re-entrancy lock: secondary clicks while webVitalsLoading is active are ignored, preventing concurrent double-dispatch races."
+}

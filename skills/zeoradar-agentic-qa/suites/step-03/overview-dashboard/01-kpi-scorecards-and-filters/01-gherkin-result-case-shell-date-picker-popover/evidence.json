@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-04",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "FAILED",
+  "summary": "Defect DEFECT-STEP03-02: Global shell filter bar (.filterbar / .fchip[data-pop='date']) is omitted from the Overview Dashboard (assets/radar.js:4881-4884). Users on Overview cannot access the calendar popover or presets."
+}

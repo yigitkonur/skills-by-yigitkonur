@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-PREF-10-WHATS-NEW-TRIPLE-DISMISSAL",
+  "executedAt": "2026-09-25T19:18:04Z",
+  "outcome": "PASSED",
+  "summary": "What's New modal triple-dismissal parity and container cleanliness verified: modal opens cleanly into #modalHolder upon footer trigger. Dismissal across all 3 independent vectors—(1) backdrop overlay click (.overlay[data-action='modal-bg']), (2) global Escape keydown, and (3) top-right close button (.whatsnew-modal button.close)—consistently unmounts the modal, empties #modalHolder (0 children, innerHTML empty), and leaves no dangling overlay DOM nodes or pointer traps."
+}

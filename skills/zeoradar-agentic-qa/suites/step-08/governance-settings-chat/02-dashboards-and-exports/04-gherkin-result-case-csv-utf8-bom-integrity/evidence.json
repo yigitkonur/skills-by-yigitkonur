@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-DB-04",
+  "executedAt": "2026-09-25T19:35:18Z",
+  "outcome": "PASSED",
+  "summary": "Verified CSV export prepends UTF-8 Byte Order Mark (\uFEFF, charCode 65279 / 0xFEFF) and declares 'charset=utf-8' in Blob MIME type (text/csv;charset=utf-8;), guaranteeing proper decoding of international characters in Microsoft Excel."
+}

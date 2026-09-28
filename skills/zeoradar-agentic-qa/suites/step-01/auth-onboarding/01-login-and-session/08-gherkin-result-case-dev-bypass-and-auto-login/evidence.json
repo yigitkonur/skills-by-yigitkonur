@@ -1,0 +1,29 @@
+{
+  "caseId": "TC-AUTH-08-DEV-BYPASS-STORAGE",
+  "executedAt": "2026-09-25T19:38:45Z",
+  "outcome": "PASSED",
+  "summary": "Automated E2E test bypass login button (#btn-bypass-test-login, window.zeoBypassLogin), instant dashboard routing, and resilience against corrupted localStorage JSON (zero uncaught exceptions, graceful fallback) verified.",
+  "telemetry": {
+    "bypassGates": {
+      "isBypassGatesActive": true,
+      "btnRendered": true,
+      "btnText": "Test Girişi →"
+    },
+    "bypassExecution": {
+      "triggeredVia": "click",
+      "redirectedUrl": "https://zeoradar.endpoints.lol/",
+      "authClientSessionPopulated": true
+    },
+    "storageCorruptionResilience": {
+      "injectedPayload": "{corrupt json without closing brace...",
+      "uncaughtExceptionThrown": false,
+      "handledCleanly": true,
+      "authScreenRendersPostPurge": true
+    }
+  },
+  "screenshots": [
+    "screenshots/01-bypass-button-visible.png",
+    "screenshots/02-bypass-success-redirect.png",
+    "screenshots/03-corrupt-storage-graceful-auth.png"
+  ]
+}

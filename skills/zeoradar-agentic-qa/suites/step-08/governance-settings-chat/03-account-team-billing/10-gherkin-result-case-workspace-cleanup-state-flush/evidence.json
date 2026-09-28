@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-ACC-10",
+  "executedAt": "2026-09-25T19:46:33Z",
+  "outcome": "PASSED",
+  "summary": "Multi-Tenant Workspace Memory Cleanup and Cache Flushing verified: Orchestrator tenant cleanup handler (orch.runCleanups('tenant_switch')) executes registered cleanup hooks, resetting state.live.workspace to null, state.billing.data to null, state.billing.status to 'idle', and emptying state.team.members ([]), guaranteeing zero cross-tenant data leakage on workspace transition."
+}

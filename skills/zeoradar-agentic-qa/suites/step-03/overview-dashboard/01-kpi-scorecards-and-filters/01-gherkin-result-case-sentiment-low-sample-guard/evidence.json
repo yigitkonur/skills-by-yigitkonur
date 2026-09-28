@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-STEP03-KPI-09",
+  "executedAt": "2026-09-25T18:38:05Z",
+  "outcome": "FAILED",
+  "summary": "Defect DEFECT-STEP03-03: Sentiment card renders em-dash '–' in pre-measurement state, but title attribute is null because line 1857 in dashboards.js skips sentTooltip assignment when isEmptyState is true."
+}

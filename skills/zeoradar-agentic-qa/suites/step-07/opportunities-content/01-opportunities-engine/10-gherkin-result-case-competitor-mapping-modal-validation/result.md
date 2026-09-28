@@ -1,0 +1,8 @@
+# Test Execution Result: TC-OPP-10
+
+- **Executed At**: 2026-09-25T19:18:39Z
+- **Outcome**: PASSED
+- **Summary**: Competitor mapping modal mounts correctly with input fields #oppNewCompName and #oppNewCompDomain. Defensive validation successfully rejects empty inputs and protocol-only domains ('https://') with error toast ('Lütfen hem rakip adı hem de alan adı girin.') while preserving modal state. Happy path submission ('[COMPETITOR_NAME]', 'https://www.[COMPETITOR_DOMAIN]/') correctly sanitizes domain to '[COMPETITOR_DOMAIN]', updates profile brands/brandDomains, displays success toast, dismisses modal, and triggers dynamic backlog recalculation. Telemetry Finding: Inline onclick='event.stopPropagation()' on .modal.card requires removal to prevent swallowing native click delegation to document.
+
+## Observations & Telemetry
+Competitor mapping modal mounts correctly with input fields #oppNewCompName and #oppNewCompDomain. Defensive validation successfully rejects empty inputs and protocol-only domains ('https://') with error toast ('Lütfen hem rakip adı hem de alan adı girin.') while preserving modal state. Happy path submission ('[COMPETITOR_NAME]', 'https://www.[COMPETITOR_DOMAIN]/') correctly sanitizes domain to '[COMPETITOR_DOMAIN]', updates profile brands/brandDomains, displays success toast, dismisses modal, and triggers dynamic backlog recalculation. Telemetry Finding: Inline onclick='event.stopPropagation()' on .modal.card requires removal to prevent swallowing native click delegation to document.

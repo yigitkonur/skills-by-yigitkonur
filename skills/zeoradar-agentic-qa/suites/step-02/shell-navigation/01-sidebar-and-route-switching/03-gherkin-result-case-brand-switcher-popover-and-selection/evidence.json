@@ -1,0 +1,6 @@
+{
+  "caseId": "TC-NAV-03-BRAND-SWITCHER-POPOVER",
+  "executedAt": "2026-09-25T18:32:59Z",
+  "outcome": "PASSED",
+  "summary": "Brand switcher popover opens on trigger click (#assetPop removes .hidden), populates search input and brand catalog with active brand checkmark, filters brands live on typing ('hepsi' shows 'hepsiburada' and hides others), and selection triggers navigation, filter reset, and clean popover dismissal."
+}
