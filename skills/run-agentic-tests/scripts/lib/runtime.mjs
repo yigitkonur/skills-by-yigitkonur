@@ -131,7 +131,6 @@ export async function run(command, options = {}) {
       ...draft, schema_version: 1, kind: 'environment', record_id: draft.record_id || `ENV-${draft.target_id}`,
       campaign_id: campaignRecord.campaign_id, created_at: draft.created_at || new Date().toISOString(),
       status: 'STARTING', logs,
-      process: { pid: process.pid, start_token: 'pending', argv: draft.command.argv, cwd: draft.command.cwd, handle_path: handlePath },
     };
     if (draft.runtime_type === 'cli' && draft.readiness.type === 'process') record.capability_notes = [
       ...(draft.capability_notes || []), 'CLI readiness validates the declared setup/executable probe by marker and exit 0; it is not a running service.',
@@ -153,7 +152,8 @@ export async function run(command, options = {}) {
         mode: 'runtime', argv: draft.command.argv, cwd: draft.command.cwd,
         stdout: containedPath(campaign, logs.stdout), stderr: containedPath(campaign, logs.stderr),
       });
-      record.process.pid = handle.pid; record.process.start_token = handle.start_token;
+      record.process = { pid: handle.pid, start_token: handle.start_token,
+        argv: draft.command.argv, cwd: draft.command.cwd, handle_path: handlePath };
       await withController(campaign, () => writeRecord(campaign, recordPath, record, { immutable: false }));
       const readinessState = await probe(record, campaign, handle);
       record.status = 'READY';
@@ -162,10 +162,11 @@ export async function run(command, options = {}) {
       return { environment: record, record_path: recordPath, ...readinessState };
     } catch (error) {
       handle ??= error.handle;
-      if (handle) {
+      if (handle?.pid && handle.identity) {
         await stopOwned(handle);
-        record.process.pid = handle.pid; record.process.start_token = handle.start_token;
-      }
+        record.process = { pid: handle.pid, start_token: handle.start_token,
+          argv: draft.command.argv, cwd: draft.command.cwd, handle_path: handlePath };
+      } else delete record.process;
       record.status = 'FAILED'; record.error = error.message;
       await withController(campaign, () => writeRecord(campaign, recordPath, record, { immutable: false }));
       throw new CliError('RUNTIME_START_FAILED', error.message, 5, [{ record_path: recordPath, logs }]);

@@ -28,6 +28,16 @@ async function identity(pid) {
   } catch { return null; }
 }
 
+async function groupMembers(group) {
+  return new Promise((resolve, reject) => {
+    const query = execFile('ps', ['-axo', 'pid=,pgid=,stat='], (error, stdout) => {
+      if (error) return reject(error);
+      resolve(stdout.trim().split('\n').map(line => line.trim().split(/\s+/)).filter(([pid, pgid, state]) =>
+        Number(pgid) === group && Number(pid) !== group && Number(pid) !== query.pid && !state?.startsWith('Z')));
+    });
+  });
+}
+
 export async function inspectOwned(handle, manifestPath = handle?.manifest_path) {
   const current = await identity(handle?.pid);
   if (!current) return { alive: false, ownership: 'EXITED' };
@@ -49,7 +59,7 @@ export async function stopOwned(handle, manifestPath = handle?.manifest_path) {
   const deadline = Date.now() + 800;
   while (Date.now() < deadline) {
     state = await inspectOwned(handle, manifestPath);
-    if (!state.alive || state.ownership !== 'OWNED') return state;
+    if (!state.alive) return state;
     await pause(40);
   }
   state = await inspectOwned(handle, manifestPath);
@@ -59,9 +69,13 @@ export async function stopOwned(handle, manifestPath = handle?.manifest_path) {
   }
   for (let i = 0; i < 50; i++) {
     state = await inspectOwned(handle, manifestPath);
-    if (!state.alive || state.ownership !== 'OWNED') return state;
+    if (!state.alive) return state;
+    // ps can observe a dying macOS process as `(node)` before it becomes a
+    // zombie or disappears. Do not signal that ambiguous identity again;
+    // wait for disappearance, and retain a persistent mismatch as a refusal.
     await pause(20);
   }
+  if (state.ownership === 'MISMATCH') return state;
   throw new Error('Owned process did not stop.');
 }
 
@@ -88,11 +102,21 @@ export async function startOwned(manifestPath, config) {
       if (handle.state === 'FAILED') throw Object.assign(new Error(handle.error), { handle });
       if (handle.state !== 'STARTING') return handle;
     }
-    if (!(await identity(child.pid))) throw new Error('Process helper exited before startup; inspect stderr.');
+    if (!(await identity(child.pid))) {
+      const latest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      // The host may publish its terminal receipt after our STARTING read but
+      // before process inspection. Preserve that receipt even after exit.
+      if (latest.pid === child.pid && latest.identity) {
+        if (latest.state === 'FAILED') throw Object.assign(new Error(latest.error), { handle: latest });
+        if (latest.state === 'EXITED') return latest;
+        handle = latest;
+      }
+      throw Object.assign(new Error('Process helper exited before startup; inspect stderr.'), { handle });
+    }
     await pause(25);
   }
   if (handle?.pid) await stopOwned(handle);
-  throw new Error('Process helper startup timed out; inspect stderr.');
+  throw Object.assign(new Error('Process helper startup timed out; inspect stderr.'), { handle });
 }
 
 async function host(manifestPath, token) {
@@ -169,6 +193,19 @@ async function host(manifestPath, token) {
     await save(manifestPath, config);
   });
   child.once('exit', async (code, signal) => {
+    if (stopping) return;
+    // A launcher may exit after starting a non-detached background child.
+    // Retain the original group leader as the identity anchor until every
+    // group member exits; otherwise a later stop cannot safely own the PGID.
+    config.state = 'DRAINING'; config.exit_code = code; config.exit_signal = signal;
+    await save(manifestPath, config);
+    while (!stopping) {
+      let members;
+      try { members = await groupMembers(process.pid); }
+      catch { await pause(100); continue; }
+      if (!members.length) break;
+      await pause(50);
+    }
     if (stopping) return;
     config.state = 'EXITED'; config.exit_code = code; config.exit_signal = signal;
     await save(manifestPath, config);

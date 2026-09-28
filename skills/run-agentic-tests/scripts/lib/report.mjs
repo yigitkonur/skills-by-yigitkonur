@@ -14,14 +14,26 @@ const json = value => JSON.stringify(value).replace(/[<>&\u2028\u2029]/g,
 const hash = value => createHash('sha256').update(value).digest('hex');
 const display = value => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 const list = items => items.length ? `<ul>${items.map(item => `<li>${escape(item)}</li>`).join('')}</ul>` : '<p>None.</p>';
-function publicData(value) {
-  if (Array.isArray(value)) return value.map(publicData);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, publicData(item)]));
+const credentialName = value => /(?:password|passwd|passphrase|apikey|token|secret|authorization|cookie|privatekey|credentials?|session(?:id)?|accesskey(?:id)?)$/.test(String(value).replace(/[\s_-]/g, '').toLowerCase());
+const alreadyRedacted = value => value === null || value === '' || /^(?:["']?[\[<]?(?:redacted|omitted)[\]>]?["']?)$/i.test(String(value).trim());
+function publicData(value, onOmit = () => {}) {
+  const omit = item => { if (alreadyRedacted(item)) return item; onOmit(); return '[REDACTED]'; };
+  if (Array.isArray(value)) return value.map(item => publicData(item, onOmit));
+  if (value && typeof value === 'object') {
+    const labeledCredential = Object.entries(value).some(([key, item]) => /^name$/i.test(key) && credentialName(item));
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key,
+      credentialName(key) || (labeledCredential && /^value$/i.test(key)) ? omit(item) : publicData(item, onOmit)]));
+  }
   if (typeof value !== 'string') return value;
-  return value.replace(/https?:\/\/[^\s<>"']+/g, candidate => {
+  return value.replace(/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----[\s\S]*?(?:-----END (?:[A-Z]+ )?PRIVATE KEY-----|$)/g, omit)
+    .replace(/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{24,})/g, omit)
+    .replace(/\b((?:[\w-]*(?:api[ _-]?key|password|passwd|passphrase|token|secret)|authorization|cookie|credentials?|private[ _-]?key|session(?:[ _-]?id)?|access[ _-]?key(?:[ _-]?id)?))(["']?\s*(?::|=|\bis\b)\s*)((?:(?:Bearer|Basic)\s+[^\s,;]+)|"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
+      (_match, label, separator, secret) => `${label}${separator}${/^["']/.test(secret) ? `${secret[0]}${omit(secret.slice(1, -1))}${secret[0]}` : omit(secret)}`)
+    .replace(/\b(Bearer|Basic)\s+([A-Za-z0-9._~+/=-]{6,})/gi, (_match, type, secret) => `${type} ${omit(secret)}`)
+    .replace(/https?:\/\/[^\s<>"']+/g, candidate => {
     try {
       const url = new URL(candidate);
-      if (url.username || url.password || [...url.searchParams.keys()].some(key => /token|secret|password|api.?key|authorization|credential|session/i.test(key))) return '[credential URL omitted]';
+      if (url.username || url.password || [...url.searchParams.keys()].some(credentialName)) { onOmit(); return '[credential URL omitted]'; }
     } catch { /* Non-URL prose is escaped when rendered. */ }
     return candidate;
   });
@@ -29,9 +41,11 @@ function publicData(value) {
 
 function containsCredential(body) {
   const text = body.toString('utf8');
-  return /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bsk-[A-Za-z0-9_-]{24,}/.test(text) ||
-    /(?:^|[\s"'{,])(?:[\w-]*(?:token|password|secret)|api[_-]?key|authorization)\s*["']?\s*[:=]\s*["']?(?!\[REDACTED\]|<REDACTED>|null\b)[A-Za-z0-9/+_=.-]{8,}/im.test(text) ||
-    /https?:\/\/[^\s/]+:[^\s/]+@/i.test(text);
+  let value = text;
+  try { value = JSON.parse(text); } catch { /* Text logs use the same label screening. */ }
+  let found = false;
+  publicData(value, () => { found = true; });
+  return found;
 }
 function link(url, label = url) {
   try {
@@ -57,9 +71,12 @@ function renderRound(round) {
   }).join('');
   const previews = round.artifacts.filter(artifact => artifact.image && artifact.href).map(artifact =>
     `<figure><a href="${escape(artifact.href)}"><img src="${escape(artifact.href)}" alt="Evidence ${escape(artifact.id)}" loading="lazy"></a><figcaption>${escape(artifact.id)}</figcaption></figure>`).join('');
+  const verdictHistory = round.verdict_history.length ? `<details><summary>Sealed verdict history</summary>${list(round.verdict_history.map((verdict, index) =>
+    `${index === 0 ? 'Latest' : 'Superseded'} seal ${verdict.record_id} · ${verdict.outcome} · ${verdict.created_at}` +
+    `${verdict.supersedes_record_id ? ` · supersedes ${verdict.supersedes_record_id}` : ''} · verifier records: ${verdict.verification_record_ids.join(', ') || 'none'}`))}</details>` : '';
   return `<details ${round.current ? 'open' : ''} class="${round.current ? 'current' : 'history'}"><summary>${round.current ? 'Current' : 'Historical'} ${escape(round.round_id)} · ${escape(round.target_id)} · ${escape(round.outcome)}${round.recorded_outcome && round.recorded_outcome !== round.outcome ? ` (sealed ${escape(round.recorded_outcome)})` : ''}</summary>` +
     `<p>Execution ${escape(round.execution_record_id)} · ${escape(round.execution_status)} · source ${escape(round.source || 'not recorded')}</p>` +
-    `<p>Verifier records: ${escape(round.verification_record_ids.join(', ') || 'none')}</p>${list(round.gaps)}` +
+    `<p>Verifier records: ${escape(round.verification_record_ids.join(', ') || 'none')}</p>${verdictHistory}${list(round.gaps)}` +
     `<table><thead><tr><th>Expected and source</th><th>Actual observation and gaps</th><th>Independent review</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table>${previews}</details>`;
 }
 
@@ -95,7 +112,9 @@ async function build(campaign) {
     const executions = records.filter(({ record }) => record.kind === 'execution' && record.case_id === case_id)
       .sort((a, b) => a.record.round_id.localeCompare(b.record.round_id, 'en', { numeric: true }) || a.record.created_at.localeCompare(b.record.created_at));
     for (const { record: execution, path: executionPath } of executions) {
-      const verdict = all.find(record => record.kind === 'verdict' && record.execution_record_id === execution.record_id);
+      const verdicts = all.filter(record => record.kind === 'verdict' && record.execution_record_id === execution.record_id)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.record_id.localeCompare(a.record_id));
+      const verdict = verdicts[0];
       const spec = all.find(record => record.kind === 'expectations' && record.case_id === case_id && record.spec_revision === execution.spec_revision);
       const verifications = verdict ? verdict.verification_record_ids.map(id => byId.get(id)).filter(record => record?.kind === 'verification') :
         all.filter(record => record.kind === 'verification' && record.execution_record_id === execution.record_id);
@@ -145,6 +164,9 @@ async function build(campaign) {
       const environment = all.find(record => record.kind === 'environment' && record.target_id === execution.target_id);
       rounds.push({ round_id: execution.round_id, target_id: execution.target_id, spec_revision: execution.spec_revision,
         execution_record_id: execution.record_id, execution_status: execution.execution_status,
+        verdict_record_id: verdict?.record_id, verdict_history: verdicts.map(record => ({ record_id: record.record_id,
+          created_at: record.created_at, outcome: record.outcome, supersedes_record_id: record.supersedes_record_id,
+          verification_record_ids: record.verification_record_ids })),
         verification_record_ids: verifications.map(record => record.record_id), expectations: spec?.expectations || [],
         observations: execution.observations, reviews: verifications.flatMap(record => record.reviews.map(review => ({ ...review, actor_id: record.actor_id }))),
         source: environment?.source.revision, artifacts, gaps: roundGaps, outcome: invalidEvidence ? 'INVALID_EVIDENCE' : verdict?.outcome || (execution.execution_status === 'NOT_RUN' ? 'NOT_RUN' : 'NOT_ASSESSED') });
@@ -175,15 +197,27 @@ async function build(campaign) {
   if (assessment.obligations.some(item => item.type === 'CLOSURE_AUDIT_REQUIRED')) gaps.push('Independent closure audit is pending for the current proof digest.');
   if (!accepted.size) gaps.push('No accepted cases have final-target proof.');
   const overall = counts.FAIL ? 'FAIL' : (assessment.complete && accepted.size && counts.PASS === accepted.size && !gaps.length ? 'PASS' : 'INCOMPLETE');
-  const summary = publicData({ overall, total: accepted.size, counts, gaps });
-  const model = publicData({ campaign: campaignRecord.slug, final_target_id: campaignRecord.final_target_id, summary, cases });
-  const html = (await readFile(templatePath, 'utf8'))
-    .replace('{{TITLE}}', escape(campaignRecord.slug))
-    .replace('{{SUMMARY}}', `<strong class="status">${escape(summary.overall)}</strong><p>${summary.total} accepted cases</p>`)
-    .replace('{{GAPS}}', list(summary.gaps))
-    .replace('{{CASES}}', (model.cases.map(renderCase).join('') || '<p>No case observations are available.</p>') +
-      `<section><h2>Out-of-scope coverage</h2>${list(publicData((plan?.scope.out_of_scope || []).map(item => `${item.item}: ${item.reason}`)))}</section>`)
-    .replace('{{DATA}}', json(model));
+  let omissions = 0;
+  const onOmit = () => { omissions++; };
+  const summary = publicData({ overall, total: accepted.size, counts, gaps }, onOmit);
+  const model = publicData({ campaign: campaignRecord.slug, final_target_id: campaignRecord.final_target_id, summary, cases,
+    out_of_scope: plan?.scope.out_of_scope || [] }, onOmit);
+  if (omissions) {
+    summary.gaps.push(`Sensitive content omitted from report data (${omissions} locations); sanitize source records and obtain fresh evidence review.`);
+    if (summary.overall === 'PASS') summary.overall = 'INCOMPLETE';
+    model.summary = summary;
+  }
+  const slots = {
+    TITLE: escape(model.campaign),
+    SUMMARY: `<strong class="status">${escape(summary.overall)}</strong><p>${summary.total} accepted cases</p>`,
+    GAPS: list(summary.gaps),
+    CASES: (model.cases.map(renderCase).join('') || '<p>No case observations are available.</p>') +
+      `<section><h2>Out-of-scope coverage</h2>${list(model.out_of_scope.map(item => `${item.item}: ${item.reason}`))}</section>`,
+    DATA: json(model),
+  };
+  // A single callback pass preserves replacement metacharacters and never
+  // interprets template-like text supplied by an observation as another slot.
+  const html = (await readFile(templatePath, 'utf8')).replace(/\{\{(TITLE|SUMMARY|GAPS|CASES|DATA)\}\}/g, (_marker, key) => slots[key]);
   const temporary = containedPath(campaign, `report/index.${randomUUID()}.tmp`);
   await writeFile(temporary, html, { mode: 0o600 });
   await rename(temporary, containedPath(campaign, 'report/index.html'));
