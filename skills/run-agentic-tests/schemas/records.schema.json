@@ -143,6 +143,23 @@
             "COMPLETE",
             "BLOCKED"
           ]
+        },
+        "github_repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            }
+          },
+          "required": [
+            "remote",
+            "repository"
+          ]
         }
       },
       "required": [
@@ -789,6 +806,49 @@
         "attempt_id": {
           "type": "string",
           "pattern": "^ATT-[a-f0-9]{16}$"
+        },
+        "history_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "type": "string"
+            },
+            "record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "latest_failure_record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "digest",
+            "record_ids",
+            "latest_failure_record_ids"
+          ]
+        },
+        "github_repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            }
+          },
+          "required": [
+            "remote",
+            "repository"
+          ]
         }
       },
       "required": [

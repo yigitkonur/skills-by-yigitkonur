@@ -20,6 +20,7 @@ async function setup(t) {
   await writeFile(path.join(project, 'app.mjs'), 'console.log("ready")\n');
   await writeFile(path.join(project, '.gitignore'), 'agentic-tests/\n');
   for (const args of [['init', '-q'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['add', '.'], ['commit', '-qm', 'fixture']]) assert.equal(spawnSync('git', args, { cwd: project }).status, 0);
+  assert.equal(spawnSync('git', ['remote', 'add', 'origin', 'git@github.com:example/project.git'], { cwd: project }).status, 0);
   const init = call('init', { project, slug: 'public', 'host-capacity': 8 });
   let seq = 0;
   const c = { project, campaign: init.campaign_path, config: init.campaign };
@@ -109,7 +110,7 @@ test('current independently reviewed FAIL promotes a gap lineage and withdrawal 
   let finding = c.records({ kind: 'finding' })[0]; assert.equal(finding.class, 'EVIDENCE_GAP');
   const original = c.records({ kind: 'execution' })[0];
   const retry = await executeCase(c, [id], { request: { finding_id: finding.finding_id, prior_context: retryContext(1) } });
-  const verifier = await reviewCase(c, retry);
+  const verifier = await reviewCase(c, retry, 'FAIL', [{ class: 'PRODUCT_DEFECT', summary: 'Now confirmed by actual saved evidence', lineage_id: 'F0001', expectation_ids: ['E1'] }]);
   finding = c.records({ kind: 'finding' })[0];
   assert.equal(finding.finding_id, 'F0001'); assert.equal(finding.class, 'PRODUCT_DEFECT'); assert.equal(finding.attempts, 2); assert.equal(finding.authorized, true);
   assert.deepEqual(c.records({ 'record-id': original.record_id })[0], original);
@@ -148,4 +149,41 @@ test('case reservations block duplicate and overlapping groups through interrupt
   const awaiting = await c.create({ role: 'executor', case_ids: [ids[0]], requested_action: 'Awaiting review' }, 4); assert.equal(awaiting.error.code, 'VERIFICATION_REQUIRED');
   await reviewCase(c, executed);
   const repeated = await c.create({ role: 'executor', case_ids: [ids[0]], intervention: { kind: 'BASELINE', ref: 'initial-assessment' }, prior_context: retryContext(1), requested_action: 'Same baseline again' }, 3); assert.equal(repeated.error.code, 'REPEAT_INTERVENTION');
+});
+
+test('corrective handoffs receive the latest failure history and stale dispatch requires a refreshed task', async t => {
+  const c = await setup(t), id = await author(c, 'history'); await runtime(c); await plan(c, [id]);
+  const first = await executeCase(c, [id]); await reviewCase(c, first);
+  const old = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Find the root cause' })).task;
+  assert.ok(old.prior_context); assert.ok(old.history_basis.record_ids.includes(first.outputs[0].record_id));
+  const next = await executeCase(c, [id], { request: { prior_context: retryContext(1) } }); await reviewCase(c, next);
+  const stale = call('task dispatch', { campaign: c.campaign, 'task-id': old.task_id }, 4); assert.equal(stale.error.code, 'STALE_RETRY_CONTEXT'); assert.ok(stale.error.details.some(x => x.record_ids?.includes(next.outputs[0].record_id)));
+  call('task interrupt', { campaign: c.campaign, 'task-id': old.task_id, reason: 'Superseded history', finished: true });
+  const current = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Diagnose using fresh failed execution' })).task;
+  assert.ok(current.required_inputs.includes(next.outputs[0].path)); assert.ok(current.prior_context.previous_failure.includes(next.outputs[0].record_id)); assert.equal(current.prior_context.remaining_attempts, 3); c.start(current);
+  const bad = await c.create({ role: 'verifier', case_ids: [id], target_id: 'G001', round_id: next.round_id, verification_slot: 'a', requested_action: 'Review with forbidden peer context', required_inputs: [current.outputs[0].path] }, 3); assert.equal(bad.error.code, 'BLIND_INPUT');
+});
+
+test('ready tasks rank by priority and downstream work consistently across every query surface', async t => {
+  const c = await setup(t), leaf = await author(c, 'leaf', 'P3'), urgent = await author(c, 'urgent', 'P0'), root = await author(c, 'root', 'P3'), child = await author(c, 'child', 'P3'); await runtime(c); await plan(c, [leaf, urgent, root, child], 'G001', { [child]: [root] });
+  const tasks = []; for (const id of [leaf, urgent, root, child]) tasks.push((await c.create({ role: 'executor', case_ids: [id], requested_action: 'Run when ready' })).task);
+  const status = call('status', { campaign: c.campaign }); assert.deepEqual(status.ready, [tasks[1].task_id, tasks[2].task_id, tasks[0].task_id]); assert.equal(status.ready_details[0].priority, 'P0'); assert.equal(status.ready_details[1].unblocks, 1);
+  assert.deepEqual(c.records({ ready: true }).map(x => x.task_id), status.ready);
+  assert.deepEqual(call('reconcile', { campaign: c.campaign }).ready, status.ready);
+  const notebook = getDependencies().YAML.parse(await readFile(path.join(c.campaign, '01-notebook.view.yaml'), 'utf8')); assert.deepEqual(notebook.ready_details, status.ready_details);
+});
+
+test('delivery binds the tested project GitHub remote and remote drift leaves unrelated work available', async t => {
+  const c = await setup(t); assert.deepEqual(c.config.github_repository, { remote: 'origin', repository: 'example/project' });
+  const id = await author(c, 'delivery'); await runtime(c); await plan(c, [id]); const failed = await executeCase(c, [id]); await reviewCase(c, failed);
+  const diagnosis = (await c.create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Diagnose missing filter' })).task; c.start(diagnosis);
+  const d = await c.draft(diagnosis); Object.assign(d, { conclusion: 'confirmed', summary: 'Shared filter is wrong', root_cause: 'Missing search filter', evidence_record_ids: [failed.outputs[0].record_id], artifacts: [] }); await c.submit(diagnosis, d); c.close(diagnosis);
+  const { task: ticket, handoff_path } = await c.create({ role: 'ticket-writer', finding_id: 'F0001', requested_action: 'Create one project issue' }); c.start(ticket);
+  const handoff = await readFile(path.join(c.campaign, handoff_path), 'utf8'); assert.ok(handoff.includes("--repo 'example/project'"));
+  const body_path = 'findings/issue.md'; await writeFile(path.join(c.campaign, body_path), 'Confirmed missing filter; independent failure evidence.');
+  const draft = await c.draft(ticket); Object.assign(draft, { issue_url: 'https://github.com/other/repo/issues/1', body_path, dedup_marker: `agentic-tests:${c.config.campaign_id}:F0001`, artifacts: [] });
+  assert.equal((await c.submit(ticket, draft, 3)).error.code, 'GITHUB_REPOSITORY_MISMATCH'); draft.issue_url = 'https://github.com/example/project/issues/1'; await c.submit(ticket, draft); c.close(ticket);
+  assert.equal(spawnSync('git', ['remote', 'set-url', 'origin', 'https://github.com/other/repo.git'], { cwd: c.project }).status, 0);
+  assert.equal((await c.create({ role: 'implementer', finding_id: 'F0001', requested_action: 'Fix the filter' }, 4)).error.code, 'GITHUB_REMOTE_DRIFT');
+  const independent = (await c.create({ role: 'feature-scout', requested_action: 'Discover an unrelated local feature' })).task; c.start(independent);
 });

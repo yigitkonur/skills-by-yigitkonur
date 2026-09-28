@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 const commands = {
   doctor: { options: ['project', 'setup'], required: [], module: 'workflow' },
-  init: { options: ['project', 'slug', 'mode', 'max-active', 'host-capacity', 'max-attempts', 'locale'], required: ['project', 'slug'], module: 'workflow' },
+  init: { options: ['project', 'slug', 'mode', 'max-active', 'host-capacity', 'max-attempts', 'locale', 'github-remote'], required: ['project', 'slug'], module: 'workflow' },
   'plan accept': { options: ['campaign', 'file', 'audit'], required: ['campaign', 'file', 'audit'], module: 'workflow' },
   'finding link': { options: ['campaign', 'file'], required: ['campaign', 'file'], module: 'workflow' },
   'finding decide': { options: ['campaign', 'finding-id', 'scope', 'reason', 'source'], required: ['campaign', 'finding-id', 'scope', 'reason', 'source'], module: 'workflow' },

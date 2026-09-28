@@ -38,6 +38,8 @@ test('strict YAML preserves scalar types and rejects ambiguous or executable doc
 
 async function campaign(t, options = {}) {
   const project = await temporary(t);
+  await promisify(execFile)('git', ['init', '-q', project]);
+  await promisify(execFile)('git', ['-C', project, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
   const result = await run('init', { project, slug: 'real-check', 'host-capacity': '3', ...options });
   return { project, campaign: result.campaign_path, config: result.campaign };
 }
