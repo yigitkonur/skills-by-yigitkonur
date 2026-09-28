@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, copyFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -30,6 +30,8 @@ async function availablePort() {
 
 test('public CLI runs a real HTTP case through independent role records and rejects changed proof', async t => {
   const project = await mkdtemp(path.join(tmpdir(), 'agentic-public-'));
+  const runtimeProduct = path.join(project, 'product.mjs');
+  await copyFile(product, runtimeProduct);
   let campaign;
   t.after(async () => {
     if (campaign) {
@@ -77,8 +79,8 @@ test('public CLI runs a real HTTP case through independent role records and reje
   const environmentFile = path.join(project, 'environment.yaml');
   await writeFile(environmentFile, YAML.stringify({
     target_id: operator.target_id, task_id: operator.task_id, actor_id: operator.actor_id,
-    runtime_type: 'http', source: { revision: createHash('sha256').update(await readFile(product)).digest('hex') },
-    command: { argv: [process.execPath, product, 'http', String(port)], cwd: project },
+    runtime_type: 'http', source: { revision: 'fixture-v1', provider: { type: 'files', root: project, paths: ['product.mjs'] } },
+    command: { argv: [process.execPath, runtimeProduct, 'http', String(port)], cwd: project },
     readiness: { type: 'http', url: `${baseUrl}/health`, expected_status: 200, body_contains: 'agentic-fixture', timeout_ms: 3000 },
   }));
   const started = command('runtime start', '--file', environmentFile);

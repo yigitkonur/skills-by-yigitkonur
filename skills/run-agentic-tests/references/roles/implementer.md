@@ -20,6 +20,9 @@ worktree, accepted specifications, other workers' files, and canonical records.
 
 1. Verify exact Git base/current changes and ownership. Read previous failure,
    what changed, new hypothesis, what not to repeat, and remaining allowance.
+   Follow the generated latest per-case failure and all referenced prior PRs and
+   integrations; do not restart from the original issue alone. Use the packet's
+   tested-project repository explicitly with every `gh --repo` operation.
 2. Reproduce the cause with an appropriate developer check when necessary, then
    implement the bounded repair. Developer tests supplement the later real E2E
    journey; they cannot discharge its independent retest obligation.

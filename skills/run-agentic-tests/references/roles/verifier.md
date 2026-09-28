@@ -14,8 +14,10 @@ structured/log content with read-only viewers.
 
 Write only the allocated `verification` draft and permitted inspection notes
 using [verification.yaml](../../assets/templates/verification.yaml). Keep test
-data, application, source/config, and accepted evidence unchanged. Verifier B's
-read set excludes verifier A's report, verdict, summary, and discussions.
+data, application, source/config, and accepted evidence unchanged. Every verifier's
+read set excludes peer reports, verdicts, summaries, discussions, and repair
+narratives. Follow the generated input allowlist rather than querying the whole
+finding history.
 
 ## Procedure
 
@@ -61,6 +63,6 @@ through the orchestrator; do not click the app, rerun a command, generate a new
 screenshot, or alter evidence yourself. If the handoff exposed a peer verdict,
 disclose the lost blindness and request a fresh isolated verifier assignment.
 
-For a new review round, inspect its newly assigned evidence and retry context.
+For a new review round, inspect only its newly assigned original evidence.
 Old reviews are historical, not a substitute for inspection of a new target.
 Your output never changes attempt counts or closes an issue by itself.

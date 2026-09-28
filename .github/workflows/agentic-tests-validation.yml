@@ -1,18 +1,6 @@
 name: Agentic tests validation
 
 on:
-  push:
-    paths:
-      - 'skills/run-agentic-tests/**'
-      - 'tests/run-agentic-tests/**'
-      - 'plugins/run-agentic-tests/**'
-      - '.github/workflows/agentic-tests-validation.yml'
-  pull_request:
-    paths:
-      - 'skills/run-agentic-tests/**'
-      - 'tests/run-agentic-tests/**'
-      - 'plugins/run-agentic-tests/**'
-      - '.github/workflows/agentic-tests-validation.yml'
   workflow_dispatch:
 
 permissions:

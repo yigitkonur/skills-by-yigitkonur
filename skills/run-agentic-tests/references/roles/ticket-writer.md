@@ -20,6 +20,8 @@ GitHub issue after deduplication. Preserve local records as the source of truth.
 1. Verify in-scope `PRODUCT_DEFECT`, confirmed diagnosis, implementation need,
    and the exact authorized GitHub repository. Return other classifications to
    the orchestrator without creating an issue.
+   Read the generated tested-project repository binding and pass it explicitly
+   to every `gh --repo` call. Do not infer the destination from your shell cwd.
 2. Search existing references/issues for the stable campaign/finding dedup marker
    and matching lineage. Reuse an existing issue when it represents this defect.
 3. Write an issue that a fresh implementer can use: expected/actual, source/spec/
@@ -44,4 +46,5 @@ retain the draft; the controller owns task interruption/recovery.
 
 For retry, inspect the previous publication result before another create call to
 avoid duplicates. Read changed diagnosis/scope, remaining lineage allowance, and
-existing issue/PR references from `prior_context`.
+existing issue/PR references from generated `prior_context` and effective finding
+history. Linked aliases may already have a ticket; preserve those references.

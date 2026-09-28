@@ -16,8 +16,9 @@ belonging to an active test generation and unrelated processes/credentials.
 
 ## Procedure
 
-1. Identify exact source revision/worktree/fingerprint, argv/cwd, variable names,
-   and tool/client locations. Resolve prerequisites without printing secrets.
+1. Identify exact source revision/provider/worktree, argv/cwd, variable names,
+   and tool/client locations. Declare source/config paths for CLI attestation;
+   resolve prerequisites without printing secrets.
 2. Allocate independent data namespaces/accounts/sessions/device and port leases,
    or declare shared read/write claims. Prove fixture/reset access.
 3. Select the actual adapter: HTTP dev server, CLI executable, MCP stdio/HTTP,
@@ -32,8 +33,8 @@ belonging to an active test generation and unrelated processes/credentials.
 
 5. Inspect the actual receipt and canonical environment. Prove application
    access from the actual executor client, including needed auth/dependencies.
-   For MCP stdio, use a client-owned adapter/session with real initialization/tool
-   access; the runtime helper cannot hand its stdin to a different client. A raw
+   For MCP stdio, use a client-owned tool session with real initialization/tool
+   access and the concrete MCPC example in Runtimes and isolation. A raw
    startup marker cannot prove attachment. For remote HTTP, finish all tunnel
    readiness layers.
 6. Hand off exact target identity, endpoint/tool attachment, fixture/reset steps,

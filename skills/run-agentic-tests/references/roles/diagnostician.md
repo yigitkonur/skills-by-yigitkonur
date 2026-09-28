@@ -9,6 +9,9 @@ Read the assigned finding/lineage, frozen expectation, execution and verifier
 records, relevant evidence/source/runtime logs, prior attempts, and
 [Fixes and delivery](../fixes-and-delivery.md). Expand source inspection as needed
 to prove or reject a cause, preserving the assigned scope.
+Use the generated latest failure for every assigned case and linked fix/retest
+history. The first failure alone is insufficient after another correction has
+been tried; distinguish a persistent defect from newly missing evidence.
 
 Write only the allocated diagnosis draft and supporting analysis artifacts using
 [diagnosis.yaml](../../assets/templates/diagnosis.yaml). Application code, test

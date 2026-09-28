@@ -7,8 +7,9 @@ to install/launch an app is allowed.
 
 ## Wave 0 readiness contract
 
-1. Resolve source revision, worktree path, and dirty-source/config fingerprint.
-   Record command argv/cwd and required environment-variable names, not values.
+1. Declare the actual source provider, revision, and working directory. The CLI
+   computes the manifest; record command argv/cwd and required environment-variable
+   names, not values or a manually invented fingerprint.
 2. Inspect available tools and versions, auth/access, ports, runtime dependencies,
    client location, and fixture/reset capabilities. Record unavailable capabilities
    precisely before assigning dependent tests.
@@ -26,13 +27,26 @@ to install/launch an app is allowed.
 Done: the target, tools, data, and real client have a repeatable startup/use/reset
 path; the assigned case can start without guessing which source it reaches.
 
-State how to check source identity. For a Git worktree, record its exact commit
-and a fingerprint for relevant uncommitted source/config. For a standalone
-executable or fixture, use an unambiguous content identity such as
-`sha256:...` and name the exact file(s) and hash procedure in `capability_notes`.
-Do not compare a file hash with Git HEAD or treat the testing harness's checkout
-as the application source. Executors check the assigned identity using this
-recorded procedure; ambiguous identity is a setup gap to correct before a run.
+## Computed source identity
+
+For a Git checkout, use `source.provider: {type: git, root: /absolute/worktree}`
+and its actual commit in `source.revision`. The manifest covers tracked and
+nonignored untracked files, deletions, modes, and source symlinks. For a standalone
+program, use `type: files` with the source root and explicit relative `paths`.
+Declare runtime-relevant ignored configuration through `config_files`; record
+paths and hashes, never secret values. The command's cwd stays inside that root.
+
+`runtime start` computes `source.attestation`; supplied fingerprint text cannot
+certify bytes. Dispatch, execution submission, and current-proof assessment check
+the actual source/configuration again. These are boundary checks, not a continuous
+filesystem monitor. Keep source immutable throughout execution regardless.
+
+The recorded source digest identifies code across isolated worktrees; runtime
+configuration has a separate digest. Artifact hashes, Git commits, source
+digests, and round bindings serve different purposes and are not interchangeable.
+Older environments remain readable, but absent attestation produces
+`SOURCE_ATTESTATION_REQUIRED`. Recover into a fresh target and collect new proof;
+preserve historical records instead of rewriting them to claim old verification.
 
 ## Adapter requirements
 
@@ -61,11 +75,28 @@ into a native app. Mark missing native capability `TOOL_UNAVAILABLE`.
 
 HTTP startup rejects an already-listening readiness port; choose a freshly
 leased local listener rather than pointing readiness at another running service.
-For MCP stdio, the helper cannot transfer its stdin channel to an unrelated
-client. Launch a declared adapter/client that owns the MCP server, emits its
-readiness marker after actual initialization, and supplies the real session/tool
-attachment used by the executor. Otherwise declare the missing attachment
-capability instead of presenting raw server startup as MCP readiness.
+
+## Tool-owned sessions
+
+For a client that owns a detached session, use `readiness.type: tool` and a
+`session` descriptor. Declare `tool: {name, version}`, `owner_id`, `session_id`,
+an `attachment` instruction, and `probe`, `inspect`, and `cleanup` argv arrays.
+Native mobile also declares `device_id`. `command.argv` attaches the session.
+All lifecycle commands use the declared cwd and a bounded timeout.
+
+The CLI supplies `AGENTIC_RUNTIME_ACTION`, `OWNER_TOKEN`, `TARGET_ID`, `OWNER_ID`,
+`SESSION_ID`, and optional `DEVICE_ID` with the `AGENTIC_RUNTIME_` prefix. The
+adapter returns one JSON receipt containing the exact tool/owner/session identity
+and `alive`. Probe additionally returns `ready: true` and
+`evidence: {kind: protocol|device, operation, result}`. The result must contain
+the declared readiness marker from a real protocol/device observation.
+
+Keep the session descriptor immutable. The adapter records ownership at attach
+and checks its stored native session identity on inspect/cleanup; merely echoing
+the current environment variables does not establish ownership. Inspect is
+read-only. Recovery allocates a fresh target instead of silently restarting a
+session under existing proof. See the executable [MCPC session example](mcpc-session.md)
+for client-owned stdio without transferring a server's stdin between processes.
 
 ## Ownership and generation
 
@@ -73,6 +104,13 @@ Give each environment a fresh `target_id`. Keep its source/config immutable whil
 tests borrow it. After failure, stop, restart, merge, source edits, or relevant
 configuration changes, allocate a new generation; never silently replace G001
 with a different running process. Earlier valid reports remain historical.
+
+Use `runtime recover --campaign "$CAMPAIGN" --target-id "$TARGET" --file "$REQUEST"`
+to allocate the successor/operator task. State the failed phase and changed
+startup approach. Recovery preserves the integrated code identity and creates a
+new runtime identity. Reaccept the target plan and independently retest the
+successor before closure. Active executor leases prevent stopping or changing
+the generation they use; an isolated successor can be prepared concurrently.
 
 The helper captures PID, creation identity, argv, cwd, and owned process handle.
 `runtime inspect` checks its recorded state; `runtime stop` checks ownership

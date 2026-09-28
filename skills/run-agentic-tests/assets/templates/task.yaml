@@ -22,3 +22,7 @@ required_inputs:
 # how_to_run_path, and expectations_path pointing to the real supplied files.
 # A verifier request also needs the assigned round_id and verification_slot: a or b.
 # Keep peer verification records out of a blind verifier's required_inputs.
+# For source/discovery roles, required_inputs may include {base: project, path: .}
+# or a project-relative file. Outputs always remain inside the campaign.
+# Corrective requests supply a concrete proposed change/hypothesis; generated
+# history_basis and latest per-case failure references are controller-owned.

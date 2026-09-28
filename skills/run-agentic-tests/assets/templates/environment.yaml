@@ -8,7 +8,12 @@ runtime_type: http
 source:
   revision: REPLACE_WITH_EXACT_SOURCE_REVISION
   worktree: /absolute/owned/worktree
-  fingerprint: REPLACE_WITH_SOURCE_AND_CONFIG_FINGERPRINT
+  provider:
+    type: git
+    root: /absolute/owned/worktree
+    config_files: []
+# For non-Git programs use type: files with explicit paths: [src/app.mjs].
+# runtime start computes source.attestation and fingerprint from actual files.
 command:
   argv: [REPLACE_WITH_DISCOVERED_EXECUTABLE]
   cwd: /absolute/owned/worktree
