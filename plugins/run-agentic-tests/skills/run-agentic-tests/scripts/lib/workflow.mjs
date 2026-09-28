@@ -617,7 +617,7 @@ async function validateRoleResult(state, task, record) {
     const frozenRoots = byKind(state.records, 'environment').map(item => item.record.source.worktree || item.record.command.cwd);
     const worktree = await realpath(record.worktree);
     if (frozenRoots.includes(worktree)) fail('FROZEN_SOURCE', 'Implement in a separate worktree from every running target.');
-    if (record.changed_files.some(file => path.isAbsolute(file) || file.split(/[\\/]/).includes('..') || /(^|\/)\.env(?:\.|$)/.test(file))) fail('UNSAFE_PATH', 'Changed files must be safe source-relative paths without secrets.');
+    if (record.changed_files.some(file => path.isAbsolute(file) || file.split(/[\\/]/).some(part => part === '..' || (part !== '.env.example' && /^\.env(?:\.|$)/.test(part))))) fail('UNSAFE_PATH', 'Changed files must be safe source-relative paths without secrets; .env.example placeholders are allowed.');
     const body = await readFile(containedPath(state.campaign, record.pr_body_path), 'utf8');
     if (Array.from(body).length > 50000) fail('PR_BODY_TOO_LONG', 'PR body exceeds 50,000 Unicode characters.');
     if (/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+(?:#[0-9]+|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#[0-9]+|https:\/\/github\.com\/\S+\/issues\/\d+)/i.test(body)) fail('PREMATURE_ISSUE_CLOSURE', 'Use related-issue references until independent retest confirms resolution.');

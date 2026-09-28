@@ -238,6 +238,11 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   await writeFile(path.join(c.campaign, prBody), 'x'.repeat(50001));
   await assert.rejects(submitDraft(c, implementer, implementation), { code: 'PR_BODY_TOO_LONG' });
   await writeFile(path.join(c.campaign, prBody), 'Fix the query key. Related issue #12. Independent retest pending.');
+  for (const secretPath of ['.env', 'config/.env.local', 'config\\.env.local']) {
+    implementation.changed_files = ['app.mjs', secretPath];
+    await assert.rejects(submitDraft(c, implementer, implementation), { code: 'UNSAFE_PATH' });
+  }
+  implementation.changed_files = ['app.mjs', '.env.example', 'config/.env.example'];
   await submitDraft(c, implementer, implementation);
   await finishTask(c, implementer);
   const integrator = await createTask(c, { role: 'integrator', finding_id: finding.finding_id, requested_action: 'Integrate and assign mandatory retest on G002' });
