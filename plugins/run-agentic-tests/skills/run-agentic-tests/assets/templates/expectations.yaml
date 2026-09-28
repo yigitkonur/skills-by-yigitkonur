@@ -1,0 +1,30 @@
+# Copy into the allocated author draft and replace IDs, timestamp, and oracle.
+schema_version: 1
+kind: expectations
+record_id: EXPECT-T0001-S001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00001
+actor_id: A00001
+case_id: T0001
+spec_revision: S001
+author_actor_id: A00001
+expectations:
+  - id: E01
+    statement: One submitted unique project exists exactly once and belongs to the signed-in account.
+    source:
+      type: product_contract
+      reference: Replace with the actual approved product contract and locator.
+    priority: P1
+    critical: true
+    subjective: false
+    review_count: 2
+    observable:
+      description: The resulting project list and structured owner data identify one matching project.
+    evidence_requirements:
+      - id: ER01
+        type: image
+        capture: Save the resulting project state with the unique name visible.
+      - id: ER02
+        type: json
+        capture: Save the relevant structured count and owner response without secrets.

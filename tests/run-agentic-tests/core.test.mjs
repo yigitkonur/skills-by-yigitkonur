@@ -231,6 +231,13 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   await writeFile(path.join(c.campaign, prBody), 'Fix the query key. Related issue #12. Independent retest pending.');
   await writeFile(path.join(c.campaign, checks), 'Regression check passed');
   Object.assign(implementation, { commit: 'fix-commit', worktree, pr_url: 'https://github.com/example/project/pull/13', pr_body_path: prBody, changed_files: ['app.mjs'], checks: [{ command: 'node --test search.test.mjs', exit_code: 0, artifact_path: checks }], summary: 'Search now uses the correct key', artifacts: [] });
+  for (const closing of ['Fixes #12', 'Resolves example/project#12', 'CLOSES: #12', 'Closes https://github.com/example/project/issues/12']) {
+    await writeFile(path.join(c.campaign, prBody), closing);
+    await assert.rejects(submitDraft(c, implementer, implementation), { code: 'PREMATURE_ISSUE_CLOSURE' });
+  }
+  await writeFile(path.join(c.campaign, prBody), 'x'.repeat(50001));
+  await assert.rejects(submitDraft(c, implementer, implementation), { code: 'PR_BODY_TOO_LONG' });
+  await writeFile(path.join(c.campaign, prBody), 'Fix the query key. Related issue #12. Independent retest pending.');
   await submitDraft(c, implementer, implementation);
   await finishTask(c, implementer);
   const integrator = await createTask(c, { role: 'integrator', finding_id: finding.finding_id, requested_action: 'Integrate and assign mandatory retest on G002' });
@@ -326,6 +333,9 @@ test('saved artifacts can be reviewed after runtime shutdown and a withdrawn ver
   assert.equal((await run('records', { campaign: c.campaign, kind: 'verification' })).records.length, 2);
   assert.equal((await run('records', { campaign: c.campaign, kind: 'execution' })).records.length, 1);
   await run('task interrupt', { campaign: c.campaign, 'task-id': replacement.task.task_id, reason: 'Later host audit found peer leakage; withdraw sealed review', finished: true });
+  const reviewRecovery = await run('status', { campaign: c.campaign });
+  assert.ok(reviewRecovery.obligations.some(item => item.type === 'VERIFICATION_REQUIRED'));
+  assert.ok(!reviewRecovery.obligations.some(item => item.type === 'FRESH_EXECUTION_REQUIRED'), 'Review withdrawal alone must not request an application rerun.');
   const finalReviewer = await verification(c, executed.task);
   await submitDraft(c, finalReviewer.task, finalReviewer.draft); await finishTask(c, finalReviewer.task);
   await run('reconcile', { campaign: c.campaign });

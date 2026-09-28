@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Agentic test report</title>
+  <style>
+    :root{color-scheme:light dark;font-family:system-ui,sans-serif;line-height:1.5;background:#f5f7fb;color:#192332}
+    body{max-width:1100px;margin:auto;padding:2rem}h1,h2,h3{line-height:1.2}header,article,section{background:#fff;border:1px solid #ccd5e0;border-radius:12px;padding:1.3rem;margin-bottom:1rem}
+    .status{font-size:1.4rem}label{margin-right:1rem}select,input{font:inherit;padding:.35rem;max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f8;padding:.75rem}a{color:#164da4}img{max-width:100%;max-height:420px}table{border-collapse:collapse;width:100%}td,th{padding:.5rem;border:1px solid #ccd5e0;text-align:left;vertical-align:top}.muted{color:#526278}.history{border-left:4px solid #9ba7b7}details{margin:1rem 0}summary{cursor:pointer}li{overflow-wrap:anywhere}[hidden]{display:none!important}
+    @media(prefers-color-scheme:dark){:root{background:#101824;color:#e8edf7}header,article,section{background:#192332;border-color:#405168}pre{background:#101824}a{color:#98c0ff}.muted{color:#b9c6d8}}
+    @media(max-width:700px){body{padding:.75rem}table{display:block;overflow-x:auto}}
+  </style>
+</head>
+<body>
+  <header><p class="muted">Evidence and independent verification</p><h1>{{TITLE}}</h1>{{SUMMARY}}</header>
+  <section aria-labelledby="gaps-heading"><h2 id="gaps-heading">Unresolved gaps</h2>{{GAPS}}</section>
+  <section aria-label="Case filters">
+    <label>Outcome <select data-filter="outcome"><option value="">All outcomes</option><option>PASS</option><option>FAIL</option><option>INCONCLUSIVE</option><option>NOT_ASSESSED</option><option>NOT_RUN</option><option>INVALID_EVIDENCE</option></select></label>
+    <label>Find case <input data-filter="search" type="search" placeholder="Case, expectation, or observation"></label>
+    <p class="muted">Historical rounds remain visible. Only valid current target proof contributes to the summary.</p>
+  </section>
+  <main>{{CASES}}</main>
+  <script id="report-data" type="application/json">{{DATA}}</script>
+  <script>
+    const filters = [...document.querySelectorAll('[data-filter]')];
+    function filterCases() {
+      const outcome = document.querySelector('[data-filter="outcome"]').value;
+      const query = document.querySelector('[data-filter="search"]').value.toLowerCase();
+      for (const card of document.querySelectorAll('[data-case]')) {
+        card.hidden = Boolean((outcome && card.dataset.outcome !== outcome) || (query && !card.textContent.toLowerCase().includes(query)));
+      }
+    }
+    filters.forEach(control => control.addEventListener('input', filterCases));
+  </script>
+</body>
+</html>

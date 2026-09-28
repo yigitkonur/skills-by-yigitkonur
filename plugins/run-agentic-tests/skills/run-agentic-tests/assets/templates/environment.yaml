@@ -1,0 +1,33 @@
+# Input to runtime start, not a complete canonical environment record.
+# Use exact identities from the environment task's generated draft/handoff.
+record_id: ENV-G001
+task_id: J00003
+actor_id: A00003
+target_id: G001
+runtime_type: http
+source:
+  revision: REPLACE_WITH_EXACT_SOURCE_REVISION
+  worktree: /absolute/owned/worktree
+  fingerprint: REPLACE_WITH_SOURCE_AND_CONFIG_FINGERPRINT
+command:
+  argv: [REPLACE_WITH_DISCOVERED_EXECUTABLE]
+  cwd: /absolute/owned/worktree
+  env_names: []
+readiness:
+  type: http
+  url: http://127.0.0.1:3100/health
+  expected_status: 200
+  body_contains: REPLACE_WITH_APPLICATION_SPECIFIC_MARKER
+  timeout_ms: 30000
+endpoint: http://127.0.0.1:3100
+resources:
+  - name: runtime-G001
+    mode: write
+  - name: port-3100
+    mode: write
+capability_notes:
+  - Replace with actual client/tool/protocol access checks and limitations.
+# For process readiness use type: process and a real log-handshake body_contains.
+# Remove url/expected_status when not used. A live PID alone is insufficient.
+# runtime start adds common fields, owned process identity, status, and logs.
+# Secret values are inherited from the environment, never written in this file.

@@ -1,0 +1,16 @@
+# Publish only after confirmed in-scope implementation-bound diagnosis and deduplication.
+schema_version: 1
+kind: ticket
+record_id: TICKET-F0001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00008
+actor_id: A00008
+finding_id: F0001
+issue_url: https://github.com/example/project/issues/1
+dedup_marker: agentic-tests:C-example:F0001
+body_path: findings/F0001-example/issue-body.md
+artifacts:
+  - path: findings/F0001-example/issue-body.md
+    type: markdown
+# Replace with actual returned issue URL; never fabricate one during an access blocker.

@@ -1,0 +1,37 @@
+# Honest NOT_RUN example. Replace with actual observations; do not submit unchanged.
+schema_version: 1
+kind: execution
+record_id: EXEC-T0001-R001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00004
+actor_id: A00004
+case_id: T0001
+spec_revision: S001
+round_id: R001
+target_id: G001
+execution_status: NOT_RUN
+observations:
+  - expectation_id: E01
+    observed: null
+    evidence_ids: []
+    gaps:
+      - requirement_id: ER01
+        reason: The assigned account credential is unavailable; the journey was not started.
+      - requirement_id: ER02
+        reason: No project request was sent because account access was unavailable.
+evidence: []
+blocker:
+  reason_code: MISSING_CREDENTIAL
+  detail: Replace with the observed missing access and affected tool; never record the secret value.
+# For actual captured evidence, add entries and reference their IDs above:
+# - id: EV01
+#   path: cases/T0001-create-project/rounds/R001/evidences/result.png
+#   type: image
+#   expectation_ids: [E01]
+#   requirement_ids: [ER01]
+#   step_id: S02
+#   captured_at: "2026-09-28T00:00:00Z"
+#   tool: actual-tool-and-version
+#   source: exact-target-and-capture-context
+# The CLI computes size/sha256. Never claim an absent file; use gaps instead.

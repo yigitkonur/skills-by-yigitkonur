@@ -509,6 +509,18 @@
       "category": "Productivity"
     },
     {
+      "name": "run-agentic-tests",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-agentic-tests"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "run-astro-audit",
       "source": {
         "source": "local",

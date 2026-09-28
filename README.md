@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **54 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **60 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex and Claude Code both get the complete 54-skill pack.
+three ways in. Codex and Claude Code both get the complete 60-skill pack.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -75,12 +75,12 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 54 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 60 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-testing** | TestSprite frontend/browser and backend API verification | `/plugin install yk-testing@yigitkonur` |
+| **yk-testing** | independent agentic E2E, ego-browser, and TestSprite verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, project manager supervision, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
@@ -131,10 +131,14 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
 ## 🧪 frontend & backend testing
 
-author, run, diagnose, and release-gate deployed browser and API tests.
+author, run, verify, and fix real user journeys across web, CLI, MCP, and mobile runtimes.
 
-- **[run-testsprite-backend](skills/run-testsprite-backend/)** — TestSprite backend API tests with secure, revision-pinned release proof.
-- **[run-testsprite-frontend](skills/run-testsprite-frontend/)** — TestSprite browser tests via public CLI or localhost MCP.
+| skill | category | description |
+|---|---|---|
+| [run-agentic-tests](skills/run-agentic-tests/) | testing | Independent E2E agents, YAML evidence, fixes, retests, and HTML reports |
+| [run-ego-e2e](skills/run-ego-e2e/) | testing | Agentic browser journeys through ego-browser |
+| [run-testsprite-backend](skills/run-testsprite-backend/) | testing | TestSprite API tests with revision-pinned release proof |
+| [run-testsprite-frontend](skills/run-testsprite-frontend/) | testing | TestSprite browser tests via public CLI or localhost MCP |
 
 `/plugin install yk-testing@yigitkonur`
 

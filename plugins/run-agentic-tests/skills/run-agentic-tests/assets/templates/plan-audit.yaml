@@ -1,0 +1,20 @@
+# Preserve subject identity/digest from the generated task draft; zero below is only a shape example.
+# Plan digest is stable canonical JSON; closure identity/digest comes from controller status.
+schema_version: 1
+kind: plan_audit
+record_id: AUDIT-P001
+campaign_id: C-example
+created_at: "2026-09-28T00:00:00Z"
+task_id: J00006
+actor_id: A00006
+phase: plan
+subject_record_id: P001
+subject_digest: "0000000000000000000000000000000000000000000000000000000000000000"
+outcome: changes_required
+findings:
+  - class: SPEC_INVALID
+    summary: Replace with the actual plan or closure defect and precise requested correction.
+    case_ids: [T0001]
+artifacts: []
+# An approved audit uses outcome: approved and findings: [] only after all checks.
+# A closure assignment uses phase: closure and its exact controller-provided subject.

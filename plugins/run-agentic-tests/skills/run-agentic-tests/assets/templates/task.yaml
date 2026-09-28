@@ -1,0 +1,24 @@
+# Input to `task create --request`; not a canonical task record.
+# Replace IDs/paths with existing assigned records. The controller allocates actor/output IDs.
+role: executor
+requested_action: Execute the assigned frozen case once and capture all required evidence.
+case_ids: [T0001]
+spec_revision: S001
+target_id: G001
+purpose: initial
+dependencies: []
+resources:
+  - name: runtime-G001
+    mode: read
+  - name: test-account-example
+    mode: write
+required_inputs:
+  - cases/T0001-create-project/specs/S001/01-test-case.md
+  - cases/T0001-create-project/specs/S001/02-expectations.record.yaml
+  - cases/T0001-create-project/specs/S001/03-how-to-run.md
+  - environments/G001/00-environment.record.yaml
+# Scenario-author request instead: role, requested_action, slug.
+# To import an approved scenario, add scenario_source with test_case_path,
+# how_to_run_path, and expectations_path pointing to the real supplied files.
+# A verifier request also needs the assigned round_id and verification_slot: a or b.
+# Keep peer verification records out of a blind verifier's required_inputs.

@@ -1,0 +1,46 @@
+name: Agentic tests validation
+
+on:
+  push:
+    paths:
+      - 'skills/run-agentic-tests/**'
+      - 'tests/run-agentic-tests/**'
+      - 'plugins/run-agentic-tests/**'
+      - '.github/workflows/agentic-tests-validation.yml'
+  pull_request:
+    paths:
+      - 'skills/run-agentic-tests/**'
+      - 'tests/run-agentic-tests/**'
+      - 'plugins/run-agentic-tests/**'
+      - '.github/workflows/agentic-tests-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentic-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install locked dependencies outside the skill
+        run: node skills/run-agentic-tests/scripts/agentic-tests.mjs doctor --setup
+      - name: Exercise contracts, public CLI, runtimes, and reports
+        run: node --test tests/run-agentic-tests/*.test.mjs
+      - name: Validate skill structure and generated packages
+        run: |
+          python3 scripts/validate-skills.py
+          python3 scripts/gen-marketplace.py --check
+          node plugins/run-agentic-tests/skills/run-agentic-tests/scripts/agentic-tests.mjs --help
