@@ -1,6 +1,6 @@
 # audit-skill-by-derailment
 
-Hardening an existing skill by running a real-task subagent derailment pass, classifying trace friction, and editing the skill files.
+Harden and upgrade any skill by analyzing real execution friction traces. Supports synthetic subagents (Mode A), live multi-pane Herdr fleet audits (Mode B), and the native two-tier Herdr worker ➔ forensic auditor subagent loop (Mode C) with physical disk evidence verification and `Ctrl+O` verbose mode support.
 
 **Category:** productivity
 
