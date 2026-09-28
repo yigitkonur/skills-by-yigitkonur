@@ -56,6 +56,143 @@
             "fingerprint": {
               "type": "string",
               "minLength": 1
+            },
+            "provider": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "git",
+                    "files"
+                  ]
+                },
+                "root": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "paths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "config_files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "type",
+                "root"
+              ]
+            },
+            "attestation": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "version": {
+                  "const": 1
+                },
+                "algorithm": {
+                  "const": "sha256"
+                },
+                "source_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "configuration_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "git_head": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40,64}$"
+                },
+                "manifest": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "enum": [
+                          "file",
+                          "symlink",
+                          "missing"
+                        ]
+                      },
+                      "mode": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 4095
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "kind",
+                      "mode"
+                    ]
+                  },
+                  "minItems": 1
+                },
+                "config_manifest": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "enum": [
+                          "file",
+                          "symlink",
+                          "missing"
+                        ]
+                      },
+                      "mode": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 4095
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "kind",
+                      "mode"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "version",
+                "algorithm",
+                "source_digest",
+                "configuration_digest",
+                "manifest",
+                "config_manifest"
+              ]
             }
           },
           "required": [

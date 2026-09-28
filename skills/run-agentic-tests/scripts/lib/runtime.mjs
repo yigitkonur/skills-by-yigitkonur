@@ -4,6 +4,7 @@ import { createConnection } from 'node:net';
 import { readYaml, readCampaign, readRecords, writeRecord, withController, containedPath } from './store.mjs';
 import { CliError, validateRecord } from './contracts.mjs';
 import { startOwned, inspectOwned, stopOwned } from './process-host.mjs';
+import { attestSource, verifySource } from './source.mjs';
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const required = (value, message) => { if (!value) throw new CliError('INVALID_RUNTIME', message); };
@@ -123,6 +124,7 @@ export async function run(command, options = {}) {
       draft.record_id = output.record_id;
     }
     await assertPortAvailable(draft.readiness);
+    draft.source = await attestSource(campaign, draft);
     const base = `environments/${draft.target_id}`;
     const recordPath = `${base}/00-environment.record.yaml`;
     const handlePath = `${base}/process.runtime.json`;
@@ -156,6 +158,8 @@ export async function run(command, options = {}) {
         argv: draft.command.argv, cwd: draft.command.cwd, handle_path: handlePath };
       await withController(campaign, () => writeRecord(campaign, recordPath, record, { immutable: false }));
       const readinessState = await probe(record, campaign, handle);
+      const sourceState = await verifySource(campaign, record);
+      if (!sourceState.valid) throw new CliError(sourceState.code, sourceState.message, 3, sourceState.details);
       record.status = 'READY';
       if (record.readiness.type === 'http') record.endpoint ??= record.readiness.url;
       await withController(campaign, () => writeRecord(campaign, recordPath, record, { immutable: false }));
@@ -179,7 +183,7 @@ export async function run(command, options = {}) {
     const state = await inspectEnvironment(campaign, environment);
     if (command === 'runtime inspect') {
       const { handle, ...publicState } = state;
-      return { environment, record_path: found.path, ...publicState };
+      return { environment, record_path: found.path, ...publicState, source_verification: await verifySource(campaign, environment) };
     }
     if (!['OWNED', 'EXITED'].includes(state.ownership)) {
       throw new CliError('PROCESS_OWNERSHIP_MISMATCH', 'Refusing to stop a process without its matching ownership handle.', 4);
