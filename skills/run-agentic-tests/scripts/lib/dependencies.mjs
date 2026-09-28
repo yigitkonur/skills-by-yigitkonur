@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { mkdir, copyFile, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -19,8 +19,9 @@ export function dependencyLocation() {
 }
 
 export function getDependencies() {
-  if (modules) return modules;
   const cache = dependencyLocation();
+  if (modules?.cache === cache) return modules;
+  modules = undefined;
   if (!existsSync(path.join(cache, 'node_modules', 'yaml', 'package.json'))) {
     throw failure('Run doctor --setup to install locked dependencies in the external cache.', [cache]);
   }
@@ -49,6 +50,17 @@ export async function loadDependencies(options = {}) {
     await execute('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: staging, timeout: 120000, maxBuffer: 1024 * 1024 });
     try { await rename(staging, cache); } catch (error) {
       if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
+      try { return getDependencies(); } catch (invalid) { if (invalid.code !== 'DEPENDENCIES_MISSING') throw invalid; }
+      if (lstatSync(cache).isSymbolicLink() || !lstatSync(cache).isDirectory()) throw failure('Refusing to replace a dependency-cache symlink or non-directory.', [cache]);
+      const quarantined = `${cache}.${process.pid}.${Date.now()}.incomplete`;
+      await rename(cache, quarantined);
+      try {
+        await rename(staging, cache);
+        getDependencies();
+      } catch (installError) {
+        if (!existsSync(cache)) await rename(quarantined, cache);
+        throw installError;
+      } finally { if (existsSync(cache)) await rm(quarantined, { recursive: true, force: true }); }
     }
     return getDependencies();
   } catch (error) {

@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { readYaml, readRecords, writeRecord, containedPath, withController } from '../../skills/run-agentic-tests/scripts/lib/store.mjs';
 import { loadDependencies } from '../../skills/run-agentic-tests/scripts/lib/dependencies.mjs';
-import { run } from '../../skills/run-agentic-tests/scripts/lib/workflow.mjs';
+import { run, assessCampaign } from '../../skills/run-agentic-tests/scripts/lib/workflow.mjs';
 
 const temporary = async t => {
   const dir = await mkdtemp(path.join(tmpdir(), 'agentic-core-'));
@@ -382,6 +384,82 @@ test('side findings preserve the original PASS and require a durable scope decis
   const decisions = (await run('records', { campaign: c.campaign, kind: 'scope_decision' })).records;
   assert.equal(decisions.length, 2);
   assert.equal((await run('status', { campaign: c.campaign })).cases[0].outcome, 'PASS');
+});
+
+test('scenario recovery preserves allocated revisions and accepts Todo domains while requiring exact expectation markers', async t => {
+  const c = await campaign(t, { locale: 'tr' });
+  assert.equal(c.config.locale, 'tr');
+  const abandoned = await createTask(c, { role: 'scenario-author', slug: 'todo-list', requested_action: 'Author a Todo app scenario' });
+  await run('task interrupt', { campaign: c.campaign, 'task-id': abandoned.task_id, reason: 'Author context interrupted before submitting', finished: true });
+  const fresh = await createTask(c, { role: 'scenario-author', case_ids: abandoned.case_ids, requested_action: 'Resume the approved Todo scenario in a new context' });
+  assert.equal(fresh.spec_revision, 'S002');
+  await startTask(c, fresh);
+  const root = path.dirname(path.join(c.campaign, fresh.outputs[0].path));
+  await writeFile(path.join(root, '01-test-case.md'), '# Todo list\nGiven a Todo item\nWhen it is completed\nThen [E10] the Todo item is checked.');
+  await writeFile(path.join(root, '03-how-to-run.md'), 'Launch the Todo app and complete an existing Todo item.');
+  const draft = await readYaml(path.join(c.campaign, fresh.draft_paths[0]));
+  draft.expectations = [{ id: 'E1', statement: 'The Todo item is checked', source: { type: 'user_request', reference: 'Approved Todo contract' }, priority: 'P1', review_count: 1, observable: { description: 'Completed Todo item is checked' }, evidence_requirements: [{ id: 'ER1', type: 'screenshot', capture: 'Capture the completed Todo item' }] }];
+  await assert.rejects(submitDraft(c, fresh, draft), { code: 'INVALID_SCENARIO' });
+  await writeFile(path.join(root, '01-test-case.md'), '# Todo list\nGiven a Todo item\nWhen it is completed\nThen [E1] the Todo item is checked.');
+  assert.equal((await submitDraft(c, fresh, draft)).submission_status, 'ACCEPTED');
+});
+
+test('doctor setup repairs only its incomplete external lock cache and leaves neighboring files intact', async t => {
+  const cacheRoot = await temporary(t);
+  const module = new URL('../../skills/run-agentic-tests/scripts/lib/dependencies.mjs', import.meta.url).href;
+  await writeFile(path.join(cacheRoot, 'keep.txt'), 'unrelated cache data');
+  const script = `import {dependencyLocation,loadDependencies} from ${JSON.stringify(module)}; import {mkdir,writeFile} from 'node:fs/promises'; import path from 'node:path'; const cache=dependencyLocation(); await mkdir(cache,{recursive:true}); await writeFile(path.join(cache,'incomplete.txt'),'interrupted install'); const loaded=await loadDependencies({setup:true}); console.log(loaded.YAML.parse('answer: 42').answer);`;
+  const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', script], { env: { ...process.env, AGENTIC_TESTS_CACHE: cacheRoot }, timeout: 30000 });
+  assert.equal(result.stdout.trim(), '42');
+  assert.equal(await readFile(path.join(cacheRoot, 'keep.txt'), 'utf8'), 'unrelated cache data');
+});
+
+test('a blocked ticket result is accepted without inventing GitHub data and a fresh replacement preserves the failed report', async t => {
+  const c = await prepared(t);
+  const executed = await execution(c, { observed: { results: [] } });
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task, { verdict: 'FAIL' });
+  await submitDraft(c, reviewed.task, reviewed.draft); await finishTask(c, reviewed.task);
+  await run('reconcile', { campaign: c.campaign });
+  const finding = (await run('records', { campaign: c.campaign, kind: 'finding' })).records[0];
+  const diagnostician = await createTask(c, { role: 'diagnostician', finding_id: finding.finding_id, requested_action: 'Confirm wrong query parameter' });
+  await startTask(c, diagnostician);
+  const diagnosis = await readYaml(path.join(c.campaign, diagnostician.draft_paths[0]));
+  Object.assign(diagnosis, { conclusion: 'confirmed', root_cause: 'Wrong query key', summary: 'Wrong key removes valid matches', evidence_record_ids: [executed.draft.record_id], artifacts: [] });
+  await submitDraft(c, diagnostician, diagnosis); await finishTask(c, diagnostician);
+  const blocked = await createTask(c, { role: 'ticket-writer', finding_id: finding.finding_id, requested_action: 'Create the deduplicated issue' });
+  await startTask(c, blocked);
+  const draft = await readYaml(path.join(c.campaign, blocked.draft_paths[0]));
+  Object.assign(draft, { result_status: 'BLOCKED', summary: 'GitHub access is unavailable', blocker: { reason_code: 'GITHUB_UNAVAILABLE', detail: 'Host has no GitHub authentication' }, artifacts: [] });
+  assert.equal((await submitDraft(c, blocked, draft)).worker_may_finish, true);
+  await finishTask(c, blocked);
+  assert.ok((await run('status', { campaign: c.campaign })).obligations.some(item => item.type === 'ROLE_BLOCKED' && item.task_id === blocked.task_id));
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].issue_url, undefined);
+  const replacement = await createTask(c, { role: 'ticket-writer', finding_id: finding.finding_id, replaces_task_id: blocked.task_id, requested_action: 'Resume issue creation after GitHub access was restored' });
+  await startTask(c, replacement);
+  const completed = await readYaml(path.join(c.campaign, replacement.draft_paths[0]));
+  await writeFile(path.join(c.campaign, 'findings/resumed-issue.md'), 'Confirmed issue with reproduction and accepted evidence.');
+  Object.assign(completed, { issue_url: 'https://github.com/example/project/issues/14', dedup_marker: `agentic-tests:${c.config.campaign_id}:${finding.finding_id}`, body_path: 'findings/resumed-issue.md', artifacts: [] });
+  await submitDraft(c, replacement, completed); await finishTask(c, replacement);
+  assert.equal((await run('records', { campaign: c.campaign, kind: 'ticket' })).records.length, 2);
+  assert.ok(!(await run('status', { campaign: c.campaign })).obligations.some(item => item.type === 'ROLE_BLOCKED'));
+});
+
+test('missing actor provenance is an explicit proof gap and supplied report records cannot cross campaigns', async t => {
+  const c = await prepared(t);
+  const executed = await execution(c);
+  await submitDraft(c, executed.task, executed.draft); await finishTask(c, executed.task);
+  const reviewed = await verification(c, executed.task);
+  await submitDraft(c, reviewed.task, reviewed.draft); await finishTask(c, reviewed.task);
+  await run('reconcile', { campaign: c.campaign });
+  const records = await readRecords(c.campaign);
+  const foreign = structuredClone(records);
+  foreign.find(item => item.record.kind === 'verification').record.campaign_id = 'Foreign';
+  await assert.rejects(assessCampaign(c.campaign, foreign), { code: 'WRONG_CAMPAIGN' });
+  await rm(path.join(c.campaign, `tasks/${reviewed.task.task_id}/00-task.record.yaml`));
+  const incomplete = await run('status', { campaign: c.campaign });
+  assert.equal(incomplete.cases[0].proof_valid, false);
+  assert.ok(incomplete.obligations.some(item => item.type === 'MISSING_PROVENANCE'));
 });
 
 test('a scenario author receives fixed paths and can bootstrap approved Gherkin into an accepted immutable specification', async t => {

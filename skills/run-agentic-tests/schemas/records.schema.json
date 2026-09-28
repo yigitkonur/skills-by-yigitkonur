@@ -666,6 +666,10 @@
             "reset",
             "independent"
           ]
+        },
+        "replaces_task_id": {
+          "type": "string",
+          "pattern": "^J[0-9]{5,}$"
         }
       },
       "required": [
@@ -971,6 +975,10 @@
             "minLength": 1
           },
           "minItems": 0
+        },
+        "replaces_task_id": {
+          "type": "string",
+          "pattern": "^J[0-9]{5,}$"
         }
       },
       "required": [
@@ -1157,6 +1165,75 @@
         "confirms_finding_id": {
           "type": "string",
           "pattern": "^F[0-9]{4,}$"
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "type"
+            ]
+          }
         }
       },
       "required": [
@@ -1169,8 +1246,64 @@
         "actor_id",
         "case_id",
         "spec_revision",
-        "author_actor_id",
-        "expectations"
+        "author_actor_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "case_id": {},
+              "spec_revision": {},
+              "author_actor_id": {},
+              "expectations": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "case_id",
+              "spec_revision",
+              "author_actor_id",
+              "expectations"
+            ]
+          }
+        }
       ]
     },
     "plan": {
@@ -1369,6 +1502,75 @@
             ]
           },
           "minItems": 1
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "type"
+            ]
+          }
         }
       },
       "required": [
@@ -1378,11 +1580,64 @@
         "campaign_id",
         "created_at",
         "task_id",
-        "actor_id",
-        "target_id",
-        "scope",
-        "cases",
-        "coverage"
+        "actor_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "target_id": {},
+              "scope": {},
+              "cases": {},
+              "coverage": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "target_id",
+              "scope",
+              "cases",
+              "coverage"
+            ]
+          }
+        }
       ]
     },
     "execution": {
@@ -2545,8 +2800,50 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -2556,10 +2853,62 @@
         "campaign_id",
         "created_at",
         "task_id",
-        "actor_id",
-        "features",
-        "unknowns",
-        "artifacts"
+        "actor_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "features": {},
+              "unknowns": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "features",
+              "unknowns",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "plan_audit": {
@@ -2684,8 +3033,50 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -2695,13 +3086,68 @@
         "campaign_id",
         "created_at",
         "task_id",
-        "actor_id",
-        "phase",
-        "subject_record_id",
-        "subject_digest",
-        "outcome",
-        "findings",
-        "artifacts"
+        "actor_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "phase": {},
+              "subject_record_id": {},
+              "subject_digest": {},
+              "outcome": {},
+              "findings": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "phase",
+              "subject_record_id",
+              "subject_digest",
+              "outcome",
+              "findings",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "diagnosis": {
@@ -2792,8 +3238,46 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
         }
       },
       "required": [
@@ -2804,11 +3288,66 @@
         "created_at",
         "task_id",
         "actor_id",
-        "finding_id",
-        "conclusion",
-        "summary",
-        "evidence_record_ids",
-        "artifacts"
+        "finding_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "finding_id": {},
+              "conclusion": {},
+              "summary": {},
+              "evidence_record_ids": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "finding_id",
+              "conclusion",
+              "summary",
+              "evidence_record_ids",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "ticket": {
@@ -2888,8 +3427,50 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -2900,11 +3481,66 @@
         "created_at",
         "task_id",
         "actor_id",
-        "finding_id",
-        "issue_url",
-        "dedup_marker",
-        "body_path",
-        "artifacts"
+        "finding_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "finding_id": {},
+              "issue_url": {},
+              "dedup_marker": {},
+              "body_path": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "finding_id",
+              "issue_url",
+              "dedup_marker",
+              "body_path",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "implementation": {
@@ -3031,8 +3667,46 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
         }
       },
       "required": [
@@ -3043,16 +3717,76 @@
         "created_at",
         "task_id",
         "actor_id",
-        "finding_id",
-        "attempt",
-        "commit",
-        "worktree",
-        "pr_url",
-        "pr_body_path",
-        "changed_files",
-        "checks",
-        "summary",
-        "artifacts"
+        "finding_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "finding_id": {},
+              "attempt": {},
+              "commit": {},
+              "worktree": {},
+              "pr_url": {},
+              "pr_body_path": {},
+              "changed_files": {},
+              "checks": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "finding_id",
+              "attempt",
+              "commit",
+              "worktree",
+              "pr_url",
+              "pr_body_path",
+              "changed_files",
+              "checks",
+              "summary",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "integration": {
@@ -3166,8 +3900,50 @@
               "path",
               "type"
             ]
+          }
+        },
+        "result_status": {
+          "enum": [
+            "COMPLETED",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "MISSING_CREDENTIAL",
+                "TOOL_UNAVAILABLE",
+                "AGENT_ISOLATION_UNAVAILABLE",
+                "DISK_FULL",
+                "RUNTIME_START_FAILED",
+                "TRANSPORT_UNREACHABLE",
+                "TUNNEL_PROTOCOL_UNSUPPORTED",
+                "SOURCE_SELECTION_REQUIRED",
+                "GITHUB_UNAVAILABLE",
+                "MISSING_ARTIFACT",
+                "EVIDENCE_CHANGED",
+                "WRONG_TARGET",
+                "NOT_EXECUTED",
+                "ATTEMPT_LIMIT"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "minItems": 0
+          "required": [
+            "reason_code",
+            "detail"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -3178,13 +3954,70 @@
         "created_at",
         "task_id",
         "actor_id",
-        "finding_id",
-        "implementation_record_id",
-        "new_target_id",
-        "commit",
-        "affected_case_ids",
-        "retest_obligations",
-        "artifacts"
+        "finding_id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result_status": {
+                "enum": [
+                  "PARTIAL",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "result_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocker": {},
+              "summary": {},
+              "artifacts": {}
+            },
+            "required": [
+              "blocker",
+              "summary",
+              "artifacts"
+            ]
+          },
+          "else": {
+            "properties": {
+              "schema_version": {},
+              "kind": {},
+              "record_id": {},
+              "campaign_id": {},
+              "created_at": {},
+              "task_id": {},
+              "actor_id": {},
+              "finding_id": {},
+              "implementation_record_id": {},
+              "new_target_id": {},
+              "commit": {},
+              "affected_case_ids": {},
+              "retest_obligations": {},
+              "artifacts": {}
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "record_id",
+              "campaign_id",
+              "created_at",
+              "task_id",
+              "actor_id",
+              "finding_id",
+              "implementation_record_id",
+              "new_target_id",
+              "commit",
+              "affected_case_ids",
+              "retest_obligations",
+              "artifacts"
+            ]
+          }
+        }
       ]
     },
     "scope_decision": {
