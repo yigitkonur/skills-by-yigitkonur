@@ -45,6 +45,14 @@ The worker agent's terminal session has been captured, and verbose view (`Ctrl+O
 You own this forensic audit end-to-end. Your mission is to reconstruct the worker agent's complete execution history from raw terminal scrollback, verify physical artifacts on disk, identify every instance where the skill failed, drifted, or stalled the agent, and draft concrete line-by-line improvements to the skill text.
 You have full authority to inspect all files, read Herdr panes, run filesystem and magic-header validations, and propose or apply patches directly to `<TARGET_SKILL_DIR>`.
 
+## Coordinator Return Route & Herdr Coordination Contract
+- **Coordinator Physical Coordinates:** `<COORDINATOR_PANE_ID>`
+- **Return Action:** When your analysis is complete, communicate your structured findings back to your coordinator using:
+  ```bash
+  herdr agent prompt <COORDINATOR_PANE_ID> "<structured summary of audit findings>"
+  ```
+- **Anti-Void Rule:** Never merely output text into your own terminal buffer; explicitly dispatch your report to the coordinator pane above.
+
 ## The Non-Negotiable Anti-Sycophancy & Evidence Invariants
 
 1. **The Anti-Self-Report Law:**

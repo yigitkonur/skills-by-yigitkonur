@@ -100,6 +100,43 @@ herdr agent prompt w2N:pP "Run video critique in AI Studio" --wait
 
 ---
 
+## 4b. The Inter-Agent Communication & Return-Address Contract
+
+In multi-agent Herdr architectures, the coordinator agent and worker agents run in separate panes or tabs. Asking a worker agent to "report back", "discuss findings", or "talk via Herdr" without providing an explicit return address leads to an immediate orchestration failure: the worker prints a report to its own local terminal, and the coordinator never receives the update.
+
+### 1. The Coordinator Return-Address Law
+Whenever a coordinator prompts a worker for a collaborative or reporting task, it MUST discover and include its own pane ID:
+
+```bash
+# Discover coordinator's own pane ID:
+COORDINATOR_PANE_ID=$(herdr pane current 2>/dev/null | jq -r '.result.pane.id // empty' || true)
+if [[ -z "$COORDINATOR_PANE_ID" ]]; then
+  COORDINATOR_PANE_ID=$(herdr agent list | jq -r --arg cid "${CONVERSATION_ID:-}" '.result.agents[] | select(.agent_session.value == $cid) | .pane_id // empty' || true)
+fi
+```
+
+### 2. Teaching Workers the Herdr Prompt Command
+The prompt sent to the worker MUST include executable instructions on how to use `herdr agent prompt`:
+
+```bash
+herdr agent prompt "$PANE_ID" "Execute <task-description>...
+
+---
+[Herdr Coordination Protocol]
+Coordinator Pane: $COORDINATOR_PANE_ID
+When your analysis or task is complete, report back to your coordinator by running:
+  herdr agent prompt $COORDINATOR_PANE_ID '<your structured report or feedback>'
+Do not just output text to your local terminal; explicitly dispatch it to the coordinator pane above."
+```
+
+### 3. Bi-Directional Dialogue Flow
+1. **Coordinator to Worker:** Coordinator sends prompt targeting `$WORKER_PANE_ID` with return address `$COORDINATOR_PANE_ID`.
+2. **Worker Execution:** Worker executes task, inspects disk/code/scrollback.
+3. **Worker to Coordinator:** Worker runs `herdr agent prompt $COORDINATOR_PANE_ID "<summary>"` (via its own shell tool `run_command` or bash execution).
+4. **Coordinator Intake:** The coordinator receives the message directly in its interactive conversation, reviews findings, and dispatches the next instruction or initiates teardown.
+
+---
+
 ## 5. Detecting Task Completion (`herdr agent wait`)
 
 To orchestrate multi-agent or two-tier workflows asynchronously, monitor the agent until it enters an `idle`, `done`, or `blocked` state:

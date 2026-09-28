@@ -99,10 +99,24 @@ TAB_ID=$(echo "$PANE_JSON" | jq -r '.result.tab.id // empty')
 herdr agent start "worker-agent" --kind agy --pane "$PANE_ID"
 ```
 
-### Step 3: Dispatch Realistic Task Prompt
-Formulate a realistic mission prompt exercising non-trivial paths in the target skill and dispatch:
+### Step 3: Discover Coordinator Return Route & Dispatch Prompt
+> [!IMPORTANT]
+> **The Return-Address & Inter-Agent Callback Law (`COORDINATOR_PANE_ID`)**:
+> Never dispatch a prompt asking a worker to "report back" or "talk via Herdr" without explicitly providing your own Coordinator Pane ID and teaching the worker how to use Herdr CLI. Without an explicit return route, worker agents report to their own local pane rather than communicating back to the coordinator.
+
 ```bash
-herdr agent prompt "$PANE_ID" "Execute the campaign workflow for a luxury perfume reel using the local flow-video-director skill. Ensure 9:16 vertical ratio and 720p download."
+# Resolve coordinator's own pane ID for inter-agent callback
+COORDINATOR_PANE_ID=$(herdr pane current 2>/dev/null | jq -r '.result.pane.id // empty' || true)
+if [[ -z "$COORDINATOR_PANE_ID" ]]; then
+  COORDINATOR_PANE_ID=$(herdr agent list | jq -r --arg cid "${CONVERSATION_ID:-}" '.result.agents[] | select(.agent_session.value == $cid) | .pane_id // empty' || true)
+fi
+
+# Dispatch task with explicit coordinator return address and Herdr command syntax
+herdr agent prompt "$PANE_ID" "Execute the campaign workflow for a luxury perfume reel using the local flow-video-director skill. Ensure 9:16 vertical ratio and 720p download.
+
+[Herdr Inter-Agent Callback]: Your coordinator is active at pane '$COORDINATOR_PANE_ID'.
+When you complete your run or need to coordinate, communicate your findings back via Herdr:
+  herdr agent prompt '$COORDINATOR_PANE_ID' '<Structured findings / status update>'"
 ```
 
 ### Step 4: Toggle `Ctrl+O` Verbose Mode
