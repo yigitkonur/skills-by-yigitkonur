@@ -42,10 +42,13 @@ schema or evidence validation. Quote timestamps and ambiguous scalar values.
 
 ## Every worker's submission protocol
 
-1. Read the assigned task and generated handoff. Copy only the corresponding
-   template into the assigned draft path. Preserve all generated metadata,
-   including IDs, role, timestamps, target/spec identity, and output paths.
-   Record artifact capture times only from actual tool/clock observations.
+1. Read the assigned task and generated handoff. Edit the generated draft in
+   place; consult the corresponding template for field shapes. Preserve IDs,
+   role, timestamps, digests, target/spec identity, and output paths. Do not
+   retype opaque values from displayed text. Parse the existing draft and modify
+   only result fields, or make a bounded text edit that leaves metadata intact.
+   Use a template as a base only when no generated draft exists. Record artifact
+   capture times only from actual tool/clock observations.
 2. Produce every required output. For an unavailable observation, write the
    explicit gap and reason in the supported result shape. Never invent a file
    reference, expected behavior, or PASS to make the record structurally complete.

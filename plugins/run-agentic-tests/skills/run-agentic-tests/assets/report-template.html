@@ -32,7 +32,10 @@
         card.hidden = Boolean((outcome && card.dataset.outcome !== outcome) || (query && !card.textContent.toLowerCase().includes(query)));
       }
     }
-    filters.forEach(control => control.addEventListener('input', filterCases));
+    filters.forEach(control => {
+      control.addEventListener('input', filterCases);
+      control.addEventListener('change', filterCases);
+    });
   </script>
 </body>
 </html>

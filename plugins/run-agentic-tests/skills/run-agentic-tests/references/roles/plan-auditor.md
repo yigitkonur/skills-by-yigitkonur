@@ -15,7 +15,9 @@ Write only the assigned `plan_audit` draft and permitted audit artifacts using
 and digest bound to the actual audited revision. The task draft supplies the
 digest of the stable canonical plan, not a raw YAML file hash. For closure,
 `status` exposes `closure_subject_record_id` and `closure_subject_digest`; the
-controller seeds these into the audit draft. Preserve the supplied identity.
+controller seeds these into the audit draft. Preserve the supplied identity;
+edit outcome/findings without retyping its digest. If a rejected draft differs
+from authoritative status, compare parsed values before blaming the controller.
 Request a corrected handoff if
 they cannot be established; do not audit an ambiguous “latest” file.
 

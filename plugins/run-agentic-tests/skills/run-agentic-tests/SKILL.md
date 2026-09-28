@@ -126,9 +126,9 @@ Do not preload the entire reference directory into every worker.
 
 ## Assets and authority
 
-Start worker documents from the files in `assets/templates/` referenced by each
-role. Copy into the task's assigned draft paths and replace example values with
-the allocated identities; never submit a template unchanged.
+Use the generated task draft as the base; preserve its allocated metadata.
+Consult `assets/templates/` for field shapes and document sections. Copy a
+template only when no generated draft exists; never submit example values.
 
 The installed CLI and [record schema](schemas/records.schema.json) own machine
 syntax. The references own the operational protocol. If they disagree, record
