@@ -183,6 +183,9 @@
                       "mode"
                     ]
                   }
+                },
+                "git_clean": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -237,7 +240,8 @@
             "type": {
               "enum": [
                 "http",
-                "process"
+                "process",
+                "tool"
               ]
             },
             "url": {
@@ -400,6 +404,124 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^A[0-9]{5,}$"
+        },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "name",
+                "version"
+              ]
+            },
+            "owner_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "device_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attachment": {
+              "type": "string",
+              "minLength": 1
+            },
+            "probe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            },
+            "inspect": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            },
+            "cleanup": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "owner_id",
+            "session_id",
+            "attachment",
+            "probe",
+            "inspect",
+            "cleanup"
+          ]
+        },
+        "session_handle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "owner_token": {
+              "type": "string",
+              "minLength": 1
+            },
+            "handle_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "owner_token",
+            "handle_path"
+          ]
         }
       },
       "required": [

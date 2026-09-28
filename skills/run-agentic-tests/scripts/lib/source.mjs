@@ -3,8 +3,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { CliError } from './contracts.mjs';
-import { stableStringify } from './store.mjs';
+import { CliError, validateRecord } from './contracts.mjs';
+import { stableStringify, readCampaign, readYaml } from './store.mjs';
 
 const execute = promisify(execFile);
 const sha = value => createHash('sha256').update(value).digest('hex');
@@ -112,6 +112,27 @@ async function manifest(root, paths, excluded, { required = false } = {}) {
   return [...entries.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
 
+async function campaignOutputs(campaign) {
+  const actual = await realpath(campaign);
+  const excluded = [actual];
+  const current = await readCampaign(actual);
+  const project = await realpath(current.project);
+  const container = path.join(project, 'agentic-tests');
+  if (path.dirname(actual) !== container) return excluded;
+  for (const entry of await readdir(container, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(container, entry.name);
+    if (candidate === actual) continue;
+    try {
+      const record = await readYaml(path.join(candidate, '00-campaign.record.yaml'));
+      validateRecord(record);
+      if (record.kind === 'campaign' && await realpath(record.project) === project &&
+          entry.name === `${record.slug}--${record.campaign_id.slice(2)}`) excluded.push(candidate);
+    } catch { /* A product directory is not excluded merely because it is under agentic-tests. */ }
+  }
+  return excluded;
+}
+
 export function sourceIdentity(sourceOrEnvironment) {
   const source = sourceOrEnvironment?.source || sourceOrEnvironment;
   return source?.attestation?.version === 1 && /^[a-f0-9]{64}$/.test(source.attestation.source_digest || '')
@@ -121,9 +142,10 @@ export function sourceIdentity(sourceOrEnvironment) {
 export async function attestSource(campaign, environment) {
   try {
     const { root, cwd, provider } = await sourceRoot(environment);
-    const excluded = [await realpath(campaign)];
+    const excluded = await campaignOutputs(campaign);
     let revision = environment.source.revision;
     let gitHead;
+    let gitClean;
     let paths = [];
     if (provider.type === 'git') {
       try {
@@ -135,6 +157,11 @@ export async function attestSource(campaign, environment) {
           ...(await git(root, 'ls-tree', '-r', '-z', '--name-only', 'HEAD')).split('\0'),
           ...(await git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')).split('\0'),
         ].filter(Boolean))].sort();
+        const changed = [
+          ...(await git(root, 'diff', '--name-only', '-z', 'HEAD', '--')).split('\0'),
+          ...(await git(root, 'ls-files', '-z', '--others', '--exclude-standard')).split('\0'),
+        ].filter(Boolean);
+        gitClean = changed.every(file => excluded.some(directory => inside(directory, path.resolve(root, file))));
       } catch (error) {
         if (error instanceof CliError) throw error;
         fail('SOURCE_REVISION_MISMATCH', 'Cannot resolve the declared source revision against the actual Git worktree.', pathIssue('source.revision', 'Declare the current committed HEAD; caller-provided labels are not Git proof.'));
@@ -145,13 +172,13 @@ export async function attestSource(campaign, environment) {
     const files = [...new Map([...implicit, ...declared].map(entry => [entry.path, entry])).values()].sort((a, b) => a.path.localeCompare(b.path));
     if (!files.some(entry => entry.kind !== 'missing')) fail('SOURCE_MISSING', 'The source manifest contains no actual product files.');
     const config = await manifest(root, provider.config_files || [], excluded, { required: true });
-    const source_digest = digest({ type: provider.type, revision, manifest: files, config_manifest: config });
+    const source_digest = digest({ type: provider.type, revision, manifest: files });
     const configuration_digest = digest({ command: environment.command, cwd, readiness: environment.readiness,
-      runtime_type: environment.runtime_type, session: environment.session || null,
+      runtime_type: environment.runtime_type, session: environment.session || null, config_manifest: config,
       environment: [...new Set(environment.command.env_names || [])].sort().map(name => ({ name,
         sha256: process.env[name] === undefined ? null : sha(process.env[name]) })) });
     const attestation = { version: 1, algorithm: 'sha256', source_digest, configuration_digest,
-      ...(gitHead ? { git_head: gitHead } : {}), manifest: files, config_manifest: config };
+      ...(gitHead ? { git_head: gitHead, git_clean: gitClean } : {}), manifest: files, config_manifest: config };
     return { ...environment.source, revision, worktree: root, provider,
       fingerprint: `sha256:${digest({ source_digest, configuration_digest })}`, attestation };
   } catch (error) {
