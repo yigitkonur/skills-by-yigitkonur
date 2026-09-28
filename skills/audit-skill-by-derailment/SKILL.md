@@ -45,13 +45,13 @@ Do NOT use this skill when:
 | Marker | Severity | Typical Root Cause | Fix Family | Reference |
 |---|---|---|---|---|
 | `[STUCK]` — executor cannot continue | P0 | S1 missing prerequisite, S2 contradiction, M2 unstated location | Prerequisite Surfacing, Path Reconciliation, Output Location | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
-| `[BROKE]` — command or selector threw error | P0 / P1 | O1 silent crash, O5 stale CLI flag, O3 unhandled edge case | Error Recovery Addition, Option Modernization | [`references/fix-patterns.md`](references/fix-patterns.md) |
-| `[GUESSED]` — agent invented unstated decision | P1 | M1 ambiguous threshold, M5 assumed knowledge | Threshold Concretization, Scaling Guidance | [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md) |
-| Premature completion — skipped remote/E2E gates | P1 | C1 premature completion illusion, C4 gate slack | Two-Tier Verification Enclosure, Rigid Phase Gating | [`references/fix-patterns.md`](references/fix-patterns.md) |
-| Skipped destructive cleanup / mutation | P1 | C2 destructive mutation hesitation | Staged Deprecation & Safe Neutralization | [`references/fix-patterns.md`](references/fix-patterns.md) |
-| Ran `--help` instead of real execution probe | P1 | C3 missing tooling awareness, M4 missing method | Actionable Pre-Flight Probe Injection | [`references/fix-patterns.md`](references/fix-patterns.md) |
-| Path drift or file recreation | P1 | S3 scattered info, M3 format inconsistency | Canonical Layout Enforcement | [`references/fix-patterns.md`](references/fix-patterns.md) |
-| `[NICE]` — skill prevented an error | Keep | Load-bearing sentence or check | **Never weaken or delete lines tagged [NICE]** | [`references/friction-classification.md`](references/friction-classification.md) |
+| `[BROKE]` — command or selector threw error | P0 / P1 | O1 silent crash, O5 stale CLI flag, O3 unhandled edge case | Error Recovery Addition, Option Modernization | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| `[GUESSED]` — agent invented unstated decision | P1 | M1 ambiguous threshold, M5 assumed knowledge | Threshold Concretization, Scaling Guidance | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Premature completion — skipped remote/E2E gates | P1 | C1 premature completion illusion, C4 gate slack | Two-Tier Verification Enclosure, Rigid Phase Gating | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Skipped destructive cleanup / mutation | P1 | C2 destructive mutation hesitation | Staged Deprecation & Safe Neutralization | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Ran `--help` instead of real execution probe | P1 | C3 missing tooling awareness, M4 missing method | Actionable Pre-Flight Probe Injection | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Path drift or file recreation | P1 | S3 scattered info, M3 format inconsistency | Canonical Layout Enforcement | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| `[NICE]` — skill prevented an error | Keep | Load-bearing sentence or check | **Never weaken or delete lines tagged [NICE]** | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
 
 ---
 
@@ -80,9 +80,17 @@ Follow this complete operational workflow to execute an autonomous, evidence-bac
 # Verify Herdr environment
 test "${HERDR_ENV:-}" = 1 || herdr status client
 
+# Discover active workspace and target repository
+WS_ID=$(herdr workspace current 2>/dev/null | jq -r '.result.workspace.id // empty' || true)
+if [[ -z "$WS_ID" ]]; then
+  WS_ID=$(herdr workspace list | jq -r '.result.workspaces[0].id')
+fi
+TARGET_REPO="${TARGET_REPO:-$(pwd)}"
+
 # Create a tab in the target workspace without stealing user focus
 PANE_JSON=$(herdr tab create --workspace "$WS_ID" --label "audit-worker" --cwd "$TARGET_REPO" --no-focus)
-PANE_ID=$(echo "$PANE_JSON" | jq -r '.result.pane.id // .result.tab.id')
+PANE_ID=$(echo "$PANE_JSON" | jq -r '.result.pane.id // .result.root_pane.id')
+TAB_ID=$(echo "$PANE_JSON" | jq -r '.result.tab.id // empty')
 ```
 
 ### Step 2: Launch Worker Agent Engine
@@ -118,9 +126,13 @@ Once the worker finishes, launch an independent auditor subagent (via `invoke_su
 - Explicit instructions to enforce the Anti-Self-Report Law and uncover up to 20–30 friction points.
 
 ### Step 7: Apply Verified Patches & Clean Up
-Apply the auditor's line-by-line diffs to the target skill. Close the worker tab after verification:
+Apply the auditor's line-by-line diffs to the target skill. Close the worker tab/pane after verification:
 ```bash
-herdr tab close "$PANE_ID"
+if [[ -n "${TAB_ID:-}" ]]; then
+  herdr tab close "$TAB_ID" 2>/dev/null || herdr pane close "$PANE_ID"
+else
+  herdr pane close "$PANE_ID"
+fi
 ```
 
 ---
@@ -171,8 +183,6 @@ For fast, lightweight in-process testing:
 | [`references/ctrl-o-verbose-physics.md`](references/ctrl-o-verbose-physics.md) | Understanding AGY TUI folding, toggling `Ctrl+O`, and unwrapping scrollbacks. |
 | [`references/forensic-subagent-briefs.md`](references/forensic-subagent-briefs.md) | Formatting Mission-Style subagent prompts with anti-sycophancy and 20–30 friction targets. |
 | [`references/disk-evidence-and-anti-sycophancy.md`](references/disk-evidence-and-anti-sycophancy.md) | Performing independent physical artifact validations (magic headers, byte size, exit codes). |
-| [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) | Comprehensive friction taxonomy: markers, severities, root-cause codes (`S/M/O/C`), and compound P0s. |
+| [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) | Unified comprehensive friction taxonomy: markers, severities, all 21 root-cause codes (`S/M/O/C`), compound P0s, and fix patterns. |
 | [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) | Mode B: Fleet discovery, multi-pane reading, and active agent prompt coordination. |
 | [`references/fix-patterns.md`](references/fix-patterns.md) | Applying verified fix patterns (Two-Tier Enclosure, Staged Deprecation, Pre-Flight Probes). |
-| [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md) | Detailed Structural, Semantic, Operational, and Cognitive root-cause reference. |
-| [`references/friction-classification.md`](references/friction-classification.md) | Symptom severity classification (P0, P1, P2) and prioritization flowcharts. |

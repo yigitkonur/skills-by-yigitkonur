@@ -1,5 +1,8 @@
 # Root Cause Taxonomy
 
+> [!NOTE]
+> This taxonomy has been unified into [`references/friction-taxonomy-guide.md`](friction-taxonomy-guide.md), which serves as the single canonical reference for all 21 root-cause codes, friction markers, and remediation patterns.
+
 Tag each friction point with a code to understand WHY it broke.
 Use the smallest set of codes that explains the whole miss.
 Five symptoms can still come from one bad paragraph or one bad example.

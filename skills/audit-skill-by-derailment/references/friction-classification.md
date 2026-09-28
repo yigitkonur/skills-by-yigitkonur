@@ -1,5 +1,8 @@
 # Friction Classification
 
+> [!NOTE]
+> This classification system has been unified into [`references/friction-taxonomy-guide.md`](friction-taxonomy-guide.md), which serves as the single canonical reference for symptom severities (P0–P2), friction markers, and prioritization flowcharts.
+
 These severities classify symptoms in the trace.
 They do not tell you what to edit.
 Several P1 symptoms from the same step usually point to one source defect in the skill text.
