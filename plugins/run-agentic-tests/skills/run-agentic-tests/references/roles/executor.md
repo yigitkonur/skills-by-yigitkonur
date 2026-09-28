@@ -21,9 +21,10 @@ artifacts. Each grouped case keeps a separate output and evidence set.
 1. Confirm the assigned source/runtime generation and real client access. Check
    fixture/session/data leases and execute the declared reset. Report drift or
    missing access before consuming a misleading run.
-   Follow the environment's source-identity procedure: a standalone file hash
-   and a Git revision are different identity schemes. Do not compare them or
-   substitute the harness repository's HEAD for the assigned application source.
+   The CLI checks the environment's computed source attestation. Do not compare
+   a file hash with a Git revision or substitute the skill repository's HEAD for
+   the assigned application source. A missing legacy attestation needs a fresh
+   runtime generation, not a manually entered fingerprint.
 2. Read each expectation and its capture requirements before acting. Follow
    Given/When/Then through the real interface. Save exact command/request and
    relevant intermediate/final state with step/expectation references.
@@ -53,8 +54,9 @@ The executor's test verdict remains `NOT_DECIDED`; an accepted negative report i
 valid work. Missing claimed files must be corrected or converted into truthful
 capture gaps before submission.
 
-For retries, read prior failure, change, new hypothesis/evidence, forbidden
-repetition, remaining lineage attempts, and issue/PR trail. A new context does
+For retries, read the generated latest failure for each assigned case, previous
+fixes/retests, change, hypothesis, forbidden repetition, remaining shared
+attempts, and issue/PR trail. A new context does
 not authorize identical blind retries or reset counters. Request a controller
 correction when assigned identity/target/spec is wrong; do not rewrite them to
 make the validator accept your run.

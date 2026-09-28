@@ -27,7 +27,7 @@ function publicData(value, onOmit = () => {}) {
   if (typeof value !== 'string') return value;
   return value.replace(/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----[\s\S]*?(?:-----END (?:[A-Z]+ )?PRIVATE KEY-----|$)/g, omit)
     .replace(/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{24,})/g, omit)
-    .replace(/\b((?:[\w-]*(?:api[ _-]?key|password|passwd|passphrase|token|secret)|authorization|cookie|credentials?|private[ _-]?key|session(?:[ _-]?id)?|access[ _-]?key(?:[ _-]?id)?))(["']?\s*(?::|=|\bis\b)\s*)((?:(?:Bearer|Basic)\s+[^\s,;]+)|"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
+    .replace(/\b((?:[\w-]*(?:api[ _-]?key|password|passwd|passphrase|token|secret)|authorization|cookie|credentials?|private[ _-]?key|session(?:[ _-]?id)?|access[ _-]?key(?:[ _-]?id)?))(["']?\s*(?::|=)\s*)((?:(?:Bearer|Basic)\s+[^\s,;]+)|"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
       (_match, label, separator, secret) => `${label}${separator}${/^["']/.test(secret) ? `${secret[0]}${omit(secret.slice(1, -1))}${secret[0]}` : omit(secret)}`)
     .replace(/\b(Bearer|Basic)\s+([A-Za-z0-9._~+/=-]{6,})/gi, (_match, type, secret) => `${type} ${omit(secret)}`)
     .replace(/https?:\/\/[^\s<>"']+/g, candidate => {
@@ -84,7 +84,9 @@ function renderCase(item) {
   return `<article data-case="${escape(item.case_id)}" data-outcome="${escape(item.outcome)}"><h2>${escape(item.case_id)} · ${escape(item.outcome)}</h2>` +
     `<p>Spec ${escape(item.spec_revision || 'unplanned')} · ${item.accepted ? 'Accepted coverage' : 'Outside accepted coverage'}</p>${list(item.gaps)}` +
     item.rounds.map(renderRound).join('') +
-    `<h3>Findings and delivery trail</h3>${item.findings.length ? item.findings.map(finding => `<p><strong>${escape(finding.finding_id)}</strong> ${escape(finding.class)} · ${escape(finding.state)} · ${escape(finding.scope)} · ${escape(finding.attempts)} attempts</p><p>${escape(finding.summary)}</p><p>${[finding.issue_url, ...(finding.pr_urls || [])].filter(Boolean).map(url => link(url)).join(' · ')}</p>`).join('') : '<p>None recorded.</p>'}</article>`;
+    `<h3>Findings and delivery trail</h3>${item.findings.length ? item.findings.map(finding => `<p><strong>${escape(finding.finding_id)}</strong> ${escape(finding.class)} · ${escape(finding.state)} · ${escape(finding.scope)} · ${escape(finding.attempts)} shared attempts</p>` +
+      `${finding.related_finding_ids?.length > 1 ? `<p>Related finding IDs: ${escape(finding.related_finding_ids.join(', '))}</p>` : ''}` +
+      `<p>${escape(finding.summary)}</p><p>${[...new Set([finding.issue_url, ...(finding.related_issue_urls || []), ...(finding.pr_urls || [])].filter(Boolean))].map(url => link(url)).join(' · ')}</p>`).join('') : '<p>None recorded.</p>'}</article>`;
 }
 
 async function build(campaign) {
@@ -105,6 +107,7 @@ async function build(campaign) {
   const accepted = new Map((plan?.cases || []).map(item => [item.case_id, item]));
   const caseIds = [...new Set([...accepted.keys(), ...all.filter(record => record.case_id).map(record => record.case_id)])].sort();
   const cases = [];
+  const publicationIssues = [];
   for (const case_id of caseIds) {
     const assignment = accepted.get(case_id);
     const caseGaps = [];
@@ -136,17 +139,26 @@ async function build(campaign) {
       }
       const artifacts = [];
       for (const artifact of execution.evidence) {
+        let verifiedOriginal = false;
+        const withhold = (type, message) => {
+          publicationIssues.push({ type, case_id, round_id: execution.round_id, artifact_id: artifact.id,
+            message: `${case_id} ${execution.round_id} ${artifact.id}: ${message}` });
+          artifacts.push({ id: artifact.id, type: artifact.type });
+        };
         try {
           if (!artifact.path.startsWith(`${path.posix.dirname(executionPath)}/evidences/`)) throw new Error('Evidence is outside its assigned round.');
-          if (artifact.path.split('/').some(component => component.startsWith('.')) || /^(?:credentials?|secrets?)(?:\.|$)/i.test(path.basename(artifact.path))) throw new Error('Credential or hidden evidence files cannot be published.');
           const body = await readFile(containedPath(campaign, artifact.path));
-          if (containsCredential(body)) throw new Error('Possible plaintext credentials in evidence; redact before submission.');
           const digest = hash(body);
           if (artifact.sha256 !== digest || (artifact.size !== undefined && artifact.size !== body.length)) throw new Error('Evidence hash or size changed after submission.');
           if (verdict && !verdict.evidence_hashes.some(item => item.path === artifact.path && item.sha256 === digest)) throw new Error('Evidence hash does not match the sealed verdict.');
           for (const verification of verifications) {
             const inspected = verification.inspected_evidence.find(item => item.id === artifact.id);
             if (verification.reviews.some(review => review.evidence_ids.includes(artifact.id)) && inspected?.sha256 !== digest) throw new Error('Evidence hash does not match the verifier inspection.');
+          }
+          verifiedOriginal = true;
+          if (artifact.path.split('/').some(component => component.startsWith('.')) || /^(?:credentials?|secrets?)(?:\.|$)/i.test(path.basename(artifact.path)) || containsCredential(body)) {
+            withhold('SENSITIVE_ARTIFACT_WITHHELD', 'Artifact withheld from publication because it may contain sensitive content. Original sealed evidence remains unchanged.');
+            continue;
           }
           const extension = path.extname(artifact.path).slice(1).toLowerCase();
           const image = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension);
@@ -157,7 +169,12 @@ async function build(campaign) {
           await writeFile(containedPath(campaign, `report/${href}`), body, { mode: 0o600 });
           files.set(href, { path: href, sha256: digest, content_type, download: !image });
           artifacts.push({ id: artifact.id, type: artifact.type, source: artifact.source, href, image });
-        } catch (error) { invalidEvidence = true; roundGaps.push(`${artifact.id}: ${error.code === 'ENOENT' ? 'Missing evidence file.' : error.message}`); artifacts.push({ id: artifact.id, type: artifact.type }); }
+        } catch (error) {
+          if (!verifiedOriginal) {
+            invalid(`${artifact.id}: ${error.code === 'ENOENT' ? 'Missing evidence file.' : error.message}`);
+            withhold('ORIGINAL_ARTIFACT_INVALID', 'Original evidence is unavailable or does not match its sealed proof; no public copy was made.');
+          } else withhold('ARTIFACT_PUBLICATION_FAILED', 'Verified original evidence could not be copied safely into the report. Original sealed evidence remains unchanged.');
+        }
       }
       if (!verdict) roundGaps.push('Independent verdict is pending.');
       if (!spec) roundGaps.push('Expectation specification is missing.');
@@ -175,7 +192,7 @@ async function build(campaign) {
     const current = rounds.find(round => round.execution_record_id === assessed?.execution_record_id);
     if (current) {
       current.current = true;
-      current.recorded_outcome = current.outcome;
+      current.recorded_outcome = current.verdict_history[0]?.outcome;
       current.gaps.push(...(assessed.blockers || []).map(item => [item.type, item.message].filter(Boolean).join(': ')));
       if (current.outcome !== 'INVALID_EVIDENCE') {
         if ((assessed.blockers || []).some(item => /EVIDENCE_CHANGED|MISSING_ARTIFACT|UNSAFE_ARTIFACT|UNSAFE_PATH|RECORDS_CHANGED|TARGET_DRIFT|SPEC_CHANGED|MISSING_PROVENANCE/.test(item.type))) current.outcome = 'INVALID_EVIDENCE';
@@ -185,7 +202,7 @@ async function build(campaign) {
     }
     if (assignment && !current) caseGaps.push('No execution and independent proof on the final target.');
     const outcome = current?.outcome || 'NOT_RUN';
-    const findings = all.filter(record => record.kind === 'finding' && record.case_ids.includes(case_id));
+    const findings = assessment.findings.filter(finding => finding.case_ids.includes(case_id));
     cases.push({ case_id, spec_revision: assignment?.spec_revision, accepted: Boolean(assignment), outcome, rounds, findings, gaps: caseGaps });
   }
   const counts = { PASS: 0, FAIL: 0, INCONCLUSIVE: 0, NOT_RUN: 0, NOT_ASSESSED: 0, INVALID_EVIDENCE: 0 };
@@ -196,35 +213,41 @@ async function build(campaign) {
   }
   if (assessment.obligations.some(item => item.type === 'CLOSURE_AUDIT_REQUIRED')) gaps.push('Independent closure audit is pending for the current proof digest.');
   if (!accepted.size) gaps.push('No accepted cases have final-target proof.');
-  const overall = counts.FAIL ? 'FAIL' : (assessment.complete && accepted.size && counts.PASS === accepted.size && !gaps.length ? 'PASS' : 'INCOMPLETE');
+  const overall = assessment.outcome;
+  const currentArtifacts = cases.filter(item => item.accepted).flatMap(item => item.rounds.filter(round => round.current)).flatMap(round => round.artifacts);
+  const rawPublication = { status: publicationIssues.length ?
+    (currentArtifacts.length && !currentArtifacts.some(artifact => artifact.href) ? 'BLOCKED' : 'PARTIAL') : 'READY', issues: publicationIssues };
   let omissions = 0;
   const onOmit = () => { omissions++; };
-  const summary = publicData({ overall, total: accepted.size, counts, gaps }, onOmit);
-  const model = publicData({ campaign: campaignRecord.slug, final_target_id: campaignRecord.final_target_id, summary, cases,
+  const model = publicData({ campaign: campaignRecord.slug, final_target_id: assessment.latest_target_id,
+    summary: { overall, total: accepted.size, counts, gaps }, publication: rawPublication, cases,
     out_of_scope: plan?.scope.out_of_scope || [] }, onOmit);
+  const publication = model.publication;
   if (omissions) {
-    summary.gaps.push(`Sensitive content omitted from report data (${omissions} locations); sanitize source records and obtain fresh evidence review.`);
-    if (summary.overall === 'PASS') summary.overall = 'INCOMPLETE';
-    model.summary = summary;
+    if (publication.status === 'READY') publication.status = 'PARTIAL';
+    publication.issues.push({ type: 'SENSITIVE_DATA_OMITTED', locations: omissions,
+      message: `Sensitive content omitted from report data (${omissions} locations). Sealed records and original evidence remain unchanged.` });
   }
+  const summary = model.summary;
   const slots = {
     TITLE: escape(model.campaign),
     SUMMARY: `<strong class="status">${escape(summary.overall)}</strong><p>${summary.total} accepted cases</p>`,
     GAPS: list(summary.gaps),
+    PUBLICATION: `<strong>${escape(publication.status)}</strong><p>Publication status describes available report content. The campaign result is determined by canonical proof.</p>${list(publication.issues.map(item => item.message))}`,
     CASES: (model.cases.map(renderCase).join('') || '<p>No case observations are available.</p>') +
       `<section><h2>Out-of-scope coverage</h2>${list(model.out_of_scope.map(item => `${item.item}: ${item.reason}`))}</section>`,
     DATA: json(model),
   };
   // A single callback pass preserves replacement metacharacters and never
   // interprets template-like text supplied by an observation as another slot.
-  const html = (await readFile(templatePath, 'utf8')).replace(/\{\{(TITLE|SUMMARY|GAPS|CASES|DATA)\}\}/g, (_marker, key) => slots[key]);
+  const html = (await readFile(templatePath, 'utf8')).replace(/\{\{(TITLE|SUMMARY|GAPS|PUBLICATION|CASES|DATA)\}\}/g, (_marker, key) => slots[key]);
   const temporary = containedPath(campaign, `report/index.${randomUUID()}.tmp`);
   await writeFile(temporary, html, { mode: 0o600 });
   await rename(temporary, containedPath(campaign, 'report/index.html'));
   await writeFile(containedPath(campaign, '.report-bundle.runtime.json'), JSON.stringify({ files: [{
     path: 'index.html', sha256: createHash('sha256').update(html).digest('hex'), content_type: 'text/html; charset=utf-8',
   }, ...files.values()] }), { mode: 0o600 });
-  return { report_path: 'report/index.html', summary };
+  return { report_path: 'report/index.html', summary, publication };
 }
 
 export async function run(command, options = {}) {

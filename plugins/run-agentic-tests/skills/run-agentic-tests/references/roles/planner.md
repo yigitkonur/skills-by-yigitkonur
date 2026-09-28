@@ -13,6 +13,8 @@ Write the assigned plan draft and scope artifact using
 [plan.yaml](../../assets/templates/plan.yaml) and
 [scope.md](../../assets/templates/scope.md). Preserve accepted specs and other
 plan revisions. The orchestrator accepts the audited plan through the CLI.
+Write the explanation at `companion_paths.scope` from the generated task. The
+plan draft's typed `scope` is authoritative; keep its explanation consistent.
 
 ## Procedure
 
@@ -25,6 +27,8 @@ plan revisions. The orchestrator accepts the audited plan through the CLI.
    imply independent accounts/databases.
 4. Describe the ready frontier and conceptual waves. Keep blocked downstream
    chains separate from unrelated ready work.
+   Respect the controller's priority/unlocking/review/age ordering. A conceptual
+   wave does not postpone an independent ready branch until all peers finish.
 5. Recommend groups of at most four sibling variants only when shared setup,
    reliable reset, independent outcomes, and no internal prerequisites hold.
    Preserve per-case evidence/review/results and all critical review counts.

@@ -1,4 +1,5 @@
-# Corrective task-create request. Replace all example history with actual evidence.
+# Corrective task-create request. State the next action; the controller attaches
+# latest per-case failure, shared allowance, issue/PR links, and history_basis.
 role: executor
 requested_action: Independently retest the confirmed defect on the new assigned target.
 case_ids: [T0001]
@@ -18,11 +19,7 @@ required_inputs:
   - cases/T0001-create-project/specs/S001/02-expectations.record.yaml
   - cases/T0001-create-project/specs/S001/03-how-to-run.md
 prior_context:
-  previous_failure: Replace with the precise prior failed expectation and record/artifact references.
   what_changed: Replace with the actual source/environment/procedure change and new target identity.
   hypothesis: Replace with the different hypothesis and evidence that justifies this attempt.
   do_not_repeat:
     - Replace with the failed action or invalid assumption to avoid.
-  remaining_attempts: 4
-  issue_url: https://github.com/example/project/issues/1
-  pr_urls: [https://github.com/example/project/pull/2]

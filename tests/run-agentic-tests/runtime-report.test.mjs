@@ -12,6 +12,7 @@ import { run as report } from '../../skills/run-agentic-tests/scripts/lib/report
 import { loadDependencies } from '../../skills/run-agentic-tests/scripts/lib/dependencies.mjs';
 import { writeRecord, readCampaign, readYaml, stableStringify } from '../../skills/run-agentic-tests/scripts/lib/store.mjs';
 import { assessCampaign, run as workflow } from '../../skills/run-agentic-tests/scripts/lib/workflow.mjs';
+import { attestSource } from '../../skills/run-agentic-tests/scripts/lib/source.mjs';
 
 await loadDependencies({ setup: true });
 
@@ -48,7 +49,8 @@ async function environment(f, overrides = {}) {
 console.log('fixture launching');
 http.createServer((q,s)=>s.end('agentic app ready')).listen(${port}, '127.0.0.1');\n`);
   const draft = {
-    target_id: 'G001', runtime_type: 'http', source: { revision: 'revision-one', worktree: f.root },
+    target_id: 'G001', runtime_type: 'http', source: { revision: 'revision-one', worktree: f.root,
+      provider: { type: 'files', root: f.root, paths: ['app.mjs'] } },
     command: { argv: [process.execPath, script], cwd: f.root },
     readiness: { type: 'http', url: `http://127.0.0.1:${port}/`, expected_status: 200,
       body_contains: 'agentic app ready', timeout_ms: 3000 }, ...overrides,
@@ -128,12 +130,15 @@ async function reportFixture(f, { latestOutcome = 'FAIL', pending = true, findin
     hashesByCase.set('T0002', hashes);
   }
   const environments = new Map();
+  await writeFile(path.join(f.root, 'report-product.mjs'), 'export const product = "report fixture";\n');
   for (const target of ['G001', 'G002']) {
     const record = { ...common('environment', `ENV-${target}`), target_id: target, runtime_type: 'http',
-      source: { revision: `revision-${target}`, worktree: f.root }, command: { argv: ['fixture-app'], cwd: f.root },
+      source: { revision: `revision-${target}`, worktree: f.root,
+        provider: { type: 'files', root: f.root, paths: ['report-product.mjs'] } }, command: { argv: ['fixture-app'], cwd: f.root },
       readiness: { type: 'http', url: 'http://127.0.0.1:12345/', expected_status: 200, body_contains: 'ready' },
       status: 'READY', logs: { stdout: `environments/${target}/logs/stdout.log`, stderr: `environments/${target}/logs/stderr.log` },
     };
+    record.source = await attestSource(f.campaign, record);
     await writeRecord(f.campaign, `environments/${target}/00-environment.record.yaml`, record);
     environments.set(target, record);
   }
@@ -522,7 +527,7 @@ test('agent-controlled HTML and unsafe links render as text without script or UR
   assert.doesNotMatch(html, /user:password/);
 });
 
-test('report publication omits structured and free-text credentials and exposes the omission as a blocking gap', async t => {
+test('report publication omits credentials while preserving the canonical test outcome', async t => {
   const f = await fixture(t);
   await reportFixture(f, { latestOutcome: 'PASS', pending: false, finding: false });
   const campaign = await readCampaign(f.campaign);
@@ -554,8 +559,9 @@ test('report publication omits structured and free-text credentials and exposes 
     assert.equal(html.includes(value), false, 'Credential value entered the published HTML.');
   }
   assert.match(html, /REDACTED/);
-  assert.notEqual(built.summary.overall, 'PASS');
-  assert.ok(built.summary.gaps.some(gap => /sensitive|credential|omitted/i.test(gap)));
+  assert.equal(built.summary.overall, 'PASS');
+  assert.equal(built.publication.status, 'PARTIAL');
+  assert.ok(built.publication.issues.some(issue => /sensitive|credential|omitted/i.test(issue.message)));
 });
 
 test('a replacement sealed verdict shows its accepted review and preserves the superseded verdict trail', async t => {

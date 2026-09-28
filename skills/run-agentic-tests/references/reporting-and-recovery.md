@@ -25,6 +25,12 @@ cases. Recover the actual dependency; do not relabel it as an application failur
 For invalid drafts, keep the role/task identity and correct formatting through
 the same validator. For changed accepted content, request a new assigned record.
 
+Use `runtime recover` for an unusable target, preserving its source/integration
+lineage and logs. The successor must pass readiness and receive a new accepted
+plan plus independent execution/review. Source attestation absent from an older
+campaign produces `SOURCE_ATTESTATION_REQUIRED`; prepare fresh proof instead of
+retroactively certifying old bytes.
+
 If an accepted verifier lost independence or reviewed the wrong material, withdraw
 that verifier task with `task interrupt`, its concrete reason, and `--finished
 true` only after its context has stopped. Create a fresh verifier for the same
@@ -53,6 +59,18 @@ round history, screenshot previews, JSON/log links, current and historical
 source/runtime identity, issue/PR trail, and blocked/out-of-scope coverage. Missing
 or stale artifacts and unresolved obligations remain explicit. It must not silently
 promote an old PASS to the final target or hide a failed round behind its retry.
+
+`summary.overall` is the canonical campaign outcome. `publication.status` is
+separate: `READY` means all intended report material is publishable, `PARTIAL`
+means some material is withheld/redacted, and `BLOCKED` means current supporting
+artifacts cannot be published. Each omission has a publication issue. A passing
+test can have incomplete publication; state both facts rather than changing its
+verdict. Missing or modified **original** evidence still invalidates proof.
+
+Screen actual secret assignments, authorization headers, structured credentials,
+token patterns, and private keys. Ordinary prose such as “No token is required”
+is not a credential. Never edit sealed originals to make them publishable; make
+safe report copies or withhold them and retain the original integrity record.
 
 Treat all titles, observations, logs, and external text as untrusted content.
 Escape HTML and use only validated contained paths. Serve the generated `report/`

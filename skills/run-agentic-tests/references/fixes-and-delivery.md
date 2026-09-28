@@ -18,6 +18,26 @@ GitHub issue/fix. Keep environmental limitations, unknown requirements, missing
 screenshots, and out-of-scope leads in local campaign records. Preserve the
 original finding ID and lineage when several cases share a root issue.
 
+Classification can change when new independently reviewed evidence arrives.
+An initial evidence gap may later become a product defect without creating a new
+finding or resetting attempts. A later capture gap does not erase an established
+unresolved defect. Current proof must still authorize delivery; withdrawing its
+review suspends that authorization. Use `finding link` for separately discovered
+roots after confirming their relationship, not direct YAML edits.
+
+## Bind delivery to the tested project
+
+The campaign's project selects the GitHub remote (normally `origin`). Resolve
+its HTTPS or SSH URL to `owner/repository` before ticket or PR work. Use the
+recorded repository explicitly on every `gh` command, for example
+`gh issue create --repo "$REPOSITORY" --body-file "$BODY"`.
+The skill's checkout and current shell directory never select the destination.
+
+Issue/PR references must belong to that repository. If the remote changes,
+reconcile the delivery target before continuing; independent local tests can
+still proceed. Missing access or a non-GitHub remote is an explicit delivery
+blocker, not a reason to create records in the skill repository.
+
 ## Create a durable ticket
 
 The ticket writer reads the finding, verified expectation failure, diagnosis,
@@ -79,16 +99,25 @@ the finished integrator, and dispatches an environment operator for that exact
 target and integrated commit. Readiness and independent retest remain mandatory
 obligations; never repoint an in-use old generation silently.
 
+If that runtime fails or needs replacement, use `runtime recover` with the failed
+target and a concrete recovery request. It allocates a successor and an operator
+task while retaining the integration and source identity. Follow the recovery
+chain when selecting the final target. Prepare/readiness-check the successor,
+accept the revised target plan, and capture fresh proof; old PASS records remain
+historical. Do not submit a fictitious second integration for the same merge.
+
 ## Prove resolution independently
 
 The orchestrator assigns a fresh executor that is not the implementer, followed
-by independent evidence verifier(s). Supply prior failure, patch/change, hypothesis,
-what not to repeat, lineage allowance, and issue/PR links. The verifier only reads
-the new captured evidence. If evidence needs supplementation, send another
+by independent evidence verifier(s). The executor receives generated current
+failure/fix history plus the proposed change, hypothesis, actions not to repeat,
+shared allowance, and issue/PR links. The verifier receives only the original
+specification and newly captured evidence. If evidence needs supplementation, send another
 executor; the verifier does not replay it.
 
 Keep failed rounds and their hashes. Current-target PASS may discharge the
-finding's retest obligation; then update the issue with proof and close it if
+finding's retest obligation only after all associated cases have current proof;
+then update the issue with proof and close it if
 authorized. Any changed source requires its own current proof. The final accepted
 case sweep and independent closure audit remain required after the fix pipeline,
 including for previously passing cases affected by the integrated target.

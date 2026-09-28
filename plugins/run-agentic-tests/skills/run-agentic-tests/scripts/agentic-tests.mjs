@@ -3,8 +3,9 @@ import { pathToFileURL } from 'node:url';
 
 const commands = {
   doctor: { options: ['project', 'setup'], required: [], module: 'workflow' },
-  init: { options: ['project', 'slug', 'mode', 'max-active', 'host-capacity', 'max-attempts', 'locale'], required: ['project', 'slug'], module: 'workflow' },
+  init: { options: ['project', 'slug', 'mode', 'max-active', 'host-capacity', 'max-attempts', 'locale', 'github-remote'], required: ['project', 'slug'], module: 'workflow' },
   'plan accept': { options: ['campaign', 'file', 'audit'], required: ['campaign', 'file', 'audit'], module: 'workflow' },
+  'finding link': { options: ['campaign', 'file'], required: ['campaign', 'file'], module: 'workflow' },
   'finding decide': { options: ['campaign', 'finding-id', 'scope', 'reason', 'source'], required: ['campaign', 'finding-id', 'scope', 'reason', 'source'], module: 'workflow' },
   'task create': { options: ['campaign', 'request'], required: ['campaign', 'request'], module: 'workflow' },
   'task dispatch': { options: ['campaign', 'task-id'], required: ['campaign', 'task-id'], module: 'workflow' },
@@ -14,7 +15,8 @@ const commands = {
   submit: { options: ['campaign', 'task-id', 'file', 'check'], required: ['campaign', 'task-id', 'file'], module: 'workflow' },
   reconcile: { options: ['campaign'], required: ['campaign'], module: 'workflow' },
   status: { options: ['campaign'], required: ['campaign'], module: 'workflow' },
-  records: { options: ['campaign', 'record-id', 'kind', 'case-id', 'round-id', 'ready', 'format'], required: ['campaign'], module: 'workflow' },
+  records: { options: ['campaign', 'record-id', 'kind', 'case-id', 'round-id', 'finding-id', 'ready', 'format'], required: ['campaign'], module: 'workflow' },
+  'runtime recover': { options: ['campaign', 'target-id', 'file'], required: ['campaign', 'target-id', 'file'], module: 'workflow' },
   'runtime start': { options: ['campaign', 'file'], required: ['campaign', 'file'], module: 'runtime' },
   'runtime inspect': { options: ['campaign', 'target-id'], required: ['campaign', 'target-id'], module: 'runtime' },
   'runtime stop': { options: ['campaign', 'target-id'], required: ['campaign', 'target-id'], module: 'runtime' },
@@ -109,7 +111,8 @@ export async function main(argv = process.argv.slice(2)) {
       schema_version: 1,
       command: command ?? null,
       worker_may_finish: false,
-      error: { code: error.code ?? 'INTERNAL_ERROR', message: error.message, details: error.details ?? [] },
+      error: { code: error.code ?? 'INTERNAL_ERROR', message: error.message, details: error.details ?? [], issues: error.issues ?? [] },
+      next_actions: error.next_actions ?? ['Correct the reported problem and retry; preserve drafts and accepted history.'],
     })}\n`);
     return exitCode;
   }

@@ -27,10 +27,11 @@ trust another worker's description.
 ## Dispatch adapter
 
 1. Create/reserve the task using the CLI. Read its generated task/handoff paths.
-2. Call the host's real spawn tool with that handoff, exact role reference,
-   required common reference(s), task identity, write boundaries, and completion
-   condition. Use its documented syntax rather than copying a different host's
-   tool call. Prefer a fresh/narrow context when the host supports it.
+2. Call the host's real spawn tool with the generated handoff path. The packet
+   supplies exact installed role/common references, task/input/output paths,
+   write boundaries, and commands. Do not repair missing packet information by
+   copying the campaign conversation into the worker. Correct the task instead.
+   Use the host's documented syntax and a fresh/narrow context.
 3. Bind the actual returned worker handle through `task bind`. A fabricated
    handle or copied role name cannot satisfy identity separation.
 4. Wait through the host's nonblocking/interruptible mechanism, inspect receipts,
@@ -43,8 +44,9 @@ notifications. A chat-only verdict or stale message cannot override a record.
 
 ## Blind review on shared filesystems
 
-Supply verifier B only the original spec, execution, target/round context, and
-artifacts. Omit verifier A's output paths, conclusions, and summary from its
+Supply every verifier only its generated original-input allowlist: spec,
+execution, target/round context, and artifacts. Omit peer output paths,
+conclusions, repair narratives, and summary from its
 handoff and inherited conversation. On hosts with broad shared-file access,
 enforce a narrow assigned read list and require workers to respect it; use
 filesystem/context restrictions when available. Do not describe this as a

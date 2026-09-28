@@ -1,6 +1,7 @@
 # Records, identities, and states
 
-The [schema](../schemas/records.schema.json) is the machine contract. This file
+The [record schema](../schemas/records.schema.json) and its
+[runtime schema](../schemas/runtime.schema.json) are the machine contract. This file
 defines how to interpret it. Obtain allocated IDs and exact paths from the task
 handoff; examples below describe the layout, not permission to choose identities.
 
@@ -71,6 +72,9 @@ Every result binds campaign, task/actor, case/spec revision, round, and target a
 applicable. Spec acceptance freezes its documents/hashes. The target binds exact
 source revision, worktree/fingerprint, runtime generation, and resource setup.
 Executors report the assigned identity, not a guessed latest branch name.
+`target_id: G001` identifies a runtime generation; its record can be
+`record_id: ENV-G001`. Use the actual `record_id` for `records --record-id`, or
+list `records --kind environment` to resolve a target. Do not interchange IDs.
 
 The CLI computes artifact hashes during submission. Verifiers record the hash
 they inspected and how they inspected it. Changed/missing artifacts invalidate
@@ -83,6 +87,8 @@ These identities have different meanings; their strings are not interchangeable:
 | Field | Meaning and comparison |
 |---|---|
 | `environment.source.revision` | Application commit or explicitly named content identity; use the operator's source-check procedure |
+| `environment.source.attestation.source_digest` | CLI hash of actual source manifest and revision; identifies code across runtime recovery |
+| `environment.source.attestation.configuration_digest` | CLI hash of declared runtime configuration and inherited-variable hashes; values are not published |
 | `round_context.target_source_digest` | CLI digest of the combined environment `source`, `command`, and `readiness` objects; the CLI checks this binding |
 | `evidence.sha256` | SHA-256 of the saved artifact's actual bytes; compare with the file you inspect |
 | `subject_digest` / `inputs_digest` | CLI digest of the specified canonical record set, not a raw file hash |
@@ -113,6 +119,21 @@ Verifier expectation verdicts (`PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_ASSESSED`)
 describe what the inspected evidence supports. Only reconciliation writes the
 aggregate verdict. `ACCEPTED` means structurally admitted, including honest
 negative reports; an executor's receipt remains `NOT_DECIDED` for test verdict.
+
+Findings have a current projection and immutable classification/relationship
+history. Reconciliation can promote an evidence gap to a product defect from
+current independent failure proof. Preserve the root, associated cases, attempt
+IDs, and delivery trail. A later gap retains the established unresolved defect;
+withdrawn proof removes its current delivery authorization. All associated cases
+need current-target PASS before the root is resolved.
+
+Use `finding link` with `from_finding_id`, `into_finding_id`,
+`evidence_record_ids`, and `reason` to join supported related roots. It rejects
+cycles, unsupported scope/evidence, and conflicting live work. Existing records
+and issue/PR URLs remain history. `records --finding-id` resolves aliases and
+returns the effective root with its related history; direct file scans are not
+an equivalent view. Classification/link changes invalidate an earlier closure
+audit's subject digest.
 
 | Finding class | Route |
 |---|---|

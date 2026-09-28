@@ -37,18 +37,21 @@ workers own their drafts/evidence. The orchestrator is the controller role, not 
    an evidence gap goes to fresh execution, never to a verifier replay. Dispatch
    confirmed failures for diagnosis/repair without pausing unrelated branches.
 7. Serialize integration and assign independent retests. Preserve stable finding
-   lineages, retries, and evidence history. Require the final integrated sweep and
-   separate closure audit before claiming full PASS.
+   lineages, shared intervention attempts, and evidence history. Recover a failed
+   runtime through `runtime recover`; do not invent another merge to allocate a
+   target. Require the final integrated sweep and separate closure audit.
 8. Build/inspect/serve the report. Keep final inspection runtimes; stop only
    verified owned unused processes.
 
 ## Handoffs and retries
 
-Each handoff names actor/task, exact role, read list, write list, target/spec/round,
-resource leases, outputs, completion receipt, and blockage path. For retry,
-include previous failure, what changed, hypothesis/evidence, what not to repeat,
-remaining allowance, and issue/PR links. Do not forward the entire campaign or
-another verifier's answer as convenience context.
+Use the CLI-generated handoff as the worker's complete starting packet. Project
+inputs use `{base: project, path: ...}`; plain strings refer to campaign files.
+The controller supplies current failure/fix history, issue/PR links, and remaining
+allowance. Supply the next change, hypothesis, and actions not to repeat in the
+request. Refresh a stale history basis before dispatch; do not overwrite history
+with a remembered summary. Do not forward the entire campaign or another
+verifier's answer as convenience context.
 
 If launch outcome is uncertain, inspect the real host before re-dispatching.
 If output is structurally rejected, return exact validator errors to that worker.

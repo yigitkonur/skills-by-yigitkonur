@@ -15,10 +15,11 @@ Use for a delegated E2E campaign on web, CLI, MCP, or native mobile software,
 including resuming an existing campaign and repairing its confirmed defects.
 Honor an existing scenario set before discovering additional scope.
 
-Use the direct workflow for a single local test command, unit-test authoring,
-read-only code review, a one-page browser check, or tunnel setup alone. Those
-tasks do not need this campaign machinery. Do not use a unit suite as a substitute
-for exercising user behavior through the actual interface.
+A campaign may contain one case. Use this skill for a single browser journey or
+CLI scenario when the user wants independent execution, saved evidence, review,
+and repair. Use a direct workflow for a standalone command, unit-test authoring,
+read-only code review, or tunnel setup without that contract. Do not substitute
+a unit suite for exercising user behavior through the actual interface.
 
 ## Choose your role first
 
@@ -102,9 +103,13 @@ Do not preload the entire reference directory into every worker.
   may be accepted structurally; it cannot support PASS. Report uncertain evidence
   as uncertain evidence, not as an accusation about a worker.
 - Keep one unresolved finding lineage across names, scenarios, and repairs:
-  at most the first failed execution plus four corrective attempts. Each retry
-  explains what changed and what evidence supports a different next action.
+  at most five shared interventions, including the initial baseline. Cases and
+  variants evaluating the same correction share its attempt; a new corrective
+  approach does not. Preserve classification changes and linked histories.
+  Each retry explains what changed and what supports a different next action.
 - Use existing scoped delivery authority for fixes, PRs, and serial merges.
+  GitHub delivery belongs to the tested project's selected remote, regardless of
+  where this skill is installed. Pass that repository explicitly to `gh`.
   Unknown material product behavior or expanded scope follows campaign mode;
   do not add a separate human-review gate for an already authorized fix.
 
@@ -118,6 +123,7 @@ Do not preload the entire reference directory into every worker.
 | Writing expectations, capturing artifacts, reviewing evidence, or scoping a side finding | [Scenarios and evidence](references/scenarios-and-evidence.md) |
 | Selecting ready jobs, resource leases, critical reviews, or retries | [Scheduling](references/scheduling.md) |
 | Preparing web/CLI/MCP/mobile tools, worktrees, data, and runtime generations | [Runtimes and isolation](references/runtimes-and-isolation.md) |
+| An MCPC client must own a stdio server and expose an existing session to workers | [MCPC session](references/mcpc-session.md) |
 | A real remote HTTP client needs an application/report endpoint | [Cloudflare tunnels](references/cloudflare-tunnels.md) |
 | Diagnosing a verified defect, opening GitHub records, fixing, or merging | [Fixes and delivery](references/fixes-and-delivery.md) |
 | Building the report, recovering interrupted work, or deciding closure | [Reporting and recovery](references/reporting-and-recovery.md) |
@@ -137,5 +143,6 @@ relax validation, or hand-edit canonical records to bypass the contract.
 
 Finish with the current integrated target, coverage and unresolved obligations,
 report path/URL, source/issue/PR trail, and any explicit capability limitations.
+Report publication readiness separately from the canonical test outcome.
 Communicate with the user in their language; keep campaign instructions and
 role prompts in English unless they request otherwise.

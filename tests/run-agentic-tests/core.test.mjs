@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readYaml, readRecords, writeRecord, containedPath, withController } from '../../skills/run-agentic-tests/scripts/lib/store.mjs';
 import { loadDependencies } from '../../skills/run-agentic-tests/scripts/lib/dependencies.mjs';
+import { attestSource } from '../../skills/run-agentic-tests/scripts/lib/source.mjs';
 import { run, assessCampaign } from '../../skills/run-agentic-tests/scripts/lib/workflow.mjs';
 
 const temporary = async t => {
@@ -38,6 +39,11 @@ test('strict YAML preserves scalar types and rejects ambiguous or executable doc
 
 async function campaign(t, options = {}) {
   const project = await temporary(t);
+  await promisify(execFile)('git', ['init', '-q', project]);
+  await promisify(execFile)('git', ['-C', project, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
+  await writeFile(path.join(project, 'fixture-source.mjs'), 'export const cats = true;\n');
+  await promisify(execFile)('git', ['-C', project, 'add', 'fixture-source.mjs']);
+  await promisify(execFile)('git', ['-C', project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture baseline']);
   const result = await run('init', { project, slug: 'real-check', 'host-capacity': '3', ...options });
   return { project, campaign: result.campaign_path, config: result.campaign };
 }
@@ -78,6 +84,7 @@ async function authorCase(c, slug = 'search', expectationOptions = {}, request =
 
 async function environment(c, target = 'G001') {
   const record = { schema_version: 1, kind: 'environment', record_id: `ENV-${target}`, campaign_id: c.config.campaign_id, created_at: '2026-09-28T00:00:00.000Z', target_id: target, runtime_type: 'cli', source: { revision: `revision-${target}` }, command: { argv: ['node', 'app.mjs'], cwd: c.project }, readiness: { type: 'process', body_contains: 'ready' }, status: 'READY', logs: { stdout: `environments/${target}/logs/stdout.log`, stderr: `environments/${target}/logs/stderr.log` } };
+  record.source = await attestSource(c.campaign, { ...record, source: { ...record.source, provider: { type: 'files', root: c.project, paths: ['fixture-source.mjs'] } } });
   await writeRecord(c.campaign, `environments/${target}/00-environment.record.yaml`, record);
   return record;
 }
@@ -217,17 +224,18 @@ test('a confirmed defect retains its lineage through ticket, isolated fix, new t
   const ticket = await createTask(c, { role: 'ticket-writer', finding_id: finding.finding_id, requested_action: 'Record a deduplicated confirmed issue' });
   await startTask(c, ticket);
   const ticketDraft = await readYaml(path.join(c.campaign, ticket.draft_paths[0]));
-  Object.assign(ticketDraft, { issue_url: 'https://github.com/example/project/issues/12', dedup_marker: `agentic-tests:${c.config.campaign_id}:${finding.finding_id}`, body_path: 'findings/issue.md', artifacts: [] });
+  Object.assign(ticketDraft, { issue_url: 'https://github.com/example/project/issues/12', dedup_marker: `agentic-tests:${c.config.campaign_id}:${finding.finding_id}`, artifacts: [] });
   await writeFile(path.join(c.campaign, ticketDraft.body_path), 'Confirmed search defect with execution and verifier evidence.');
   await submitDraft(c, ticket, ticketDraft);
   await finishTask(c, ticket);
 
   const implementer = await createTask(c, { role: 'implementer', finding_id: finding.finding_id, requested_action: 'Fix search in a separate worktree' });
+  assert.equal(implementer.worktree_base, (await promisify(execFile)('git', ['-C', c.project, 'rev-parse', 'HEAD'])).stdout.trim(), 'A files-provider revision is not a Git worktree base.');
   await startTask(c, implementer);
   const implementation = await readYaml(path.join(c.campaign, implementer.draft_paths[0]));
-  const worktree = path.join(c.project, 'repair-worktree');
-  await mkdir(worktree);
-  const prBody = 'findings/pr.md'; const checks = 'findings/check.log';
+  const worktree = implementer.worktree_path;
+  await mkdir(worktree, { recursive: true }); t.after(() => rm(worktree, { recursive: true, force: true }));
+  const prBody = implementation.pr_body_path; const checks = implementation.checks[0].artifact_path;
   await writeFile(path.join(c.campaign, prBody), 'Fix the query key. Related issue #12. Independent retest pending.');
   await writeFile(path.join(c.campaign, checks), 'Regression check passed');
   Object.assign(implementation, { commit: 'fix-commit', worktree, pr_url: 'https://github.com/example/project/pull/13', pr_body_path: prBody, changed_files: ['app.mjs'], checks: [{ command: 'node --test search.test.mjs', exit_code: 0, artifact_path: checks }], summary: 'Search now uses the correct key', artifacts: [] });
@@ -367,9 +375,9 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
       await run('reconcile', { campaign: c.campaign });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
     }
-    if (attempt === 5) queued = await createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Queued alternate corrective attempt', ...request, prior_context: { ...request.prior_context, what_changed: 'Alternate fifth correction prepared' } });
+
     const executed = await execution(c, { observed: { results: [] }, request });
-    if (queued) await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.some(item => item.startsWith(`RESOURCE:finding:${finding.finding_id}`)));
+    if (attempt === 5) await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], target_id: 'G001', requested_action: 'Queued alternate corrective attempt', ...request, prior_context: { ...request.prior_context, what_changed: 'Alternate fifth correction prepared' } }), { code: 'CASE_RESERVED' });
     if (attempt === 2) {
       await assert.rejects(submitDraft(c, executed.task, { ...executed.draft, observations: [] }), { code: 'INVALID_RECORD' });
       assert.equal((await run('records', { campaign: c.campaign, kind: 'finding' })).records[0].attempts, 1);
@@ -386,7 +394,7 @@ test('one unresolved lineage has five actual execution attempts; unavailable cre
     assert.equal(finding.attempts, attempt);
   }
   await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], purpose: 'final', requested_action: 'Try one more final sweep' }), { code: 'ATTEMPT_LIMIT' });
-  await assert.rejects(run('task dispatch', { campaign: c.campaign, 'task-id': queued.task_id }), error => error.code === 'TASK_BLOCKED' && error.details.includes('ATTEMPT_LIMIT'));
+  await assert.rejects(createTask(c, { role: 'executor', case_ids: ['T0001'], requested_action: 'Attempt sixth correction', prior_context: { previous_failure: 'Still fails', what_changed: 'Sixth correction', hypothesis: 'New sixth idea', do_not_repeat: ['Previous failures'], remaining_attempts: 0 } }), { code: 'ATTEMPT_LIMIT' });
   const final = await run('status', { campaign: c.campaign });
   assert.equal(final.complete, false);
   assert.ok(final.obligations.some(item => item.type === 'ATTEMPT_LIMIT' && item.finding_id === finding.finding_id));
@@ -469,8 +477,8 @@ test('a blocked ticket result is accepted without inventing GitHub data and a fr
   const replacement = await createTask(c, { role: 'ticket-writer', finding_id: finding.finding_id, replaces_task_id: blocked.task_id, requested_action: 'Resume issue creation after GitHub access was restored' });
   await startTask(c, replacement);
   const completed = await readYaml(path.join(c.campaign, replacement.draft_paths[0]));
-  await writeFile(path.join(c.campaign, 'findings/resumed-issue.md'), 'Confirmed issue with reproduction and accepted evidence.');
-  Object.assign(completed, { issue_url: 'https://github.com/example/project/issues/14', dedup_marker: `agentic-tests:${c.config.campaign_id}:${finding.finding_id}`, body_path: 'findings/resumed-issue.md', artifacts: [] });
+  await writeFile(path.join(c.campaign, completed.body_path), 'Confirmed issue with reproduction and accepted evidence.');
+  Object.assign(completed, { issue_url: 'https://github.com/example/project/issues/14', dedup_marker: `agentic-tests:${c.config.campaign_id}:${finding.finding_id}`, artifacts: [] });
   await submitDraft(c, replacement, completed); await finishTask(c, replacement);
   assert.equal((await run('records', { campaign: c.campaign, kind: 'ticket' })).records.length, 2);
   assert.ok(!(await run('status', { campaign: c.campaign })).obligations.some(item => item.type === 'ROLE_BLOCKED'));

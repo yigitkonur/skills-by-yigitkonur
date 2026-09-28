@@ -1,4 +1,5 @@
 # Publish only after confirmed in-scope implementation-bound diagnosis and deduplication.
+# Edit the allocated draft; retain its body_path from task.companion_paths.body.
 schema_version: 1
 kind: ticket
 record_id: TICKET-F0001

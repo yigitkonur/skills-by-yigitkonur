@@ -20,6 +20,8 @@ operator starts a replacement target after the controller allocates its identity
 1. Hold the exclusive integration-target lease and verify no competing merge is
    underway. Resolve actual repository, base, PR head, changed files, and source
    check results; agent summaries are leads, not sufficient readiness proof.
+   Use the campaign-bound tested-project repository with `gh --repo`; verify the
+   selected remote still matches. Never let the skill checkout choose it.
 2. Confirm authorized scope and readiness against the exact merge candidate.
    Handle in-scope conflicts carefully; changed conflict resolutions need relevant
    checks before merge. Stop for a material unknown expansion or unrelated loss.
@@ -43,6 +45,10 @@ are recorded, and the integration draft is accepted through the common CLI
 protocol. Runtime readiness is a subsequent obligation. Its source revision must
 match the integrated commit before execution can proceed. A merged PR is not a
 resolved finding or passing campaign.
+
+If startup of that target fails, the controller uses `runtime recover` to create
+a successor under the same integrated source identity. Preserve your actual merge
+record; a runtime recovery is not another merge or another corrective attempt.
 
 If merge/access/checks are blocked, retain the actual status and requested next
 action; do not invent a merge commit. Release the lease only after recording the
