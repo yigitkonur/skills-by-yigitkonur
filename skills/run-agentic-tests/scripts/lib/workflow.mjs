@@ -9,6 +9,7 @@ import { loadDependencies, getDependencies, dependencyLocation } from './depende
 import { readYaml, readCampaign, readRecords, writeRecord, withController, containedPath, stableStringify } from './store.mjs';
 import { renderHandoff } from './handoffs.mjs';
 import { resolveInput, inputLabel } from './inputs.mjs';
+import { verifySource, sourceIdentity } from './source.mjs';
 import { discoverRepository, verifyRepository, verifyDeliveryUrls, isDeliveryRole } from './delivery.mjs';
 
 const execute = promisify(execFile);
@@ -32,6 +33,7 @@ async function snapshot(campaign) {
   if (!config) fail('INVALID_CAMPAIGN', 'Campaign record is missing.');
   for (const { record } of records) if (record.campaign_id !== config.campaign_id) fail('WRONG_CAMPAIGN', `${record.record_id} belongs to another campaign.`);
   const state = { campaign, config, records, tasks: byKind(records, 'task').map(item => item.record) };
+  state.config = { ...config, final_target_id: effectiveTarget(state, config.final_target_id) };
   await refreshFindings(state);
   return state;
 }
@@ -169,7 +171,7 @@ async function acceptPlanCommand(options, state) {
   if (audit.phase !== 'plan' || audit.subject_record_id !== plan.record_id || audit.subject_digest !== digest(plan) || audit.outcome !== 'approved' || audit.findings.length) fail('PLAN_NOT_APPROVED', 'Plan requires an independent approval of this exact frozen revision without unresolved findings.');
   if (audit.actor_id === plan.actor_id || findTask(state, audit.task_id).handle === findTask(state, plan.task_id).handle) fail('ACTOR_ISOLATION', 'The plan auditor must use a separate real context.');
   const integrated = completedRecords(state.records, 'integration').map(item => item.record).sort((a, b) => Number(b.new_target_id.slice(1)) - Number(a.new_target_id.slice(1)))[0];
-  if (integrated && plan.target_id !== integrated.new_target_id) fail('TARGET_DRIFT', 'A plan cannot roll final proof back from the latest integrated runtime generation.');
+  if (integrated && plan.target_id !== effectiveTarget(state, integrated.new_target_id)) fail('TARGET_DRIFT', 'A plan cannot roll final proof back from the latest integrated runtime generation.');
   if (state.config.active_plan_id && state.config.active_plan_id !== plan.record_id && byKind(state.records, 'execution').length) {
     const previous = planFor(state);
     const omitted = previous.cases.filter(item => !plan.cases.some(next => next.case_id === item.case_id));
@@ -180,8 +182,8 @@ async function acceptPlanCommand(options, state) {
   return { plan_id: plan.record_id, target_id: plan.target_id, cases: plan.cases.length, subject_digest: digest(plan), next_actions: ['DISPATCH_READY_CASES'] };
 }
 
-async function createTask(options, state) {
-  const request = await readYaml(required(options, 'request'));
+async function createTask(options, state, suppliedRequest) {
+  const request = suppliedRequest || await readYaml(required(options, 'request'));
   validateShape('task_request', request);
   const id = request.task_id || next(state.tasks.map(task => task.task_id), 'J', 5);
   if (state.tasks.some(task => task.task_id === id)) fail('TASK_CONFLICT', `Task ${id} already exists.`, [], 4);
@@ -339,7 +341,7 @@ async function createTask(options, state) {
   validateRecord(task);
   const drafts = task.outputs.map(output => ({ ...common(state.config, output.kind, output.record_id), task_id: id, actor_id: actor, ...(output.case_id ? { case_id: output.case_id } : {}), ...(task.spec_revision ? { spec_revision: task.spec_revision } : {}), ...(task.target_id ? { [output.kind === 'integration' ? 'new_target_id' : 'target_id']: task.target_id } : {}), ...(task.round_id ? { round_id: task.round_id } : {}) }));
   if (task.role === 'environment-operator') {
-    const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+    const integration = integrationForTarget(state, task.target_id);
     if (integration) drafts[0].source = { revision: integration.commit };
   }
   if (task.role === 'plan-auditor') {
@@ -397,7 +399,9 @@ async function eligibility(task, state) {
     reasons.push(...caseReservationProblems(state, task).map(item => `${item.code}:${item.task_id || item.record_id}`));
     const environment = environmentFor(state, task.target_id)?.record;
     if (!environment || environment.status !== 'READY') reasons.push('TARGET_NOT_READY');
-    const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+    if (environment) { const proof = await verifySource(state.campaign, environment); if (!proof.valid) reasons.push(proof.code); }
+    if (byKind(state.records, 'runtime_recovery').some(item => item.record.successor_target_id === task.target_id) && planFor(state)?.target_id !== task.target_id) reasons.push('TARGET_PLAN_REQUIRED');
+    const integration = integrationForTarget(state, task.target_id);
     if (integration && environment?.source.revision !== integration.commit) reasons.push('TARGET_DRIFT');
     for (const id of task.case_ids) {
       const context = byKind(state.records, 'round_context').find(item => item.record.case_id === id && item.record.round_id === task.round_id)?.record;
@@ -449,13 +453,13 @@ async function transition(command, options, state) {
     if (reasons.includes('STALE_RETRY_CONTEXT')) fail('STALE_RETRY_CONTEXT', 'Corrective evidence changed after allocation. Interrupt this planned task and create its replacement to receive the current history.', [{ ...historyFor(state, task).basis, paths: historyFor(state, task).paths }], 4);
     if (reasons.some(reason => reason.startsWith('CASE_RESERVED:') || reason.startsWith('VERIFICATION_REQUIRED:'))) fail(reasons.some(reason => reason.startsWith('CASE_RESERVED:')) ? 'CASE_RESERVED' : 'VERIFICATION_REQUIRED', 'Reserved case work or pending verification must finish before another execution.', reasons, 4);
     for (const code of ['GITHUB_REMOTE_REQUIRED', 'GITHUB_REMOTE_DRIFT']) if (reasons.includes(code)) fail(code, 'Restore the selected tested-project GitHub remote before delivery. Local work may continue.', reasons, 4);
-    for (const code of ['TARGET_NOT_READY', 'TARGET_DRIFT', 'SPEC_CHANGED']) if (reasons.includes(code)) fail(code, `Task ${task.task_id} no longer has its assigned ready target and frozen source.`, reasons);
+    for (const code of ['TARGET_NOT_READY', 'TARGET_DRIFT', 'SPEC_CHANGED', 'TARGET_PLAN_REQUIRED', 'SOURCE_ATTESTATION_REQUIRED', 'SOURCE_CHANGED', 'SOURCE_MISSING', 'SOURCE_INSPECTION_FAILED']) if (reasons.includes(code)) fail(code, `Task ${task.task_id} no longer has its assigned ready target and frozen source.`, reasons);
     if (reasons.length) fail('TASK_BLOCKED', `Task ${task.task_id} is not eligible.`, reasons, 4);
     if (task.role === 'executor') {
       for (const id of task.case_ids) await ensureFrozen(state, planFor(state).cases.find(item => item.case_id === id).spec_hashes);
       const environment = environmentFor(state, task.target_id);
       if (!environment || environment.record.status !== 'READY') fail('TARGET_NOT_READY', 'Assigned runtime is not ready.');
-      const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+      const integration = integrationForTarget(state, task.target_id);
       if (integration && environment.record.source.revision !== integration.commit) fail('TARGET_DRIFT', 'Assigned runtime source differs from its integrated commit.');
     }
     task.state = 'DISPATCHED';
@@ -519,6 +523,8 @@ async function validateExecution(state, task, record, output) {
   await ensureFrozen(state, context.spec_hashes);
   const environment = environmentFor(state, record.target_id)?.record;
   if (!environment || targetDigest(environment) !== context.target_source_digest) fail('TARGET_DRIFT', 'Runtime provenance changed during this execution.');
+  const sourceProof = await verifySource(state.campaign, environment);
+  if (!sourceProof.valid) fail(sourceProof.code, sourceProof.message, sourceProof.details || []);
   exactCoverage(record.observations, spec.expectations, 'Execution observations');
   if (record.execution_status === 'NOT_RUN' && !record.blocker) fail('NOT_RUN_REASON', 'NOT_RUN needs an explicit blocker and reason.');
   if (new Set(record.evidence.map(item => item.id)).size !== record.evidence.length || new Set(record.evidence.map(item => item.path)).size !== record.evidence.length) fail('INVALID_EVIDENCE', 'Evidence IDs and paths must be unique.');
@@ -562,6 +568,7 @@ const latestVerdict = (state, predicate) => byKind(state.records, 'verdict').map
 async function sealedProofProblems(state, execution, verdict) {
   const round = roundRecords(state, execution);
   const problems = await proofProblems(state, round);
+  if (verdict && execution.evidence.some(e => !verdict.evidence_hashes.some(hash => hash.path === e.path && hash.sha256 === e.sha256))) problems.push({ type: 'EVIDENCE_CHANGED', message: 'Sealed evidence hashes do not match the accepted execution.' });
   if (!verdict || verdict.inputs_digest !== roundDigest(round)) problems.push({ type: 'RECORDS_CHANGED', message: 'Sealed verdict inputs no longer match current accepted records.' });
   if (!round.spec || round.reviews.length < Math.max(...round.spec.expectations.map(item => item.review_count))) problems.push({ type: 'VERIFICATION_REQUIRED', message: 'Current independent review quorum is incomplete.' });
   if (verdict?.outcome === 'PASS' && (execution.execution_status !== 'COMPLETED' || execution.observations.some(item => item.gaps.length) || round.spec?.expectations.some(expected => round.reviews.some(review => review.reviews.find(item => item.expectation_id === expected.id)?.verdict !== 'PASS')))) problems.push({ type: 'INCOMPLETE_PROOF', message: 'Passing verdict disagrees with current execution or independent reviews.' });
@@ -581,9 +588,14 @@ async function proofProblems(state, round) {
     else handles.push(task.handle);
   }
   if (new Set(handles).size !== handles.length) problems.push({ type: 'ACTOR_ISOLATION', message: 'Author, executor, and reviewers must have distinct real context handles.' });
+  for (const review of round.reviews) for (const item of review.reviews) {
+    if (item.expected !== round.spec?.expectations.find(e => e.id === item.expectation_id)?.statement) problems.push({ type: 'EXPECTATION_CHANGED', message: 'Review changed the frozen expected statement.' });
+    if (['PASS', 'FAIL'].includes(item.verdict) && (!item.evidence_ids.length || item.evidence_ids.some(id => { const evidence = round.execution.evidence.find(e => e.id === id); return !evidence || !review.inspected_evidence.some(e => e.id === id && e.sha256 === evidence.sha256); }))) problems.push({ type: 'UNINSPECTED_EVIDENCE', message: 'Decisive review lacks matching accepted artifact inspections.' });
+  }
   const target = environmentFor(state, round.execution.target_id)?.record;
   if (!target || targetDigest(target) !== round.context?.target_source_digest) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime provenance differs from the assigned generation.' });
-  const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === round.execution.target_id)?.record;
+  if (target) { const sourceProof = await verifySource(state.campaign, target); if (!sourceProof.valid) problems.push({ type: sourceProof.code, message: sourceProof.message }); }
+  const integration = integrationForTarget(state, round.execution.target_id);
   if (integration && target?.source.revision !== integration.commit) problems.push({ type: 'TARGET_DRIFT', message: 'Runtime source does not identify the integrated commit.' });
   for (const evidence of round.execution.evidence) {
     try {
@@ -758,9 +770,11 @@ async function assessState(state) {
   const cases = [];
   const obligations = [];
   if (!plan) obligations.push({ type: 'PLAN_REQUIRED' });
-  const integratedTarget = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === state.config.final_target_id)?.record;
+  const integratedTarget = integrationForTarget(state, state.config.final_target_id);
   const runtime = environmentFor(state, state.config.final_target_id)?.record;
-  if (integratedTarget && (!runtime || runtime.status !== 'READY' || runtime.source.revision !== integratedTarget.commit)) obligations.push({ type: 'PREPARE_TARGET', target_id: integratedTarget.new_target_id, commit: integratedTarget.commit });
+  if (runtime) { const sourceProof = await verifySource(state.campaign, runtime); if (!sourceProof.valid) obligations.push({ type: sourceProof.code, target_id: runtime.target_id, message: sourceProof.message }); }
+  if (byKind(state.records, 'runtime_recovery').some(item => item.record.successor_target_id === state.config.final_target_id) && plan?.target_id !== state.config.final_target_id) obligations.push({ type: 'TARGET_PLAN_REQUIRED', target_id: state.config.final_target_id });
+  if (integratedTarget && (!runtime || runtime.status !== 'READY' || runtime.source.revision !== integratedTarget.commit)) obligations.push({ type: 'PREPARE_TARGET', target_id: state.config.final_target_id, commit: integratedTarget.commit });
   for (const entry of plan?.cases || []) {
     const target = state.config.final_target_id;
     const contexts = byKind(state.records, 'round_context').map(item => item.record).filter(item => item.case_id === entry.case_id && item.spec_revision === entry.spec_revision && item.target_id === target).sort((a, b) => b.round_id.localeCompare(a.round_id));
@@ -803,7 +817,7 @@ async function assessState(state) {
   for (const { record } of state.records.filter(item => !isCompleteResult(item.record))) {
     if (!hasCompletedReplacement(state, record.task_id)) obligations.push({ type: 'ROLE_BLOCKED', task_id: record.task_id, record_id: record.record_id, reason_code: record.blocker.reason_code, detail: record.blocker.detail });
   }
-  const proof = { plan_id: plan?.record_id || null, final_target_id: state.config.final_target_id, cases, findings: effectiveFindings(state).map(item => item.record), integrations: completedRecords(state.records, 'integration').map(item => item.record.record_id).sort() };
+  const proof = { recoveries: byKind(state.records, 'runtime_recovery').map(item => item.record), relationships: byKind(state.records, 'finding_link').map(item => item.record), plan_id: plan?.record_id || null, final_target_id: state.config.final_target_id, cases, findings: effectiveFindings(state).map(item => item.record), integrations: completedRecords(state.records, 'integration').map(item => item.record.record_id).sort() };
   const closureDigest = digest(proof);
   const closure = byKind(state.records, 'plan_audit').map(item => item.record).find(item => item.phase === 'closure' && item.subject_record_id === plan?.record_id && item.subject_digest === closureDigest && item.outcome === 'approved' && !item.findings.length);
   if (plan && !closure) obligations.push({ type: 'CLOSURE_AUDIT_REQUIRED', subject_record_id: plan.record_id, subject_digest: closureDigest });
@@ -835,6 +849,7 @@ export async function assessCampaign(campaign, records) {
     ids.add(record.record_id);
   }
   const state = { campaign, records, config, tasks: byKind(records, 'task').map(item => item.record) };
+  state.config = { ...config, final_target_id: effectiveTarget(state, config.final_target_id) };
   await refreshFindings(state);
   return assessState(state);
 }
@@ -864,7 +879,7 @@ function interventionFor(state, task) {
     if (previous) { if (previous.prior_context) task.prior_context = structuredClone(previous.prior_context); return previous.intervention; }
   }
   if (task.intervention) return task.intervention;
-  const integration = completedRecords(state.records, 'integration').find(item => item.record.new_target_id === task.target_id)?.record;
+  const integration = integrationForTarget(state, task.target_id);
   if (integration) return { kind: 'INTEGRATION', ref: integration.record_id };
   if (task.prior_context) return { kind: 'EXECUTION_APPROACH', ref: digest({ what_changed: task.prior_context.what_changed, hypothesis: task.prior_context.hypothesis }) };
   return { kind: 'BASELINE', ref: 'initial-assessment' };
@@ -921,7 +936,7 @@ function caseReservationProblems(state, task) {
 function validateIntervention(state, task) {
   const intervention = task.intervention;
   if (intervention.kind === 'BASELINE' && intervention.ref !== 'initial-assessment') fail('INVALID_INTERVENTION', 'All initial baseline cases share ref initial-assessment.');
-  if (intervention.kind === 'INTEGRATION' && !completedRecords(state.records, 'integration').some(item => item.record.record_id === intervention.ref && item.record.new_target_id === task.target_id)) fail('INVALID_INTERVENTION', 'Integration basis must identify the accepted integration for this target.');
+  if (intervention.kind === 'INTEGRATION' && !completedRecords(state.records, 'integration').some(item => item.record.record_id === intervention.ref && effectiveTarget(state, item.record.new_target_id) === task.target_id)) fail('INVALID_INTERVENTION', 'Integration basis must identify the accepted integration for this target.');
   if (intervention.kind === 'EXECUTION_APPROACH' && !task.prior_context) fail('RETRY_CONTEXT_REQUIRED', 'A changed execution approach requires concrete what_changed, hypothesis and do_not_repeat.');
   for (const other of state.tasks.filter(item => item.role === 'executor' && item.task_id !== task.task_id)) {
     const runs = byKind(state.records, 'execution').filter(item => item.record.task_id === other.task_id && item.record.execution_status !== 'NOT_RUN' && task.case_ids.includes(item.record.case_id));
@@ -936,6 +951,35 @@ function validateIntervention(state, task) {
       fail(finding?.attempts >= state.config.max_attempts ? 'ATTEMPT_LIMIT' : 'REPEAT_INTERVENTION', 'This case already exercised the intervention. Use a genuinely changed correction; final sweeps cannot repeat failed work.');
     }
   }
+}
+
+function integrationForTarget(state, target) {
+  return completedRecords(state.records, 'integration').map(item => item.record).find(item => item.new_target_id === target || effectiveTarget(state, item.new_target_id) === target);
+}
+
+async function recoverRuntime(options, state) {
+  const predecessorId = required(options, 'target-id');
+  const predecessor = environmentFor(state, predecessorId);
+  if (!predecessor) fail('TARGET_NOT_FOUND', 'Recover a recorded generation so its failed readiness and logs remain historical.');
+  if (effectiveTarget(state, predecessorId) !== predecessorId) fail('RECOVERY_EXISTS', 'This generation already has a successor; inspect or recover the effective successor.', [{ target_id: effectiveTarget(state, predecessorId) }], 4);
+  const request = await readYaml(required(options, 'file')); validateShape('runtime_recovery_request', request);
+  const integration = integrationForTarget(state, predecessorId);
+  const expectedRevision = integration?.commit || predecessor.record.source.revision;
+  const taskResult = await createTask({}, state, { role: 'environment-operator', requested_action: request.requested_action || `Recover ${predecessorId}: ${request.reason}`, required_inputs: [...new Set([predecessor.path, ...(request.required_inputs || [])])], ...(request.prior_context ? { prior_context: request.prior_context } : {}) });
+  const task = taskResult.task;
+  const source = { ...structuredClone(predecessor.record.source), ...(request.source || {}), revision: expectedRevision };
+  delete source.attestation; delete source.fingerprint;
+  const draft = await readYaml(containedPath(state.campaign, task.draft_paths[0]));
+  Object.assign(draft, { runtime_type: predecessor.record.runtime_type, source, command: structuredClone(predecessor.record.command), readiness: structuredClone(predecessor.record.readiness) });
+  for (const key of ['endpoint', 'session', 'capability_notes']) if (predecessor.record[key] !== undefined) draft[key] = structuredClone(predecessor.record[key]);
+  const oldRoot = predecessor.record.source.worktree || predecessor.record.source.provider?.root;
+  const newRoot = source.provider?.root || source.worktree;
+  if (oldRoot && newRoot && oldRoot !== newRoot) draft.command.cwd = path.resolve(newRoot, path.relative(oldRoot, predecessor.record.command.cwd));
+  await writeText(state.campaign, task.draft_paths[0], getDependencies().YAML.stringify(draft), { overwrite: true });
+  const recovery = { ...common(state.config, 'runtime_recovery', `RECOVERY-${predecessorId}-${task.target_id}`), predecessor_target_id: predecessorId, successor_target_id: task.target_id, environment_task_id: task.task_id, reason: request.reason, expected_revision: expectedRevision, ...(sourceIdentity(predecessor.record) ? { source_identity: sourceIdentity(predecessor.record) } : {}), ...(integration ? { integration_record_id: integration.record_id } : {}) };
+  await writeRecord(state.campaign, `environments/recoveries/${recovery.record_id}.record.yaml`, recovery);
+  if (state.config.final_target_id === predecessorId) await writeRecord(state.campaign, '00-campaign.record.yaml', { ...state.config, final_target_id: task.target_id, state: 'OPEN' }, { immutable: false });
+  return { ...taskResult, recovery, predecessor_target_id: predecessorId, successor_target_id: task.target_id };
 }
 
 function effectiveTarget(state, target) {
@@ -1097,7 +1141,7 @@ async function synchronizeDerived(state) {
   const integrations = completedRecords(state.records, 'integration').map(item => item.record);
   const latest = integrations.sort((a, b) => Number(b.new_target_id.slice(1)) - Number(a.new_target_id.slice(1)))[0];
   if (latest && Number(latest.new_target_id.slice(1)) > Number((state.config.final_target_id || 'G000').slice(1))) {
-    state.config = { ...state.config, final_target_id: latest.new_target_id, state: 'OPEN' };
+    state.config = { ...state.config, final_target_id: effectiveTarget(state, latest.new_target_id), state: 'OPEN' };
     await writeRecord(state.campaign, '00-campaign.record.yaml', state.config, { immutable: false });
   }
   await refreshFindings(state);
@@ -1193,6 +1237,7 @@ export async function run(command, options = {}) {
   const campaign = path.resolve(required(options, 'campaign'));
   const perform = async () => {
     const state = await snapshot(campaign);
+    if (command === 'runtime recover') return recoverRuntime(options, state);
     if (command === 'task create') return createTask(options, state);
     if (['task dispatch', 'task bind', 'task close', 'task interrupt'].includes(command)) return transition(command, options, state);
     if (command === 'submit') return submit(options, state);

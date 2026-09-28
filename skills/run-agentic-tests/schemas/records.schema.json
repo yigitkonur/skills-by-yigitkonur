@@ -52,6 +52,15 @@
     },
     {
       "$ref": "#/definitions/scope_decision"
+    },
+    {
+      "$ref": "#/definitions/finding_link"
+    },
+    {
+      "$ref": "#/definitions/finding_classification"
+    },
+    {
+      "$ref": "#/definitions/runtime_recovery"
     }
   ],
   "definitions": {
@@ -3886,6 +3895,10 @@
         "summary": {
           "type": "string",
           "minLength": 1
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -4179,6 +4192,177 @@
         "from_finding_id",
         "into_finding_id",
         "evidence_record_ids",
+        "reason"
+      ]
+    },
+    "runtime_recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "runtime_recovery"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "predecessor_target_id": {
+          "type": "string",
+          "pattern": "^G[0-9]{3,}$"
+        },
+        "successor_target_id": {
+          "type": "string",
+          "pattern": "^G[0-9]{3,}$"
+        },
+        "environment_task_id": {
+          "type": "string",
+          "pattern": "^J[0-9]{5,}$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "integration_record_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "predecessor_target_id",
+        "successor_target_id",
+        "environment_task_id",
+        "reason",
+        "expected_revision"
+      ]
+    },
+    "runtime_recovery_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object"
+        },
+        "requested_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required_inputs": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "prior_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "previous_failure": {
+              "type": "string",
+              "minLength": 1
+            },
+            "what_changed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hypothesis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "do_not_repeat": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "remaining_attempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "issue_url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pr_urls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "previous_failure",
+            "what_changed",
+            "hypothesis",
+            "do_not_repeat",
+            "remaining_attempts"
+          ]
+        }
+      },
+      "required": [
         "reason"
       ]
     }

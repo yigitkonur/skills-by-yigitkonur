@@ -16,6 +16,7 @@ const commands = {
   reconcile: { options: ['campaign'], required: ['campaign'], module: 'workflow' },
   status: { options: ['campaign'], required: ['campaign'], module: 'workflow' },
   records: { options: ['campaign', 'record-id', 'kind', 'case-id', 'round-id', 'finding-id', 'ready', 'format'], required: ['campaign'], module: 'workflow' },
+  'runtime recover': { options: ['campaign', 'target-id', 'file'], required: ['campaign', 'target-id', 'file'], module: 'workflow' },
   'runtime start': { options: ['campaign', 'file'], required: ['campaign', 'file'], module: 'runtime' },
   'runtime inspect': { options: ['campaign', 'target-id'], required: ['campaign', 'target-id'], module: 'runtime' },
   'runtime stop': { options: ['campaign', 'target-id'], required: ['campaign', 'target-id'], module: 'runtime' },

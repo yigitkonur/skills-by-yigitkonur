@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readYaml, readRecords, writeRecord, containedPath, withController } from '../../skills/run-agentic-tests/scripts/lib/store.mjs';
 import { loadDependencies } from '../../skills/run-agentic-tests/scripts/lib/dependencies.mjs';
+import { attestSource } from '../../skills/run-agentic-tests/scripts/lib/source.mjs';
 import { run, assessCampaign } from '../../skills/run-agentic-tests/scripts/lib/workflow.mjs';
 
 const temporary = async t => {
@@ -40,6 +41,7 @@ async function campaign(t, options = {}) {
   const project = await temporary(t);
   await promisify(execFile)('git', ['init', '-q', project]);
   await promisify(execFile)('git', ['-C', project, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
+  await writeFile(path.join(project, 'fixture-source.mjs'), 'export const cats = true;\n');
   const result = await run('init', { project, slug: 'real-check', 'host-capacity': '3', ...options });
   return { project, campaign: result.campaign_path, config: result.campaign };
 }
@@ -80,6 +82,7 @@ async function authorCase(c, slug = 'search', expectationOptions = {}, request =
 
 async function environment(c, target = 'G001') {
   const record = { schema_version: 1, kind: 'environment', record_id: `ENV-${target}`, campaign_id: c.config.campaign_id, created_at: '2026-09-28T00:00:00.000Z', target_id: target, runtime_type: 'cli', source: { revision: `revision-${target}` }, command: { argv: ['node', 'app.mjs'], cwd: c.project }, readiness: { type: 'process', body_contains: 'ready' }, status: 'READY', logs: { stdout: `environments/${target}/logs/stdout.log`, stderr: `environments/${target}/logs/stderr.log` } };
+  record.source = await attestSource(c.campaign, { ...record, source: { ...record.source, provider: { type: 'files', root: c.project, paths: ['fixture-source.mjs'] } } });
   await writeRecord(c.campaign, `environments/${target}/00-environment.record.yaml`, record);
   return record;
 }

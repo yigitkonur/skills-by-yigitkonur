@@ -187,3 +187,35 @@ test('delivery binds the tested project GitHub remote and remote drift leaves un
   assert.equal((await c.create({ role: 'implementer', finding_id: 'F0001', requested_action: 'Fix the filter' }, 4)).error.code, 'GITHUB_REMOTE_DRIFT');
   const independent = (await c.create({ role: 'feature-scout', requested_action: 'Discover an unrelated local feature' })).task; c.start(independent);
 });
+
+test('runtime recovery allocates a fresh immutable source-compatible target and requires its accepted plan and fresh proof', async t => {
+  const c = await setup(t), id = await author(c, 'recovery');
+  const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: c.project, encoding: 'utf8' }).stdout.trim();
+  const failed = call('runtime start', { campaign: c.campaign, file: await c.json({ target_id: 'G001', runtime_type: 'cli', source: { revision, worktree: c.project }, command: { argv: [process.execPath, 'app.mjs'], cwd: c.project }, readiness: { type: 'process', body_contains: 'unavailable-marker', timeout_ms: 300 } }) }, 5); assert.equal(failed.error.code, 'RUNTIME_START_FAILED');
+  await plan(c, [id]); const old = c.records({ kind: 'environment' })[0];
+  const recovery = call('runtime recover', { campaign: c.campaign, 'target-id': 'G001', file: await c.json({ reason: 'Readiness marker corrected after recorded failure', requested_action: 'Start the same source with the correct marker' }) });
+  assert.equal(recovery.successor_target_id, 'G002'); assert.equal(recovery.task.role, 'environment-operator'); assert.equal(recovery.recovery.expected_revision, revision);
+  assert.deepEqual(c.records({ 'record-id': old.record_id })[0], old);
+  const duplicate = call('runtime recover', { campaign: c.campaign, 'target-id': 'G001', file: await c.json({ reason: 'Duplicate recovery' }) }, 4); assert.equal(duplicate.error.code, 'RECOVERY_EXISTS');
+  c.start(recovery.task); const draft = await c.draft(recovery.task); draft.readiness.body_contains = 'ready';
+  call('runtime start', { campaign: c.campaign, file: await c.json(draft) }); c.close(recovery.task);
+  const status = call('status', { campaign: c.campaign }); assert.equal(status.latest_target_id, 'G002'); assert.ok(status.obligations.some(x => x.type === 'TARGET_PLAN_REQUIRED')); assert.equal(status.complete, false);
+  await plan(c, [id], 'G002'); const execution = await executeCase(c, [id]); assert.equal(execution.target_id, 'G002'); await reviewCase(c, execution, 'PASS');
+  const final = call('status', { campaign: c.campaign }); assert.equal(final.cases[0].outcome, 'PASS'); assert.equal(final.cases[0].proof_valid, true); assert.ok(final.obligations.some(x => x.type === 'CLOSURE_AUDIT_REQUIRED'));
+});
+
+test('actual source changes block dispatch, submission, and current proof while legacy attestations stay explicit blockers', async t => {
+  const c = await setup(t), id = await author(c, 'source-boundary'); await runtime(c); await plan(c, [id]);
+  const task = (await c.create({ role: 'executor', case_ids: [id], requested_action: 'Execute attested source' })).task;
+  const app = path.join(c.project, 'app.mjs'), original = await readFile(app, 'utf8'); await writeFile(app, 'console.log("changed")\n');
+  const blocked = call('task dispatch', { campaign: c.campaign, 'task-id': task.task_id }, 3); assert.equal(blocked.error.code, 'SOURCE_CHANGED');
+  await writeFile(app, original); c.start(task);
+  const d = await c.draft(task), artifact = `${path.posix.dirname(task.outputs[0].path)}/evidences/output.json`; await writeFile(path.join(c.campaign, artifact), '{"results":["cats"]}'); Object.assign(d, { execution_status: 'COMPLETED', observations: [{ expectation_id: 'E1', observed: 'Cats', evidence_ids: ['EV1'], gaps: [] }], evidence: [{ id: 'EV1', path: artifact, type: 'json', expectation_ids: ['E1'] }] });
+  await writeFile(app, 'console.log("changed")\n'); assert.equal((await c.submit(task, d, 3)).error.code, 'SOURCE_CHANGED');
+  await writeFile(app, original); await c.submit(task, d); c.close(task); await reviewCase(c, task, 'PASS');
+  await writeFile(app, 'console.log("changed")\n'); const changed = call('status', { campaign: c.campaign }); assert.equal(changed.cases[0].proof_valid, false); assert.ok(changed.obligations.some(x => x.type === 'SOURCE_CHANGED'));
+  await writeFile(app, original);
+  const env = c.records({ kind: 'environment' })[0]; delete env.source.attestation;
+  await writeFile(path.join(c.campaign, 'environments/G001/00-environment.record.yaml'), getDependencies().YAML.stringify(env));
+  const legacy = call('status', { campaign: c.campaign }); assert.equal(legacy.complete, false); assert.ok(legacy.obligations.some(x => x.type === 'SOURCE_ATTESTATION_REQUIRED')); assert.equal(c.records({ kind: 'execution' }).length, 1);
+});
