@@ -14,6 +14,7 @@ function sameOwner(record, handle, receipt) {
   const session = record.session;
   return receipt && typeof receipt.alive === 'boolean' && receipt.owner_id === session.owner_id &&
     receipt.owner_token === handle.owner_token && receipt.session_id === session.session_id &&
+    (receipt.target_id === undefined || receipt.target_id === record.target_id) &&
     (receipt.device_id ?? null) === (session.device_id ?? null) &&
     receipt.tool?.name === session.tool.name && receipt.tool?.version === session.tool.version;
 }
@@ -64,6 +65,7 @@ export async function startToolSession(campaign, record) {
     source_fingerprint: record.source.fingerprint, command: record.command, session: record.session };
   record.session_handle = { owner_token: handle.owner_token, handle_path: `environments/${record.target_id}/session.runtime.json` };
   await writeFile(containedPath(campaign, record.session_handle.handle_path), JSON.stringify(handle), { flag: 'wx', mode: 0o600 });
+  for (const file of Object.values(record.logs)) await appendFile(containedPath(campaign, file), '', { mode: 0o600 });
   const deadline = Date.now() + (record.readiness.timeout_ms || 10000);
   const receipt = await action(campaign, record, handle, 'attach', deadline - Date.now());
   if (!receipt.alive) fail('TOOL_SESSION_EXITED', 'Tool attachment did not establish its owned client session.');

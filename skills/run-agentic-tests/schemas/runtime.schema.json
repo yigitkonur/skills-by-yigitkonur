@@ -129,7 +129,8 @@
                         "enum": [
                           "file",
                           "symlink",
-                          "missing"
+                          "missing",
+                          "gitlink"
                         ]
                       },
                       "mode": {
@@ -164,7 +165,8 @@
                         "enum": [
                           "file",
                           "symlink",
-                          "missing"
+                          "missing",
+                          "gitlink"
                         ]
                       },
                       "mode": {

@@ -10,7 +10,7 @@ import { loadDependencies } from '../../skills/run-agentic-tests/scripts/lib/dep
 await loadDependencies({ setup: true });
 const cli = fileURLToPath(new URL('../../skills/run-agentic-tests/scripts/agentic-tests.mjs', import.meta.url));
 const invoke = (...args) => {
-  const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', timeout: 15000 });
   return { status: result.status, data: result.stdout.trim() ? JSON.parse(result.stdout) : null, stderr: result.stderr };
 };
 const accepted = result => { assert.equal(result.status, 0, JSON.stringify(result)); return result.data; };
@@ -40,8 +40,8 @@ if(action==='attach') {
 if(!saved) { console.log(JSON.stringify({...expected,alive:false})); process.exit(0); }
 let remote;
 if(saved.alive) {
- try { remote=await (await fetch('http://127.0.0.1:'+saved.port,{signal:AbortSignal.timeout(300)})).json(); }
- catch { saved.alive=false; }
+ try { remote=await (await fetch('http://127.0.0.1:'+saved.port,{signal:AbortSignal.timeout(1000)})).json(); }
+ catch(error) { try { process.kill(saved.pid,0); } catch { saved.alive=false; } if(saved.alive) throw error; }
 }
 if(remote && JSON.stringify(remote.identity)!==JSON.stringify({...expected})) {
  console.log(JSON.stringify({...remote.identity,alive:true})); process.exit(0);
@@ -95,6 +95,8 @@ test('tool-owned sessions attach, prove protocol readiness, inspect and clean up
   assert.equal(started.ownership, 'OWNED');
   assert.equal(started.environment.process, undefined);
   assert.match(started.environment.session_handle.owner_token, /^[a-f0-9-]{36}$/);
+  assert.match(await readFile(path.join(f.campaign, started.environment.logs.stdout), 'utf8'), /fixture echo available/);
+  assert.equal(await readFile(path.join(f.campaign, started.environment.logs.stderr), 'utf8'), '');
   const before = f.inspect();
   assert.equal(before.alive, true);
   assert.equal(before.source_verification.valid, true);
@@ -109,11 +111,13 @@ test('tool cleanup refuses a session or device ownership mismatch and leaves the
   accepted(f.start());
   const original = await readFile(f.ledger, 'utf8');
   const receipt = JSON.parse(original);
-  await writeFile(f.ledger, JSON.stringify({ ...receipt, device_id: 'unrelated-device' }));
   try {
-    assert.equal(f.inspect().ownership, 'MISMATCH');
-    assert.equal(f.stop().data.error?.code, 'SESSION_OWNERSHIP_MISMATCH');
-    assert.equal((await (await fetch(`http://127.0.0.1:${receipt.port}`)).json()).identity.device_id, 'fixture-device-001');
+    for (const wrongIdentity of [{ device_id: 'unrelated-device' }, { target_id: 'G999' }]) {
+      await writeFile(f.ledger, JSON.stringify({ ...receipt, ...wrongIdentity }));
+      assert.equal(f.inspect().ownership, 'MISMATCH');
+      assert.equal(f.stop().data.error?.code, 'SESSION_OWNERSHIP_MISMATCH');
+      assert.equal((await (await fetch(`http://127.0.0.1:${receipt.port}`)).json()).identity.device_id, 'fixture-device-001');
+    }
   } finally { await writeFile(f.ledger, original); }
   assert.equal(accepted(f.stop()).alive, false);
 });

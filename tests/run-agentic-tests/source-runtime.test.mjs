@@ -278,3 +278,47 @@ test('a dangling source symlink cannot stand in for actual source files', async 
   await f.save();
   assert.equal(f.start().data.error?.code, 'SOURCE_MISSING');
 });
+
+test('inherited Git configuration cannot hide product source through harness ignore rules', async t => {
+  const f = await fixture(t);
+  const unrelated = path.join(f.root, 'harness-ignore');
+  await writeFile(unrelated, 'extra.mjs\n');
+  await writeFile(path.join(f.project, 'extra.mjs'), 'untracked product source');
+  const values = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: unrelated };
+  const previous = Object.fromEntries(Object.keys(values).map(key => [key, process.env[key]]));
+  Object.assign(process.env, values);
+  try {
+    const started = accepted(f.start());
+    assert.equal(started.environment.source.worktree, f.project);
+    assert.ok(started.environment.source.attestation.manifest.some(entry => entry.path === 'extra.mjs'));
+    assert.equal(f.inspect().source_verification.valid, true);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
+});
+
+test('integrated submodules attest their actual commit and code while excluding their ignored output', async t => {
+  const f = await fixture(t);
+  const dependency = path.join(f.root, 'dependency');
+  await mkdir(dependency);
+  await writeFile(path.join(dependency, 'helper.mjs'), "export const result='application ready';\n");
+  await writeFile(path.join(dependency, '.gitignore'), 'scratch.txt\n');
+  git(dependency, 'init', '-q');
+  git(dependency, 'add', '.');
+  git(dependency, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Dependency source');
+  git(f.project, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', dependency, 'dependency');
+  await writeFile(path.join(f.project, 'app.mjs'), "import {result} from './dependency/helper.mjs';console.log(result);\n");
+  git(f.project, 'add', '.');
+  git(f.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Use the real local submodule');
+  f.draft.source.revision = git(f.project, 'rev-parse', 'HEAD');
+  await f.save();
+  await integrated(f);
+  await writeFile(path.join(f.project, 'dependency', 'scratch.txt'), 'ignored build output');
+  const started = accepted(f.start());
+  assert.ok(started.environment.source.attestation.manifest.some(entry => entry.path === 'dependency' && entry.kind === 'gitlink'));
+  assert.ok(started.environment.source.attestation.manifest.every(entry => entry.path !== 'dependency/scratch.txt'));
+  await writeFile(path.join(f.project, 'dependency', 'scratch.txt'), 'changed ignored output');
+  assert.equal(f.inspect().source_verification.valid, true);
+  await writeFile(path.join(f.project, 'dependency', 'helper.mjs'), "export const result='unintegrated behavior';\n");
+  assert.equal(f.inspect().source_verification.code, 'SOURCE_CHANGED');
+});

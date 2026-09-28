@@ -14,8 +14,10 @@ const fail = (code, message, details = []) => { throw new CliError(code, message
 const pathIssue = (field, remedy) => [{ field, remedy }];
 
 async function git(root, ...args) {
-  const env = { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
-  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES']) delete env[name];
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) if (/^GIT_(?:CONFIG(?:_|$)|DIR$|WORK_TREE$|INDEX_FILE$|OBJECT_DIRECTORY$|ALTERNATE_OBJECT_DIRECTORIES$|COMMON_DIR$|NAMESPACE$|REPLACE_REF_BASE$|SHALLOW_FILE$|GRAFT_FILE$|CEILING_DIRECTORIES$|DISCOVERY_ACROSS_FILESYSTEM$)/.test(name)) delete env[name];
+  env.GIT_OPTIONAL_LOCKS = '0';
+  env.GIT_NO_REPLACE_OBJECTS = '1';
   return (await execute('git', ['-C', root, ...args], { env, encoding: 'utf8', timeout: 10000, maxBuffer: 32 * 1024 * 1024 })).stdout;
 }
 
@@ -147,6 +149,47 @@ export function sourceIdentity(sourceOrEnvironment) {
     ? source.attestation.source_digest : null;
 }
 
+async function inspectGitFiles(root, excluded) {
+  const head = (await git(root, 'rev-parse', '--verify', 'HEAD^{commit}')).trim();
+  const tree = (await git(root, 'ls-tree', '-r', '-z', 'HEAD')).split('\0').filter(Boolean).map(entry => {
+    const [header, ...filename] = entry.split('\t');
+    const [mode, type, object] = header.split(' ');
+    return { path: filename.join('\t'), mode, type, object };
+  });
+  const index = (await git(root, 'ls-files', '--stage', '-z')).split('\0').filter(Boolean).map(entry => {
+    const [header, ...filename] = entry.split('\t');
+    return { mode: header.split(' ')[0], path: filename.join('\t') };
+  });
+  const paths = [...new Set([...tree.map(entry => entry.path),
+    ...(await git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')).split('\0')].filter(Boolean))].sort();
+  const gitlinks = new Set([...tree, ...index].filter(entry => entry.mode === '160000').map(entry => entry.path));
+  const gitObjects = new Map();
+  const files = await manifest(root, paths.filter(file => !gitlinks.has(file)), excluded,
+    { gitObjects, gitAlgorithm: head.length === 64 ? 'sha256' : 'sha1' });
+  const productPath = file => !excluded.some(directory => inside(directory, path.resolve(root, file)));
+  let childrenClean = true;
+  for (const name of [...gitlinks].filter(productPath).sort()) {
+    const submodule = path.resolve(root, name);
+    let actual;
+    try { actual = await realpath(submodule); }
+    catch { fail('SOURCE_MISSING', 'A declared Git submodule is unavailable.', [{ path: name, remedy: 'Initialize the submodule at its recorded commit before attestation.' }]); }
+    if (actual !== submodule || !inside(root, actual)) fail('INVALID_SOURCE_PROVIDER', 'A Git submodule cannot redirect source through a symlink.', [{ path: name }]);
+    const repository = await realpath((await git(submodule, 'rev-parse', '--show-toplevel')).trim());
+    if (repository !== submodule) fail('SOURCE_MISSING', 'A Git submodule has not been initialized.', [{ path: name }]);
+    const child = await inspectGitFiles(submodule, excluded);
+    files.push({ path: name, kind: 'gitlink', mode: 0, sha256: sha(child.head) },
+      ...child.files.map(entry => ({ ...entry, path: `${name}/${entry.path}` })));
+    gitObjects.set(name, { mode: '160000', object: child.head });
+    childrenClean &&= child.clean;
+  }
+  const committedPaths = new Set(tree.map(entry => entry.path));
+  const clean = childrenClean && tree.filter(entry => productPath(entry.path)).every(entry => {
+    const actual = gitObjects.get(entry.path);
+    return actual?.object === entry.object && actual.mode === entry.mode;
+  }) && paths.filter(productPath).every(file => committedPaths.has(file));
+  return { head, clean, files };
+}
+
 export async function attestSource(campaign, environment) {
   try {
     const { root, cwd, provider } = await sourceRoot(environment);
@@ -154,37 +197,21 @@ export async function attestSource(campaign, environment) {
     let revision = environment.source.revision;
     let gitHead;
     let gitClean;
-    let tree = [];
-    let paths = [];
+    let implicit = [];
     if (provider.type === 'git') {
       try {
         gitHead = (await git(root, 'rev-parse', '--verify', 'HEAD^{commit}')).trim();
         const requested = (await git(root, 'rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`)).trim();
         if (requested !== gitHead) fail('SOURCE_REVISION_MISMATCH', 'Declared source revision is not the actual worktree HEAD.', pathIssue('source.revision', 'Use the actual checked-out commit or prepare its isolated worktree.'));
         revision = gitHead;
-        tree = (await git(root, 'ls-tree', '-r', '-z', 'HEAD')).split('\0').filter(Boolean).map(entry => {
-          const [header, ...filename] = entry.split('\t');
-          const [mode, type, object] = header.split(' ');
-          return { path: filename.join('\t'), mode, type, object };
-        });
-        paths = [...new Set([
-          ...tree.map(entry => entry.path),
-          ...(await git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')).split('\0'),
-        ].filter(Boolean))].sort();
       } catch (error) {
         if (error instanceof CliError) throw error;
         fail('SOURCE_REVISION_MISMATCH', 'Cannot resolve the declared source revision against the actual Git worktree.', pathIssue('source.revision', 'Declare the current committed HEAD; caller-provided labels are not Git proof.'));
       }
-    }
-    const gitObjects = new Map();
-    const implicit = await manifest(root, paths, excluded, { gitObjects, gitAlgorithm: gitHead?.length === 64 ? 'sha256' : 'sha1' });
-    if (gitHead) {
-      const productPath = file => !excluded.some(directory => inside(directory, path.resolve(root, file)));
-      const committedPaths = new Set(tree.map(entry => entry.path));
-      gitClean = tree.filter(entry => productPath(entry.path)).every(entry => {
-        const actual = gitObjects.get(entry.path);
-        return actual?.object === entry.object && actual.mode === entry.mode;
-      }) && paths.filter(productPath).every(file => committedPaths.has(file));
+      const inspected = await inspectGitFiles(root, excluded);
+      if (inspected.head !== gitHead) fail('SOURCE_CHANGED', 'Git HEAD changed during source inspection.');
+      implicit = inspected.files;
+      gitClean = inspected.clean;
     }
     const declared = await manifest(root, provider.paths || [], excluded, { required: true });
     const files = [...new Map([...implicit, ...declared].map(entry => [entry.path, entry])).values()].sort((a, b) => a.path.localeCompare(b.path));
