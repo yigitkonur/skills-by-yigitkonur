@@ -1,6 +1,6 @@
 # audit-skill-by-derailment
 
-Hardening an existing skill by running a real-task subagent derailment pass, classifying trace friction, and editing the skill files.
+Harden a SKILL.md by running a fresh subagent on a real task, orchestrating worker agents in Herdr tabs, or analyzing live agent execution scrollbacks across repositories.
 
 **Category:** productivity
 

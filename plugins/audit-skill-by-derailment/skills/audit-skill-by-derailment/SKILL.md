@@ -1,157 +1,166 @@
 ---
 name: audit-skill-by-derailment
-description: "Use if hardening a SKILL.md by running a fresh subagent on a real task or analyzing live Herdr agent pane execution scrollbacks across repositories."
+description: "Use if hardening a SKILL.md by running a fresh subagent on a real task, orchestrating worker agents in Herdr tabs, or analyzing live agent execution scrollbacks across repositories."
 ---
 
-# Enhance Skill by Derailment
+# Audit Skill by Derailment: The Native Two-Tier Auditor
 
-Improve a skill by analyzing friction traces—either by launching a **fresh synthetic subagent** on a realistic task (Mode A) or by inspecting **live Herdr agent pane scrollbacks** across multi-repo fleets (Mode B)—diagnosing the root causes, and directly fixing the skill text where it broke.
+Harden and upgrade any skill by analyzing real execution friction traces. Diagnose root causes across Structural, Semantic, Operational, and Cognitive dimensions, and directly fix the skill text where it broke.
 
-## When to use
-
-Use this skill if you are:
-
-- *testing whether a SKILL.md actually holds up when an agent uses it* ("test my skill", "is this skill any good", "does this skill work")
-- *evaluating live agent execution traces across Herdr panes* ("audit these herdr panes: wJ:p2, wH:p4, wK:p2", "why did the agents stop early?")
-- *hardening an existing skill before publishing it or relying on it*
-- *diagnosing why agents drift, guess, skip operational gates, or stall on a skill that 'should' work*
-- *running a derailment / friction-trace pass on a draft skill*
-- *post-edit verifying that a fix to a skill actually closed the friction it was meant to close*
-
-Do NOT use this skill if you are:
-
-- creating a new skill from scratch — use `build-skill`
-- rewriting a one-off task prompt for an agent (not a skill)
-- doing a tiny copy-edit where running an agent would not change the result
+Supports three operational modes:
+- **Mode A (Synthetic Subagent)**: Fast, single-agent simulated execution with standard friction markers.
+- **Mode B (Live Herdr Fleet Audit)**: Inspecting terminal scrollbacks and thought traces across existing multi-repo Herdr panes.
+- **Mode C (Native Two-Tier Loop)**: Provisioning a dedicated Herdr worker tab, monitoring completion, and dispatching an independent forensic auditor subagent to cross-reference terminal scrollback against physical disk evidence.
 
 ---
 
-## Non-negotiable rules
+## When to Use
 
-1. **Fix the skill text, not the executor.** Every remedy is an edit to skill files. Never blame the model or say "use a smarter agent."
-2. **Read the trace / scrollback; you diagnose.** The executor attempts to follow the skill. You read the raw trace, find the source defect or gating slack, and fix that text.
-3. **No output files.** No separate errata, mistake notebooks, or post-mortem summaries. The fixed skill files ARE the deliverable.
-4. **Different domain each test round.** Same task twice proves nothing about generalization.
-5. **No fake constraints.** If the skill does not require a wrapper or shell ritual, do not add one in the test harness.
-6. **Root-cause before fixing.** Cluster repeated symptoms. Three tags from one workflow step usually collapse into one bad paragraph or missing gate.
+Use this skill when:
+- Testing whether a `SKILL.md` holds up when an autonomous agent executes a non-trivial, multi-step task ("test my skill", "audit skill by derailment").
+- Observing live agent execution in Herdr tabs and diagnosing why an agent drifted, guessed, or halted prematurely ("audit herdr pane w2N:pP", "why did the agent stop?").
+- Orchestrating an end-to-end audit: spawning a worker agent in Herdr, toggling `Ctrl+O` verbose mode, waiting for completion, and delegating forensic analysis to an auditor subagent.
+- Hardening an existing skill before release or integration into production fleets.
+- Post-edit verifying that a fix to a skill closed the friction it was meant to resolve.
+
+Do NOT use this skill when:
+- Creating a brand new skill from scratch without an initial draft.
+- Rewriting a one-off user prompt.
+- Doing cosmetic copy-edits where running an agent would not change the execution outcome.
+
+---
+
+## The 5 Non-Negotiable Invariants
+
+1. **Fix the Skill Text, Not the Executor:** Every remedy is an edit to skill documentation or accompanying scripts. If an agent drifts, stalls, or guesses, the defect lies in the skill text. Never blame the model or say "use a smarter agent."
+2. **The Anti-Self-Report Law (Bits on Disk > Claims in Prose):** Autonomous LLM agents are prone to sycophancy and confirmation bias, often reporting "Task completed successfully" even when underlying CLI commands crashed or files are empty. Never accept an agent's self-generated report alone; verify raw exit codes and physical disk artifacts (`ls -lh`, `file`). Detailed in [`references/disk-evidence-and-anti-sycophancy.md`](references/disk-evidence-and-anti-sycophancy.md).
+3. **The `Ctrl+O` Verbose Mode Invariant:** In Antigravity CLI (AGY), tool arguments, thoughts, and stdout/stderr are collapsed by default. Pressing `Ctrl+O` (or sending `herdr pane send-keys <pane-id> ctrl+o`) unfolds thoughts, exact command lines, and uncensored output into the terminal buffer for inspection via `herdr pane read --source recent-unwrapped`. Detailed in [`references/ctrl-o-verbose-physics.md`](references/ctrl-o-verbose-physics.md).
+4. **Scaffold Up to 20–30 Friction Points:** Do not settle for superficial 2-bullet summaries. Exhaustively search across syntax, selector resilience, mental model drift, gating slack, and output paths. Detailed in [`references/forensic-subagent-briefs.md`](references/forensic-subagent-briefs.md).
+5. **No Errata Files or Mistake Notebooks:** Never generate separate post-mortem summaries, errata docs, or mistake notebooks. The fixed skill files and executable scripts ARE the deliverable.
 
 ---
 
 ## Severity & Root-Cause Cheat Sheet
 
-| Symptom in Trace / Scrollback | Severity | Typical Root Cause | Fix Family |
-|---|---|---|---|
-| `[STUCK]` — executor cannot continue | P0 | S1 missing prerequisite, S2 contradiction, M2 unstated location | Prerequisite Surfacing, Workflow Path Reconciliation, Output Location |
-| `[BROKE]` — command from skill failed | P0 / P1 | O1 silent failure, O5 stale flag/version | Error Recovery Addition, Format Alignment |
-| `[GUESSED]` — subagent invented a decision | P1 | M1 ambiguous threshold, M5 assumed knowledge | Threshold Concretization, Scaling Guidance |
-| Premature completion — skipped remote/E2E gates | P1 | C1 premature completion illusion, C4 gate slack | Two-Tier Verification Enclosure, Rigid Phase Gating |
-| Skipped existing CI cleanup or destructive step | P1 | C2 destructive mutation hesitation | Staged Deprecation & Safe Neutralization |
-| Ran `--help` instead of real health probe | P1 | C3 missing tooling awareness, M4 missing method | Actionable Pre-Flight Probe Injection |
-| Re-read same file 2+ times / path drift | P1 | S3 scattered info, M3 format inconsistency | Canonical Layout Enforcement, Schema Duplication |
-| `[NICE]` — skill prevented a mistake | Keep | Load-bearing line | Do not weaken or rewrite this text |
+| Marker | Severity | Typical Root Cause | Fix Family | Reference |
+|---|---|---|---|---|
+| `[STUCK]` — executor cannot continue | P0 | S1 missing prerequisite, S2 contradiction, M2 unstated location | Prerequisite Surfacing, Path Reconciliation, Output Location | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| `[BROKE]` — command or selector threw error | P0 / P1 | O1 silent crash, O5 stale CLI flag, O3 unhandled edge case | Error Recovery Addition, Option Modernization | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| `[GUESSED]` — agent invented unstated decision | P1 | M1 ambiguous threshold, M5 assumed knowledge | Threshold Concretization, Scaling Guidance | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Premature completion — skipped remote/E2E gates | P1 | C1 premature completion illusion, C4 gate slack | Two-Tier Verification Enclosure, Rigid Phase Gating | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Skipped destructive cleanup / mutation | P1 | C2 destructive mutation hesitation | Staged Deprecation & Safe Neutralization | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Ran `--help` instead of real execution probe | P1 | C3 missing tooling awareness, M4 missing method | Actionable Pre-Flight Probe Injection | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| Path drift or file recreation | P1 | S3 scattered info, M3 format inconsistency | Canonical Layout Enforcement | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
+| `[NICE]` — skill prevented an error | Keep | Load-bearing sentence or check | **Never weaken or delete lines tagged [NICE]** | [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) |
 
 ---
 
-## Dual Ingestion Routing
-
-Determine the evaluation mode based on user intent and input handles:
+## Tri-Modal Routing Decision Tree
 
 ```
-Did the user provide Herdr pane IDs (e.g. wJ:p2, wH:p4) or point to active fleet sessions?
-├── YES ──► MODE B: Live Herdr Multi-Pane Fleet Audit
-│           (Inspect live scrollbacks, reverse-engineer mental models, prompt agents, fix skill)
+How is the skill being evaluated?
+├── Single-session synthetic test?
+│   └──► MODE A: Synthetic Subagent Execution (fast in-process trace)
 │
-└── NO  ──► MODE A: Synthetic Subagent Execution
-            (Launch fresh subagent with [STUCK]/[GUESSED] markers, parse JSONL trace, fix skill)
+├── Inspecting existing multi-repo Herdr tabs?
+│   └──► MODE B: Live Herdr Multi-Pane Fleet Audit (read existing scrollbacks)
+│
+└── End-to-end automated test in fresh Herdr tab?
+    └──► MODE C: The Native Two-Tier Herdr Worker ➔ Auditor Subagent Loop
 ```
 
 ---
 
-## Mode A: Synthetic Subagent Execution
+## Mode C: The Native Two-Tier Herdr Loop (Recommended)
 
-### 1. Get the target skill
-Locate the skill directory (`skills/{name}/`, `~/.agents/skills/{name}/`, `~/.gemini/config/skills/{name}/`) and read all files.
+Follow this complete operational workflow to execute an autonomous, evidence-backed audit without external dependencies. Operational details are in [`references/herdr-native-runner.md`](references/herdr-native-runner.md).
 
-### 2. Design the realistic task
-Create a realistic prompt with everyday user energy, 2-3 implicit constraints, and a different domain from the skill's own examples.
+### Step 1: Provision a Dedicated Tab & Resolve Pane ID
+```bash
+# Verify Herdr environment
+test "${HERDR_ENV:-}" = 1 || herdr status client
 
-### 3. Launch the subagent
-Launch a fresh-context subagent with the standard friction markers:
-- `[STUCK]` if unable to continue; name the missing/conflicting instruction.
-- `[GUESSED]` if inventing a decision the skill should have made explicit.
-- `[BROKE]` if a documented command failed.
-- `[NICE]` if a specific sentence or routing cue saved from a mistake.
+# Discover active workspace and target repository
+WS_ID=$(herdr workspace current 2>/dev/null | jq -r '.result.workspace.id // empty' || true)
+if [[ -z "$WS_ID" ]]; then
+  WS_ID=$(herdr workspace list | jq -r '.result.workspaces[0].id')
+fi
+TARGET_REPO="${TARGET_REPO:-$(pwd)}"
 
-### 4. Parse the trace & diagnose
-Extract markers with `bash scripts/parse-derailment-trace.sh <trace-path>` and tag root causes using [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md).
+# Create a tab in the target workspace without stealing user focus
+PANE_JSON=$(herdr tab create --workspace "$WS_ID" --label "audit-worker" --cwd "$TARGET_REPO" --no-focus)
+PANE_ID=$(echo "$PANE_JSON" | jq -r '.result.pane.id // .result.root_pane.id')
+TAB_ID=$(echo "$PANE_JSON" | jq -r '.result.tab.id // empty')
+```
+
+### Step 2: Launch Worker Agent Engine
+```bash
+# Initialize Antigravity CLI (or claude / codex) in the newly created pane
+herdr agent start "worker-agent" --kind agy --pane "$PANE_ID"
+```
+
+### Step 3: Dispatch Realistic Task Prompt
+Formulate a realistic mission prompt exercising non-trivial paths in the target skill and dispatch:
+```bash
+herdr agent prompt "$PANE_ID" "Execute the campaign workflow for a luxury perfume reel using the local flow-video-director skill. Ensure 9:16 vertical ratio and 720p download."
+```
+
+### Step 4: Toggle `Ctrl+O` Verbose Mode
+Immediately expand tool invocations, thoughts, and stdout in the worker pane:
+```bash
+herdr pane send-keys "$PANE_ID" ctrl+o
+```
+
+### Step 5: Await Worker Completion
+Monitor the worker agent until it enters `idle`, `done`, or `blocked`:
+```bash
+# Wait up to 5 minutes for task completion
+herdr agent wait "$PANE_ID" --timeout 300000
+```
+
+### Step 6: Dispatch Tier 2 Forensic Auditor Subagent
+Once the worker finishes, launch an independent auditor subagent (via `invoke_subagent`). Provide the complete Mission-Style prompt from [`references/forensic-subagent-briefs.md`](references/forensic-subagent-briefs.md) containing:
+- Target Pane ID (`$PANE_ID`).
+- Output directory path for physical disk verification.
+- Target skill path to audit and patch.
+- Explicit instructions to enforce the Anti-Self-Report Law and uncover up to 20–30 friction points.
+
+### Step 7: Apply Verified Patches & Clean Up
+Apply the auditor's line-by-line diffs to the target skill. Close the worker tab/pane after verification:
+```bash
+if [[ -n "${TAB_ID:-}" ]]; then
+  herdr tab close "$TAB_ID" 2>/dev/null || herdr pane close "$PANE_ID"
+else
+  herdr pane close "$PANE_ID"
+fi
+```
 
 ---
 
 ## Mode B: Live Herdr Multi-Pane Fleet Audit
 
-Read [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) for full Herdr CLI commands and coordination recipes.
+When auditing active or finished agents across existing workspaces, refer to [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md):
 
-### 1. Discover and resolve target panes
-```bash
-herdr workspace list
-herdr agent list
-```
-Identify the target workspace IDs and pane handles (e.g. `wJ:p2`, `wH:p4`, `wK:p2`, `wV:p2`, `wG:p6`).
-
-### 2. Extract scrollback and cognitive thought traces
-Read raw terminal scrollback from target panes using `read-herdr-panes.sh` or direct Herdr commands:
-
-```bash
-# Read recent unwrapped scrollback (joins soft wraps for clean parsing)
-bash scripts/read-herdr-panes.sh wJ:p2 wH:p4 wK:p2 wV:p2 --lines 400
-
-# Or extract reasoning blocks directly
-bash scripts/read-herdr-panes.sh wJ:p2 wH:p4 --thoughts
-```
-
-### 3. Reverse-engineer agent mental models
-Analyze where and why agents derailed in real sessions:
-- **C1 (Premature Completion)**: Did the agent stop after local edits because Step 9 felt like an optional recommendation? ➔ Apply **Two-Tier Verification Enclosure**.
-- **C2 (Mutation Hesitation)**: Did the agent leave 30KB GitHub Actions workflows untouched out of fear of breaking required checks? ➔ Apply **Staged Deprecation Protocol**.
-- **C3 (Tooling Ignorance)**: Did the agent run `--help` on a tunnel script to avoid blocking the session with a background daemon? ➔ Apply **Actionable Pre-Flight Probe Injection**.
-- **C4 / S3 (Structural Drift)**: Did monorepos create scripts in mismatched folders? ➔ Apply **Canonical Layout Enforcement**.
-
-### 4. Live agent fleet coordination (if sessions are active)
-If agents are still active and waiting in idle states, dispatch specific corrective prompts to enforce 100% compliance:
-
-```bash
-herdr agent prompt <pane-id> "Please complete Golden Workflow compliance by implementing <missing-step> and running <verification-command>."
-```
+1. **Discover Panes:** Run `herdr workspace list` and `herdr agent list`.
+2. **Automated Pane Inspection:**
+   ```bash
+   bash scripts/audit-worker-pane.sh <pane-id> -d <output-dir> --thoughts --tools
+   ```
+3. **Analyze Mental Models:** Reverse-engineer where the agent hesitated, stalled, or guessed.
+4. **Dispatch Corrective Prompts (if agent is active):**
+   ```bash
+   herdr agent prompt <pane-id> "Please complete compliance by running <missing-command>."
+   ```
 
 ---
 
-## Universal Hardening & Fix Workflow (Modes A & B)
+## Mode A: Synthetic Subagent Execution
 
-### 1. Fix the skill text directly
-Match root causes to fix patterns in [`references/fix-patterns.md`](references/fix-patterns.md):
-- Highest severity first (P0 before P1).
-- Rewrite or delete the source paragraph that caused the miss.
-- Keep fixes in-place, self-contained, and minimal.
-- **Never create errata or mistake summary docs.** The fixed skill text is the deliverable.
-
-### 2. Validate skill integrity
-```bash
-# Verify no orphan reference files
-for f in $(find references -name '*.md' -type f); do
-  grep -q "$(basename "$f")" SKILL.md || echo "ORPHAN: $f"
-done
-
-# Ensure SKILL.md remains concise and router-driven
-wc -l SKILL.md
-```
-
-### 3. Report findings
-Report in chat:
-1. Audited panes / traces and classification breakdown.
-2. Root causes identified with taxonomy codes (S/M/O/C).
-3. Skill files edited with one-line rationales.
-4. Corrective actions dispatched to running agents.
-5. Verification results.
+For fast, lightweight in-process testing:
+1. Formulate a prompt with everyday user energy and 2-3 implicit constraints.
+2. Launch a subagent instructed to emit `[STUCK]`, `[BROKE]`, `[GUESSED]`, and `[NICE]` markers.
+3. Parse the JSONL trace via `bash scripts/parse-derailment-trace.sh <trace-file>`.
+4. Apply the corresponding fix patterns from [`references/fix-patterns.md`](references/fix-patterns.md).
 
 ---
 
@@ -159,17 +168,21 @@ Report in chat:
 
 | Script | Purpose |
 |---|---|
-| `scripts/read-herdr-panes.sh` | Read, format, and extract thought blocks and tool invocations from one or more Herdr panes. |
-| `scripts/launch-derailment.sh` | Render Step 3 prompt and launch synthetic subagent trace. |
-| `scripts/parse-derailment-trace.sh` | Parse JSONL traces into marker counts and snippets. |
+| [`scripts/audit-worker-pane.sh`](scripts/audit-worker-pane.sh.md) | Automated forensic inspection of a Herdr agent pane (scrollback, exit codes, tools, thoughts, disk artifacts). |
+| [`scripts/read-herdr-panes.sh`](scripts/read-herdr-panes.sh.md) | Read, format, and extract thought blocks and tool calls across multiple Herdr panes. |
+| [`scripts/launch-derailment.sh`](scripts/launch-derailment.sh.md) | Render Step 3 prompt and launch synthetic subagent trace. |
+| [`scripts/parse-derailment-trace.sh`](scripts/parse-derailment-trace.sh.md) | Parse JSONL traces into marker counts, severities, and error snippets. |
 
 ---
 
 ## Reference Routing
 
-| Reference | Read When |
+| Reference Document | Read When |
 |---|---|
-| [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) | Mode B: Discovering Herdr panes, reading scrollback, and prompting active agents. |
-| [`references/friction-classification.md`](references/friction-classification.md) | Classifying trace symptoms into P0/P1/P2 severities and compound P0s. |
-| [`references/root-cause-taxonomy.md`](references/root-cause-taxonomy.md) | Tagging root causes across Structural (S), Semantic (M), Operational (O), and Cognitive (C) codes. |
-| [`references/fix-patterns.md`](references/fix-patterns.md) | Applying proven fix patterns (Two-Tier Enclosure, Staged Deprecation, Pre-Flight Probes, Canonical Layouts). |
+| [`references/herdr-native-runner.md`](references/herdr-native-runner.md) | Mode C: Managing tabs, starting agents, prompting, and waiting via native Herdr CLI. |
+| [`references/ctrl-o-verbose-physics.md`](references/ctrl-o-verbose-physics.md) | Understanding AGY TUI folding, toggling `Ctrl+O`, and unwrapping scrollbacks. |
+| [`references/forensic-subagent-briefs.md`](references/forensic-subagent-briefs.md) | Formatting Mission-Style subagent prompts with anti-sycophancy and 20–30 friction targets. |
+| [`references/disk-evidence-and-anti-sycophancy.md`](references/disk-evidence-and-anti-sycophancy.md) | Performing independent physical artifact validations (magic headers, byte size, exit codes). |
+| [`references/friction-taxonomy-guide.md`](references/friction-taxonomy-guide.md) | Unified comprehensive friction taxonomy: markers, severities, all 21 root-cause codes (`S/M/O/C`), compound P0s, and fix patterns. |
+| [`references/herdr-pane-audit.md`](references/herdr-pane-audit.md) | Mode B: Fleet discovery, multi-pane reading, and active agent prompt coordination. |
+| [`references/fix-patterns.md`](references/fix-patterns.md) | Applying verified fix patterns (Two-Tier Enclosure, Staged Deprecation, Pre-Flight Probes). |

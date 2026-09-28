@@ -105,7 +105,7 @@ Valid marker shapes:
 | [STUCK] | [STUCK] references/fix-patterns.md says to run X, but no install step or fallback exists. |
 | [GUESSED] | [GUESSED] Step 2 says "large skill" but gives no threshold; I chose 10 files. |
 | [BROKE] | [BROKE] Command from Step 4 failed: ...; the documented output path did not exist. |
-| [NICE] | [NICE] The routing table sent me to friction-classification.md before editing. |
+| [NICE] | [NICE] The routing table sent me to friction-taxonomy-guide.md before editing. |
 PROMPT
 }
 
