@@ -34,6 +34,9 @@ export async function readYaml(file) {
       throw new Error('Expected one valid, unambiguous YAML document.');
     }
     YAML.visit(documents[0], (_key, node) => {
+      if (YAML.isPair(node) && (!YAML.isScalar(node.key) || typeof node.key.value !== 'string')) {
+        throw new Error('Mapping keys must be strings; implicit key coercion is forbidden.');
+      }
       if (YAML.isAlias(node) || node?.anchor || node?.tag || (YAML.isPair(node) && node.key?.value === '<<')) {
         throw new Error('Anchors, aliases, tags, and merge keys are forbidden.');
       }
