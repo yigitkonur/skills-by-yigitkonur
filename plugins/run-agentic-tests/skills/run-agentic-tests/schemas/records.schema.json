@@ -52,6 +52,15 @@
     },
     {
       "$ref": "#/definitions/scope_decision"
+    },
+    {
+      "$ref": "#/definitions/finding_link"
+    },
+    {
+      "$ref": "#/definitions/finding_classification"
+    },
+    {
+      "$ref": "#/definitions/runtime_recovery"
     }
   ],
   "definitions": {
@@ -143,6 +152,23 @@
             "COMPLETE",
             "BLOCKED"
           ]
+        },
+        "github_repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            }
+          },
+          "required": [
+            "remote",
+            "repository"
+          ]
         }
       },
       "required": [
@@ -161,284 +187,6 @@
         "final_target_id",
         "locale",
         "state"
-      ]
-    },
-    "environment": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "schema_version": {
-          "const": 1
-        },
-        "kind": {
-          "const": "environment"
-        },
-        "record_id": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
-        },
-        "campaign_id": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
-        },
-        "created_at": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
-        },
-        "target_id": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^G[0-9]{3,}$"
-        },
-        "runtime_type": {
-          "enum": [
-            "http",
-            "cli",
-            "mcp_stdio",
-            "mcp_http",
-            "mobile"
-          ]
-        },
-        "source": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "revision": {
-              "type": "string",
-              "minLength": 1
-            },
-            "worktree": {
-              "type": "string",
-              "minLength": 1
-            },
-            "fingerprint": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "revision"
-          ]
-        },
-        "command": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "argv": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              },
-              "minItems": 1
-            },
-            "cwd": {
-              "type": "string",
-              "minLength": 1
-            },
-            "env_names": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-              },
-              "minItems": 0
-            }
-          },
-          "required": [
-            "argv",
-            "cwd"
-          ]
-        },
-        "readiness": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "enum": [
-                "http",
-                "process"
-              ]
-            },
-            "url": {
-              "type": "string",
-              "minLength": 1
-            },
-            "expected_status": {
-              "type": "integer",
-              "minimum": 100,
-              "maximum": 599
-            },
-            "body_contains": {
-              "type": "string",
-              "minLength": 1
-            },
-            "timeout_ms": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 3600000
-            }
-          },
-          "required": [
-            "type",
-            "body_contains"
-          ],
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "type": {
-                    "const": "http"
-                  }
-                }
-              },
-              "then": {
-                "required": [
-                  "url",
-                  "expected_status"
-                ],
-                "properties": {
-                  "url": {},
-                  "expected_status": {}
-                }
-              }
-            }
-          ]
-        },
-        "status": {
-          "enum": [
-            "STARTING",
-            "READY",
-            "FAILED",
-            "STOPPED"
-          ]
-        },
-        "process": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "pid": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "start_token": {
-              "type": "string",
-              "minLength": 1
-            },
-            "argv": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              },
-              "minItems": 1
-            },
-            "cwd": {
-              "type": "string",
-              "minLength": 1
-            },
-            "handle_path": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "pid",
-            "start_token",
-            "argv",
-            "cwd"
-          ]
-        },
-        "endpoint": {
-          "type": "string",
-          "minLength": 1
-        },
-        "tunnel_url": {
-          "type": "string",
-          "minLength": 1
-        },
-        "logs": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "stdout": {
-              "type": "string",
-              "minLength": 1
-            },
-            "stderr": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "stdout",
-            "stderr"
-          ]
-        },
-        "resources": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "mode": {
-                "enum": [
-                  "read",
-                  "write"
-                ]
-              }
-            },
-            "required": [
-              "name",
-              "mode"
-            ]
-          },
-          "minItems": 0
-        },
-        "capability_notes": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 0
-        },
-        "error": {
-          "type": "string",
-          "minLength": 1
-        },
-        "task_id": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^J[0-9]{5,}$"
-        },
-        "actor_id": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^A[0-9]{5,}$"
-        }
-      },
-      "required": [
-        "schema_version",
-        "kind",
-        "record_id",
-        "campaign_id",
-        "created_at",
-        "target_id",
-        "runtime_type",
-        "source",
-        "command",
-        "readiness",
-        "status",
-        "logs"
       ]
     },
     "task_request": {
@@ -537,8 +285,29 @@
         "required_inputs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
           },
           "minItems": 0,
           "uniqueItems": true
@@ -586,11 +355,9 @@
             }
           },
           "required": [
-            "previous_failure",
             "what_changed",
             "hypothesis",
-            "do_not_repeat",
-            "remaining_attempts"
+            "do_not_repeat"
           ]
         },
         "finding_id": {
@@ -670,6 +437,27 @@
         "replaces_task_id": {
           "type": "string",
           "pattern": "^J[0-9]{5,}$"
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
         }
       },
       "required": [
@@ -810,8 +598,29 @@
         "required_inputs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
           },
           "minItems": 0
         },
@@ -979,6 +788,128 @@
         "replaces_task_id": {
           "type": "string",
           "pattern": "^J[0-9]{5,}$"
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^ATT-[a-f0-9]{16}$"
+        },
+        "history_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "type": "string"
+            },
+            "record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "latest_failure_record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "digest",
+            "record_ids",
+            "latest_failure_record_ids"
+          ]
+        },
+        "github_repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            }
+          },
+          "required": [
+            "remote",
+            "repository"
+          ]
+        },
+        "artifact_directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_base": {
+          "type": "string",
+          "minLength": 1
+        },
+        "related_case_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^T[0-9]{4,}$"
+          },
+          "uniqueItems": true
+        },
+        "companion_paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pr_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "check": {
+              "type": "string",
+              "minLength": 1
+            },
+            "setup": {
+              "type": "string",
+              "minLength": 1
+            },
+            "configuration": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "intervention_origin": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -2285,6 +2216,31 @@
             ]
           },
           "minItems": 3
+        },
+        "intervention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "BASELINE",
+                "INTEGRATION",
+                "EXECUTION_APPROACH"
+              ]
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ]
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^ATT-[a-f0-9]{16}$"
         }
       },
       "required": [
@@ -2580,8 +2536,7 @@
         },
         "attempts": {
           "type": "integer",
-          "minimum": 0,
-          "maximum": 5
+          "minimum": 0
         },
         "attempt_rounds": {
           "type": "array",
@@ -2603,6 +2558,9 @@
                 "type": "string",
                 "minLength": 1,
                 "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+              },
+              "attempt_id": {
+                "type": "string"
               }
             },
             "required": [
@@ -2659,6 +2617,47 @@
           "items": {
             "type": "string",
             "pattern": "^T[0-9]{4,}$"
+          },
+          "uniqueItems": true
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "classification_history": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "related_finding_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "related_issue_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "attempt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "attempt_mapping_problems": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
           },
           "uniqueItems": true
         }
@@ -3589,8 +3588,7 @@
         },
         "attempt": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 4
+          "minimum": 1
         },
         "commit": {
           "type": "string",
@@ -3948,6 +3946,10 @@
         "summary": {
           "type": "string",
           "minLength": 1
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -4078,6 +4080,343 @@
         "scope",
         "reason",
         "source"
+      ]
+    },
+    "environment": {
+      "$ref": "runtime.schema.json#/definitions/environment"
+    },
+    "finding_classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "finding_classification"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "class": {
+          "enum": [
+            "PRODUCT_DEFECT",
+            "EXECUTION_ERROR",
+            "EVIDENCE_GAP",
+            "EVIDENCE_CONFLICT",
+            "SPEC_INVALID",
+            "ENVIRONMENT_BLOCKER",
+            "TARGET_DRIFT",
+            "VERIFIER_DISAGREEMENT",
+            "SIDE_FINDING"
+          ]
+        },
+        "execution_record_id": {
+          "type": "string"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "finding_id",
+        "class",
+        "execution_record_id",
+        "evidence_record_ids"
+      ]
+    },
+    "finding_link_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "into_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from_finding_id",
+        "into_finding_id",
+        "evidence_record_ids",
+        "reason"
+      ]
+    },
+    "finding_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "finding_link"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "from_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "into_finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^F[0-9]{4,}$"
+        },
+        "evidence_record_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "from_finding_id",
+        "into_finding_id",
+        "evidence_record_ids",
+        "reason"
+      ]
+    },
+    "runtime_recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "runtime_recovery"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "predecessor_target_id": {
+          "type": "string",
+          "pattern": "^G[0-9]{3,}$"
+        },
+        "successor_target_id": {
+          "type": "string",
+          "pattern": "^G[0-9]{3,}$"
+        },
+        "environment_task_id": {
+          "type": "string",
+          "pattern": "^J[0-9]{5,}$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "integration_record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "predecessor_target_id",
+        "successor_target_id",
+        "environment_task_id",
+        "reason",
+        "expected_revision"
+      ]
+    },
+    "runtime_recovery_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object"
+        },
+        "requested_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required_inputs": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "prior_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "previous_failure": {
+              "type": "string",
+              "minLength": 1
+            },
+            "what_changed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hypothesis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "do_not_repeat": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "remaining_attempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "issue_url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pr_urls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "what_changed",
+            "hypothesis",
+            "do_not_repeat"
+          ]
+        }
+      },
+      "required": [
+        "reason"
       ]
     }
   }

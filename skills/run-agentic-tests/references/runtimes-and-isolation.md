@@ -35,6 +35,11 @@ nonignored untracked files, deletions, modes, and source symlinks. For a standal
 program, use `type: files` with the source root and explicit relative `paths`.
 Declare runtime-relevant ignored configuration through `config_files`; record
 paths and hashes, never secret values. The command's cwd stays inside that root.
+Initialized Git submodules contribute their actual commit as a `gitlink` entry
+and recursively inspected source files. Ignored build outputs remain excluded.
+Integrated startup compares actual files with committed blobs; index optimization
+flags cannot hide a dirty checkout. Repository discovery ignores inherited Git
+directory/configuration overrides from another harness checkout.
 
 `runtime start` computes `source.attestation`; supplied fingerprint text cannot
 certify bytes. Dispatch, execution submission, and current-proof assessment check

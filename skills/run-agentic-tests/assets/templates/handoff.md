@@ -12,6 +12,9 @@ not allocate identities or override its canonical task.
 - Case/spec/round/target/source identity, when applicable:
 - Required role/common references and exact input artifact paths:
 - Exact writable draft/artifact paths and required output kinds:
+- Allocated `artifact_directory`, `companion_paths`, and implementer
+  `worktree_path` / `worktree_base`, when applicable:
+- Complete `related_case_ids` repair scope, distinct from the executor batch:
 - Resource read/write claims and lease/reset boundaries:
 - Native host handle, once bound:
 

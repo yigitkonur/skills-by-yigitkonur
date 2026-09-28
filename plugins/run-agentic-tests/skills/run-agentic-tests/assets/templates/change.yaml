@@ -1,4 +1,5 @@
 # Implementation result shape; every URL/path/check must refer to real work.
+# Edit the allocated draft; retain its worktree, PR body, and check paths.
 schema_version: 1
 kind: implementation
 record_id: IMPL-F0001-A001
@@ -21,5 +22,6 @@ summary: Replace with the bounded behavior change and causal explanation.
 artifacts:
   - path: findings/F0001-example/fixes/A001/developer-check.log
     type: log
-# attempt counts corrective implementation attempts (1..4), preserving lineage.
+# attempt is the allocated implementation sequence, not the executed-intervention
+# budget. Preserve the assigned number; only actual runs consume shared attempts.
 # Developer checks do not replace independent integrated-target E2E retest.

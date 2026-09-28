@@ -1,0 +1,545 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://yigitkonur.github.io/skills-by-yigitkonur/run-agentic-tests/runtime.schema.json",
+  "definitions": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "environment"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$"
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^G[0-9]{3,}$"
+        },
+        "runtime_type": {
+          "enum": [
+            "http",
+            "cli",
+            "mcp_stdio",
+            "mcp_http",
+            "mobile"
+          ]
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "worktree": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fingerprint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "git",
+                    "files"
+                  ]
+                },
+                "root": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "paths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "config_files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "type",
+                "root"
+              ]
+            },
+            "attestation": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "version": {
+                  "const": 1
+                },
+                "algorithm": {
+                  "const": "sha256"
+                },
+                "source_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "configuration_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "git_head": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40,64}$"
+                },
+                "manifest": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "enum": [
+                          "file",
+                          "symlink",
+                          "missing",
+                          "gitlink"
+                        ]
+                      },
+                      "mode": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 4095
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "kind",
+                      "mode"
+                    ]
+                  },
+                  "minItems": 1
+                },
+                "config_manifest": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "enum": [
+                          "file",
+                          "symlink",
+                          "missing",
+                          "gitlink"
+                        ]
+                      },
+                      "mode": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 4095
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "kind",
+                      "mode"
+                    ]
+                  }
+                },
+                "git_clean": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "version",
+                "algorithm",
+                "source_digest",
+                "configuration_digest",
+                "manifest",
+                "config_manifest"
+              ]
+            }
+          },
+          "required": [
+            "revision"
+          ]
+        },
+        "command": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "argv": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "env_names": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "argv",
+            "cwd"
+          ]
+        },
+        "readiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "http",
+                "process",
+                "tool"
+              ]
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            "body_contains": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600000
+            }
+          },
+          "required": [
+            "type",
+            "body_contains"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "http"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "url",
+                  "expected_status"
+                ],
+                "properties": {
+                  "url": {},
+                  "expected_status": {}
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "STARTING",
+            "READY",
+            "FAILED",
+            "STOPPED"
+          ]
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_token": {
+              "type": "string",
+              "minLength": 1
+            },
+            "argv": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "handle_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "pid",
+            "start_token",
+            "argv",
+            "cwd"
+          ]
+        },
+        "endpoint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tunnel_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "logs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stdout": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stderr": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "stdout",
+            "stderr"
+          ]
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "enum": [
+                  "read",
+                  "write"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "mode"
+            ]
+          },
+          "minItems": 0
+        },
+        "capability_notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^J[0-9]{5,}$"
+        },
+        "actor_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^A[0-9]{5,}$"
+        },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "name",
+                "version"
+              ]
+            },
+            "owner_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "device_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attachment": {
+              "type": "string",
+              "minLength": 1
+            },
+            "probe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            },
+            "inspect": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            },
+            "cleanup": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "argv"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "owner_id",
+            "session_id",
+            "attachment",
+            "probe",
+            "inspect",
+            "cleanup"
+          ]
+        },
+        "session_handle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "owner_token": {
+              "type": "string",
+              "minLength": 1
+            },
+            "handle_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "owner_token",
+            "handle_path"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "record_id",
+        "campaign_id",
+        "created_at",
+        "target_id",
+        "runtime_type",
+        "source",
+        "command",
+        "readiness",
+        "status",
+        "logs"
+      ]
+    }
+  }
+}

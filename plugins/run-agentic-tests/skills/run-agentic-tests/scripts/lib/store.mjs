@@ -92,7 +92,7 @@ export async function writeRecord(campaign, relativePath, record, { immutable = 
     if (immutable) throw new CliError('RECORD_CONFLICT', `Record already exists with different content: ${relativePath}`, 4);
     if (previous.record_id !== record.record_id || previous.kind !== record.kind || previous.campaign_id !== record.campaign_id) throw new CliError('RECORD_CONFLICT', 'A mutable record cannot change identity.', 4);
     if (record.kind === 'environment') {
-      for (const key of ['target_id', 'runtime_type', 'source', 'command', 'readiness']) {
+      for (const key of ['target_id', 'runtime_type', 'source', 'command', 'readiness', 'session', 'session_handle']) {
         if (stableStringify(previous[key]) !== stableStringify(record[key])) throw new CliError('RECORD_CONFLICT', `Environment ${key} is frozen; allocate a new target.`, 4);
       }
     } else if (!['campaign', 'task', 'finding'].includes(record.kind)) {

@@ -23,6 +23,9 @@ worktree, accepted specifications, other workers' files, and canonical records.
    Follow the generated latest per-case failure and all referenced prior PRs and
    integrations; do not restart from the original issue alone. Use the packet's
    tested-project repository explicitly with every `gh --repo` operation.
+   Create the isolated worktree at the allocated `worktree_path` from
+   `worktree_base`. Preserve the draft's PR-body and check paths; write additional
+   supporting artifacts only within the allocated `artifact_directory`.
 2. Reproduce the cause with an appropriate developer check when necessary, then
    implement the bounded repair. Developer tests supplement the later real E2E
    journey; they cannot discharge its independent retest obligation.

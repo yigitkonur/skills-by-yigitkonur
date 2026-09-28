@@ -81,6 +81,8 @@ An unresolved root finding has at most five problem-solving interventions,
 including its initial baseline. An intervention identifies a baseline, an
 integration, or a changed execution approach. The controller allocates its
 `attempt_id`; workers do not invent IDs or infer equality from similar prose.
+Preserve the generated `intervention_origin` when present; it ties a local
+execution-approach reference to the root that allocated it.
 All cases/variants evaluating the same intervention share that attempt. Twenty
 cases failing for one baseline defect do not consume twenty repair attempts.
 
@@ -90,6 +92,13 @@ same correction do not consume another attempt. A new corrective approach cannot
 reuse an earlier attempt just by retaining its target or changing its name.
 The final sweep tests the selected correction; it is not an automatic sixth
 attempt and cannot be repeatedly used to bypass the limit.
+
+After an integrated retest runs but its capture is inconclusive, describe the
+changed capture procedure in a fresh corrective request's `prior_context`.
+The controller allocates a new execution approach for that change. It reuses an
+intervention only for other members evaluating the same correction or the final
+sweep. A local label such as `retry-1` in another root does not prove that the
+two roots exercised the same correction.
 
 Linking findings preserves their history. Combine a common baseline and proven
 identical interventions, retain distinct corrections, and surface ambiguous

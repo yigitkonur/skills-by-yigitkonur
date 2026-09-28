@@ -14,6 +14,8 @@ Write the assigned issue body and `ticket` draft using
 [issue.md](../../assets/templates/issue.md) and
 [ticket.yaml](../../assets/templates/ticket.yaml). Create/update only the scoped
 GitHub issue after deduplication. Preserve local records as the source of truth.
+Use the generated draft's `body_path`, allocated as `companion_paths.body`;
+supporting artifacts belong in the task's `artifact_directory`.
 
 ## Procedure
 

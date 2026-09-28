@@ -147,7 +147,10 @@ else throw Error('unexpected hosted command');fs.writeFileSync(file,JSON.stringi
   const diagnosis = await create({ role: 'diagnostician', finding_id: 'F0001', requested_action: 'Inspect the formatter source against the independently captured missing punctuation.', required_inputs: [{ base: 'project', path: 'app.mjs' }] }); start(diagnosis);
   await publish(diagnosis, { conclusion: 'confirmed', summary: 'The shared formatter does not append the required punctuation.', root_cause: 'app.mjs joins Hello and the name without an exclamation mark.', evidence_record_ids: records({ kind: 'execution' }).map(record => record.record_id), artifacts: [] }); finish(diagnosis);
   const ticket = await create({ role: 'ticket-writer', finding_id: 'F0001', requested_action: 'Document the confirmed shared formatter defect.' }); start(ticket);
-  const issueBody = 'findings/issue.md'; await writeFile(path.join(campaign, issueBody), 'Expected both named greetings to end with an exclamation mark. Actual saved CLI outputs omit it. Local hosted-API acceptance stub.');
+  const ticketDraft = YAML.parse(await readFile(path.join(campaign, ticket.draft_paths[0]), 'utf8'));
+  const issueBody = ticketDraft.body_path;
+  assert.equal(issueBody, ticket.companion_paths.body);
+  await writeFile(path.join(campaign, issueBody), 'Expected both named greetings to end with an exclamation mark. Actual saved CLI outputs omit it. Local hosted-API acceptance stub.');
   const issue = hosted(['issue', 'create', '--repo', repository, '--body-file', path.join(campaign, issueBody)]);
   await publish(ticket, { issue_url: issue, dedup_marker: `agentic-tests:${initialized.campaign.campaign_id}:F0001`, body_path: issueBody, artifacts: [] }); finish(ticket);
 
@@ -161,15 +164,21 @@ else throw Error('unexpected hosted command');fs.writeFileSync(file,JSON.stringi
       assert.match(handoff, /Grace/);
     }
     start(fixer);
-    const branch = `fix-${number}`; const worktree = path.join(root, branch);
-    git('worktree', 'add', '-b', branch, worktree, 'main');
+    const branch = `fix-${number}`; const worktree = fixer.worktree_path;
+    assert.ok(path.isAbsolute(worktree));
+    await mkdir(path.dirname(worktree), { recursive: true });
+    git('worktree', 'add', '-b', branch, worktree, fixer.worktree_base);
     await writeFile(path.join(worktree, 'app.mjs'), product(number));
     const developerCheck = processResult(process.execPath, ['app.mjs', 'Ada'], worktree);
     assert.equal(JSON.parse(developerCheck.stdout).message, 'Hello, Ada!');
     processResult('git', ['add', 'app.mjs'], worktree); processResult('git', ['commit', '-m', `Formatter correction ${number}`], worktree);
     processResult('git', ['push', 'origin', branch], worktree);
     const commit = processResult('git', ['rev-parse', 'HEAD'], worktree).stdout.trim();
-    const body = `findings/pr-${number}.md`; const check = `findings/check-${number}.log`;
+    const fixerDraft = YAML.parse(await readFile(path.join(campaign, fixer.draft_paths[0]), 'utf8'));
+    const body = fixerDraft.pr_body_path; const check = fixerDraft.checks[0].artifact_path;
+    assert.equal(fixerDraft.worktree, worktree);
+    assert.equal(body, fixer.companion_paths.pr_body);
+    assert.equal(check, fixer.companion_paths.check);
     await writeFile(path.join(campaign, body), `Related to #1. Formatter correction ${number}. Ada developer check passed; independent two-case retest remains required.`);
     await writeFile(path.join(campaign, check), developerCheck.stdout);
     const pr = hosted(['pr', 'create', '--repo', repository, '--head', branch, '--base', 'main', '--body-file', path.join(campaign, body)]);

@@ -72,6 +72,9 @@ Every result binds campaign, task/actor, case/spec revision, round, and target a
 applicable. Spec acceptance freezes its documents/hashes. The target binds exact
 source revision, worktree/fingerprint, runtime generation, and resource setup.
 Executors report the assigned identity, not a guessed latest branch name.
+`target_id: G001` identifies a runtime generation; its record can be
+`record_id: ENV-G001`. Use the actual `record_id` for `records --record-id`, or
+list `records --kind environment` to resolve a target. Do not interchange IDs.
 
 The CLI computes artifact hashes during submission. Verifiers record the hash
 they inspected and how they inspected it. Changed/missing artifacts invalidate

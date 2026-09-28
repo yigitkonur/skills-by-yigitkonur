@@ -13,6 +13,8 @@ Write the assigned plan draft and scope artifact using
 [plan.yaml](../../assets/templates/plan.yaml) and
 [scope.md](../../assets/templates/scope.md). Preserve accepted specs and other
 plan revisions. The orchestrator accepts the audited plan through the CLI.
+Write the explanation at `companion_paths.scope` from the generated task. The
+plan draft's typed `scope` is authoritative; keep its explanation consistent.
 
 ## Procedure
 

@@ -33,6 +33,16 @@ A blocked registration prerequisite blocks its downstream authenticated journey;
 an independent public search case can still run. Verified failures can enter
 diagnosis/repair immediately while other execution branches continue.
 
+Use the controller's ordered ready list consistently: expectation priority
+`P0` through `P3`, number of dependent jobs unlocked, verification/repair work,
+oldest creation time, then numeric task ID. `ready_details` explains the order.
+Do not impose a separate wave barrier or pick from an unordered directory scan.
+
+The controller reserves each case/spec/target before dispatch, including every
+member of a grouped assignment. An interrupted but still-live executor keeps
+its reservation. Review an accepted execution before requesting another run;
+duplicate assignments are not a way to obtain more favorable evidence.
+
 Group at most four sibling variants into one worker assignment only when they
 share tools/setup, have independent results, have a reliable reset between them,
 and none is a prerequisite of another. Preserve separate case observations,
@@ -65,30 +75,44 @@ inputs and without either peer's result. Do not include a first-verifier verdict
 in the second handoff, notebook excerpt, message, or filename used as a cue.
 Keep peer review files out of the assigned reading set.
 
-## Retry accounting and handoff
+## Shared attempts and current retry history
 
-The same unresolved finding lineage has a maximum of five E2E attempts: the
-initial failing execution and at most four corrective attempts. Preserve its
-lineage across additional affected cases, renamed scenarios, revised specs,
-reopened issues, and the final integrated sweep.
+An unresolved root finding has at most five problem-solving interventions,
+including its initial baseline. An intervention identifies a baseline, an
+integration, or a changed execution approach. The controller allocates its
+`attempt_id`; workers do not invent IDs or infer equality from similar prose.
+Preserve the generated `intervention_origin` when present; it ties a local
+execution-approach reference to the root that allocated it.
+All cases/variants evaluating the same intervention share that attempt. Twenty
+cases failing for one baseline defect do not consume twenty repair attempts.
 
-Invalid YAML corrections are submission retries, not E2E attempts. A `NOT_RUN`
-result caused by missing credentials did not exercise the application and does
-not consume an E2E attempt. Do not rerun unchanged failing behavior merely to
-spend the remaining allowance. Inspect the controller's current lineage state;
-workers cannot reset counters by editing records.
+Count an attempt only when a member actually executes (`COMPLETED` or `PARTIAL`).
+`NOT_RUN`, rejected YAML, reviewer replacement, and recovery of a runtime for the
+same correction do not consume another attempt. A new corrective approach cannot
+reuse an earlier attempt just by retaining its target or changing its name.
+The final sweep tests the selected correction; it is not an automatic sixth
+attempt and cannot be repeatedly used to bypass the limit.
 
-Every retry task's `prior_context` supplies:
+After an integrated retest runs but its capture is inconclusive, describe the
+changed capture procedure in a fresh corrective request's `prior_context`.
+The controller allocates a new execution approach for that change. It reuses an
+intervention only for other members evaluating the same correction or the final
+sweep. A local label such as `retry-1` in another root does not prove that the
+two roots exercised the same correction.
 
-- Previous failure and exact record/artifact references.
-- What changed in code, source target, environment, spec, or execution procedure.
-- New hypothesis and the evidence making this attempt informative.
-- What not to repeat, including invalidated assumptions.
-- Remaining attempts, stable finding/lineage, and issue/PR references.
+Linking findings preserves their history. Combine a common baseline and proven
+identical interventions, retain distinct corrections, and surface ambiguous
+legacy mappings. Never discard excess history to manufacture remaining attempts.
+At the limit, keep `ATTEMPT_LIMIT` and advance independent work.
 
-Use [task-retry.yaml](../assets/templates/task-retry.yaml) as the request shape;
-replace its example history with actual records before task creation.
+Use [task-retry.yaml](../assets/templates/task-retry.yaml) for corrective requests.
+The controller generates the latest failure **per assigned case**, previous
+fixes/integrations/retests, issue/PR references, and remaining allowance. The
+orchestrator supplies `prior_context.what_changed`, `hypothesis`, and
+`do_not_repeat` to explain the next action. Generated history has a recorded
+basis; if it changes before dispatch, refresh the task from current records.
+`STALE_RETRY_CONTEXT` is a correction request, not permission to delete history.
 
-If there is no materially different next action, keep the finding blocked and
-advance independent work. At the limit, record `ATTEMPT_LIMIT` and the unresolved
-result. A final sweep can expose current status but grants no additional repairs.
+Diagnosticians, implementers, and corrective executors read this history. Blind
+verifiers receive the original-input allowlist instead; repair conclusions and
+peer judgments must not influence their independent evidence assessment.

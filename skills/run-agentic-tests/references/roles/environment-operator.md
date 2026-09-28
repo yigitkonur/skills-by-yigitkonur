@@ -13,6 +13,10 @@ Write the assigned environment draft, setup/readiness artifacts, owned logs and
 runtime configuration. Use [environment.yaml](../../assets/templates/environment.yaml).
 The helper publishes the canonical environment record. Preserve source/config
 belonging to an active test generation and unrelated processes/credentials.
+Use the task's `companion_paths.setup` for setup notes and its ignored
+`companion_paths.configuration` for any required local `.env` values. Read the
+CLI-owned log paths shown in the handoff; do not precreate a target generation
+directory or replace its logs with a success summary.
 
 ## Procedure
 

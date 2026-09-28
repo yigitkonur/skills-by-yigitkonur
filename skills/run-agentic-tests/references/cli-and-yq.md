@@ -47,9 +47,23 @@ schema or evidence validation. Quote timestamps and ambiguous scalar values.
 Plain `required_inputs` strings resolve inside the campaign. Source inputs use
 `{base: project, path: src/app.mjs}`; `{base: project, path: .}` names the project
 root. Paths are read-only inputs and must remain inside the real project after
-symlink resolution. Output paths remain campaign-contained. Source copying is
-unnecessary. The generated handoff resolves exact installed/project/campaign
-paths and gives role-specific write scopes and commands.
+symlink resolution. Record and artifact outputs remain campaign-contained. Source
+copying is unnecessary. The generated handoff resolves exact installed/project/
+campaign paths and gives role-specific write scopes and commands.
+
+Use the allocated `artifact_directory` and role-specific `companion_paths` for
+supporting files. A planner receives `companion_paths.scope`; its Markdown is an
+explanation, while the submitted plan's typed `scope` remains authoritative.
+Ticket writers receive `companion_paths.body`; implementers receive
+`companion_paths.pr_body` and `companion_paths.check`, already reflected in their
+drafts. Do not substitute a newly invented path.
+
+An implementer also receives an absolute `worktree_path` and `worktree_base`.
+Create the isolated worktree there from that base; the allocator names the
+location without creating it or changing source. This application worktree is
+separate from campaign records and frozen runtime source. Read `related_case_ids`
+for the complete repair scope; an executor's bounded `case_ids` batch is not the
+complete set of cases associated with a shared finding.
 
 The campaign records its tested project's selected GitHub remote. Use the
 generated `github_repository.repository` with `gh --repo`; the installed skill

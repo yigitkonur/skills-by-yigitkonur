@@ -12,6 +12,9 @@ not allocate identities or override its canonical task.
 - Case/spec/round/target/source identity, when applicable:
 - Required role/common references and exact input artifact paths:
 - Exact writable draft/artifact paths and required output kinds:
+- Allocated `artifact_directory`, `companion_paths`, and implementer
+  `worktree_path` / `worktree_base`, when applicable:
+- Complete `related_case_ids` repair scope, distinct from the executor batch:
 - Resource read/write claims and lease/reset boundaries:
 - Native host handle, once bound:
 
@@ -24,11 +27,16 @@ partial draft and return the exact blocker; never fabricate mandatory fields.
 
 ## Retry context
 
+Use the controller-generated history section and `history_basis`; do not replace
+it with a manually copied first-round summary. Fill proposed next-action details
+in the task request. The controller attaches current history at allocation and
+checks it again at dispatch.
+
 - Previous failure with record/artifact references:
 - What changed:
 - New hypothesis and supporting evidence:
 - What not to repeat:
-- Stable finding/lineage and remaining attempts:
+- Stable effective finding/lineage and remaining shared interventions:
 - Existing issue and PR references:
 
 ## Role boundaries
@@ -40,6 +48,7 @@ new execution is requested from the orchestrator.
 
 ## Blind-verifier input check
 
-For verifier B, include original spec/target/execution/evidence only. Exclude
-verifier A's files, outcomes, discussion, and summaries from every input channel.
+For every blind verifier, include original spec/target/execution/evidence only.
+Exclude peer files, outcomes, repair conclusions, discussion, and summaries from
+every input channel.
 If the host inherited a peer judgment, report the lost blindness before review.
