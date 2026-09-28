@@ -1,6 +1,6 @@
 {
   "name": "audit-skill-by-derailment",
-  "version": "1.0.89",
+  "version": "1.0.90",
   "description": "Use if testing a skill with an agent execution trace; never for ordinary code, PR, or workflow review.",
   "author": {
     "name": "Yigit Konur",
