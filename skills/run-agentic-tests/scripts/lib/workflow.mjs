@@ -8,6 +8,7 @@ import { CliError, validateRecord, validateShape } from './contracts.mjs';
 import { loadDependencies, getDependencies, dependencyLocation } from './dependencies.mjs';
 import { readYaml, readCampaign, readRecords, writeRecord, withController, containedPath, stableStringify } from './store.mjs';
 import { renderHandoff } from './handoffs.mjs';
+import { resolveInput, inputLabel } from './inputs.mjs';
 
 const execute = promisify(execFile);
 const now = () => new Date().toISOString();
@@ -187,7 +188,7 @@ async function createTask(options, state) {
     else if (stableStringify(request.case_ids) !== stableStringify(previous.case_ids)) fail('INVALID_REPLACEMENT', 'A replacement must retain the assigned cases.');
   }
   for (const dep of task.dependencies) findTask(state, dep);
-  for (const input of task.required_inputs) containedPath(state.campaign, input);
+  for (const input of task.required_inputs) await resolveInput(state.campaign, state.config.project, input);
   if (task.case_ids.length > 1 && !task.group) fail('INVALID_GROUP', 'Grouped variants require declared shared setup, reliable reset, and independent results.');
   const addOutput = (kind, recordId, relative, caseId) => {
     task.outputs.push({ kind, record_id: recordId, path: relative, ...(caseId ? { case_id: caseId } : {}) });
@@ -365,14 +366,17 @@ async function createTask(options, state) {
     await mkdir(containedPath(state.campaign, `${root}/evidences`), { recursive: true });
   }
   for (let i = 0; i < drafts.length; i++) await writeText(state.campaign, task.draft_paths[i], getDependencies().YAML.stringify(drafts[i]));
-  await writeText(state.campaign, `tasks/${id}/10-handoff.md`, renderHandoff(task));
+  await writeText(state.campaign, `tasks/${id}/10-handoff.md`, renderHandoff(task, { campaign: state.campaign, project: state.config.project }));
   return { task, task_id: id, actor_id: actor, handoff_path: `tasks/${id}/10-handoff.md`, draft_paths: task.draft_paths, outputs: task.outputs };
 }
 
 async function eligibility(task, state) {
   const reasons = [];
   for (const id of task.dependencies) if (findTask(state, id).state !== 'DONE') reasons.push(`DEPENDENCY:${id}`);
-  for (const input of task.role === 'verifier' ? [] : task.required_inputs) if (!existsSync(containedPath(state.campaign, input))) reasons.push(`MISSING_INPUT:${input}`);
+  for (const input of task.required_inputs) {
+    try { if (!existsSync(await resolveInput(state.campaign, state.config.project, input))) reasons.push(`MISSING_INPUT:${inputLabel(input)}`); }
+    catch (error) { reasons.push(`${error.code || 'MISSING_INPUT'}:${inputLabel(input)}`); }
+  }
   if (task.role === 'executor') {
     const environment = environmentFor(state, task.target_id)?.record;
     if (!environment || environment.status !== 'READY') reasons.push('TARGET_NOT_READY');

@@ -259,8 +259,29 @@
         "required_inputs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
           },
           "minItems": 0,
           "uniqueItems": true
@@ -532,8 +553,29 @@
         "required_inputs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "const": "project"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "base",
+                  "path"
+                ]
+              }
+            ]
           },
           "minItems": 0
         },

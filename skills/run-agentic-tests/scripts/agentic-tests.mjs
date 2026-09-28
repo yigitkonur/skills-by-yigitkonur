@@ -109,7 +109,8 @@ export async function main(argv = process.argv.slice(2)) {
       schema_version: 1,
       command: command ?? null,
       worker_may_finish: false,
-      error: { code: error.code ?? 'INTERNAL_ERROR', message: error.message, details: error.details ?? [] },
+      error: { code: error.code ?? 'INTERNAL_ERROR', message: error.message, details: error.details ?? [], issues: error.issues ?? [] },
+      next_actions: error.next_actions ?? ['Correct the reported problem and retry; preserve drafts and accepted history.'],
     })}\n`);
     return exitCode;
   }
