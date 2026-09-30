@@ -1,128 +1,88 @@
-# Topology, Worktrees & Geometry Rules
+# Topology and worktrees
 
-Organize terminal execution surfaces using Herdr's native topology primitives. Selecting the correct boundary prevents workspace sprawl, resource collisions, and unreadable layouts.
+Read before provisioning. Verify caller and intended repository separately.
+Root keeps its pane; ordinary jobs get visible task tabs in its workspace.
+Native worktrees belong to the intended repository's own project group.
 
----
+## Choose by ownership
 
-## 1. The Four-Tier Topology Hierarchy
-
-Match the primitive to the actual scope and isolation requirements:
-
-```
-[ Isolation Need ]                   [ Recommended Primitive ]
-Same issue / paired review  ──────►  Sibling pane in current tab (herdr pane split)
-Independent read-only topic ──────►  Tab in current workspace (herdr tab create)
-Dirty / concurrent writes   ──────►  Native Git worktree workspace (herdr worktree create)
-Independent repository      ──────►  New workspace (herdr workspace create)
-```
-
-1. **Sibling Pane in Same Tab**:
-   - **When to use**: Closely coupled execution (e.g. an implementer and its paired side-by-side reviewer, or a dev server running beside a test runner), provided terminal geometry permits readable splits.
-   - **Command**: `herdr pane split --pane "$TARGET_PANE" --direction <right|down> --cwd "$PWD" --no-focus`
-   - **Benefit**: Both panes remain visible simultaneously in the same viewport, enabling live observation without switching tabs.
-2. **Tab in Existing Workspace**:
-   - **When to use**: Independent read-only topic, background monitoring, review under constrained geometry, or inspection within the same repository that does NOT mutate files concurrently.
-   - **Command**:
-     ```bash
-     # Extract workspace_id from caller envelope ({result: {pane: {workspace_id: ...}}}) with strict non-empty string guard
-     WS_ID="$(herdr pane current --current | jq -er '.result.pane.workspace_id | select(type == "string" and length > 0)')" || {
-       echo "ERROR: Failed to resolve valid caller workspace_id; aborting tab creation." >&2
-       exit 1
-     }
-     herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "<NAME>" --no-focus
-     ```
-     *(Note: `--current` identifies the caller. To target another pane, use `herdr pane current --pane "$TARGET_PANE"`. Never create a tab without an explicitly verified, non-null workspace ID).*
-   - **Benefit**: Keeps tabs grouped within the verified project workspace without sprawling across windows or creating unneeded disk checkouts.
-3. **Native Worktree Workspace**:
-   - **When to use**: Any task requiring dirty or concurrent write isolation in the same repository.
-   - **Command**:
-     ```bash
-     herdr worktree create \
-       --cwd "$REPO_ROOT" \
-       --path "$WORKTREE_PATH" \
-       --branch "$BRANCH_NAME" \
-       --base "$BASE_REF" \
-       --label "task-${TASK_ID}" \
-       --no-focus
-     ```
-   - **Benefit**: Creates the isolated Git worktree checkout, provisions a dedicated Herdr workspace bound to it, and starts Pane 1 directly inside the directory in one atomic operation.
-4. **Independent Dedicated Workspace**:
-   - **When to use**: Only when working on a genuinely separate repository or detached external service.
-   - **Command**: `herdr workspace create --label "<REPO_NAME>"`
-
----
-
-## 2. Geometry & Projected Usable Dimensions
-
-Splitting terminal panes without checking dimensions destroys readability. During planning, a manager pane was observed compressed to only 12 columns wide due to repeated right splits.
-
-### Geometry Decision Rules & Projected Dimensions:
-1. **Inspect Dimensions First**:
-   ```bash
-   herdr pane layout --current
-   ```
-2. **Projected Child Dimensions Calculation**:
-   Terminal pane splits share physical space with border and separator lines (1 column or row):
-   $$\text{Projected Child Width} = \left\lfloor \frac{\text{Parent Width} - 1}{2} \right\rfloor, \quad \text{Projected Child Height} = \left\lfloor \frac{\text{Parent Height} - 1}{2} \right\rfloor$$
-   Each child pane must satisfy minimum usable dimensions ($\ge 80$ columns for readable code and diffs, $\ge 20$ rows for terminal context):
-   - **Horizontal Split (`--direction right`)**:
-     Permissible only when parent width satisfies $\ge 161$ columns ($2 \times 80 + 1$). Splitting a narrower parent divides columns in half, creating unreadable ~50–60-column viewports.
-   - **Vertical Split (`--direction down`)**:
-     Permissible when parent width $< 161$ columns but parent height satisfies $\ge 41$ lines ($2 \times 20 + 1$).
-   - **Tab Fallback Under Constrained Geometry**:
-     If *neither* orientation yields usable child dimensions ($\ge 80$ columns and $\ge 20$ rows), **do NOT split the pane further**. Open a dedicated review or tool tab instead:
-     ```bash
-     # Extract workspace_id from caller envelope ({result: {pane: {workspace_id: ...}}}) with strict non-empty string guard
-     WS_ID="$(herdr pane current --current | jq -er '.result.pane.workspace_id | select(type == "string" and length > 0)')" || {
-       echo "ERROR: Failed to resolve valid caller workspace_id; aborting tab creation." >&2
-       exit 1
-     }
-     herdr tab create --workspace "$WS_ID" --cwd "$PWD" --label "review-${TASK_ID}" --no-focus
-     ```
-3. **Preserve User Focus**:
-   - Always pass `--no-focus` when provisioning panes, tabs, or worktrees for background agents. Never steal active user focus unless explicitly requested.
-
----
-
-## 3. Dynamic Coordinates & Caller Context
-
-Herdr injects physical coordinate handles into each managed pane's environment at startup (`$HERDR_WORKSPACE_ID`, `$HERDR_TAB_ID`, `$HERDR_PANE_ID`).
-
-### Discovery Invariants:
-1. **Live vs. Static Coordinates**: Environment variables reflect coordinates at process launch and become stale if panes are moved or tabs reorganised. **Always query live coordinates with `--current`**:
-   ```bash
-   herdr pane current --current
-   ```
-2. **Targeting Own Pane**: Mandate `--current` for operations affecting the executing pane:
-   ```bash
-   herdr pane layout --current
-   ```
-3. **No UI-Focus Assumptions**: A bare command without `--pane` or `--current` may default to the UI-focused pane, which might belong to the human user or another client. Fail closed on stale context; always specify target IDs explicitly.
-4. **Opaque Handles**: Treat all IDs as opaque strings. Do not invent suffixes or assume numeric sequences.
-
----
-
-## 4. Worktree Lifecycle & Teardown Distinctions
-
-Herdr provides dedicated worktree primitives over the socket API:
-
-| Task | Command | Mechanics |
+| Work | Placement | Checkout |
 |---|---|---|
-| **Create** | `herdr worktree create` | Atomic Git worktree checkout + dedicated Herdr workspace. |
-| **Open** | `herdr worktree open` | Attaches an existing worktree checkout as a Herdr workspace. |
-| **List** | `herdr worktree list` | Enumerates all active worktree-backed workspaces. |
-| **Remove** | `herdr worktree remove --workspace <WS_ID>` | Unlinks worktree checkout from disk and closes Herdr workspace. |
+| Independent read-only jobs | Separate tabs | Shared checkout allowed |
+| One coupled change | One writer tab | Existing checkout or one isolated worktree |
+| Concurrent writers in the same repository | One task tab per writer/worktree | Separate worktrees required |
+| Related independent review | Split in that task's tab | Frozen candidate, read-only |
+| Split cannot fit | Review tab in the same project group | Same frozen candidate |
 
-### Critical Worktree Invariants:
-- **`workspace close` vs `worktree remove`**:
-  - `herdr workspace close <WS_ID>` closes **ONLY** the Herdr UI workspace and pane processes. It leaves the Git worktree directory on disk and Git tracking intact. Retained linked checkouts can be completely intentional for ongoing, deferred, or dirty checkouts.
-  - `herdr worktree remove --workspace <WS_ID>` unlinks the physical directory from disk, unregisters Git worktree tracking, and closes the workspace.
-- **Ownership Verification & Disappearance Check**:
-  - *Before* closing a tab or workspace: verify target identity, confirm ownership of all contained panes, and reconcile pending side effects.
-  - *After* closing: verify that contained pane processes have cleanly disappeared. Never close a workspace containing unowned or user-active panes.
-- **Refusal on Dirty Tree & No Force**:
-  - `herdr worktree remove` automatically refuses if uncommitted changes or untracked files exist. In ordinary operation, `--force` is strictly prohibited; dirty or ambiguous checkouts are safely preserved with a recorded reason.
-- **Local Branch Preservation**:
-  - Removing a worktree checkout does NOT delete its local Git branch. Local branch deletion is a separate, safe engineering step that occurs strictly after worktree removal.
+Do not split a coupled change into arbitrary file lanes. Disjoint-looking files
+can share generated outputs, lockfiles or contracts; isolate concurrent writes.
+Read-only reviewers must not run checks that mutate the author's candidate;
+use a separate snapshot/worktree if a check writes output.
 
-For complete 3-stage teardown gates and preservation rules, see [references/lifecycle-and-cleanup.md](lifecycle-and-cleanup.md).
+## Create and register one surface
+
+```bash
+herdr tab create --workspace "$WORKSPACE_ID" --cwd "$CHECKOUT" --label "$JOB_LABEL" --no-focus
+```
+
+Parse returned JSON and record workspace, tab, pane and terminal IDs. Verify the
+pane is a shell and its cwd is the intended checkout before agent start. Names
+are unique labels, not a replacement for returned opaque IDs.
+
+For concurrent writes use native Herdr worktrees:
+
+```bash
+herdr worktree create --workspace "$REPO_WORKSPACE_ID" --path "$WORKTREE_PATH" --branch "$BRANCH" --base "$BASE" --label "$JOB_LABEL" --no-focus
+```
+
+First inspect `herdr workspace get "$REPO_WORKSPACE_ID"` and compare its worktree
+repository to the intended Git root. A pane's cwd does not establish workspace
+repository identity. If no verified repository workspace exists, use the exact
+inspected repository instead:
+
+```bash
+herdr worktree create --cwd "$REPO" --path "$WORKTREE_PATH" --branch "$BRANCH" --base "$BASE" --label "$JOB_LABEL" --no-focus
+```
+
+Choose **one** source selector: `--workspace` or `--cwd`, never both. On tested
+0.9.1, the combined form was rejected as syntax; the cwd form also established
+the repository's primary workspace when it was not open. Record all created
+surfaces, including that primary workspace, for scoped cleanup. Use explicit
+new path/branch and a verified base. Inspect `herdr worktree list` for the same
+source and preserve returned workspace/repository membership. Child workspace
+IDs differ from the root caller. Do not relabel or attach work to another
+project. If creation partly succeeds, reconcile Git and Herdr before retrying.
+
+## Pair the reviewer
+
+Freeze a coherent candidate before dispatch. Query the actual task layout:
+
+```bash
+herdr pane layout --pane "$AUTHOR_PANE"
+```
+
+Use returned geometry and the installed build's actual split behavior. The live
+0.9.1 right split succeeded and returned two 60-column panes; a hard-coded
+80-column minimum would have incorrectly skipped it. Inspect the resulting
+native UI for usability rather than assuming a universal minimum.
+
+```bash
+herdr pane split --pane "$AUTHOR_PANE" --direction right --cwd "$REVIEW_CHECKOUT" --no-focus
+```
+
+If geometry is insufficient or split fails for capacity, create a related review
+tab in the same worktree/project group. Parse its IDs; do not repeatedly split.
+The reviewer gets read-only authority and exact candidate identity. The author
+stays paused from writes while reviewing its checkout. Any candidate change
+invalidates approval and needs review of the resulting candidate/delta.
+
+## Capacity and adoption
+
+Measure active harnesses, quotas and machine load; include AGY internal teamwork
+agents in the count. There is no fixed Simple cap or wave count. On insufficient
+capacity, serialize or retire completed owned panes first.
+
+An explicitly adopted session needs verified pane/process/session, cwd, role,
+owned changes, pending message and live return route. Update its supervisor
+route only after adoption; do not launch a duplicate worker or steal another
+project's pane. Cleanup has its own independent gates.

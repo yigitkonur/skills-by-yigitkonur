@@ -674,7 +674,7 @@
     {
       "name": "herdr",
       "source": "./",
-      "description": "Use if orchestrating coding agents, parallel worktrees, split panes, or session lifecycle via Herdr CLI across direct, task, or managed workflows.",
+      "description": "Use if controlling interactive coding agents, tabs, worktrees, or session lifecycle through Herdr CLI.",
       "version": "1.0.90",
       "category": "automation",
       "strict": false,
