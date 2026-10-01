@@ -29,22 +29,24 @@ Parse returned JSON and record workspace, tab, pane and terminal IDs. Verify the
 pane is a shell and its cwd is the intended checkout before agent start. Names
 are unique labels, not a replacement for returned opaque IDs.
 
-For concurrent writes use native Herdr worktrees:
+For concurrent writes use native Herdr worktrees. **Before creation**, inspect
+`herdr workspace list` for a workspace whose repository matches the intended
+Git root. Use its returned opaque ID as `REPO_WORKSPACE_ID`, then verify it with
+`herdr workspace get "$REPO_WORKSPACE_ID"`. A pane's cwd does not establish
+workspace repository identity. Only after verification use:
 
 ```bash
 herdr worktree create --workspace "$REPO_WORKSPACE_ID" --path "$WORKTREE_PATH" --branch "$BRANCH" --base "$BASE" --label "$JOB_LABEL" --no-focus
 ```
 
-First inspect `herdr workspace get "$REPO_WORKSPACE_ID"` and compare its worktree
-repository to the intended Git root. A pane's cwd does not establish workspace
-repository identity. If no verified repository workspace exists, use the exact
-inspected repository instead:
+If no verified repository workspace exists, use the exact inspected repository
+instead:
 
 ```bash
 herdr worktree create --cwd "$REPO" --path "$WORKTREE_PATH" --branch "$BRANCH" --base "$BASE" --label "$JOB_LABEL" --no-focus
 ```
 
-Choose **one** source selector: `--workspace` or `--cwd`, never both. On tested
+For `worktree create`, choose **one** source selector: `--workspace` or `--cwd`, never both. On tested
 0.9.1, the combined form was rejected as syntax; the cwd form also established
 the repository's primary workspace when it was not open. Record all created
 surfaces, including that primary workspace, for scoped cleanup. Use explicit

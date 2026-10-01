@@ -20,6 +20,10 @@ Before closure:
 herdr pane close "$PANE_ID"
 ```
 
+After the call, query that exact pane with `herdr pane get "$PANE_ID"`;
+confirm `pane_not_found` before marking it retired. A transport error is not
+proof of closure. Preserve remaining checkout paths separately.
+
 The command uses a positional ID, not `--pane`. Do not close root, a live EM,
 an unrelated pane, or a task awaiting input/fixes. Finished pane closure does not
 require a clean Git tree, approved PR or merge. Dirty work remains on disk.

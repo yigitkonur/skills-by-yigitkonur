@@ -48,15 +48,18 @@ Keep complex briefs in a temporary file outside the checkout, then pass its
 contents as one quoted CLI argument. Write the file with a quoted heredoc so
 literal dollar signs and backticks stay text:
 
+For example, this is a **Codex** brief. For AGY/Claude use the prefix from
+the table above; the quoted shell transport stays the same.
+
 ```bash
 cat > "$BRIEF_PATH" <<'BRIEF'
 $herdr (/resolved/absolute/path/herdr/SKILL.md)
 <job scope, authority, checks and verified return pane>
 BRIEF
-if BRIEF_TEXT=$(cat "$BRIEF_PATH"); then
+if BRIEF_TEXT=$(cat "$BRIEF_PATH") && test -n "$BRIEF_TEXT"; then
   herdr agent prompt "$TARGET" "$BRIEF_TEXT" --wait --timeout 30000
 else
-  printf 'Brief unreadable; no submission.\n' >&2
+  printf 'Brief unreadable or empty; no submission.\n' >&2
   false
 fi
 ```

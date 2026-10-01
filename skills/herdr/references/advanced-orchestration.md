@@ -151,10 +151,13 @@ SKILL_DIR=$(dirname "$SKILL_PATH")
 node "$SKILL_DIR/scripts/publish-report.mjs" "$PARTIAL" "$REPORT_PATH"
 ```
 
-Both paths must be absolute; destination ends in `.yaml`. It validates v1 shape
-and any snapshot digest, atomically publishes without overwriting via a hard
-link, verifies bytes and removes the partial. It returns path/SHA256 as JSON;
-errors exit 1 and retain diagnostic artifacts. Keep partial and destination on
+Both paths must be absolute; destination ends in `.yaml`. It validates v1 shape, checkout-relative file paths, full 40/64-hex Git object
+ID syntax and any snapshot digest. It reads a regular partial through a
+no-follow descriptor, publishes a private copy of those bytes without
+overwriting via a hard link, rechecks the snapshot and original partial,
+then removes the unchanged partial. It returns path/SHA256 as JSON;
+errors exit 1 and retain diagnostic artifacts. A post-publication integrity
+error can leave a destination for diagnosis; do not notify or accept it. Keep partial and destination on
 the same filesystem. Requires Node.js and a filesystem supporting hard links.
 The helper does not send a notice, validate live registry/authority, verify task
 correctness or update state. Those remain separate steps below. Extra fields

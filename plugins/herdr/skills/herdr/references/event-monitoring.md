@@ -137,8 +137,10 @@ panel while independent edits continued. Enter submits that question; the next
 panel can show only the remaining question, without a “2 of 2” counter. Match
 question identity/text and selected option, never a fixed page count.
 
-A short `pane wait-output ... --source visible --timeout 3000` can confirm the
-selected row before Enter. A match alone is not sufficient: it must be the known
+A short `herdr pane wait-output "$PANE_ID" --match "$SELECTED_ROW"
+--source visible --timeout 3000` can confirm the selected row before Enter.
+Set the matcher to the actual authorized option observed on the current panel;
+it is required. A match alone is not sufficient: it must be the known
 current question panel, not a transcript or an old screen. If the expected row
 is absent, read the current screen and stop that key sequence; do not submit.
 After answering, the TUI may say the reply will be submitted at the next tool

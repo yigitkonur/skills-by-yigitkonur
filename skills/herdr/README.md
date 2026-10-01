@@ -1,6 +1,8 @@
 # herdr
 
-Control visible interactive coding agents, tabs, worktrees and session lifecycle through Herdr. Simple is the default; Advanced adds one Codex/Claude Engineering Manager only when explicitly selected.
+Controlling interactive coding agents, tabs, worktrees, or session lifecycle through Herdr CLI.
+
+Simple is the default; Advanced adds one Codex/Claude Engineering Manager only when explicitly selected.
 
 **Category:** orchestration
 
