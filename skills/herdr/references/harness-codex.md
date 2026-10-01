@@ -1,51 +1,84 @@
-# Codex Harness Physics & Steering Protocols
+# Codex interactive harness
 
-This reference defines pane-based prompt delivery, steering behavior, and parser recovery for OpenAI Codex agents operating within Herdr.
+Read for Codex startup, steering and queue decisions. All work stays in a visible
+interactive TUI, including reviewers and the Advanced EM.
 
----
+## Start and identify
 
-## 1. Visible Pane Steering
+Use the chosen profile and `--config 'model_reasoning_effort="EFFORT"'` after the
+Herdr `--` separator. Use appropriate native sandbox authority; read-only for a
+reviewer, workspace-write for an authorized writer. Never add approval bypasses
+by default. Record requested vs natively observed model/effort separately. A new folder
+can show trust/continue even when start reports input-ready; complete the
+first-folder sequence in event-monitoring.md before submitting the task.
 
-In the interactive Codex TUI:
-- **Prompt Delivery**: Verify the target pane and agent identity, then deliver a single instruction with `herdr agent prompt <PANE_ID> <TEXT>` without `--wait`. If Codex is busy, inspect its visible buffer and wait for the current tool boundary before deciding whether any follow-up is needed.
-- **Receipt**: A successful prompt command proves submission only. Read `herdr agent read <PANE_ID> --source visible` or recent scrollback and confirm Codex consumed the instruction or produced the expected checkpoint before acting on it.
-- **Never Apply AGY Escape Mechanics to Codex**: The Escape key does NOT behave like AGY's composer-staging mechanism in Codex. Sending Escape blindly to a busy Codex session can close dialogs, cancel active prompts unexpectedly, or leave unhandled PTY state.
+New task briefs use `$herdr (/resolved/absolute/path/herdr/SKILL.md)`, preserved
+literally through quoted file-based CLI arguments or subprocess argv. Do not send AGY's `/teamwork-preview` or
+`/herdr` parser token to Codex. If skill discovery fails, read the absolute file.
 
----
+## Verify Herdr transport permissions
 
-## 2. Pending Prompt Discipline
+The live `workspace-write` worker could edit/check its assigned files but Herdr
+reads failed with `Operation not permitted`: the sandbox denied local socket
+access. With `approval_policy=never`, scoped escalation was unavailable. This is
+a transport/permission blocker, not evidence of a deleted pane or failed task.
+Preserve the result and report the callback failure; do not retry identical
+commands or guess new IDs.
 
-1. **One Target, One Message**: Keep one verified pane ID and one pending instruction per decision. Do not submit the same brief again because Codex has not reached a tool boundary yet.
-2. **Inspect Before Recovery**: Use pane scrollback, `herdr agent get`, and `herdr pane process-info --pane <PANE_ID>` to distinguish an active turn from an idle composer or a blocked modal.
-3. **Continue in the Same Pane**: Once the earlier instruction is visibly consumed or the agent is input-ready, send the next concise prompt to that pane. Preserve the session and its scrollback.
+When interactive approvals are within the assignment's authority, a per-launch
+`--ask-for-approval on-request --no-daemon` kept the tested sandbox while enabling
+native command-specific approval. The pilot resumed the exact session, approved
+only its displayed Herdr reads/callback once, and delivered the callback. No
+global config, persistent prefix grant or sandbox bypass was needed. Inspect
+each actual command before approving it; do not approve unrelated operations.
+If approvals are disallowed, retain terminal/file evidence for the supervisor
+and mark delivery blocked. Verify socket access before relying on Codex as EM.
 
----
+## Immediate steering vs next task
 
-## 3. Slash Parser Failure Recovery
+`herdr agent prompt TARGET TEXT` pastes text and Enter. On a working Codex turn,
+Enter can steer the current turn at its next opportunity. It does not promise a
+separate next turn. Read visible/recent output to confirm actual consumption.
 
-Codex agents may reject or fail to parse slash command prefixes (e.g. `/herdr`, `/teamwork-preview`, `/boost`) if skill configurations or system prompts differ:
+Default for a distinct next task: wait until input-ready, then submit it once.
+Track one pending message per target. Never resend because a tool is still busy;
+never apply AGY Escape staging to Codex.
 
-### Recovery Rules:
-1. **Fallback to Plain Language**: If a slash prefix fails or triggers a command-not-found error, **immediately switch to clear, standalone natural language**:
-   - Instead of: `/herdr /teamwork-preview You are the Lead Implementer...`
-   - Use: `You are the Lead Implementer for Task #101. Review the following brief and implement...`
-2. **No Blind Repetition**: Never repeatedly resend an identical rejected slash command. If the parser rejects the token once, it will reject it again.
+## Next-turn queue: capability-gated
 
----
+Only use this path after a live disposable pilot confirms Tab queues text in the
+installed Codex TUI. Help listing `tab` as a key proves transport support only,
+not queue behavior. If Tab is unverified or does not work, use the ready-state
+path above; do not substitute the CLI `codex queue` command.
+The 0.159.2 pilot staged one follow-up with Tab; its distinct reply appeared
+after the active phase completed, with a separate turn completion. This is
+installed-version evidence, not a guarantee for another build.
 
-## 4. Sandboxing & Permission Flags
-
-When starting Codex agents via `herdr agent start`:
+On a verified working Codex pane with an empty composer and no modal:
 
 ```bash
-herdr agent start reviewer --kind codex --pane "$PANE_ID" -- [AGENT_ARGS]...
+herdr pane send-text "$PANE_ID" "$TEXT"
 ```
 
-### Critical Security Invariants:
-1. **Sandbox Policies**:
-   - `read-only`: Safe default for auditors and read-only reviewers.
-   - `workspace-write`: Default for implementers requiring local file modifications.
-   - `danger-full-access`: Extreme risk; grants unconstrained system access.
-2. **Approval Bypasses**:
-   - Flags such as `--dangerously-bypass-approvals-and-sandbox` or `--dangerously-bypass-hook-trust` strip confirmation dialogs entirely.
-   - **Strict Invariant**: These flags are permitted ONLY when explicitly authorized for dedicated, externally sandboxed environments. Never enable them by default on production machines or uncontained hosts.
+Read the visible composer and confirm the intended literal text, then:
+
+```bash
+herdr pane send-keys "$PANE_ID" tab
+```
+
+Inspect the visible pending-message surface and eventual distinct next-turn
+consumption. Do not press Enter after Tab as an assumed fallback. If Tab only
+changes focus or leaves text in the composer, do not resend/append: reconcile the
+staged text, and return to verified readiness before submitting the next task.
+If a live pilot disproves this path, remove the queue recipe from the local
+instructions and keep ready-state submission. Never claim queue success based
+on the key-injection exit code.
+
+## Recovery
+
+Read registry, visible screen and process-info before intervention. Resume the
+exact native session only after confirming the old process is dead and the pane
+is a shell. Check installed `codex resume --help` for syntax. Preserve scope and
+pending delivery; no `codex exec`, noninteractive `codex review`, CLI queue or
+hidden runner is a recovery substitute. See event-monitoring.md for bounded
+waits and fail-stop rules.

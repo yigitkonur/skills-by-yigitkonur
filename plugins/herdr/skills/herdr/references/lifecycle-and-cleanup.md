@@ -1,108 +1,70 @@
-# Lifecycle, Resource Teardown & Cleanup Gates
+# Lifecycle and cleanup
 
-Resource cleanup follows three distinct, decoupled engineering stages: pane retirement, worktree checkout removal, and local branch retirement. Decoupling these stages prevents orphaned processes, data loss, and git reference corruption.
+Read when retiring a finished job or removing its checkout. This is the single
+cleanup contract for both modes. Pane closure, checkout removal and branch
+removal are separate decisions; a blocked deletion never keeps a finished TUI
+alive just to wait for a PR merge.
 
-```
-[ Task Complete & Verified ]
-            │
-            ▼
-[ Stage 1: Pane Retirement ] ──────► Close owned worker / reviewer panes
-            │                        (Preserves checkout directory on disk)
-            ▼
-[ Stage 2: Worktree Removal Gate ] ─► Verify clean tree + delivery completion
-            │                        + ignored build artifacts safety
-            │                        herdr worktree remove --workspace <WS_ID>
-            ▼
-[ Stage 3: Safe Branch Retirement ] ─► Delete local branch (safe git branch -d)
-                                     Refusal preserves branch reference; NO -D fallback.
-```
+## 1. Close finished owned panes promptly
 
----
+Before closure:
 
-## 1. Stage 1: Terminal & Pane Retirement
+1. Read the handback and actual evidence; record result, failures and file paths.
+2. Confirm no unresolved terminal operation or child process needs the pane.
+3. Resolve ownership: keep an author with assigned review fixes, or explicitly
+   reassign those fixes and preserve the handoff before closing the author.
+4. Preserve required session/result evidence outside the disposable terminal.
+5. Verify the pane belongs to this task and is finished, then close by ID:
 
-- **Worker Pane Retirement**:
-  - Once an owned worker's handback report is received and verified durable on disk, ownership is reconciled, and no further operations remain in that pane, close the pane:
-    ```bash
-    herdr pane close "$PANE_ID"
-    ```
-  - Terminal release does NOT wait for PR merge or milestone completion. Releasing finished terminals promptly frees memory and PTY allocations.
-- **Review & Author Retention Invariant**:
-  - When using the side-by-side author/reviewer pattern, the author pane is retained while the reviewer is actively auditing.
-  - **Do NOT close an author pane merely because a review verdict was reached**: If a review concludes with findings or a rejection verdict and fixes remain assigned to that author, keep the author pane alive to receive delta review findings and implement fixes.
-  - An author pane is retired only when its candidate is accepted or the task is explicitly re-assigned or canceled.
-- **Session Retention Rule**:
-  - If a session must be retained for follow-up debugging, record an explicit retention reason and release trigger in the manager state. Conversation IDs and artifacts must be safe outside the process before closing.
-- **Leadership Retirement**:
-  - Leadership panes (EM or supervisor) retire ONLY when no remaining coordination, integration, or delivery responsibilities exist. Never retire leadership prematurely at an arbitrary wave boundary.
-  - Never close active user-owned panes.
-- **Pre-Closure & Disappearance Verification**:
-  - Before closing any pane, tab, or workspace, verify live pane, session, child process, and pending effect ownership. Ensure all pending `.partial` files or unconsumed notices are finalized.
-  - When closing a tab or workspace, verify ownership and successful termination of ALL child panes before whole-tab or whole-workspace closure.
-  - Verify physical disappearance (`herdr pane list`, `herdr workspace list`) after issuing close commands.
-
----
-
-## 2. Stage 2: Worktree Removal Gate
-
-> [!CAUTION]
-> **Worktree Removal is NOT Terminal Closure**:
-> Closing a terminal pane does NOT delete its Git worktree checkout.
-> Deleting a worktree checkout permanently removes the working directory from the filesystem.
-
-### Prerequisites Before Worktree Removal:
-1. **Delivery / Preservation Verification & Retained Commit Reachability**:
-   - Ensure explicit retained commit reachability for ALL paths: a remote PR merged status or GitHub squash merge alone does NOT preserve the author's exact commit object in local git history. Verify the author's candidate commit object ID is preserved in an explicit retained local Git ref (`git tag` or `refs/archive/...`), local branch, or verified bundle/object archive (`git bundle create ...`) before worktree checkout removal (a textual run-root patch or completion report preserves diff content separately, but does NOT establish Git object reachability).
-   - If delivered via PR: verify PR is confirmed merged on remote:
-     ```bash
-     gh pr view "$PR_URL" --json state -q .state | grep -iq "MERGED"
-     ```
-     AND ensure candidate commit SHA is reachable locally.
-   - If delivered locally: verify candidate commit is merged into target branch:
-     ```bash
-     git -C "$REPO_ROOT" merge-base --is-ancestor "$CANDIDATE_SHA" "$TARGET_BRANCH"
-     ```
-   - If read-only mission: verify task was non-mutating (no unmerged branch created).
-   - If abandoned: verify decision is explicitly authorized and artifacts/diff are preserved at run root.
-2. **Cleanliness Verification**:
-   - Verify zero uncommitted or untracked changes remain:
-     ```bash
-     test -z "$(git -C "$WORKTREE_PATH" status --porcelain)"
-     ```
-3. **Ignored Artifact Safety**:
-   - Verify that required build outputs, logs, or ignored artifacts in `.gitignore` are either safely archived outside the worktree or confirmed disposable.
-4. **Open Operations Gate**:
-   - Verify no background processes, compilers, or test runners remain running inside the worktree directory.
-
-### Removal Command:
 ```bash
-herdr worktree remove --workspace "$WORKSPACE_ID"
+herdr pane close "$PANE_ID"
 ```
 
-### Critical Invariants:
-- **Ordinary Cleanup Uses No Force**: Ordinary cleanup uses NO force (`--force` is prohibited on ordinary paths). If uncommitted or untracked changes exist, or if checkout state is ambiguous, retain the worktree with an explicit recorded reason and release trigger rather than forcing removal.
-- **Preserve Ambiguous Checkouts**: Dirty or ambiguous worktrees are **retained with a recorded reason and release trigger**; never force-delete.
-- **Workspace Close vs. Worktree Remove**: `herdr workspace close` closes the UI session only, leaving Git tracking intact. Retained linked checkouts can be completely intentional.
-- **No Global Zero-Worktree Prune**: Never run global worktree prune or seek a "zero worktrees on host" goal. Other branches, features, or teammates may have valid active worktrees. Touch ONLY what this task created.
+After the call, query that exact pane with `herdr pane get "$PANE_ID"`;
+confirm `pane_not_found` before marking it retired. A transport error is not
+proof of closure. Preserve remaining checkout paths separately.
 
----
+The command uses a positional ID, not `--pane`. Do not close root, a live EM,
+an unrelated pane, or a task awaiting input/fixes. Finished pane closure does not
+require a clean Git tree, approved PR or merge. Dirty work remains on disk.
 
-## 3. Stage 3: Safe Local Branch Retirement
+## 2. Preserve or remove the worktree
 
-Git refuses to delete a local branch while it is checked out in an active worktree. Therefore, local branch cleanup occurs **strictly after Stage 2**:
+Default to preserving unmerged/undelivered/dirty work. If removal is authorized,
+verify the exact owned worktree and all these gates:
 
-1. **Safe Local Branch Deletion**:
-   ```bash
-   git -C "$REPO_ROOT" branch -d "$BRANCH_NAME"
-   ```
-2. **Refusal Preservation Rule (No `-D` Fallback)**:
-   - If `git branch -d` refuses (e.g. branch is not fully merged in upstream tracking or rebase produced different commit object IDs), **DO NOT fall back to `git branch -D`**.
-   - Force-deleting (`-D`) destroys the protective named Git reference, leaving commits dangling and making recovery difficult.
-   - Retain the local branch reference and record the retention reason in the final report.
-3. **No Global Remote Prune**:
-   - Never run global remote prunes (`git remote prune origin`). A global prune affects remote tracking branches across the entire repository and disturbs concurrent work in unrelated worktrees.
-4. **Verify Worktree List**:
-   ```bash
-   git -C "$REPO_ROOT" worktree list
-   ```
-   Confirm that the retired worktree path is no longer listed.
+- Tracked, staged and untracked files are clean, or every needed artifact has
+  been explicitly preserved in a verified durable location.
+- Ignored outputs have been inspected too; ordinary `git status` omits them.
+- Candidate delivery/merge or an explicit preservation plan is verified; do not
+  infer safety from a PR being open or a pane being closed.
+- No agent, dev server, test or other process still uses the checkout.
+- Session/result/check artifacts needed later are outside the removed directory.
+
+Discover current `herdr worktree remove --help`. On the inspected CLI, removal
+uses the owned worktree workspace ID, not a checkout path:
+
+```bash
+herdr worktree remove --workspace "$WORKTREE_WORKSPACE_ID"
+```
+
+Never pass `--force`. A refusal means retain and report the reason. Reconcile
+returned state and actual files; do not run an extra Git removal blindly.
+A workspace close may retain or remove its attached worktree according to build
+behavior; do not use it as a deletion shortcut without verifying its semantics.
+
+## 3. Remove a delivered branch only when safe
+
+If authorized, remove only this task's branch using safe `git branch -d` from a
+checkout where that branch is not active. If Git refuses, preserve the branch
+and explain. Never fall back to `-D`, global remote pruning, host-wide worktree
+pruning, or a goal of leaving only one worktree. Remote branch deletion requires
+its own authorized delivery context.
+
+## Handoff and abandonment
+
+On a crash, quota limit or pause, preserve dirty files and candidate identity;
+report remaining processes and pending delivery. A manager replacement adopts
+registered sessions before dispatch. Never erase evidence to make status green.
+Finish by naming retained work and why it remains, rather than “all cleaned” when
+only panes were retired.
