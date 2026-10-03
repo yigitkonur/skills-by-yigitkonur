@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **60 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **61 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -75,7 +75,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 60 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 61 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -200,6 +200,7 @@ answer questions and find things with real web evidence. ships the `internet-res
 drive a browser, a phone, or a terminal workspace mid-session.
 
 - **[herdr](skills/herdr/)** — control interactive agents; Simple by default, Advanced by explicit choice.
+- **[herdr-raycast](skills/herdr-raycast/)** — supervise Herdr agents from Raycast AI Chat, outside any pane: local or over SSH, a ledger per chat, background waits, briefs and worktree PRs.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
 - **[project-manager](skills/project-manager/)** — supervise coding agents with adversarial verification, automated monitoring, structured progress reports, and Herdr-native pane coordination.
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.

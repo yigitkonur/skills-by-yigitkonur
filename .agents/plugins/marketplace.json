@@ -401,6 +401,18 @@
       "category": "Productivity"
     },
     {
+      "name": "herdr-raycast",
+      "source": {
+        "source": "local",
+        "path": "./plugins/herdr-raycast"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "init-agent-config",
       "source": {
         "source": "local",
