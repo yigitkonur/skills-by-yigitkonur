@@ -1,0 +1,35 @@
+{
+  "name": "herdr-raycast",
+  "version": "1.0.91",
+  "description": "Use if driving Herdr from Raycast AI Chat via bash, locally or over SSH; inside a pane, use herdr.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "herdr-raycast"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "herdr-raycast",
+    "shortDescription": "Use if driving Herdr from Raycast AI Chat via bash, locally or over SSH; inside a pane, use herdr.",
+    "longDescription": "Install only the herdr-raycast workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the herdr-raycast skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

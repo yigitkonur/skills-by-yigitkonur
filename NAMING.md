@@ -64,6 +64,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 ### Approved compatibility exceptions
 
 - `herdr` keeps the upstream ecosystem's canonical skill name and the established `/herdr` invocation. Renaming it to `run-herdr` would break existing installs and user muscle memory; all other new tool-control skills still use `run-`.
+- `herdr-raycast` is `herdr`'s companion for driving Herdr from Raycast AI Chat, outside any pane. It keeps the `herdr-` prefix so the pair is found together, and the name is already its Raycast skill id (`load_skills`), its system prompt and its ledger path; `run-herdr-raycast` would break those installs. Proposed exception, pending review.
 - `ci-cd-optimize` predates the current verb registry and remains frozen for install-path compatibility while it is rebuilt. New skills must not copy this object-verb pattern; the compatibility note applies only to the existing `ci-cd-optimize` identity.
 
 ## Anti-Patterns
