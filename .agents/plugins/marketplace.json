@@ -665,6 +665,18 @@
       "category": "Productivity"
     },
     {
+      "name": "test-by-maestro",
+      "source": {
+        "source": "local",
+        "path": "./plugins/test-by-maestro"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "test-by-mcpc-cli",
       "source": {
         "source": "local",
