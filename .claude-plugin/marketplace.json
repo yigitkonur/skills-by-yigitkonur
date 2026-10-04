@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 60 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 61 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.91",
       "category": "bundle",
       "strict": false,
@@ -71,6 +71,7 @@
         "./skills/run-testsprite-backend",
         "./skills/run-testsprite-frontend",
         "./skills/run-ts-cleanup",
+        "./skills/test-by-maestro",
         "./skills/test-by-mcpc-cli",
         "./skills/update-agent-config",
         "./skills/upgrade-typescript-go",
@@ -177,7 +178,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Testing — independent agentic E2E campaigns across web, CLI, MCP, and mobile runtimes, plus TestSprite and ego-browser journeys.",
+      "description": "Testing — independent agentic E2E campaigns, Maestro mobile flows, TestSprite, and ego-browser journeys.",
       "version": "1.0.91",
       "category": "bundle",
       "tags": [
@@ -188,7 +189,8 @@
         "./skills/run-agentic-tests",
         "./skills/run-ego-e2e",
         "./skills/run-testsprite-backend",
-        "./skills/run-testsprite-frontend"
+        "./skills/run-testsprite-frontend",
+        "./skills/test-by-maestro"
       ]
     },
     {
@@ -930,6 +932,17 @@
       "strict": false,
       "skills": [
         "./skills/run-ts-cleanup"
+      ]
+    },
+    {
+      "name": "test-by-maestro",
+      "source": "./",
+      "description": "Use if writing, running, or debugging Maestro mobile E2E tests on iOS Simulators or Android.",
+      "version": "1.0.91",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/test-by-maestro"
       ]
     },
     {

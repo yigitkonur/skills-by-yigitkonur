@@ -91,8 +91,14 @@ GROUPS = {
     ),
     "yk-testing": (
         "testing",
-        "Testing — independent agentic E2E campaigns across web, CLI, MCP, and mobile runtimes, plus TestSprite and ego-browser journeys.",
-        ["run-agentic-tests", "run-ego-e2e", "run-testsprite-backend", "run-testsprite-frontend"],
+        "Testing — independent agentic E2E campaigns, Maestro mobile flows, TestSprite, and ego-browser journeys.",
+        [
+            "run-agentic-tests",
+            "run-ego-e2e",
+            "run-testsprite-backend",
+            "run-testsprite-frontend",
+            "test-by-maestro",
+        ],
     ),
     "yk-build": (
         "build",

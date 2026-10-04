@@ -1,0 +1,35 @@
+{
+  "name": "test-by-maestro",
+  "version": "1.0.91",
+  "description": "Use if writing, running, or debugging Maestro mobile E2E tests on iOS Simulators or Android.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "test-by-maestro"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "test-by-maestro",
+    "shortDescription": "Use if writing, running, or debugging Maestro mobile E2E tests on iOS Simulators or Android.",
+    "longDescription": "Install only the test-by-maestro workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the test-by-maestro skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}
