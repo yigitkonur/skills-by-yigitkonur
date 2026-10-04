@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const commands = {
@@ -118,6 +119,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+const invoked = () => { try { return realpathSync(process.argv[1]); } catch { return process.argv[1]; } };
+if (process.argv[1] && import.meta.url === pathToFileURL(invoked()).href) {
   process.exitCode = await main();
 }
