@@ -48,12 +48,28 @@ On macOS workstations with Xcode installed, iOS Simulator tests run locally with
 - Booted iOS Simulator.
 - Target application `.app` binary installed on the simulator.
 
-### 2. Device Discovery and Execution
+### 2. Device Discovery and Simulator Booting
 
-Identify booted simulators:
+Identify booted or available simulators:
 
 ```bash
+# Check currently booted simulators
 xcrun simctl list devices booted
+
+# List all available simulators
+xcrun simctl list devices available
+```
+
+If no simulator is booted, boot a target simulator by name or UDID, or use Maestro:
+
+```bash
+# Boot target simulator by name or UDID
+xcrun simctl boot "iPhone 16"
+# or: xcrun simctl boot "$UDID"
+
+# Alternatively, launch the Simulator GUI or use Maestro start-device
+open -a Simulator
+# or: maestro start-device --platform=ios
 ```
 
 Execute flows directly against the booted simulator:

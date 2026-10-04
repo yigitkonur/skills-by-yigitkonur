@@ -25,8 +25,8 @@ Author, validate, execute, and diagnose mobile E2E tests with Maestro across iOS
 
 ## Source of truth
 
-1. Confirm installed CLI: run `maestro --version`. Tested baseline is `2.11.0`.
-2. Inspect scoped command options with `maestro --help`, `maestro test --help`, and `maestro check-syntax --help`.
+1. Confirm installed CLI: run `maestro --version` (install if missing: `curl -fsSL "https://get.maestro.mobile.dev" | bash`). Tested baseline is `2.11.0`.
+2. Inspect scoped command options with `maestro --help`, `maestro test --help`, and `maestro hierarchy --help`. Note that `check-syntax` takes only `<file>` or `-` without `--help`.
 3. iOS Simulators require macOS with Xcode (`xcode-select -p`); Android requires ADB and Java 17+ (`java -version`). Modern Maestro uses bundled XCUITest runners and `applesimutils`; `idb` is completely deprecated.
 
 ## Load-bearing rules

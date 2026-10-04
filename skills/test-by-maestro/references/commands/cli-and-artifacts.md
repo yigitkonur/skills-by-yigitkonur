@@ -7,6 +7,9 @@ Maestro CLI provides declarative test execution, offline syntax validation, view
 Verify the installed binary and runtime baseline:
 
 ```bash
+# Install Maestro CLI if missing
+curl -fsSL "https://get.maestro.mobile.dev" | bash
+
 maestro --version
 # Tested baseline: 2.11.0
 ```
@@ -16,9 +19,10 @@ Inspect command help and available options:
 ```bash
 maestro --help
 maestro test --help
-maestro check-syntax --help
 maestro hierarchy --help
 ```
+
+Note: `maestro check-syntax` does not accept `--help` or `-h`; it strictly takes `<file>` or `-` for stdin.
 
 ### Command and Flag Scope
 
@@ -30,7 +34,7 @@ Maestro accepts platform and device targeting flags at both the global CLI level
 
 ## Offline Syntax Checking
 
-Validate flow YAML structure and command syntax without connecting to a device or simulator runtime:
+Validate flow YAML structure and command syntax without connecting to a device or simulator runtime (`maestro check-syntax` takes only `<file>` or `-` for stdin; it has no `--help` flag):
 
 ```bash
 # Validate a specific flow file

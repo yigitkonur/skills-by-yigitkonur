@@ -26,6 +26,8 @@ onFlowComplete:
 ### Configuration Keys
 
 - **`appId`**: Target application package ID (Android) or bundle identifier (iOS).
+  - *iOS Discovery*: Run `xcrun simctl listapps booted` (or for a specific device: `xcrun simctl listapps "$UDID"`). Alternatively inspect `Info.plist` (`CFBundleIdentifier`) or `app.json` (`expo.ios.bundleIdentifier`).
+  - *Android Discovery*: Run `adb shell pm list packages` or `adb shell pm list packages -3` (third-party installed apps). Alternatively inspect `app/build.gradle` (`applicationId`) or `app.json` (`expo.android.package`).
 - **`env`**: Map of environment variables accessible via `${VAR_NAME}` in commands.
 - **`tags`**: List of categorization tags for filtering runs via `--include-tags` or `--exclude-tags`.
 - **`onFlowStart`**: Sequence of commands executed prior to the main flow. If a start hook fails, the main flow is skipped.
@@ -133,6 +135,25 @@ Combine element identity with state checks:
 ```
 
 - **`swipe`**: Performs gesture across coordinates or directions (`UP`, `DOWN`, `LEFT`, `RIGHT`).
+
+### Media and Telemetry Commands
+
+Capture visual and video evidence during test execution:
+
+- **`takeScreenshot: <path>`**: Captures an immediate screen image and saves it to `<path>.png` (relative to current working directory or `--test-output-dir`).
+- **`startRecording: <path>`**: Starts continuous video recording of the device screen to `<path>.mp4`.
+- **`stopRecording`**: Stops the active video recording and finalizes the output file.
+
+```yaml
+# Capture screenshot at key milestone or before sensitive action
+- takeScreenshot: artifacts/home_screen
+
+# Record critical user journey
+- startRecording: artifacts/checkout_flow
+- tapOn: "Checkout"
+- assertVisible: "Payment Method"
+- stopRecording
+```
 
 ### Assertions
 
