@@ -46,24 +46,31 @@ Maestro uses local port 22087 and system XCUITest drivers. Multiple concurrent t
 ```bash
 lock="$HOME/.cache/test-by-maestro/driver.lock"
 mkdir -p "$(dirname "$lock")"
-if ! mkdir "$lock" 2>/dev/null; then
+acquired=0
+for _ in 1 2; do
+  if mkdir "$lock" 2>/dev/null; then
+    acquired=1
+    break
+  fi
+  owner_pid=""
+  owner_udid=""
   if [ -f "$lock/owner" ]; then
     read -r owner_pid owner_udid < "$lock/owner" || true
-    if [ -n "${owner_pid:-}" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
-      printf 'Removing stale driver lease from dead PID %s (device %s)\n' "$owner_pid" "${owner_udid:-unknown}" >&2
-      rm -f "$lock/owner"
-      rmdir "$lock" 2>/dev/null || true
-      mkdir "$lock"
-    else
-      printf 'Driver lease busy: held by active PID %s on %s\n' "$owner_pid" "${owner_udid:-unknown}" >&2
-      exit 75
-    fi
-  else
-    printf 'Driver lease busy\n' >&2
-    exit 75
   fi
+  if [ -z "${owner_pid:-}" ] || ! kill -0 "$owner_pid" 2>/dev/null; then
+    printf 'Removing stale driver lease from dead PID %s (device %s)\n' "${owner_pid:-none}" "${owner_udid:-unknown}" >&2
+    rm -f "$lock/owner"
+    rmdir "$lock" 2>/dev/null || true
+    continue
+  fi
+  printf 'Driver lease busy: held by active PID %s on %s\n' "$owner_pid" "${owner_udid:-unknown}" >&2
+  exit 75
+done
+if [ "$acquired" -ne 1 ]; then
+  printf 'Driver lease busy\n' >&2
+  exit 75
 fi
-printf '%s %s\n' "$$" "$udid" > "$lock/owner"
+printf '%s %s\n' "$$" "${udid:-${target_udid:-unknown}}" > "$lock/owner"
 trap 'rc=$?; rm -f "$lock/owner"; rmdir "$lock" || true; exit "$rc"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -143,22 +150,29 @@ if [ "$mode" = test ]; then
   test "$ownership" = confirmed || { printf 'Operator ownership unconfirmed\n' >&2; exit 75; }
   lock="$HOME/.cache/test-by-maestro/driver.lock"
   mkdir -p "$(dirname "$lock")"
-  if ! mkdir "$lock" 2>/dev/null; then
+  acquired=0
+  for _ in 1 2; do
+    if mkdir "$lock" 2>/dev/null; then
+      acquired=1
+      break
+    fi
+    owner_pid=""
+    owner_udid=""
     if [ -f "$lock/owner" ]; then
       read -r owner_pid owner_udid < "$lock/owner" || true
-      if [ -n "${owner_pid:-}" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
-        printf 'Removing stale driver lease from dead PID %s (device %s)\n' "$owner_pid" "${owner_udid:-unknown}" >&2
-        rm -f "$lock/owner"
-        rmdir "$lock" 2>/dev/null || true
-        mkdir "$lock"
-      else
-        printf 'Driver lease busy: held by active PID %s on %s\n' "$owner_pid" "${owner_udid:-unknown}" >&2
-        exit 75
-      fi
-    else
-      printf 'Driver lease busy\n' >&2
-      exit 75
     fi
+    if [ -z "${owner_pid:-}" ] || ! kill -0 "$owner_pid" 2>/dev/null; then
+      printf 'Removing stale driver lease from dead PID %s (device %s)\n' "${owner_pid:-none}" "${owner_udid:-unknown}" >&2
+      rm -f "$lock/owner"
+      rmdir "$lock" 2>/dev/null || true
+      continue
+    fi
+    printf 'Driver lease busy: held by active PID %s on %s\n' "$owner_pid" "${owner_udid:-unknown}" >&2
+    exit 75
+  done
+  if [ "$acquired" -ne 1 ]; then
+    printf 'Driver lease busy\n' >&2
+    exit 75
   fi
   printf '%s %s\n' "$$" "$udid" > "$lock/owner"
   trap 'rc=$?; rm -f "$lock/owner"; rmdir "$lock" || true; exit "$rc"' EXIT
