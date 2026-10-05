@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdtemp, symlink, rm } from 'node:fs/promises';
 
 const cli = fileURLToPath(new URL('../../skills/run-agentic-tests/scripts/agentic-tests.mjs', import.meta.url));
 function invoke(...args) {
@@ -67,3 +70,20 @@ test('scope decisions require finding identity, disposition, reason and decision
   assert.equal(result.status, 0, result.stdout);
   assert.deepEqual(result.data.required, ['campaign', 'finding-id', 'scope', 'reason', 'source']);
 });
+
+test('CLI entry executes when invoked through a symlink to its scripts folder', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'agentic-tests-cli-symlink-'));
+  const symlinkedScripts = path.join(tempDir, 'scripts');
+  try {
+    await symlink(path.dirname(cli), symlinkedScripts, 'dir');
+    const symlinkedCli = path.join(symlinkedScripts, path.basename(cli));
+    const result = spawnSync(process.execPath, [symlinkedCli, '--help'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const data = result.stdout.trim() ? JSON.parse(result.stdout) : null;
+    assert.ok(data, 'expected JSON output from --help through symlink');
+    assert.equal(data.ok, true);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
