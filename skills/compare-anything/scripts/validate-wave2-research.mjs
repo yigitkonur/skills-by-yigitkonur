@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs';
+import fs, { realpathSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function printUsage() {
   console.log(`
@@ -208,6 +209,7 @@ function main() {
 }
 
 // Run CLI when invoked directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invoked = () => { try { return realpathSync(process.argv[1]); } catch { return process.argv[1]; } };
+if (process.argv[1] && import.meta.url === pathToFileURL(invoked()).href) {
   main();
 }
