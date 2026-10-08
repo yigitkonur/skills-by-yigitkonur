@@ -20,6 +20,7 @@ mcpc connect https://mcp.example.com/mcp @header -H 'Authorization: Bearer token
 - `--no-profile` disables that auto-pick and forces anonymous connection behavior
 - explicit `--header` values override profile-based auth on the wire
 - `--x402` skips default-profile auto-detection unless `--profile` is explicit
+- In 0.7.0+, OAuth sessions automatically refresh expired tokens on HTTP 401 in the bridge and retry requests transparently; RFC 8707 `resource` indicators are passed where supported
 
 ## Client registration (how `mcpc` identifies itself to the server)
 

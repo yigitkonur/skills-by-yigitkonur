@@ -1,7 +1,7 @@
 # Async Tasks
 
-`mcpc 0.6.0` has full async task support: start a task, walk away, come back in a
-later invocation and pull the real result. Verified against 0.6.0.
+`mcpc 0.7.0` has full async task support: start a task, walk away, come back in a
+later invocation and pull the real result. Verified against 0.7.0.
 
 ## When to use task mode
 

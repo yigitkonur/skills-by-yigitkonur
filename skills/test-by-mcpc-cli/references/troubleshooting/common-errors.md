@@ -35,7 +35,7 @@ The error lists available server names from the file, so a typo'd entry is easy 
 
 ## `tools-call --task`/`--detach` errors instead of running
 
-Since 0.6.0, `--task`/`--detach` on a connection that can't back it **fails outright** — no more silent fallback to a synchronous call. Two distinct messages, both exit `2`:
+Since 0.6.0+, `--task`/`--detach` on a connection that can't back it **fails outright** — no more silent fallback to a synchronous call. Two distinct messages, both exit `2`:
 
 - no tasks at all on this protocol (2026-07-28 moved tasks to an unsupported extension): `Tasks are not available on this connection: MCP 2026-07-28 moved tasks to the io.modelcontextprotocol/tasks extension, which is not supported yet. Task commands currently work only on servers using protocol 2025-11-25`
 - server doesn't advertise the capability: `This server does not support task-augmented tool calls (no tasks.requests.tools.call capability), so --task/--detach cannot be used. Re-run the command without them to call the tool synchronously`
@@ -65,7 +65,7 @@ Exits `1` (a CLI usage error, not an MCP round-trip) — the name was never crea
 
 ## Session stuck in `unauthorized`, `expired`, or `disconnected`
 
-`mcpc` (bare) prints a recovery hint under each non-live session. `expired` needs `mcpc @session restart`. `unauthorized` needs `mcpc login <server>` then `mcpc @session restart` — a session using a static bearer/`-H` header stays `unauthorized` and does not auto-retry (fixed in 0.3.0, so it no longer flip-flops between `unauthorized` and `connecting` on every invocation); an OAuth-profile session does auto-retry in the background, since a sibling session sharing the profile may have refreshed the token. `disconnected` (bridge alive, server gone quiet >2min) usually self-recovers; `mcpc @session restart` forces a fresh connection if it stays stuck. Inspect `mcpc --json` for the exact status field, then clean stale records if needed:
+`mcpc` (bare) prints a recovery hint under each non-live session. In 0.7.0+, OAuth sessions automatically refresh expired tokens on HTTP 401 in the bridge and retry transparently without failing to `unauthorized`, unless the refresh token is revoked. If an OAuth session does become `unauthorized`, run `mcpc login <server>` then `mcpc restart @session`. A session using a static bearer/`-H` header stays `unauthorized` and does not auto-retry. `expired` sessions need `mcpc restart @session`. `disconnected` (bridge alive, server gone quiet >2min) usually self-recovers; `mcpc restart @session` forces a fresh connection if it stays stuck. Inspect `mcpc --json` for the exact status field, then clean stale records if needed:
 
 ```bash
 mcpc clean

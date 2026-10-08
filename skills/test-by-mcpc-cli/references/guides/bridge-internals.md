@@ -1,11 +1,11 @@
 # Bridge Internals
 
-A named session in `mcpc` is backed by a detached bridge process (`mcpc-bridge` executable).
+A named session in `mcpc` is backed by a detached bridge process spawned internally by the CLI.
 That bridge owns the upstream MCP connection, local cache, and optional proxy; the CLI talks
-to it over a Unix domain socket at `~/.mcpc/bridges/<name>`. Since v0.4.0 the bridge is spawned
-under the CLI's own runtime (`process.execPath`), not a hardcoded `node` — a Bun-installed CLI
-gets a Bun bridge, one keychain identity, and no cross-binary macOS Keychain hang (PR #266). As
-of v0.6.0 the bridge speaks MCP through SDK v2 (`@modelcontextprotocol/client` 2.0.0), which
+to it over a Unix domain socket at `~/.mcpc/bridges/<name>`. The bridge is spawned
+under the CLI's own runtime (`process.execPath`), not an external PATH executable — a Bun-installed CLI
+gets a Bun bridge, one keychain identity, and no cross-binary macOS Keychain hang. As
+of v0.6.0+, the bridge speaks MCP through SDK v2 (`@modelcontextprotocol/client` 2.0.0), which
 sends the `Mcp-Method` request header `2026-07-28` servers require and moves `serverInfo` into
 response metadata.
 
@@ -39,7 +39,7 @@ Document the CLI JSON surface unless you are explicitly explaining internals.
 permanently dead — that is why `reconnecting` matters and why a stale session can recover
 without a fresh manual `connect`.
 
-**Recovery differs by process and command — verified live and against the shipped 0.6.0 source.** Kill
+**Recovery differs by process and command — verified live and against the shipped 0.7.0 source.** Kill
 the *bridge* and the next session command detects the dead socket, spawns a fresh bridge, reconnects,
 and completes with exit 0; only the `pid` changes. Kill the *stdio server child* underneath a
 still-running bridge and ordinary read/list commands fail repeatedly with `Error: Failed to list

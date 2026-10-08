@@ -1,6 +1,6 @@
 # Scripting and Automation
 
-Verified against mcpc 0.6.0.
+Verified against mcpc 0.7.0.
 
 Use `--json` for commands that support machine-readable output.
 Do not assume it applies to interactive flows such as `login`.

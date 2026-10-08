@@ -2,9 +2,9 @@
 
 This guide is about discovery behavior, not about promising internal implementation details.
 
-## Tool cache reality in `0.6.0`
+## Tool and resource cache reality in `0.7.0`
 
-`tools-list`, `resources-list`, `resources-templates-list`, and `prompts-list` each auto-paginate
+`tools-list`, `resources-list`, `resources-directory-read`, `resources-templates-list`, `prompts-list`, and `skills-list` each auto-paginate
 internally via a shared `fetchAllPages()` helper — you always get the full collection in one call,
 never a raw `nextCursor` to chase yourself. `fetchAllPages()` also guards against a misbehaving
 server: if a `nextCursor` repeats (a pagination cycle) or the page count blows past a generous cap,
@@ -34,7 +34,7 @@ mcpc --json @cache-test | jq '._mcpc'
 ## Pagination guidance
 
 - trust the current CLI output, not old assumptions about manual page stepping — `tools-list`,
-  `resources-list`, `resources-templates-list`, and `prompts-list` all return the complete,
+  `resources-list`, `resources-directory-read`, `resources-templates-list`, `prompts-list`, and `skills-list` all return the complete,
   already-paginated collection
 - do not add pagination folklore beyond what's measured against the released CLI; a raw
   `nextCursor` is never surfaced to the caller

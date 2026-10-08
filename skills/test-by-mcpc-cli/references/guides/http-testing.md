@@ -58,7 +58,7 @@ Do not document it as a normal production path.
 
 ## Transport boundary
 
-`mcpc 0.6.0` supports stdio and Streamable HTTP only — the README's feature table lists no other
+`mcpc 0.7.0` supports stdio and Streamable HTTP only — the README's feature table lists no other
 transport. Route HTTP+SSE (legacy) servers to a different client; do not test them with `mcpc`.
 
 ## Protocol version and statefulness

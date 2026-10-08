@@ -26,7 +26,7 @@ mcpc @research-test tools-call web-search --schema ./tool-schema.json '{"queries
 
 ## On failure
 
-A schema mismatch is a **client error**: it throws before the tool ever runs, prints the mismatched fields, and exits **1** — not the `isError:true`/exit-2 path a runtime tool failure takes, because no MCP call happened. Confirmed live against `research-mcp.yigitkonur.com/mcp` on 0.6.0: a type-mismatched schema file (`queries: string` vs the live `array`) makes both `tools-get web-search --schema <file>` and `tools-call web-search --schema <file> ...` print `Error: Schema validation failed for tool "web-search": ...` and exit 1, in both `compatible` (default) and `strict` mode.
+A schema mismatch is a **client error**: it throws before the tool ever runs, prints the mismatched fields, and exits **1** — not the `isError:true`/exit-2 path a runtime tool failure takes, because no MCP call happened. Confirmed live against `research-mcp.yigitkonur.com/mcp` on 0.7.0: a type-mismatched schema file (`queries: string` vs the live `array`) makes both `tools-get web-search --schema <file>` and `tools-call web-search --schema <file> ...` print `Error: Schema validation failed for tool "web-search": ...` and exit 1, in both `compatible` (default) and `strict` mode.
 
 ## Important nuance
 

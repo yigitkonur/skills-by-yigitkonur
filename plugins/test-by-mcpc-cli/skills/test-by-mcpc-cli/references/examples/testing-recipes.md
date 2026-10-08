@@ -1,6 +1,6 @@
 # Testing Recipes
 
-These are small copy-paste checks verified against `mcpc 0.6.0`; prefer `--json` plus `jq` assertions over human-mode output.
+These are small copy-paste checks verified against `mcpc 0.7.0`; prefer `--json` plus `jq` assertions over human-mode output.
 
 ## Recipe: assert a session connects
 

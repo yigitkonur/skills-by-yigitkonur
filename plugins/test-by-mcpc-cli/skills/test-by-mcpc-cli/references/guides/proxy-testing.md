@@ -19,7 +19,7 @@ mcpc close @proxy-check
 mcpc close @proxy-check-auth
 ```
 
-Current behavior (verified against 0.6.0):
+Current behavior (verified against 0.7.0):
 
 - `/health` is observed, undocumented liveness behavior (not part of the README's public contract): `GET /health` → `200 {"status":"ok"}`, always unauthenticated even with `--proxy-bearer-token` set — but still subject to Host/Origin validation, so a spoofed `Host`/`Origin` gets `403` even on `/health`. Verify proxy auth with a real MCP request, not `/health`.
 - the proxy enforces the real MCP session lifecycle (`initialize` → `mcp-session-id` → subsequent calls) — it is NOT a stateless pass-through; a bare `tools/list` before `initialize` fails with `Server not initialized`.
@@ -28,6 +28,7 @@ Current behavior (verified against 0.6.0):
 - **DNS-rebinding protection (0.5.0+):** the proxy validates `Host` and `Origin` headers. When bound to loopback (the default), a spoofed `Host` or cross-origin `Origin` pointing elsewhere gets `403 Forbidden`. This blocks a malicious web page from pointing a hostname it controls at `127.0.0.1` to ride on the bridge's authenticated upstream session.
 - multiple clients can connect to the same proxied session concurrently (0.5.0+; previously a second client was locked out until restart).
 - `HTTP DELETE` against the proxy actually terminates the session (0.5.0+ fix; previously a stub that didn't).
+- the proxy forwards completions requests (`completion/complete`) from downstream clients to the upstream server.
 - the proxy belongs to the detached session bridge and survives the original terminal after a successful `connect`
 
 ## What not to overstate

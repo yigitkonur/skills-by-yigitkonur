@@ -1,6 +1,6 @@
 # Logging and Debugging
 
-Verified against `mcpc` 0.6.0. Use `--verbose`, `logs`, and JSON mode together.
+Verified against `mcpc` 0.7.0. Use `--verbose`, `logs`, and JSON mode together.
 
 ## First commands
 

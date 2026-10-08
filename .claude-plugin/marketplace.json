@@ -879,7 +879,7 @@
     {
       "name": "test-by-mcpc-cli",
       "source": "./",
-      "description": "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
+      "description": "Use skill if you are driving mcpc 0.7.x to test or smoke-check an MCP server over stdio or Streamable HTTP.",
       "version": "1.0.98",
       "category": "mcp",
       "strict": false,

@@ -20,11 +20,11 @@ mcpc --json @research-test help
 ## Human-mode tool-result layout
 
 `tools-call`/`tasks-result` render three sections in order: Content, Structured
-content, Metadata. Structured content prints only when Content is empty (since
-0.3.1) — a tool returning both text and `structuredContent` shows text only in
-human mode; `--json` always includes both fields raw. `_meta` (e.g. a result's
-`mimeType`) prints last, in human mode's Metadata section; in raw `--json` it's
-an ordinary object key, not guaranteed to sort last.
+content, Metadata. In 0.7.0+, duplicate structured content that mirrors text content
+is automatically folded away, and an explicit hint (`use --json to see full structured content`)
+is shown in human mode. `--json` always includes all fields raw. Paid tool invocations include on-chain settlement receipts under `_meta["x402/payment-response"]`. `_meta` (e.g. a result's
+`mimeType` or x402 receipt) prints last, in human mode's Metadata section; in raw `--json` it's
+an ordinary object key.
 
 ## Error channel behavior
 
@@ -54,7 +54,7 @@ process ran:
 | 0 | success | normal call; an unreachable `connect` can also create a non-live `connecting`/`reconnecting` session with 0 |
 | 1 | CLI/session result | bad flag, unknown session, command against a broken connection; `grep` also uses 1 for no matches |
 | 2 | MCP result or no-result call failure | stdout `isError:true`, or stderr timeout `{error,code}` |
-| 3 / 4 | documented network / auth codes | upstream contract; not independently reproduced in this 0.6.0 audit |
+| 3 / 4 | documented network / auth codes | upstream contract; not independently reproduced in this 0.7.0 audit |
 
 Exit code is a reliable first gate since v0.5.0 — `--json` payload inspection
 is still the richer signal for *what* went wrong, not *whether* something did.

@@ -1,15 +1,14 @@
 # Notification Handling
 
-Verified against `mcpc` 0.6.0. Sessions have first-class task commands and surface
+Verified against `mcpc` 0.7.0. Sessions have first-class task commands and surface
 list-changed / resource-update notification state through JSON.
 
 ## Where to inspect notification state
 
 Use the **top-level** `mcpc --json` session list, not per-session JSON — the flat
 `notifications` field lives on `.sessions[]` there. `mcpc --json @<session>` does **not**
-carry a `_mcpc.notifications` key in 0.6.0 despite what the README's prose implies; only
-the global list exposes it (confirmed by reading the shipped `sessions.js`/`connect.js`
-source and live-testing both JSON shapes).
+carry a `_mcpc.notifications` key in 0.7.0 despite what the README's prose implies; only
+the global list exposes it (confirmed by reading the shipped source and live-testing both JSON shapes).
 
 ```bash
 mcpc --json | jq '.sessions[] | select(.name=="@my-session") | .notifications'

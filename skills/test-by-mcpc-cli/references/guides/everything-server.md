@@ -1,6 +1,6 @@
 # Everything Server
 
-The official Everything server is the fastest way to probe `mcpc` capability boundaries. Verified against `mcpc 0.6.0` and `@modelcontextprotocol/server-everything` (npm `latest`, MCP 2025-11-25, stdio and Streamable HTTP both tested).
+The official Everything server is the fastest way to probe `mcpc` capability boundaries. Verified against `mcpc 0.7.0` and `@modelcontextprotocol/server-everything` (npm `latest`, MCP 2025-11-25, stdio and Streamable HTTP both tested).
 
 ## Why it matters
 
@@ -82,5 +82,5 @@ trap - EXIT
 
 ## SSE warning
 
-The server still ships `sse` as a launch mode, and live `mcpc 0.6.0` still behaves like a Streamable HTTP client and fails against those endpoints (unchanged since 0.2.x — no CHANGELOG entry has added HTTP+SSE support).
+The server still ships `sse` as a launch mode, and live `mcpc 0.7.0` still behaves like a Streamable HTTP client and fails against those endpoints (unchanged since 0.2.x — no CHANGELOG entry has added HTTP+SSE support).
 Bridge logs show `Cannot POST /sse` or `Cannot POST /mcp`. Use the `streamableHttp` entrypoint for this skill.

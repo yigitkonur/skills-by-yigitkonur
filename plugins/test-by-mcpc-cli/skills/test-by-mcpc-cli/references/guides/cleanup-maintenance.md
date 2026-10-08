@@ -1,6 +1,6 @@
 # Cleanup and Maintenance
 
-`mcpc clean [resources...]` (verified against 0.6.0) is the only cleanup
+`mcpc clean [resources...]` (verified against 0.7.0) is the only cleanup
 command — there is no separate flag-based interface.
 
 ## Two operations share one name

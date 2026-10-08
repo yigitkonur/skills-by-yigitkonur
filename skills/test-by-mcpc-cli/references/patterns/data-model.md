@@ -1,6 +1,6 @@
 # Data Model
 
-Use live JSON output as the contract you script against, verified against 0.6.0.
+Use live JSON output as the contract you script against, verified against 0.7.0.
 
 ## Top-level `mcpc --json`
 
@@ -18,7 +18,13 @@ Current output is shaped like:
       "status": "live",
       "pid": 12345,
       "protocolVersion": "2025-11-25",
-      "serverInfo": { "name": "...", "version": "..." },
+      "serverInfo": {
+        "name": "mcp-researchpowerpack",
+        "version": "9.0.0",
+        "title": "mcp-researchpowerpack",
+        "description": "High-signal web research...",
+        "websiteUrl": "https://..."
+      },
       "capabilities": { "tools": { "listChanged": true }, "...": "..." },
       "mcpSessionId": "...",
       "stateless": false,
@@ -66,7 +72,13 @@ Both return an extended MCP `InitializeResult` (2025-11-25 connections) or `Disc
   "protocolVersion": "2025-11-25",
   "supportedVersions": ["2026-07-28", "2025-11-25"],
   "capabilities": { "...": "..." },
-  "serverInfo": { "name": "...", "version": "..." },
+  "serverInfo": {
+        "name": "mcp-researchpowerpack",
+        "version": "9.0.0",
+        "title": "mcp-researchpowerpack",
+        "description": "High-signal web research...",
+        "websiteUrl": "https://..."
+      },
   "instructions": "...",
   "_meta": { "...": "..." },
   "toolNames": ["plan-research", "web-search", "extract-evidence"]
@@ -121,7 +133,7 @@ CLI/session failures in `--json` mode use a compact error object on `stderr`, co
 { "error": "Failed to connect to MCP server: ...", "code": 1 }
 ```
 
-Some paths also add `message` or `details`; script against `error` plus numeric `code`, not one universal full shape. Exit `2` has two forms: a server `isError:true` result on stdout, or a timeout/no-result `{error,code}` on stderr. Codes `3`/`4` are documented as network/auth in the upstream contract but were not reproduced in this 0.6.0 audit.
+Some paths also add `message` or `details`; script against `error` plus numeric `code`, not one universal full shape. Exit `2` has two forms: a server `isError:true` result on stdout, or a timeout/no-result `{error,code}` on stderr. Codes `3`/`4` are documented as network/auth in the upstream contract but were not reproduced in this 0.7.0 audit.
 
 ## Storage notes
 

@@ -10,9 +10,9 @@ mcpc --version
 mcpc --help
 ```
 
-Requires Node.js `>=22.12.0` (Node 20 support was dropped in `0.5.0`) unless installed via Homebrew.
+Requires Node.js `>=22.12.0` (Node 20 support was dropped in `0.4.0`) unless installed via Homebrew.
 
-This skill targets `0.6.x` and was verified against `0.6.0`.
+This skill targets `0.7.x` and was verified against `0.7.0`.
 If your help output still shows target-first syntax like `mcpc <server> connect @session`, you are reading `0.1.11` material.
 
 Since `0.5.0` full install size dropped ~66% (64.73 MB to 21.72 MB) and commands start ~5x faster (heavy deps like x402/OAuth/proxy are lazy-loaded) — don't expect old-version install weight or startup lag.

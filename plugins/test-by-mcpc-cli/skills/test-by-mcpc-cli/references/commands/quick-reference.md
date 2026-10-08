@@ -1,7 +1,7 @@
 # mcpc Quick Reference
 
-This sheet is aligned to `@apify/mcpc 0.6.0`, verified against `mcpc help`
-output from the installed 0.6.0 binary.
+This sheet is aligned to `@apify/mcpc 0.7.0`, verified against `mcpc help`
+output from the installed 0.7.0 binary.
 It documents raw `mcpc` behavior first.
 
 ## Core syntax
@@ -14,7 +14,7 @@ It documents raw `mcpc` behavior first.
 | create an OAuth profile | `mcpc login <server>` |
 | delete an OAuth profile | `mcpc logout <server>` |
 | show command help | `mcpc help [command] [subcommand]` |
-| show the built-in agent skill guide | `mcpc help --skill` |
+| show the built-in agent skill guide | `mcpc help --skill` (or `mcpc --skill`) |
 | inspect a session | `mcpc @session` |
 | show session commands | `mcpc @session help` |
 | search all sessions | `mcpc grep <pattern>` |
@@ -59,7 +59,7 @@ mcpc --json @check tools-list | jq '.[] | {name, taskSupport: (.execution.taskSu
 | remote HTTP target | `mcpc connect mcp.apify.com @apify` | `https://` is added automatically for non-local hosts |
 | explicit HTTPS target | `mcpc connect https://research-mcp.yigitkonur.com/mcp @research` | use full path when the server is not on `/` |
 | localhost HTTP target | `mcpc connect 127.0.0.1:3011/mcp @everything-http` | localhost keeps `http://` |
-| config entry | `mcpc connect ~/.vscode/mcp.json:filesystem @fs` | config must use `mcpServers` |
+| config entry | `mcpc connect ~/.vscode/mcp.json:filesystem @fs` | config must use `mcpServers`; auto-discovery skips `./` entries with `${VAR}` unless path is explicit |
 
 ## Session commands
 
@@ -68,8 +68,9 @@ mcpc --json @check tools-list | jq '.[] | {name, taskSupport: (.execution.taskSu
 | discovery | `mcpc @s`, `mcpc @s help`, `mcpc @s grep search`, `mcpc @s server-discover` |
 | tools | `tools-list [--full]`, `tools-get <name>`, `tools-call <name> [args...]` |
 | prompts | `prompts-list`, `prompts-get <name> [args...]` |
-| resources | `resources-list`, `resources-read <uri>`, `resources-subscribe <uri> <file>`, `resources-unsubscribe <uri>`, `resources-templates-list` |
-| skills (server-published, SEP-2640) | `skills-list`, `skills-get <name> [--raw]` |
+| resources | `resources-list`, `resources-read <uri>`, `resources-directory-read <uri>`, `resources-subscribe <uri> <file>`, `resources-unsubscribe <uri>`, `resources-templates-list` |
+| skills (official extension) | `skills-list`, `skills-get <skill> [file] [--raw]` |
+| completions | `completion-complete prompt|resource <ref> [args...]` |
 | logging | `logging-set-level <level>` (deprecated — see notes below) |
 | health | `ping` |
 | logs | `logs [-n N] [--follow] [--since 1h]` |
@@ -82,16 +83,14 @@ explicit `*-list` forms exist (`tools-list`, `resources-list`, `prompts-list`).
 reaches a terminal state, and returns the tool's real `CallToolResult` — not exclusive to
 `--detach`, use it after any async task.
 
-`skills-list`/`skills-get` (experimental, SEP-2640) read a server's own published
-skills — unrelated to this skill pack. `server-discover` requires an MCP 2026-07-28
-connection and fails on older ones; use `mcpc @session` there instead.
+`skills-list` and `skills-get <skill> [file]` implement the official `io.modelcontextprotocol/skills` extension (MCP 2026-07-28+), validating file manifests and SHA-256 digests. `resources-directory-read <uri>` reads directory resources with `"directoryRead": true`.
 
-`logging-set-level` is deprecated as of 0.6.0 (MCP 2026-07-28 removed the underlying
+`server-discover` requires an MCP 2026-07-28 connection and fails on older ones; use `mcpc @session` there instead.
+
+`logging-set-level` is deprecated as of 0.6.0+ (MCP 2026-07-28 removed the underlying
 `logging/setLevel` request) — still works on 2025-11-25 servers, errors on 2026-07-28.
 
-Raw MCP JSON-RPC method names also work as silent aliases for session commands
-(`tools/list` → `tools-list`, `logging/setLevel` → `logging-set-level`) — undocumented in
-`--help`/"Did you mean?", but functional; teach the hyphenated form first.
+Raw MCP JSON-RPC method names also work as aliases for session commands (`tools/list` → `tools-list`, `logging/setLevel` → `logging-set-level`). In 0.7.0, `mcpc help tools/list` correctly resolves help instead of returning "Unknown command". Teach the hyphenated form first.
 
 ## Global options
 
@@ -163,7 +162,7 @@ Do not parallelize `mcpc close @session` and `mcpc clean ...` for the same sessi
 
 ## x402 commands
 
-These are financial/credential actions, not harmless smoke checks. Use isolated state and prefer `x402 init` with a throwaway Base Sepolia wallet; obtain explicit authorization before importing/removing wallets, signing, approving, or paying. `mcpc 0.6.0` imports keys only through the positional argv argument — there is no secret-safe stdin/file/env option — so do not import real production keys for routine testing.
+These are financial/credential actions, not harmless smoke checks. Use isolated state and prefer `x402 init` with a throwaway Base Sepolia wallet; obtain explicit authorization before importing/removing wallets, signing, approving, or paying. `mcpc 0.7.x` imports keys only through the positional argv argument — there is no secret-safe stdin/file/env option — so do not import real production keys for routine testing.
 
 ```bash
 mcpc x402                    # bare: shows wallet info + funding QR (default since v0.5.0)
@@ -178,6 +177,7 @@ mcpc x402 remove
 subcommand), which now shows wallet info + a funding QR code directly.
 `--scheme <auto|upto|exact>` on `sign` selects the payment scheme (default `auto`).
 `--no-approve` on `sign` skips the `upto` scheme's Permit2 allowance check and auto-approval.
+In 0.7.0+, successful paid tool calls return on-chain settlement receipts in `_meta["x402/payment-response"]`.
 
 ## Argument shapes
 
@@ -207,7 +207,7 @@ If a tool expects an array or object, send a JSON literal.
 
 ## Unsupported or partial areas
 
-- no `mcpc completions` command even if server capabilities show `completions`
+- completions are exposed via `mcpc @session completion-complete prompt|resource <ref> [arg:=val ...]` (available upstream / next minor)
 - mcpc advertises no sampling/roots/elicitation client capabilities, so servers withhold
   any tool gated on them — e.g. Everything's `trigger-sampling-request`,
   `trigger-elicitation-request`, `get-roots-list` never appear in `tools-list` at all,
@@ -216,5 +216,4 @@ If a tool expects an array or object, send a JSON literal.
   `logging/setLevel`), and every task command (`tasks-list`, `tasks-get`, `tasks-result`,
   `tasks-cancel`, `tools-call --task`/`--detach`) reports the tasks extension as not yet
   supported — both keep working unchanged on 2025-11-25 servers
-- `--task`/`--detach` against a server without task support now fails outright (no more
-  silent fallback to a synchronous call)
+- `--task`/`--detach` against a server without task support fails outright (no silent fallback to synchronous call)

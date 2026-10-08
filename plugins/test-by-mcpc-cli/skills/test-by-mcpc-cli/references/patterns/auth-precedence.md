@@ -1,6 +1,6 @@
 # Auth Precedence
 
-Use this order when reasoning about what auth reaches the wire in `mcpc 0.6.0`.
+Use this order when reasoning about what auth reaches the wire in `mcpc 0.7.0`.
 
 ## Practical precedence
 

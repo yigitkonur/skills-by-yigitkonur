@@ -1,6 +1,6 @@
 # Real-World Workflows
 
-These flows are aligned to `mcpc 0.6.0` and are intended to be copied, adapted, and scripted.
+These flows are aligned to `mcpc 0.7.0` and are intended to be copied, adapted, and scripted.
 
 ## Workflow 1: Remote smoke test against Research Powerpack
 
@@ -24,7 +24,7 @@ Notes:
 - server exposes exactly three tools (mcp-researchpowerpack v9.0.0, MCP 2025-11-25): `plan-research`, `web-search`, `extract-evidence`
 - start smoke tests from a fresh `connect`; inspect old sessions only when reuse is the point of the task
 - the `/mcp` path matters; `https://research-mcp.yigitkonur.com` is not the same target
-- direct one-shot URL commands were removed in `0.2.x` and are still gone in `0.6.0`; always connect first
+- direct one-shot URL commands were removed in `0.2.x` and are still gone in `0.7.0`; always connect first
 
 ## Workflow 2: Local stdio verification against Everything
 

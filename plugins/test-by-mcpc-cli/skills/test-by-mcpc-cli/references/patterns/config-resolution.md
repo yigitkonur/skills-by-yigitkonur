@@ -1,6 +1,6 @@
 # Config Resolution
 
-`mcpc connect` (`0.6.0`) accepts four server-argument shapes: a bare host, a single
+`mcpc connect` (`0.7.0`) accepts four server-argument shapes: a bare host, a single
 `file:entry`, a bare config file (bulk — every entry), or no argument at all
 (auto-discover every standard config and connect everything). Use `file:entry` to target
 one stdio (or HTTP) entry inside a config file.
@@ -54,10 +54,16 @@ and connects every server found across all of them, applying the same bulk-conne
 above (no `@session`, stdio skipped unless `--stdio`). Duplicate session names are
 deduplicated, with project-scoped configs winning over global ones.
 
+**Security rules for `./` configs in auto-discovery (0.7.0+):**
+Configs found in the current working directory (`./`) are treated as untrusted:
+- Any entry referencing environment variables (`${VAR}`) is automatically skipped (and skipped variable names are printed) to prevent untrusted repo configs from extracting environment secrets.
+- The `-H`/`--header` flag is rejected when running bare auto-discovery against `./` configs.
+- To connect a local config with environment variables, pass an explicit path: `mcpc connect ./.mcp.json`.
+
 ## Session reuse across all connect forms
 
 `@session` is optional on a single-entry connect; if omitted, mcpc auto-generates a name
-from the server host or config entry name. A **matching session — same server URL, same
+from the server host or config entry name, trimming leading and trailing underscores (`_notion` → `@notion`). A **matching session — same server URL, same
 profile, same set of header keys — is reused** instead of duplicated; anything that
 differs on any of those three creates a new session.
 

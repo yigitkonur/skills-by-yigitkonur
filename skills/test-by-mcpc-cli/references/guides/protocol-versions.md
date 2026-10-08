@@ -1,7 +1,7 @@
 # Protocol Versions
 
-`mcpc 0.6.0` negotiates MCP protocol versions and can pin or probe them directly.
-Verified against 0.6.0.
+`mcpc 0.7.0` negotiates MCP protocol versions and can pin or probe them directly.
+Verified against 0.7.0.
 
 ## Negotiation range
 
@@ -54,16 +54,12 @@ that's a finding about the server, not a CLI failure.
 
 ## JSON-RPC method names as command aliases
 
-0.6.0 silently accepts raw JSON-RPC method names as aliases for hyphenated commands. Only
-two pairs are documented — `tools/list` → `tools-list`, `logging/setLevel` →
-`logging-set-level` — don't assume a full alias table exists; confirmed live for those
-plus `resources/list`, `resources/read`, `prompts/list`, byte-identical to the hyphenated
-form.
+mcpc silently accepts raw JSON-RPC method names as aliases for hyphenated commands. Only
+two pairs are documented in historical releases — `tools/list` → `tools-list`, `logging/setLevel` →
+`logging-set-level` — but in practice the alias table extends to `resources/list`, `resources/read`,
+`prompts/list`, byte-identical to the hyphenated form.
 
-Undocumented by design — absent from `--help` and "Did you mean?" — and does not extend
-to `help`: `mcpc help tools/list` prints "Unknown command" in released 0.6.0 (confirmed
-live; only `mcpc help tools-list` resolves). Only the first positional command token is
-normalized; later `/`-containing args (URIs, tool names) are untouched.
+In `mcpc 0.7.0` (PR #416), method names are also resolved by `help`: `mcpc help tools/list` now resolves and shows command help instead of failing with 'Unknown command' (confirmed live). Only the first positional command token is normalized; later `/`-containing args (URIs, tool names) are untouched.
 
 `logging-set-level` is separately protocol-gated: MCP `2026-07-28` removed
 `logging/setLevel`, so the command errors on connections that negotiated it and only

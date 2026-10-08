@@ -1,6 +1,6 @@
 # Session Management
 
-`mcpc 0.6.0` is built around persistent named sessions.
+`mcpc 0.7.0` is built around persistent named sessions.
 
 ## Create, inspect, restart, close
 
@@ -18,7 +18,7 @@ Use human `mcpc` output or an exact-name JSON filter only when reuse or cleanup 
 
 ## Auto-naming and reuse — name-keyed, not URL-keyed
 
-`@session` is optional on `connect`. Omit it and `mcpc` auto-generates a name from the server host (e.g. `mcp.apify.com` → `@apify`) or the config entry name, then reuses that auto-named session on later no-name connects to the same target — including transparently reconnecting it if its bridge had died.
+`@session` is optional on `connect`. Omit it and `mcpc` auto-generates a name from the server host (e.g. `mcp.apify.com` → `@apify`) or the config entry name, trimming leading and trailing underscores (`_notion` → `@notion`, added in 0.7.0). It then reuses that auto-named session on later no-name connects to the same target — including transparently reconnecting it if its bridge had died.
 
 Reuse is decided by three things matching an existing session: **server URL**, **profile**, and the **set of header keys** (not values). All three must match, or `connect` creates a new session.
 
@@ -46,7 +46,7 @@ Document the public JSON surface unless you are intentionally describing interna
 Every `mcpc` invocation consolidates session state first (flags dead bridges `crashed`, drops `expired` records) and then fire-and-forgets a background reconnect for sessions eligible for auto-restart: `crashed` sessions, and `unauthorized` sessions that carry an OAuth profile (their token may have been refreshed elsewhere). An `unauthorized` session authenticated via a static header (`-H`) is not retried automatically — it stays `unauthorized` until you `mcpc login` or reconnect explicitly, since retrying would just flip it back and forth and hide the real state.
 Do not describe the runtime as only marking sessions dead.
 
-**Recovery differs by process and command — verified live and against the shipped 0.6.0 source.**
+**Recovery differs by process and command — verified live and against the shipped 0.7.0 source.**
 Kill the *bridge* and the next command silently starts a fresh bridge and reconnects (exit 0, new
 `pid`). Kill the *stdio server child* while the bridge stays up and ordinary read/list commands fail
 with `Error: Failed to list tools: Not connected.` (exit 2), while status can remain misleadingly

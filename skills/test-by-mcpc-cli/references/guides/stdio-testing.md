@@ -33,14 +33,14 @@ If the acceptance criteria explicitly mention prompts, resources, or templates, 
 
 ## Why `file:entry` matters
 
-This is the current `0.6.0` surface.
+This is the current `0.7.0` surface.
 Do not document the legacy `--config file entry connect @session` form — it was replaced by `mcpc connect file:entry @session` back in 0.2.0 and no longer exists.
 
 ## Bulk connects skip stdio by default
 
 `mcpc connect <config-file>` (no `:entry`, i.e. connect every server in the file) skips stdio entries unless you pass `--stdio`. Single-entry connects (`file:entry @session`, as above) are unaffected and always connect.
 
-Security note: a config entry's command runs on connect **even if the handshake later fails** — only connect to (or bulk-`--stdio`-include) config files whose entries you trust.
+Security note: a config entry's command runs on connect **even if the handshake later fails** — only connect to (or bulk-`--stdio`-include) config files whose entries you trust. In auto-discovery (0.7.0+), `./` configs with `${VAR}` references are skipped automatically, and `-H` is refused unless the config path is specified explicitly (`mcpc connect ./.mcp.json`).
 
 ```bash
 mcpc connect /tmp/everything-mcp.json --stdio

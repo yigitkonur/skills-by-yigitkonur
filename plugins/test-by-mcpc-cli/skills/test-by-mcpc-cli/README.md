@@ -1,6 +1,6 @@
 # test-by-mcpc-cli
 
-Drive mcpc 0.6.x to test or smoke-check MCP servers over stdio or Streamable HTTP, including sessions, schemas, tasks, protocol versions, and JSON automation.
+Drive mcpc 0.7.x to test or smoke-check MCP servers over stdio or Streamable HTTP, including sessions, schemas, tasks, protocol versions, skills, and JSON automation.
 
 **Category:** testing
 

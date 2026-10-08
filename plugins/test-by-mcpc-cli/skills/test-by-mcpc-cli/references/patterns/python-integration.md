@@ -45,7 +45,7 @@ If you build higher-level wrappers, normalize Python-friendly names to the real 
 - `tools-call(..., detach=True)` -> append `--detach`
 - wrappers for `tasks-list`, `tasks-get`, `tasks-result`, and `tasks-cancel`
 
-## Exit-code contract (v0.5.0+, still current at 0.6.0)
+## Exit-code contract (v0.5.0+, still current at 0.7.0)
 
 - Exit `2`: either the MCP round-trip completed with `isError: true`
   (schema rejection, unknown tool, runtime failure — `{content, isError}` on
@@ -86,7 +86,7 @@ An empty `stdout` is not exit-1-specific: it also happens on an exit-2
 client-side call failure (e.g. timeout). Fail on every nonzero code, then check
 for the `content` key to tell an `isError` result (stdout, has `content`)
 from a bare client-side failure (stderr, `{error, code}`, no `content`) or a
-CLI usage error (stderr, exit 1). Verified live against 0.6.0 with an
+CLI usage error (stderr, exit 1). Verified live against 0.7.0 with an
 isolated `MCPC_HOME_DIR`: missing tool-input field exits 2 with payload on
 stdout; unknown session exits 1 with `{"error":...}` on stderr; `--timeout 1`
 against a live session exits 2 with `{"error":...,"code":2}` on stderr,

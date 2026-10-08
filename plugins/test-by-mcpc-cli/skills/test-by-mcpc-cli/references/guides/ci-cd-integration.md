@@ -1,10 +1,10 @@
 # CI and CD Integration
 
-Use `mcpc` in CI as a black-box contract test runner. Verified against mcpc 0.6.0.
+Use `mcpc` in CI as a black-box contract test runner. Verified against mcpc 0.7.0.
 
 ## Runtime requirement
 
-CI images need Node.js 22.12.0+ (Node 20 dropped in mcpc 0.5.0). If the runner image
+CI images need Node.js 22.12.0+ (Node 20 dropped in mcpc 0.4.0). If the runner image
 can't be upgraded, `brew install apify/tap/mcpc` (added 0.6.0) bundles its own Node.
 
 ## Isolation rule
