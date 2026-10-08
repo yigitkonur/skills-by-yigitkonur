@@ -206,13 +206,19 @@ Vault links are immutable for the duration of the browser session.
 Store logins or secrets inside vaults, collect them through Kernel-hosted forms or `@onkernel/vault-react`, and autofill them into web forms:
 
 ```ts
-// Autofill credentials into page inputs with human-speed typing
-await kernel.vaults.items.fill('vlt_item_login', {
-  session_id: session.session_id,
-  target_selector: 'input#username',
-  paced: true, // writes character-by-character with randomized delays
+// Autofill credentials into page inputs (Kernel applies paced typing automatically)
+await kernel.vaults.items.performOperation('vlt_item_login', {
+  id_or_name: 'vlt_checkout_prod',
+  type: 'fill',
+  browser_id: session.session_id,
+  fields: [
+    { field: 'username', selector: 'input#username' },
+    { field: 'password', selector: 'input#password' },
+  ],
 });
 ```
+
+Kernel executes paced fill automatically, writing character-by-character with randomized human typing speed delays.
 
 ### 3. Payment Vaults (Link & AgentCard)
 
@@ -225,7 +231,7 @@ Agents can purchase stealth, headful browser sessions through the Machine Paymen
 
 ```ts
 // Request purchase through 402 challenge flow
-const buyResponse = await fetch('https://api.onkernel.com/v1/browsers/buy', {
+const buyResponse = await fetch('https://api.onkernel.com/mpp/browsers', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ stealth: true }),

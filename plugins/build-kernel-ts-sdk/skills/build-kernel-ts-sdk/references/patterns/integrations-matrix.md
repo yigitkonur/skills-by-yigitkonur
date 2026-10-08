@@ -83,10 +83,9 @@ This is the recommended pattern for any framework that doesn't have a TS port: w
 kernel create --name my-app --language typescript --template stagehand --yes
 ```
 
-The full list from `@onkernel/cli` 0.31.0 (`create --help`):
+The full list from `@onkernel/cli` 0.45.0 (`create --help`):
 
 - `stagehand` — Stagehand SDK [ts]
-- `magnitude` — Magnitude.run SDK [ts]
 - `browser-use` — Browser Use SDK [py]
 - `claude-agent-sdk` — Claude Agent SDK browser-automation agent; wires an in-process MCP server exposing an `execute_playwright` tool backed by `kernel.browsers.playwright.execute` [py, ts]
 - `anthropic-computer-use` / `gemini-computer-use` / `openai-computer-use` — computer-use agents [py, ts]

@@ -230,7 +230,7 @@ ctx.authorization.credential_scope.project_id;  // null = organization-wide
 ctx.authorization.effective_scope.project_id;   // scope selected for this request
 ```
 
-OAuth (CLI) supports persistent project scoping via `kernel config set project <project_id>` and `kernel auth token` issues project-scoped tokens.
+The CLI supports project scoping via the `--project <project_id_or_name>` flag or the `KERNEL_PROJECT` environment variable.
 
 ## Runtime support
 

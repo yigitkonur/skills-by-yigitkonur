@@ -218,7 +218,7 @@ Each browser VM exposes a rich set of services alongside Chromium:
 
 - `kernel.browsers.curl(id, { url, method, headers, body, timeout_ms, response_encoding })` — HTTP through Chrome's TLS fingerprint; returns a structured JSON envelope (status, headers, body, timing)
 - `kernel.browsers.fetch(id, input, init)` — plain `fetch` through the VM's network stack, returns a real `Response` (use when you want `res.json()` / streaming ergonomics instead of `curl`'s envelope)
-- `kernel.browsers.repl.*` — persistent in-VM Node.js runtime (`create`, `write`, `emitImage`, `help`) with top-level variable persistence
+- `kernel.browsers.repl(id, { code, reset?, timeout_sec? })` — persistent in-VM Node.js runtime; evaluates code with top-level variable persistence and in-VM `repl` helpers (`repl.write`, `repl.emitImage`, `repl.help`)
 - `kernel.browsers.webmcp.*` — page and CDP-backed Model Context Protocol tool discovery and execution (`listTools`, `invokeTool`, `customTools.*`)
 - `kernel.browsers.fs.*` — read/write files, watch directories
 - `kernel.browsers.process.*` — exec/spawn inside the VM (PTY, stdin/stdout streaming)

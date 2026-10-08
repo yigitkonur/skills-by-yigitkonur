@@ -37,9 +37,9 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 
 **`flow_step`** (programmatic): `DISCOVERING`, `AWAITING_INPUT`, `SUBMITTING`, `AWAITING_EXTERNAL_ACTION` (push approval / hardware key), `COMPLETED`. The flow can move between these in any order — `AWAITING_EXTERNAL_ACTION` can precede `SUBMITTING` for SSO, and the loop may revisit `AWAITING_INPUT` multiple times. Branch on the current `flow_step`, do not assume a fixed sequence.
 
-**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required).
+**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required). In the SDK, inspect `conn.status`, `conn.can_reauth`, and `conn.can_reauth_reason`.
 
-**Reauthentication status:**
+**Dashboard reauthentication status tiers:**
 - `Auto`: Fully automated re-auth (stored credentials + automated 2FA/TOTP secret available).
 - `Best effort`: Partial automation (e.g. optimistic TOTP retry without guaranteed automated solve).
 - `Needs human`: Human intervention required (email magic link, push approval, hardware key, or missing credential).

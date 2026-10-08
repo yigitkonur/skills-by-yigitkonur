@@ -126,7 +126,7 @@ await kernel.browsers.computer.batch(session.session_id, {
     { type: 'move_mouse',   move_mouse:   { x: 100, y: 200 } },
     { type: 'click_mouse',  click_mouse:  { x: 100, y: 200, button: 'left' } },
     { type: 'type_text',    type_text:    { text: 'search query' } },
-    { type: 'press_key',    press_key:    { keys: ['Enter'] } },
+    { type: 'press_key',    press_key:    { keys: ['Return'] } },
     { type: 'sleep',        sleep:        { duration_ms: 250 } },     // pause between actions
     { type: 'set_cursor',   set_cursor:   { hidden: true } },         // hide cursor for clean screenshots
   ],
@@ -184,7 +184,9 @@ const initRes = await kernel.browsers.repl(session.session_id, {
     repl.write('Page loaded: ' + (await globalThis.page.title()));
   `,
 });
-console.log('REPL outputs:', initRes.outputs);
+for (const item of initRes.content ?? []) {
+  if (item.type === 'text') console.log('REPL output:', item.text);
+}
 
 // Subsequent call reuses the existing `page` and variables!
 const extractRes = await kernel.browsers.repl(session.session_id, {
@@ -200,7 +202,7 @@ CLI counterpart: `kernel browsers repl <session_id>` drives an interactive termi
 When to use:
 - Multi-step interactive workflows where initializing Playwright or downloading libraries on every step is prohibitive
 - Co-located agents (such as running coding agents inside the browser VM alongside Chromium)
-- Inspecting page state dynamically with `repl.help()` and `repl.write()`
+- Inspecting page state dynamically with in-VM `repl` helpers (`repl.write()`, `repl.emitImage()`, `repl.help()`)
 
 ## Surface 6 — WebMCP (Model Context Protocol)
 
@@ -210,7 +212,7 @@ WebMCP bridges web page actions and CDP tools into Model Context Protocol tools 
 // 1. Discover tools provided natively by the page (or registered polyfills)
 const tools = await kernel.browsers.webmcp.listTools(session.session_id);
 for (const tool of tools.tools) {
-  console.log('Tool:', tool.tool_name, tool.description);
+  console.log('Tool:', tool.tool.name, tool.tool.description);
 }
 
 // 2. Invoke a discovered page tool
@@ -219,16 +221,18 @@ const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
   input: { query: 'laptop' },
 });
 
-// 3. Register custom tools backed by CDP or page evaluations
+// 3. Register custom tools backed by CDP or page evaluations (source: JS code string)
 await kernel.browsers.webmcp.customTools.add(session.session_id, {
   namespace: 'custom',
-  tools: [
-    {
+  source: `[{
+    match: { url_patterns: ['*'] },
+    tool: {
       name: 'get_cart_total',
       description: 'Reads current cart total from DOM',
-      input_schema: { type: 'object', properties: {} },
-    }
-  ],
+      inputSchema: { type: 'object', properties: {} },
+    },
+    execute: async () => ({ total: document.querySelector('#cart-total')?.textContent })
+  }]`,
 });
 ```
 
@@ -244,13 +248,14 @@ When to use:
 Direct execution of shell commands, CLI utilities, and background processes inside the unikernel VM.
 
 ```ts
-// Synchronous command execution
+// Synchronous command execution (timeout_sec, returns base64 stdout/stderr)
 const execRes = await kernel.browsers.process.exec(session.session_id, {
   command: 'uname',
   args: ['-a'],
-  timeout_ms: 10_000,
+  timeout_sec: 10,
 });
-console.log('stdout:', execRes.stdout);
+const stdout = Buffer.from(execRes.stdout_b64 ?? '', 'base64').toString('utf8');
+console.log('stdout:', stdout);
 
 // Spawn a long-lived process or PTY
 const proc = await kernel.browsers.process.spawn(session.session_id, {
