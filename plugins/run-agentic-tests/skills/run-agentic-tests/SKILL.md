@@ -16,7 +16,7 @@ Models are configured strictly per provider to balance execution speed, assertio
 
 | Provider | Task category | Model | Reasoning effort | Operational rule |
 |---|---|---|---|---|
-| **Anthropic** | All operations (execution, verification, diagnosis) | `sonnet-5.5` or `haiku-5.5` (use newer version if released) | *None* | Anthropic sorts models by family; reasoning level is omitted. Never use heavy flagship family models like Opus for automated loops. |
+| **Anthropic** | All operations (execution, verification, diagnosis) | `sonnet-5.5` or `haiku-5.5` (use newer version if released) | *None* | Anthropic sorts models by family; reasoning level is omitted (if runtime extended thinking is enabled, cap thinking budget to low/medium). Never use heavy flagship family models like Opus for automated loops. |
 | **Codex** | Simple ops (routine execution, CLI commands, basic steps) | `gpt-6-luna` | `xhigh` | `luna` is a compact model; `xhigh` reasoning effort keeps tool calls and deterministic steps rock-solid. |
 | **Codex** | Evidence checks (verifiers, assertion checks, artifact analysis) | `gpt-6.1-sol` | `medium` | Balanced reasoning ensures rigorous evaluation of screenshots, logs, and state evidence without timeout delays. |
 | **Gemini** | Simple ops (routine execution, navigation, basic steps) | `gemini-3.8-flash` | `medium` | High throughput, fast response times for multi-step browser/CLI steps. |
@@ -34,7 +34,12 @@ This skill orchestrates campaigns; specialized domain testing is executed throug
 | **CLI** | Native process runner | Node.js ≥ 22, Bash/Zsh, POSIX tools | Bound process handles with real stdout/stderr capture and exit code checks. |
 
 ### Remote browser artifact transport (SCP)
-When `ego-browser` runs against a remote host (e.g., via SSH tunnel to a remote browser machine), browser scripts execute remotely and write screenshots/downloads to the **remote filesystem**. The executor must transfer remote artifacts to the local campaign's `evidences/` path via `scp` (e.g. `scp $REMOTE_HOST:$REMOTE_PATH $LOCAL_EVIDENCE_PATH`) before sealing the execution submission. Unretrieved remote files will fail local verification with `MISSING_ARTIFACT`.
+When `ego-browser` runs against a remote host (e.g., via SSH tunnel to a remote browser machine), browser scripts execute remotely and write screenshots/downloads to the **remote filesystem**. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` before sealing the execution submission:
+- **Enforce absolute remote paths**: `scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCE_PATH"` (OpenSSH 9.0+ defaults to SFTP and resolves unanchored paths relative to user home).
+- **Escape special characters**: Quote paths on both sides to prevent remote shell splitting on spaces or query parameters.
+- **Protocol fallback**: If the remote host lacks SFTP subsystem support, pass `scp -O` to use the legacy SCP protocol.
+- **Config aliases**: When `$REMOTE_HOST` is defined in `~/.ssh/config`, omit manual `-P <port>` flags to prevent connection collisions.
+Unretrieved remote files will fail local verification with `MISSING_ARTIFACT`.
 
 ## Execution modes: Streamlined vs. Full Campaign
 
@@ -43,7 +48,7 @@ Choose the execution model matching the task scope to eliminate unnecessary seri
 1. **Streamlined Fast-Path** (Single journey, smoke test, or pre-authored suite):
    - **Step 1: Environment Readiness (Wave 0)** — Verify target, leased ports, and tool runner.
    - **Step 2: Parallel Execution** — Dispatch executors concurrently across ready test cases up to host capacity.
-   - **Step 3: Verification** — Dispatch independent verifier(s). If `review_count: 2`, dispatch Verifier A and Verifier B concurrently in parallel.
+   - **Step 3: Verification** — Dispatch independent verifier(s). If `review_count: 2`, dispatch Verifier A and Verifier B concurrently with prompt/seed variance (Verifier A: specification conformance; Verifier B: adversarial/edge-case scrutiny) to eliminate cache collision and guarantee mathematically independent reviews.
    - Bypass exploratory roles (Feature scout, Planner, Plan auditor, Ticket writer) when test cases already exist.
 
 2. **Full Multi-Agent Campaign** (Large product surfaces, exploratory discovery, or multi-team fixes):

@@ -87,7 +87,7 @@ expectations unresolved.
 
 Use installed tool documentation/help to bind commands during Wave 0:
 - **Web (`ego-browser`)**: Verify browser daemon/CLI is running.
-  - *Remote Browser Filesystem Boundary*: When `ego-browser` runs over an SSH tunnel to a remote machine, screenshots and downloaded files are written to the remote filesystem. The executor must transfer remote artifacts to the local campaign's `evidences/` path via `scp` (e.g. `scp $REMOTE_HOST:$REMOTE_PATH $LOCAL_EVIDENCE_PATH`) before submitting.
+  - *Remote Browser Filesystem Boundary*: When `ego-browser` runs over an SSH tunnel to a remote machine, screenshots and downloaded files are written to the remote filesystem. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` using absolute remote paths and proper shell quoting (`scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCE_PATH"`) before submitting.
 - **Mobile (`test-by-maestro`)**: Verify `maestro --version` ≥ 2.11.0, active simulator/device, and offline YAML syntax with `maestro check-syntax`.
 - **MCP (`test-by-mcpc-cli`)**: Verify `mcpc --version` reports `0.7.x` and connect using session-first syntax (`mcpc connect <target> @session`).
 - **Cloudflare tunnels**: Use only when remote inspection requires a public HTTP endpoint.

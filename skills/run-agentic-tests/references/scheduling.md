@@ -51,6 +51,12 @@ Use the manifest's predeclared `review_count` for each expectation. When two
 reviews are required (`review_count: 2`), create distinct verifier tasks and
 **dispatch them concurrently in parallel**.
 
+To prevent LLM completion identicality and avoid duplicate output from provider prompt-cache hits:
+- **Prompt Variance**: Assign distinct evaluation lenses in their respective handoffs:
+  - **Verifier A (Specification Conformance)**: Evaluates strict adherence to declared Given/When/Then steps and positive proof.
+  - **Verifier B (Adversarial & Boundary Scrutiny)**: Evaluates edge conditions, negative assertions, subtle side effects, and potential capture gaps.
+- **Seed / Sampling Variance**: Ensure separate worker seed identities (`seed: campaign-hash + task_id`) or non-zero temperature to guarantee mathematically independent reviews.
+
 Both verifiers read only the original execution evidence allowlist, without either
 peer's result, verdict, notebook excerpt, or discussion. Running them concurrently
 cuts verification turnaround time in half while preserving total independence.

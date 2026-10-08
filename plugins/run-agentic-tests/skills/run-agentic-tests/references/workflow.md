@@ -63,7 +63,7 @@ notifications and blocker escalation; files carry durable truth.
 Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.
 Execution produces observations and artifact references. The verifier opens
 those artifacts and judges each expectation. Critical cases get the declared
-blind second review dispatched concurrently in parallel. Any additional experiment
+blind second review dispatched concurrently in parallel with prompt/seed variance (conformance vs. adversarial lenses) to eliminate cache duplicates. Any additional experiment
 is a new executor task, never an action performed by the verifier.
 
 When a failure is verified, delegate diagnosis immediately. Implementation-bound

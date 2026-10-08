@@ -95,14 +95,23 @@ structure and error text. Redact secrets before sealing, record any relevant
 redaction limitation, and never copy `.env` or unrelated project content.
 
 ### Remote artifact retrieval (SCP)
-When `ego-browser` or `test-by-maestro` runs on a remote host (e.g., via SSH tunnel),
+When `ego-browser` or `test-by-maestro` runs on a remote host (e.g., via SSH tunnel to a test server),
 screenshots, test outputs, and downloaded files are written to the remote filesystem.
 The executor must retrieve all remote artifacts to the local campaign's `evidences/`
-directory via `scp` before submitting:
+directory via hardened `scp` before submitting:
 
 ```bash
-scp -p "$REMOTE_HOST:$REMOTE_FILE" "$LOCAL_EVIDENCES_DIR/$ARTIFACT_NAME"
+# Enforce absolute remote path and safe quoting (survives OpenSSH 9.0+ SFTP defaults and spaces)
+scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCES_DIR/$ARTIFACT_NAME"
+
+# If the remote environment lacks SFTP subsystem support, force legacy SCP protocol:
+scp -O -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCES_DIR/$ARTIFACT_NAME"
 ```
+
+Rules for remote retrieval:
+- **Always use absolute remote paths**: OpenSSH 9.0+ resolves relative paths against the remote user's home directory.
+- **Escape spaces and special characters**: Quote remote paths to prevent remote shell splitting.
+- **Honor SSH config**: If `$REMOTE_HOST` refers to an `~/.ssh/config` host alias, do not add conflicting `-P` port flags.
 
 A file that remains on the remote host cannot be verified locally and will fail with `MISSING_ARTIFACT`.
 
