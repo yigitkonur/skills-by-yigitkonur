@@ -179,7 +179,7 @@ Before adopting a pattern from another skill:
 
 ## Trust signals for specific platforms
 
-### skills.sh / Playbooks
+### skills.sh Registry
 
 | Signal | Where to find | What it means |
 |---|---|---|

@@ -59,24 +59,21 @@ name: agent-review-tool
 
 ## Frontmatter `name` field
 
-The `name` in frontmatter usually matches the directory name. When it differs, the frontmatter `name` takes precedence for the slash command.
+Per the canonical [Agent Skills Specification](https://agentskills.io/specification), the `name` in frontmatter **must strictly match the immediate parent directory name**.
 
 ```yaml
 ---
-name: build-skill          # This becomes /build-skill
+name: build-skill          # Directory must be named: build-skill/
 description: Use skill if...
 ---
 ```
 
-### When name ≠ directory name
+### Parent Directory Matching Rules
 
-Acceptable when:
-- The directory name is scoped (e.g., `skills/build-skill/` → name: `build-skill`)
-- The repo organizes skills under a prefix the skill shouldn't inherit
-
-Never:
-- Use spaces or special characters in the `name` field
-- Change the name after publication without a deprecation notice
+1. **Immediate parent directory**: In `skills/build-skill/SKILL.md`, the immediate parent directory is `build-skill`. The frontmatter `name` must be `build-skill`.
+2. **No divergence**: Never allow the frontmatter `name` to diverge from the folder name (e.g. folder `pdf-tools-v2/` with `name: pdf-tools` fails `skills-ref validate` and `skill-dl.mjs inspect`).
+3. **Format constraints**: 1–64 characters, lowercase `^[a-z0-9]+(-[a-z0-9]+)*$`, no leading/trailing hyphens, no consecutive hyphens (`--`).
+4. **Slash command identity**: The name determines the user-facing slash command (e.g., `/build-skill`).
 
 ## Frontmatter `description` field
 

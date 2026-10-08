@@ -9,7 +9,7 @@ This example shows a Tier 3 skill covering a full SDK. It demonstrates extensive
 ### Structure
 
 ```
-build-chrome-extension/
+build-copilot-app/
 ├── SKILL.md                              # 343 lines
 └── references/
     ├── agents/
@@ -120,7 +120,12 @@ This example shows a skill that guides a multi-step workflow rather than documen
 
 ```
 build-skill/
-├── SKILL.md                              # ~300 lines
+├── SKILL.md                              # ~200 lines
+├── scripts/
+│   ├── skill-dl.mjs
+│   ├── skill-research.mjs
+│   ├── skill-dl
+│   └── skill-research.sh
 └── references/
     ├── authoring/
     │   ├── skillmd-format.md
@@ -140,8 +145,7 @@ build-skill/
     ├── research-workflow.md
     ├── remote-sources.md
     ├── comparison-workflow.md
-    ├── source-patterns.md
-    └── skill-research.sh
+    └── source-patterns.md
 ```
 
 ### Why it works

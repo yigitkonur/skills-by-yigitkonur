@@ -124,11 +124,11 @@ The inspector verifies:
 
 ### Output naming
 
-Folders: `{owner}--{repo}--{skill}/` containing `SKILL.md` + bundled references.
+Folders: `<output>/{owner}--{repo}--{skill}/` containing `SKILL.md` + bundled references and scripts. When `-c <category>` is supplied, skills are placed under `<output>/<category>/{owner}--{repo}--{skill}/`.
 
-### Auto-categorization
+### Category Organization
 
-By default, `skill-dl` sorts downloaded skills into subfolders based on name patterns. The path shape is `<output>/<auto-category>/<owner>--<repo>--<skill>/`. Use `--no-auto-category` for flat `<output>/<owner>--<repo>--<skill>/` layout, or `-c <name>` to force a single category folder.
+By default, `skill-dl` uses a flat layout (`<output>/<owner>--<repo>--<skill>/`). You can specify `-c <name>` (or `--category <name>`) to organize batch downloads into designated category subdirectories (e.g. `-c testing` or `-c mcp`).
 
 ### Skill search paths
 

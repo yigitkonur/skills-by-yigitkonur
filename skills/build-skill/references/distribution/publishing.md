@@ -53,9 +53,9 @@ my-app/
 └── package.json
 ```
 
-### Channel 2: skills.sh / Playbooks marketplace
+### Channel 2: skills.sh Registry
 
-The primary discovery platform for Claude skills.
+The primary discovery platform for agent skills across ecosystems.
 
 #### How indexing works
 
@@ -96,8 +96,8 @@ node scripts/skill-dl.mjs search skill creation research comparison --top 20
 git clone https://github.com/owner/repo.git
 cp -r repo/skills/my-skill ~/.claude/skills/
 
-# Using npx (if skill provides an installer)
-npx skills install skill-name
+# Using npx skills CLI
+npx -y skills add <owner/repo/skill-name>
 ```
 
 ### Channel 4: Skills API

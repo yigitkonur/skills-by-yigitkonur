@@ -116,7 +116,7 @@ Reference files provide depth without bloating SKILL.md.
 ### Routing integrity
 - [ ] Every file in `references/` is routed from SKILL.md (decision tree, reading set, or routing table)
 - [ ] No orphaned reference files exist
-- [ ] No README.md inside the skill folder
+- [ ] No README.md inside references/ (use descriptive names instead)
 - [ ] Cross-references between files use relative paths within the skill
 
 ### File quality

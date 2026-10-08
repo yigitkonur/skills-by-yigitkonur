@@ -1,21 +1,18 @@
 # Search Strategies
 
-Read this file before the first `skill-dl search` in a session. Keyword choice is the main quality lever.
+Read this file before running skill discovery in a session. Keyword choice is the primary quality lever.
 
 Before the first search, verify the bundled CLI resolves and that `npx` is on PATH:
 
 ```bash
-bash scripts/skill-dl --where
+node scripts/skill-dl.mjs --where
 command -v npx
 ```
 
-The script is bundled — no install step. Search uses `npx skills find` as the
-primary channel and optionally layers Serper Google results when
-`SERPER_API_KEY` is exported. Example:
+The script is bundled in Node.js ESM (`scripts/skill-dl.mjs`) with an executable shim (`scripts/skill-dl`). Search queries the open `skills.sh` registry via `npx skills find` with consensus scoring across multiple orthogonal keywords:
 
 ```bash
-export SERPER_API_KEY=...   # optional
-bash scripts/skill-dl search typescript mcp server --top 20
+node scripts/skill-dl.mjs search typescript mcp server --top 20
 ```
 
 ## Keyword formulation rules
@@ -57,7 +54,7 @@ For any search, aim to include keywords from at least 3 of these categories:
 Start with your core topic keywords. Review the result table.
 
 ```bash
-bash scripts/skill-dl search typescript mcp server --top 30
+node scripts/skill-dl.mjs search typescript mcp server --top 30
 ```
 
 ### Round 2: Gap filling
@@ -65,7 +62,7 @@ bash scripts/skill-dl search typescript mcp server --top 30
 Identify what Round 1 missed. Add keywords from angles not covered.
 
 ```bash
-bash scripts/skill-dl search mcp authentication session transport streaming --top 20
+node scripts/skill-dl.mjs search mcp authentication session transport streaming --top 20
 ```
 
 ### Round 3: Adjacent discovery
@@ -73,7 +70,7 @@ bash scripts/skill-dl search mcp authentication session transport streaming --to
 Search for related but not identical topics that may contain reusable patterns.
 
 ```bash
-bash scripts/skill-dl search agent browser automation headless testing --top 15
+node scripts/skill-dl.mjs search agent browser automation headless testing --top 15
 ```
 
 ### Deduplication across rounds
@@ -113,13 +110,14 @@ When even the best results only match 1-2 keywords, the topic is niche on the re
 
 - Rank
 - Skill name
-- Owner/repo
-- Keywords matched
-- Match count
+- Repository
+- Matches
+- Keywords
+- Installs
 - URL
 
 Parse URLs from this table for batch download:
 
 ```bash
-bash scripts/skill-dl search react hooks testing | grep -oE 'https://playbooks\.com/skills/[^ |]+' | sort -u
+node scripts/skill-dl.mjs search react hooks testing | grep -oE 'https://skills\.sh/[^ |)]+' | sort -u
 ```

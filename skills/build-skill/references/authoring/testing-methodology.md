@@ -17,8 +17,13 @@ How to test a skill before shipping, at the right level of rigor for your audien
 
 Identify the active runtime before you install or test anything. New and revised skills must be tested in the runtime that will actually load them.
 
-- Use that runtime's skill directory, not a Claude-only default. Common personal-scope examples are `~/.claude/skills/[skill-name]/`, `~/.cursor/skills/[skill-name]/`, and `~/.codex/skills/[skill-name]/`. For project-scoped testing, use the runtime's project skill directory instead.
-- If you are unsure which directories a runtime supports, check `references/authoring/skillmd-format.md` for the location table.
+- Use that runtime's skill directory, not a Claude-only default:
+
+| Scope | Typical Directory Paths |
+|---|---|
+| Personal / Global | `~/.claude/skills/<skill-name>/`, `~/.cursor/skills/<skill-name>/`, `~/.codex/skills/<skill-name>/`, `~/.agents/skills/<skill-name>/` |
+| Project / Workspace | `.claude/skills/<skill-name>/`, `.cursor/skills/<skill-name>/`, `skills/<skill-name>/`, `.agents/skills/<skill-name>/` |
+
 - If the current environment forbids writing to the installed skill directory, do manual trigger review plus a functional workflow test, state that live trigger coverage was blocked, and do not claim live trigger coverage.
 
 ## Testing tiers

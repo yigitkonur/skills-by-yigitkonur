@@ -408,7 +408,7 @@ Before publishing, verify none of these apply:
 - [ ] Angle brackets in frontmatter (AP-2)
 - [ ] Missing `---` delimiters (AP-3)
 - [ ] Over-broad `allowed-tools` (AP-4)
-- [ ] Skill without the manual-only pair (AP-5)
+- [ ] Non-standard frontmatter fields or unguarded side-effects (AP-5)
 - [ ] SKILL.md over 500 lines (AP-6)
 - [ ] Empty SKILL.md (AP-7)
 - [ ] Orphaned reference files (AP-8)

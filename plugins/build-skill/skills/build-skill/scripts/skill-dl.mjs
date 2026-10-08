@@ -4,7 +4,7 @@
  * Node.js ES Module (MJS) implementation conforming to agentskills.io specifications.
  */
 
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const VERSION = '3.0.0-mjs';
+const VERSION = '3.2.0-mjs';
 
 function printHelp() {
   console.log(`skill-dl.mjs — Skill discovery, download & spec inspection (v${VERSION})
@@ -23,8 +23,8 @@ USAGE
 
 COMMANDS
   search <kw1> [kw2...]        Search skills across skills.sh & GitHub with consensus ranking
-  download <source...>         Download one or more skills from skills.sh or GitHub
-  inspect <path>               Inspect and validate a downloaded skill against agentskills.io spec
+  download <source...>         Download one or more skills (URL, file list, or triple)
+  inspect <path>               Inspect and validate a skill or corpus against agentskills.io spec
   --where                      Print script location and dependency status as JSON
   --version                    Print version
   --help, -h                   Show this help message
@@ -36,14 +36,18 @@ SEARCH OPTIONS
 
 DOWNLOAD OPTIONS
   -o, --output <dir>           Output directory (default: ./skills-collection)
+  -c, --category <name>        Force all skills into this category subfolder
+  --no-auto-category           Flat output layout (<output>/<owner>--<repo>--<skill>/)
   -f, --force                  Overwrite existing target directories
   --dry-run                    Preview downloads without cloning
 
 EXAMPLES
   node scripts/skill-dl.mjs search "typescript" "mcp" "testing" --top 10
   node scripts/skill-dl.mjs download https://skills.sh/anthropics/skills/skill-creator -o ./corpus
-  node scripts/skill-dl.mjs download anthropics/skills/mcp-builder -o ./corpus
-  node scripts/skill-dl.mjs inspect ./corpus/mcp-builder
+  node scripts/skill-dl.mjs download https://github.com/anthropics/skills/tree/main/skills/mcp-builder -o ./corpus
+  node scripts/skill-dl.mjs download urls.txt -o ./corpus --no-auto-category -f
+  node scripts/skill-dl.mjs inspect ./skills/build-skill
+  node scripts/skill-dl.mjs inspect ./corpus
 `);
 }
 
@@ -101,89 +105,78 @@ function parseSkillsFindOutput(stdout) {
       current.url = urlMatch[0];
     }
   }
-
   if (current) results.push(current);
+
   return results;
 }
 
-async function searchKeyword(kw) {
-  try {
-    const res = spawnSync('npx', ['-y', 'skills', 'find', kw], {
-      input: '\n',
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-      timeout: 15000
-    });
-    if (res.stdout) {
-      return parseSkillsFindOutput(res.stdout);
-    }
-  } catch (err) {
-    // fallback or fail gracefully
-  }
-  return [];
-}
-
-async function doSearch(args) {
-  let top = 20;
+async function doSearch(keywordsArgs) {
+  let topN = 20;
   let minMatch = 1;
-  let asJson = false;
+  let emitJson = false;
   const keywords = [];
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--top' && args[i + 1]) {
-      top = parseInt(args[++i], 10);
-    } else if (args[i] === '--min-match' && args[i + 1]) {
-      minMatch = parseInt(args[++i], 10);
-    } else if (args[i] === '--json') {
-      asJson = true;
-    } else if (args[i] === '-h' || args[i] === '--help') {
-      printHelp();
-      return;
-    } else if (!args[i].startsWith('-')) {
-      keywords.push(args[i]);
+  for (let i = 0; i < keywordsArgs.length; i++) {
+    const arg = keywordsArgs[i];
+    if (arg === '--top' && keywordsArgs[i + 1]) {
+      topN = parseInt(keywordsArgs[++i], 10) || 20;
+    } else if (arg === '--min-match' && keywordsArgs[i + 1]) {
+      minMatch = parseInt(keywordsArgs[++i], 10) || 1;
+    } else if (arg === '--json') {
+      emitJson = true;
+    } else if (!arg.startsWith('-')) {
+      keywords.push(arg);
     }
   }
 
   if (keywords.length === 0) {
-    console.error('Error: At least one search keyword is required.');
+    console.error('Error: Please provide at least one keyword for search.');
     process.exit(1);
   }
 
-  const consensusMap = new Map();
+  const skillMap = new Map();
 
   for (const kw of keywords) {
-    const hits = await searchKeyword(kw);
-    for (const hit of hits) {
-      const key = `${hit.owner}/${hit.repo}/${hit.skill}`;
-      if (!consensusMap.has(key)) {
-        consensusMap.set(key, {
-          ...hit,
-          matchedKeywords: new Set([kw]),
-          matchCount: 1
-        });
-      } else {
-        const item = consensusMap.get(key);
-        item.matchedKeywords.add(kw);
-        item.matchCount = item.matchedKeywords.size;
-        if (hit.installs && hit.installs !== 'N/A') {
-          item.installs = hit.installs;
+    const proc = spawnSync('npx', ['-y', 'skills', 'find', kw], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 30000
+    });
+
+    if (proc.status === 0 && proc.stdout) {
+      const parsed = parseSkillsFindOutput(proc.stdout);
+      for (const item of parsed) {
+        const key = `${item.owner}/${item.repo}/${item.skill}`;
+        if (!skillMap.has(key)) {
+          skillMap.set(key, {
+            ...item,
+            matchedKeywords: new Set(),
+            matchCount: 0
+          });
         }
+        const record = skillMap.get(key);
+        record.matchedKeywords.add(kw);
+        record.matchCount = record.matchedKeywords.size;
       }
     }
   }
 
-  let ranked = Array.from(consensusMap.values())
-    .filter(item => item.matchCount >= minMatch)
+  let ranked = Array.from(skillMap.values())
+    .filter(r => r.matchCount >= minMatch)
     .sort((a, b) => {
       if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
-      return a.skill.localeCompare(b.skill);
-    });
+      const parseInstalls = (str) => {
+        if (!str || str === 'N/A') return 0;
+        const num = parseFloat(str.replace(/[^0-9.]/g, ''));
+        if (str.toLowerCase().includes('m')) return num * 1000000;
+        if (str.toLowerCase().includes('k')) return num * 1000;
+        return num || 0;
+      };
+      return parseInstalls(b.installs) - parseInstalls(a.installs);
+    })
+    .slice(0, topN);
 
-  if (top > 0) {
-    ranked = ranked.slice(0, top);
-  }
-
-  if (asJson) {
+  if (emitJson) {
     console.log(JSON.stringify(ranked.map(r => ({
       ...r,
       matchedKeywords: Array.from(r.matchedKeywords)
@@ -191,12 +184,12 @@ async function doSearch(args) {
     return;
   }
 
+  console.log(`\n### Skill Discovery Results (${ranked.length} candidates)\n`);
   if (ranked.length === 0) {
-    console.log('No skills found matching the criteria.');
+    console.log('No skills matched the search criteria.\n');
     return;
   }
 
-  console.log(`\n### Skill Discovery Results (${ranked.length} candidates)\n`);
   console.log('| Rank | Skill | Repository | Matches | Keywords | Installs | URL |');
   console.log('|---|---|---|---|---|---|---|');
   ranked.forEach((r, idx) => {
@@ -211,19 +204,37 @@ function parseUrlOrSpec(raw) {
   clean = clean.replace(/^https?:\/\/skills\.sh\//, '');
   clean = clean.replace(/^https?:\/\/github\.com\//, '');
 
+  // 1. Match GitHub tree URLs: owner/repo/tree/<branch>/skills/<skill> or owner/repo/tree/<branch>/<skill>
+  const ghTreeMatch = clean.match(/^([^/]+)\/([^/]+)\/tree\/[^/]+(?:\/skills|\/.agents\/skills|\/.claude\/skills)?\/(.+)$/);
+  if (ghTreeMatch) {
+    return { owner: ghTreeMatch[1], repo: ghTreeMatch[2], skill: ghTreeMatch[3] };
+  }
+
+  // 2. Match GitHub blob URLs (e.g. pointing to SKILL.md)
+  const ghBlobMatch = clean.match(/^([^/]+)\/([^/]+)\/blob\/[^/]+(?:\/skills|\/.agents\/skills|\/.claude\/skills)?\/([^/]+)\/SKILL\.md$/);
+  if (ghBlobMatch) {
+    return { owner: ghBlobMatch[1], repo: ghBlobMatch[2], skill: ghBlobMatch[3] };
+  }
+
+  // 3. Match 3-part spec: owner/repo/skill
   const parts = clean.split('/');
-  if (parts.length >= 3) {
+  if (parts.length === 3) {
     return {
       owner: parts[0],
       repo: parts[1],
       skill: parts[2]
     };
-  } else if (parts.length === 2) {
+  } else if (parts.length === 2 && clean.includes('@')) {
     const [ownerRepo, skill] = clean.split('@');
     if (skill) {
       const [owner, repo] = ownerRepo.split('/');
       return { owner, repo, skill };
     }
+  } else if (parts.length > 3) {
+    if (parts[2] === 'skills' || parts[2] === '.skills' || parts[2] === '.claude') {
+      return { owner: parts[0], repo: parts[1], skill: parts.slice(3).join('/') };
+    }
+    return { owner: parts[0], repo: parts[1], skill: parts[parts.length - 1] };
   }
   return null;
 }
@@ -261,11 +272,15 @@ function findSkillInRepo(cloneDir, skillName) {
   const p3 = path.join(cloneDir, '.claude', 'skills', skillName);
   if (fs.existsSync(p3) && fs.statSync(p3).isDirectory()) return p3;
 
-  // 4. Root level if root is the skill
+  // 4. Direct <skillName> (immediate subdirectory)
+  const p4 = path.join(cloneDir, skillName);
+  if (fs.existsSync(p4) && fs.statSync(p4).isDirectory() && fs.existsSync(path.join(p4, 'SKILL.md'))) return p4;
+
+  // 5. Root level if root is the skill
   const rootSkillMd = path.join(cloneDir, 'SKILL.md');
   if (fs.existsSync(rootSkillMd)) return cloneDir;
 
-  // 5. Recursive search
+  // 6. Recursive search
   const candidates = [];
   function search(dir, depth = 0) {
     if (depth > 4) return;
@@ -274,7 +289,7 @@ function findSkillInRepo(cloneDir, skillName) {
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         if (entry.name === '.git' || entry.name === 'node_modules') continue;
-        if (entry.name === skillName) {
+        if (entry.name === skillName && fs.existsSync(path.join(dir, entry.name, 'SKILL.md'))) {
           candidates.push(path.join(dir, entry.name));
         } else {
           search(path.join(dir, entry.name), depth + 1);
@@ -292,22 +307,47 @@ async function doDownload(args) {
   let outputDir = './skills-collection';
   let force = false;
   let dryRun = false;
-  const sources = [];
+  let forcedCategory = null;
+  let flatLayout = false;
+  const rawSources = [];
 
   for (let i = 0; i < args.length; i++) {
     if ((args[i] === '-o' || args[i] === '--output') && args[i + 1]) {
       outputDir = args[++i];
+    } else if ((args[i] === '-c' || args[i] === '--category') && args[i + 1]) {
+      forcedCategory = args[++i];
+    } else if (args[i] === '--no-auto-category') {
+      flatLayout = true;
     } else if (args[i] === '-f' || args[i] === '--force') {
       force = true;
     } else if (args[i] === '--dry-run') {
       dryRun = true;
     } else if (!args[i].startsWith('-')) {
-      sources.push(args[i]);
+      rawSources.push(args[i]);
+    }
+  }
+
+  if (rawSources.length === 0) {
+    console.error('Error: At least one skill source, file, or URL is required.');
+    process.exit(1);
+  }
+
+  // Expand batch files and stdin
+  const sources = [];
+  for (const src of rawSources) {
+    if (src === '-') {
+      const input = fs.readFileSync(0, 'utf8');
+      sources.push(...input.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')));
+    } else if (fs.existsSync(src) && fs.statSync(src).isFile()) {
+      const lines = fs.readFileSync(src, 'utf8').split('\n');
+      sources.push(...lines.map(l => l.trim()).filter(l => l && !l.startsWith('#')));
+    } else {
+      sources.push(src);
     }
   }
 
   if (sources.length === 0) {
-    console.error('Error: At least one skill source or URL is required.');
+    console.error('Error: No valid URLs or specs found in provided input.');
     process.exit(1);
   }
 
@@ -325,24 +365,35 @@ async function doDownload(args) {
     }
     const repoKey = `${parsed.owner}/${parsed.repo}`;
     if (!repoGroups.has(repoKey)) repoGroups.set(repoKey, []);
-    repoGroups.get(repoKey).push(parsed.skill);
+    repoGroups.get(repoKey).push({ ...parsed, originalUrl: src });
   }
 
-  for (const [repoKey, skills] of repoGroups.entries()) {
+  for (const [repoKey, skillItems] of repoGroups.entries()) {
     console.log(`\n[REPO] Cloning https://github.com/${repoKey}.git ...`);
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-dl-'));
 
     try {
       if (!dryRun) {
-        execSync(`git clone --depth 1 "https://github.com/${repoKey}.git" "${tempDir}"`, {
+        const cloneProc = spawnSync('git', ['clone', '--depth', '1', `https://github.com/${repoKey}.git`, tempDir], {
           stdio: ['ignore', 'ignore', 'pipe']
         });
+        if (cloneProc.status !== 0) {
+          throw new Error(cloneProc.stderr ? cloneProc.stderr.toString().trim() : 'git clone failed');
+        }
       }
 
-      for (const skillName of skills) {
-        const destFolder = path.join(outputDir, skillName);
+      for (const item of skillItems) {
+        const skillName = item.skill;
+        const [owner, repo] = repoKey.split('/');
+        
+        let targetSubdir = `${owner}--${repo}--${skillName}`;
+        if (forcedCategory) {
+          targetSubdir = path.join(forcedCategory, targetSubdir);
+        }
+
+        const destFolder = path.join(outputDir, targetSubdir);
         if (fs.existsSync(destFolder) && !force) {
-          console.log(`  [SKIP] ${skillName} already exists in output (use -f to overwrite)`);
+          console.log(`  [SKIP] ${targetSubdir} already exists in output (use -f to overwrite)`);
           continue;
         }
 
@@ -371,39 +422,51 @@ async function doDownload(args) {
   console.log('\nDownload complete.\n');
 }
 
-function inspectSkill(targetPath) {
-  const absPath = path.resolve(targetPath);
-  if (!fs.existsSync(absPath)) {
-    console.error(`Error: Path does not exist: ${absPath}`);
-    process.exit(1);
+function parseFrontmatter(content) {
+  if (!content.startsWith('---')) return { frontmatter: null, bodyLines: content.split('\n') };
+
+  const endIdx = content.indexOf('\n---', 3);
+  if (endIdx === -1) return { frontmatter: null, bodyLines: content.split('\n') };
+
+  const rawFm = content.slice(3, endIdx).trim();
+  const body = content.slice(endIdx + 4).trim();
+
+  const lines = rawFm.split('\n');
+  const fm = {};
+  let currentKey = null;
+  let currentSubMap = null;
+
+  for (const line of lines) {
+    const subMatch = line.match(/^\s+([a-zA-Z0-9._-]+):\s*(.*)$/);
+    if (subMatch && currentKey) {
+      if (!currentSubMap) currentSubMap = {};
+      currentSubMap[subMatch[1].trim()] = subMatch[2].trim().replace(/^["']|["']$/g, '');
+      fm[currentKey] = currentSubMap;
+      continue;
+    }
+
+    const topMatch = line.match(/^([a-zA-Z0-9._-]+):\s*(.*)$/);
+    if (topMatch) {
+      currentKey = topMatch[1].trim();
+      currentSubMap = null;
+      const val = topMatch[2].trim().replace(/^["']|["']$/g, '');
+      fm[currentKey] = val;
+    }
   }
 
+  return { frontmatter: fm, bodyLines: body.split('\n') };
+}
+
+function inspectSingleSkill(absPath) {
   const skillMdPath = path.join(absPath, 'SKILL.md');
   if (!fs.existsSync(skillMdPath)) {
     console.error(`Error: SKILL.md not found in ${absPath}`);
-    process.exit(1);
+    return false;
   }
 
   const content = fs.readFileSync(skillMdPath, 'utf8');
   const lines = content.split('\n');
-
-  // Parse frontmatter
-  let frontmatter = null;
-  let bodyLines = [];
-  if (content.startsWith('---')) {
-    const parts = content.split('---');
-    if (parts.length >= 3) {
-      const rawFm = parts[1];
-      frontmatter = {};
-      rawFm.split('\n').forEach(l => {
-        const m = l.match(/^([a-zA-Z0-9._-]+):\s*(.*)$/);
-        if (m) {
-          frontmatter[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '');
-        }
-      });
-      bodyLines = parts.slice(2).join('---').trim().split('\n');
-    }
-  }
+  const { frontmatter, bodyLines } = parseFrontmatter(content);
 
   // Count references
   const refDir = path.join(absPath, 'references');
@@ -435,32 +498,125 @@ function inspectSkill(targetPath) {
   if (refFiles.length > 10) console.log(`  ... and ${refFiles.length - 10} more`);
   console.log(`Scripts (${scriptFiles.length}):`, scriptFiles);
 
-  // Spec checks
+  // Specification validation rules (agentskills.io)
   const issues = [];
   const ALLOWED_FIELDS = ['name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools'];
+  
   if (frontmatter) {
-    if (!frontmatter.name) issues.push("Missing required field 'name'");
-    if (!frontmatter.description) issues.push("Missing required field 'description'");
+    // 1. name validation
+    if (!frontmatter.name) {
+      issues.push("Missing required field 'name'");
+    } else {
+      const name = frontmatter.name;
+      if (typeof name !== 'string' || name.length < 1 || name.length > 64) {
+        issues.push(`Field 'name' must be between 1 and 64 characters (current: ${name ? name.length : 0})`);
+      }
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
+        issues.push(`Field 'name' must be lowercase alphanumeric and hyphens only, cannot start or end with hyphen, no consecutive hyphens: '${name}'`);
+      }
+      const dirName = path.basename(absPath);
+      const expectedSkillName = dirName.includes('--') ? dirName.split('--').pop() : dirName;
+      if (expectedSkillName !== name && dirName !== name) {
+        issues.push(`Field 'name' ('${name}') does not match directory name ('${expectedSkillName}')`);
+      }
+    }
+
+    // 2. description validation
+    if (!frontmatter.description) {
+      issues.push("Missing required field 'description'");
+    } else {
+      const desc = typeof frontmatter.description === 'string' ? frontmatter.description : String(frontmatter.description);
+      if (desc.length < 1 || desc.length > 1024) {
+        issues.push(`Field 'description' must be between 1 and 1024 characters (current: ${desc.length})`);
+      }
+      if (/[<>]/.test(desc)) {
+        issues.push("Field 'description' contains forbidden angle brackets ('<' or '>')");
+      }
+    }
+
+    // 3. compatibility validation
+    if (frontmatter.compatibility && frontmatter.compatibility.length > 500) {
+      issues.push(`Field 'compatibility' exceeds 500 characters (${frontmatter.compatibility.length} chars)`);
+    }
+
+    // 4. allowed-tools validation
+    if (frontmatter['allowed-tools']) {
+      const tools = frontmatter['allowed-tools'];
+      if (typeof tools === 'string' && tools.includes(',')) {
+        issues.push("Field 'allowed-tools' must be a space-separated string, NOT comma-separated");
+      }
+    }
+
+    // 5. unknown fields check
     for (const key of Object.keys(frontmatter)) {
       if (!ALLOWED_FIELDS.includes(key)) {
         issues.push(`Non-spec frontmatter field '${key}' (Agent Skills spec allows only: ${ALLOWED_FIELDS.join(', ')})`);
       }
     }
   } else {
-    issues.push('Missing YAML frontmatter delimiters (---)');
+    issues.push('Missing YAML frontmatter delimiters (---) at start of file');
   }
 
+  // 6. sizing recommendation check
   if (lines.length > 500) {
     issues.push(`SKILL.md exceeds recommended 500 lines (${lines.length} lines)`);
   }
 
   if (issues.length > 0) {
-    console.log(`\n⚠️  Specification & Quality Notices:`);
+    console.log(`\n⚠️  Specification & Quality Notices (${issues.length}):`);
     issues.forEach(i => console.log(`  - ${i}`));
+    return false;
   } else {
     console.log(`\n✅ Conforms cleanly to agentskills.io specification guidelines.`);
+    return true;
   }
-  console.log('');
+}
+
+function inspectDirectory(targetPath) {
+  const absPath = path.resolve(targetPath);
+  if (!fs.existsSync(absPath)) {
+    console.error(`Error: Path does not exist: ${absPath}`);
+    process.exit(1);
+  }
+
+  const skillMdPath = path.join(absPath, 'SKILL.md');
+  if (fs.existsSync(skillMdPath)) {
+    const ok = inspectSingleSkill(absPath);
+    console.log('');
+    return ok;
+  }
+
+  // Corpus mode: search child directories
+  const foundSkillDirs = [];
+  function findSkills(dir, depth = 0) {
+    if (depth > 3) return;
+    try {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!e.isDirectory()) continue;
+        if (e.name === '.git' || e.name === 'node_modules') continue;
+        const sub = path.join(dir, e.name);
+        if (fs.existsSync(path.join(sub, 'SKILL.md'))) {
+          foundSkillDirs.push(sub);
+        } else {
+          findSkills(sub, depth + 1);
+        }
+      }
+    } catch {}
+  }
+  findSkills(absPath);
+
+  if (foundSkillDirs.length === 0) {
+    console.error(`Error: No skills found (no SKILL.md directly or in subdirectories of ${absPath})`);
+    process.exit(1);
+  }
+
+  console.log(`\n=== Auditing Corpus: ${foundSkillDirs.length} skill(s) found in ${absPath} ===`);
+  let passed = 0;
+  for (const sDir of foundSkillDirs) {
+    if (inspectSingleSkill(sDir)) passed++;
+  }
+  console.log(`\nCorpus Audit Summary: ${passed}/${foundSkillDirs.length} skills passed agentskills.io compliance.\n`);
+  return passed === foundSkillDirs.length;
 }
 
 async function main() {
@@ -492,10 +648,10 @@ async function main() {
   } else if (command === 'download') {
     await doDownload(args.slice(1));
   } else if (command === 'inspect') {
-    inspectSkill(args[1] || '.');
+    inspectDirectory(args[1] || '.');
   } else {
     // Treat bare arguments as search or download
-    if (args[0].includes('/') || args[0].includes('http')) {
+    if (args[0].includes('/') || args[0].includes('http') || args[0].endsWith('.txt') || args[0] === '-') {
       await doDownload(args);
     } else {
       await doSearch(args);

@@ -58,9 +58,10 @@ Show the verification table inline in conversation output:
 ```markdown
 | Claim | Source | Verified | Notes |
 |---|---|---|---|
-| `name` field max 64 chars | Claude Code docs | ✅ | Confirmed in source code |
-| `description` max 1024 chars | Medium article | ⚠️ | Not in official docs, but matches behavior |
-| `metadata` field is free-form | Blog post | ❌ | Not supported in current version |
+| `name` field max 64 chars | agentskills.io spec | ✅ | Confirmed in spec and validator |
+| `description` max 1024 chars | agentskills.io spec | ✅ | Validated: 1-1024 chars, no XML tags |
+| `version` top-level field | Blog post | ❌ | Invalid: agentskills.io uses `metadata.version` |
+| `metadata` key-value map | agentskills.io spec | ✅ | Supported: free-form string key-value pairs |
 ```
 
 ## Common verification traps
@@ -156,7 +157,7 @@ When evaluating a source for skill research:
 |---|---|
 | Official docs (vendor site) | Maintained by tool creators, versioned |
 | Source code (GitHub) | Ground truth for behavior |
-| High-install skills (Playbooks) | Validated by community usage |
+| High-install skills (skills.sh) | Validated by community usage |
 | Release notes / changelogs | Authoritative for version changes |
 
 ### Medium-signal sources

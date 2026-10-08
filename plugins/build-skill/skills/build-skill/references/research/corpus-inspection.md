@@ -4,7 +4,7 @@
 
 After downloading, get an immediate picture of the corpus:
 
-Default auto-categorization puts each downloaded `SKILL.md` at depth 3 (`<output>/<category>/<owner>--<repo>--<skill>/SKILL.md`). The `find ... -maxdepth 3` commands below also work when you used `--no-auto-category`. If `tree` is unavailable, use `find ./corpus -maxdepth 3 -type d | sort`.
+Downloaded skills are placed in `<output>/<owner>--<repo>--<skill>/` (or `<output>/<category>/<owner>--<repo>--<skill>/` if `-c` is passed). Run `node scripts/skill-dl.mjs inspect ./corpus` to run the automated specification and quality validator across all downloaded skills at once, or use shell commands:
 
 ```bash
 # Total skills downloaded
