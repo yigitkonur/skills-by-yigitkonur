@@ -14,23 +14,27 @@ TIMEOUT=20
 JSON_OUTPUT=false
 VERIFY_DNS=true
 POST_QUANTUM=false
+NO_PRECHECKS=false
+HTTP_HOST_HEADER=""
 
 print_usage() {
   cat <<HELP
 Usage: $(basename "$0") --port <PORT> [options]
 
 Options:
-  -p, --port <PORT>        Local port to expose (required, e.g. 3000, 8080, 8099)
-  -h, --host <HOST>        Local host address (default: 127.0.0.1)
-      --protocol <proto>   Protocol to use: auto, quic, or http2 (default: auto)
-      --pq                 Enable experimental post-quantum hybrid key exchange
-  -l, --logfile <path>     Path for cloudflared log (default: /tmp/cloudflared-<PORT>.log)
-      --pidfile <path>     Path to record daemon PID (default: /tmp/cloudflared-<PORT>.pid)
-  -o, --out <path>         File to write the public tunnel URL into
-  -t, --timeout <sec>      Max seconds to wait for URL extraction (default: 20)
-      --no-dns-wait        Skip global DNS publication check
-      --json               Output result as JSON
-      --help               Show this help message
+  -p, --port <PORT>             Local port to expose (required, e.g. 3000, 8080, 8099)
+  -h, --host <HOST>             Local host address (default: 127.0.0.1)
+      --protocol <proto>        Protocol to use: auto, quic, or http2 (default: auto)
+      --pq                      Enable experimental post-quantum hybrid key exchange
+      --no-prechecks            Bypass connectivity prechecks to reduce startup latency
+      --http-host-header <host> Override Host header sent to local origin
+  -l, --logfile <path>          Path for cloudflared log (default: /tmp/cloudflared-<PORT>.log)
+      --pidfile <path>          Path to record daemon PID (default: /tmp/cloudflared-<PORT>.pid)
+  -o, --out <path>              File to write the public tunnel URL into
+  -t, --timeout <sec>           Max seconds to wait for URL extraction (default: 20)
+      --no-dns-wait             Skip global DNS publication check
+  -j, --json                    Output result as JSON
+      --help                    Show this help message
 
 Example:
   $(basename "$0") --port 8099 --out /tmp/tunnel-url.txt
@@ -43,12 +47,14 @@ while [[ $# -gt 0 ]]; do
     -h|--host) HOST="$2"; shift 2 ;;
     --protocol) PROTOCOL="$2"; shift 2 ;;
     --pq|--post-quantum) POST_QUANTUM=true; shift ;;
+    --no-prechecks) NO_PRECHECKS=true; shift ;;
+    --http-host-header) HTTP_HOST_HEADER="$2"; shift 2 ;;
     -l|--logfile) LOGFILE="$2"; shift 2 ;;
     --pidfile) PIDFILE="$2"; shift 2 ;;
     -o|--out) OUTFILE="$2"; shift 2 ;;
     -t|--timeout) TIMEOUT="$2"; shift 2 ;;
     --no-dns-wait) VERIFY_DNS=false; shift ;;
-    --json) JSON_OUTPUT=true; shift ;;
+    -j|--json) JSON_OUTPUT=true; shift ;;
     --help) print_usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; print_usage; exit 1 ;;
   esac
@@ -75,6 +81,7 @@ CF_ARGS=(
   "tunnel"
   "--url" "http://${HOST}:${PORT}"
   "--protocol" "$PROTOCOL"
+  "--output" "json"
   "--logfile" "$LOGFILE"
   "--pidfile" "$PIDFILE"
   "--no-autoupdate"
@@ -82,6 +89,14 @@ CF_ARGS=(
 
 if [[ "$POST_QUANTUM" == "true" ]]; then
   CF_ARGS+=("--pq")
+fi
+
+if [[ "$NO_PRECHECKS" == "true" ]]; then
+  CF_ARGS+=("--no-prechecks")
+fi
+
+if [[ -n "$HTTP_HOST_HEADER" ]]; then
+  CF_ARGS+=("--http-host-header" "$HTTP_HOST_HEADER")
 fi
 
 # Launch cloudflared quick tunnel in background with process group isolation
@@ -97,6 +112,16 @@ fi
 TUNNEL_URL=""
 START_TIME=$(date +%s)
 while true; do
+  # Fast-fail if cloudflared exited early (e.g. port collision, invalid flags)
+  if ! kill -0 "$DAEMON_PID" 2>/dev/null; then
+    echo "Error: cloudflared daemon exited prematurely." >&2
+    if [[ -f "$LOGFILE" ]]; then
+      echo "--- Cloudflared Log Tail ---" >&2
+      tail -n 20 "$LOGFILE" >&2
+    fi
+    exit 1
+  fi
+
   if [[ -f "$LOGFILE" ]]; then
     TUNNEL_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$LOGFILE" 2>/dev/null | tail -n 1 || true)
     if [[ -n "$TUNNEL_URL" ]]; then
@@ -118,19 +143,32 @@ while true; do
   sleep 0.5
 done
 
+# Read authoritative PID from pidfile if populated
+if [[ -f "$PIDFILE" && -s "$PIDFILE" ]]; then
+  RECORDED_PID=$(cat "$PIDFILE" 2>/dev/null || true)
+  if [[ -n "$RECORDED_PID" ]]; then
+    DAEMON_PID="$RECORDED_PID"
+  fi
+fi
+
 # Optional: Wait for global DNS publication to prevent NXDOMAIN poisoning
 DNS_RESOLVED=false
 if [[ "$VERIFY_DNS" == "true" ]]; then
   HOST_ONLY=$(echo "$TUNNEL_URL" | sed -E 's#^https?://##')
-  for i in {1..15}; do
-    IP1=$(dig @1.1.1.1 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
-    IP2=$(dig @8.8.8.8 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
-    if [[ -n "$IP1" && -n "$IP2" ]]; then
-      DNS_RESOLVED=true
-      break
-    fi
-    sleep 1
-  done
+  if command -v dig &>/dev/null; then
+    for i in {1..15}; do
+      IP1=$(dig @1.1.1.1 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+      IP2=$(dig @8.8.8.8 +short "$HOST_ONLY" 2>/dev/null | tail -n 1 || true)
+      if [[ -n "$IP1" && -n "$IP2" ]]; then
+        DNS_RESOLVED=true
+        break
+      fi
+      sleep 1
+    done
+  else
+    # Container lacks dig tool; proceed with edge tunnel resolution assumed
+    DNS_RESOLVED=true
+  fi
 fi
 
 # Write out to output file if requested

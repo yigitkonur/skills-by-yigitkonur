@@ -84,9 +84,10 @@ Named tunnels support multiple running instances (connectors) using the exact sa
 
 ---
 
-## 4. Running as a System Service (Systemd)
+## 4. Running as a System Service (Systemd & macOS Launchd)
 
-For production Linux environments, install `cloudflared` as a persistent background daemon:
+### Linux (Systemd)
+For production Linux environments, install `cloudflared` as a persistent systemd service:
 
 ```bash
 # Install systemd service with token
@@ -104,6 +105,22 @@ systemctl status cloudflared
 journalctl -u cloudflared -f
 ```
 
+### macOS (Launchd)
+On macOS workstations, `cloudflared service install` configures a LaunchAgent or LaunchDaemon (`com.cloudflare.cloudflared.plist`):
+
+```bash
+# Install launchd service with token
+sudo cloudflared service install eyJhIjoiY...
+
+# Start and stop using launchctl
+sudo launchctl start com.cloudflare.cloudflared
+sudo launchctl stop com.cloudflare.cloudflared
+
+# View service logs on macOS
+tail -f /Library/Logs/com.cloudflare.cloudflared.err.log
+tail -f /Library/Logs/com.cloudflare.cloudflared.out.log
+```
+
 ---
 
 ## 5. Useful Management Commands
@@ -112,6 +129,8 @@ journalctl -u cloudflared -f
 |---|---|
 | `cloudflared tunnel list` | Lists all existing named tunnels in your account. |
 | `cloudflared tunnel info <NAME/UUID>` | Displays connector status, active connections, and locations. |
+| `cloudflared tunnel route dns <NAME/UUID> <hostname>` | Binds a DNS CNAME to the specified named tunnel. |
+| `cloudflared tunnel route ip add <CIDR> <NAME/UUID>` | Routes private IP subnet traffic (WARP / Zero Trust Private Network). |
 | `cloudflared tunnel delete <NAME/UUID>` | Deletes the tunnel identity (must stop active instances first). |
 | `cloudflared tunnel cleanup <NAME/UUID>` | Cleans up orphaned or dead connection records in Cloudflare edge. |
 | `cloudflared tunnel ingress validate` | Validates YAML syntax and service rules in `config.yml`. |

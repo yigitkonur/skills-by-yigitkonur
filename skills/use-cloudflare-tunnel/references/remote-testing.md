@@ -22,11 +22,11 @@ TARGET_HOST="${TARGET_HOST:-user@host}"  # e.g., "macbook" or "developer@192.168
 # 1. Flush remote DNS cache (macOS example; on Linux use 'resolvectl flush-caches')
 ssh "$TARGET_HOST" "dscacheutil -flushcache 2>/dev/null || true"
 
-# 2. Probe HTTP status directly from the remote client's OS network stack
+# 2. Probe HTTP status directly from the remote client's OS network stack (following redirects)
 PROBE_OK=false
 for attempt in {1..20}; do
-  STATUS=$(ssh "$TARGET_HOST" "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" 2>/dev/null || echo "000")
-  if [[ "$STATUS" == "200" ]]; then
+  STATUS=$(ssh "$TARGET_HOST" "curl -s -L -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" 2>/dev/null || echo "000")
+  if [[ "$STATUS" =~ ^(2[0-9]{2}|3[0-9]{2})$ ]]; then
     PROBE_OK=true
     break
   fi

@@ -25,12 +25,12 @@ PIDFILE="/tmp/cloudflared-${PORT}.pid"
 rm -f "$LOGFILE" "$PIDFILE"
 
 # 2. Launch detached daemon with cross-platform fallback
-SPAWN_CMD="cloudflared tunnel --url http://127.0.0.1:${PORT} --logfile $LOGFILE --pidfile $PIDFILE --no-autoupdate --output json"
+CF_ARGS=(tunnel --url "http://127.0.0.1:${PORT}" --protocol auto --logfile "$LOGFILE" --pidfile "$PIDFILE" --no-autoupdate --output json)
 
 if command -v setsid &>/dev/null; then
-  setsid nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+  setsid nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 else
-  nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+  nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 fi
 
 DAEMON_PID=$!

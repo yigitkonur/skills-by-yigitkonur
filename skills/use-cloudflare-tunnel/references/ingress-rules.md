@@ -85,7 +85,11 @@ ingress:
 Before restarting or applying changes to a live tunnel, validate that syntax, rules, and catch-all requirements are met:
 
 ```bash
+# Validate default configuration (~/.cloudflared/config.yml):
 cloudflared tunnel ingress validate
+
+# Validate custom or temporary configuration (Note: --config precedes ingress):
+cloudflared tunnel --config /path/to/config.yml ingress validate
 ```
 
 * If valid: Exits with code 0: `Validating rules... OK`
@@ -95,6 +99,8 @@ cloudflared tunnel ingress validate
 To test how a specific URL maps against your ingress configuration without sending network traffic:
 
 ```bash
+# Test URL routing rule match against default or custom config:
 cloudflared tunnel ingress rule https://api.example.com/v2/users
+cloudflared tunnel --config /path/to/config.yml ingress rule https://api.example.com/v2/users
 # Output: Matched rule #1: service http://localhost:8002
 ```

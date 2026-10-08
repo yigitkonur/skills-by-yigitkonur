@@ -107,11 +107,11 @@ Or via raw CLI with agent-safe process isolation and native `--output json`:
 rm -f /tmp/cloudflared-8080.log /tmp/cloudflared-8080.pid
 
 # 2. Launch detached daemon (auto-fallback across Linux setsid / macOS nohup)
-SPAWN_CMD="cloudflared tunnel --url http://127.0.0.1:8080 --logfile /tmp/cloudflared-8080.log --pidfile /tmp/cloudflared-8080.pid --no-autoupdate --output json"
+CF_ARGS=(tunnel --url "http://127.0.0.1:8080" --protocol auto --logfile /tmp/cloudflared-8080.log --pidfile /tmp/cloudflared-8080.pid --no-autoupdate --output json)
 if command -v setsid &>/dev/null; then
-  setsid nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+  setsid nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 else
-  nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+  nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 fi
 
 # 3. Extract URL (or parse json events)
@@ -142,7 +142,7 @@ if command -v dscacheutil &>/dev/null; then
 fi
 
 # Step C: Verify directly from target client machine (Target Perspective Gate)
-# e.g., ssh <client> "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" # Must return 200
+# e.g., ssh <client> "curl -s -L -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" # Returns 200 or 3xx redirect
 ```
 
 ---
@@ -169,16 +169,21 @@ bash scripts/quick-tunnel.sh --port 8099 --out /tmp/public-app.txt
 ### Pattern A: Cross-Platform Process-Isolated Daemon Spawning
 Decouple the tunnel daemon from the tool invocation process group:
 ```bash
+CF_ARGS=(tunnel --url "http://127.0.0.1:${PORT}" --protocol auto --logfile "$LOGFILE" --output json)
 if command -v setsid &>/dev/null; then
-  setsid nohup cloudflared tunnel --url "http://127.0.0.1:${PORT}" --logfile "$LOGFILE" --output json </dev/null >/dev/null 2>&1 &
+  setsid nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 else
-  nohup cloudflared tunnel --url "http://127.0.0.1:${PORT}" --logfile "$LOGFILE" --output json </dev/null >/dev/null 2>&1 &
+  nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
 fi
 ```
 
 ### Pattern B: Protocol Negotiation (`auto` vs `http2`)
-By default, modern `cloudflared` automatically chooses the best protocol over time (`auto`). Both QUIC and HTTP/2 tunnel transport connect on **outbound port 7844**. If UDP is blocked, `cloudflared` automatically falls back to HTTP/2 over TCP 7844, or you can force it explicitly:
+While Named Tunnels default to `auto`, ad-hoc quick tunnels (`cloudflared tunnel --url ...`) internally default to `quic` unless `--protocol auto` is explicitly supplied. Always pass `--protocol auto` so `cloudflared` automatically falls back to HTTP/2 over TCP port 7844 if UDP is blocked by firewalls:
 ```bash
+# Recommended: Auto-negotiate QUIC with HTTP/2 fallback
+cloudflared tunnel --protocol auto --url http://127.0.0.1:8080
+
+# Or force pure HTTP/2 if UDP 7844 is strictly prohibited:
 cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080
 ```
 

@@ -8,15 +8,24 @@ COMMAND="${1:-status}"
 case "$COMMAND" in
   status)
     echo "=== Active Cloudflare Tunnels ==="
-    pgrep -a -f "cloudflared tunnel" || echo "No active cloudflared tunnel processes."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      pgrep -fl "cloudflared tunnel" || echo "No active cloudflared tunnel processes."
+    else
+      pgrep -a -f "cloudflared tunnel" || echo "No active cloudflared tunnel processes."
+    fi
     echo ""
     echo "=== Active Unified Proxies ==="
-    pgrep -a -f "unified-proxy.mjs" || echo "No active unified proxies."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      pgrep -fl "unified-proxy.mjs" || echo "No active unified proxies."
+    else
+      pgrep -a -f "unified-proxy.mjs" || echo "No active unified proxies."
+    fi
     echo ""
     echo "=== Discovered Public URLs ==="
-    for log in /tmp/cloudflared*.log; do
+    shopt -s nullglob
+    for log in $(ls -t /tmp/cloudflared*.log 2>/dev/null || true); do
       if [[ -f "$log" ]]; then
-        URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$log" | tail -n 1 || true)
+        URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$log" 2>/dev/null | tail -n 1 || true)
         if [[ -n "$URL" ]]; then
           echo "$log -> $URL"
         fi
@@ -27,10 +36,20 @@ case "$COMMAND" in
   kill)
     TARGET="${2:-all}"
     if [[ "$TARGET" == "all" ]]; then
-      echo "Terminating all cloudflared tunnel instances..."
-      pkill -f "cloudflared tunnel" || true
+      echo "Terminating active ad-hoc quick tunnels and unified proxies..."
+      # Target quick tunnels specifically to avoid killing production named tunnels
+      pkill -f "cloudflared tunnel --url" || true
       pkill -f "unified-proxy.mjs" || true
       echo "Cleaned up."
+    elif [[ "$TARGET" =~ ^[0-9]+$ ]]; then
+      echo "Terminating tunnel for port: $TARGET"
+      pkill -f "cloudflared.*:${TARGET}" || true
+      pkill -f "cloudflared.*-${TARGET}.log" || true
+      if [[ -f "/tmp/cloudflared-${TARGET}.pid" ]]; then
+        kill $(cat "/tmp/cloudflared-${TARGET}.pid") 2>/dev/null || true
+      fi
+      rm -f "/tmp/cloudflared-${TARGET}".*
+      echo "Cleaned up port $TARGET."
     else
       echo "Terminating process matching: $TARGET"
       pkill -f "$TARGET" || true
@@ -40,11 +59,14 @@ case "$COMMAND" in
   health)
     URL="${2:-}"
     if [[ -z "$URL" ]]; then
-      # Try to pick latest URL from /tmp/cloudflared*.log
-      for log in /tmp/cloudflared*.log; do
+      # Pick latest URL from /tmp/cloudflared*.log sorted by modification time
+      for log in $(ls -t /tmp/cloudflared*.log 2>/dev/null || true); do
         if [[ -f "$log" ]]; then
-          URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$log" | tail -n 1 || true)
-          break
+          FOUND_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' "$log" 2>/dev/null | tail -n 1 || true)
+          if [[ -n "$FOUND_URL" ]]; then
+            URL="$FOUND_URL"
+            break
+          fi
         fi
       done
     fi
@@ -55,9 +77,10 @@ case "$COMMAND" in
     fi
 
     echo "Checking health of: $URL"
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "failed")
+    # Pass -L to follow redirects so auth/app landing pages return 200
+    HTTP_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "failed")
     echo "HTTP Status: $HTTP_CODE"
-    if [[ "$HTTP_CODE" =~ ^(200|301|302|404)$ ]]; then
+    if [[ "$HTTP_CODE" =~ ^(2[0-9]{2}|3[0-9]{2}|404)$ ]]; then
       echo "Status: HEALTHY (Tunnel reachable)"
     else
       echo "Status: UNHEALTHY / UNREACHABLE"
@@ -70,7 +93,7 @@ case "$COMMAND" in
     echo ""
     echo "Commands:"
     echo "  status        List all running tunnels, proxies, and public URLs"
-    echo "  kill [target] Terminate running tunnels ('all' or substring filter)"
-    echo "  health [url]  Test connectivity of a tunnel URL"
+    echo "  kill [target] Terminate running tunnels ('all', port number, or regex filter)"
+    echo "  health [url]  Test connectivity of a tunnel URL (follows redirects)"
     ;;
 esac

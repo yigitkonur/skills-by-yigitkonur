@@ -54,9 +54,9 @@ cloudflared tunnel --no-prechecks --url http://127.0.0.1:8080
 ```
 
 ### Comprehensive Network Diagnostics (`cloudflared tunnel diag`)
-To verify edge connectivity, port 7844 reachability, and generate a diagnostic bundle:
+To verify edge connectivity, port 7844 reachability, and generate a diagnostic bundle (run inside `/tmp` to avoid dropping a diagnostic zip file in your working tree):
 ```bash
-cloudflared tunnel diag
+(cd /tmp && cloudflared tunnel diag)
 ```
 
 ---

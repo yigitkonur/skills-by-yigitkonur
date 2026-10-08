@@ -48,8 +48,8 @@ flowchart TD
 Run this sequence to diagnose any failing tunnel:
 
 ```bash
-# Step 0: Run built-in automated tunnel diagnostics
-cloudflared tunnel diag
+# Step 0: Run built-in automated tunnel diagnostics (in /tmp to isolate generated zip archive)
+(cd /tmp && cloudflared tunnel diag)
 
 # Step 1: Check if local service is responding locally
 curl -Is http://127.0.0.1:8099 || echo "FAIL: Local origin is not listening on 8099!"
@@ -60,6 +60,8 @@ pgrep -a -f "cloudflared tunnel" || echo "FAIL: cloudflared daemon is NOT runnin
 # Step 3: Check global DNS publication on 1.1.1.1
 dig @1.1.1.1 +short <subdomain>.trycloudflare.com || echo "FAIL: Not published on 1.1.1.1 yet!"
 
-# Step 4: Probe directly from target client machine
+# Step 4: Probe directly from target client machine network stack (NOT origin container loopback)
+# Run from client terminal, or via SSH from origin:
 curl -s -o /dev/null -w '%{http_code}' https://<subdomain>.trycloudflare.com || echo "FAIL: Client cannot reach tunnel!"
+# Or: ssh "$TARGET_HOST" "curl -s -o /dev/null -w '%{http_code}' https://<subdomain>.trycloudflare.com"
 ```
