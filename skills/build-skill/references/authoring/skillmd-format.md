@@ -1,86 +1,60 @@
 # SKILL.md Format Specification
 
-Complete reference for the SKILL.md file format used by AI coding agents.
+Complete reference for the SKILL.md file format based on the open [Agent Skills Specification](https://agentskills.io/specification).
 
 ## File requirements
 
-- File must be named exactly `SKILL.md` (case-sensitive)
-- Must be placed inside a named directory (the directory name becomes the skill identifier)
+- File must be named exactly `SKILL.md` (case-sensitive; `skill.md` accepted as fallback by some parsers, but `SKILL.md` is standard)
+- Must be placed inside a named directory matching the skill `name`
 - Frontmatter must start on line 1
 
 ## Frontmatter
 
-YAML frontmatter is enclosed between `---` delimiters. It configures how the skill is discovered, loaded, and executed.
+YAML frontmatter is enclosed between `---` delimiters. It configures how the skill is discovered, validated, and loaded.
 
 ```yaml
 ---
 name: my-skill-name
-description: Use skill if you are doing X and need Y before Z.
+description: Extract PDF text, fill forms, merge files. Use when handling PDFs or document workflows.
+license: MIT
+compatibility: Requires Python 3.12+ and uv
+metadata:
+  author: example-org
+  version: "1.0.0"
+allowed-tools: Bash(git:*) Read
 ---
 ```
 
-### Field reference
+### Official Specification Field Reference (`agentskills.io`)
+
+Only the following six fields are defined in the canonical [Agent Skills Specification](https://agentskills.io/specification):
 
 | Field | Required | Type | Constraints | Purpose |
 |---|---|---|---|---|
-| `name` | Recommended | string | Lowercase letters, numbers, hyphens only. Max 64 chars. No leading/trailing hyphen. No consecutive hyphens. | Display name and `/slash-command` identifier. Defaults to directory name if omitted. |
-| `description` | Recommended | string | Max 1024 chars. Avoid `<` and `>` (can inject unintended instructions). | Primary signal for auto-invocation. Must state **what** the skill does AND **when** to use it. |
-| `allowed-tools` | No | string (comma-separated) | Tool identifiers like `Read, Grep, Glob` | Pre-approves specific tools without per-use confirmation. Supports wildcards. |
-| `disable-model-invocation` | **Set `true` by default** | boolean | `true` or `false` | When `true`, prevents auto-loading and keeps the description out of the model's context. Only manual `/name` invocation works. This repo's default for every skill (see Manual-only default). |
-| `user-invocable` | No | boolean | `true` or `false` | When `false`, hides from the `/` menu. For background-knowledge skills only. |
-| `model` | No | string | Model identifier or `inherit` | Override the model when skill is active. Defaults to session model. |
-| `context` | No | string | `fork` | Runs the skill in an isolated sub-agent context. |
-| `agent` | No | string | Agent type like `Explore`, `Plan` | Sub-agent type when `context: fork` is set. |
-| `argument-hint` | No | string | e.g., `[issue-number]` | Autocomplete hint showing expected arguments. |
-| `mode` | No | boolean | `true` | Marks skill as a "mode command" in a separate UI section. |
-| `version` | No | string | SemVer e.g., `1.0.0` | Human-readable version for tracking. |
-| `hooks` | No | map | Hook definitions | Hooks scoped to the skill's lifecycle. |
-| `license` | No | string | e.g., `MIT`, `Apache-2.0` | License for open-source distribution. Common: MIT, Apache-2.0. |
-| `compatibility` | No | string | 1-500 characters | Environment requirements: intended product, required system packages, network access needs. |
-| `metadata` | No | map | Custom key-value pairs | Suggested keys: `author`, `version`, `mcp-server`, `category`, `tags`, `documentation`, `support`. |
+| `name` | **Yes** | string | 1–64 characters. Lowercase unicode letters (`a-z`), numbers (`0-9`), and hyphens (`-`) only. Must not start/end with hyphen, no consecutive hyphens (`--`). **Must match parent directory name.** | Unique identifier and slash command. |
+| `description` | **Yes** | string | 1–1024 characters. Non-empty string. Avoid XML angle brackets (`<`, `>`). | Primary trigger for progressive disclosure. Describes **what** the skill does AND **when** to invoke it. |
+| `license` | No | string | Short license name (e.g. `MIT`, `Apache-2.0`) or reference to bundled license file. | Licensing terms. |
+| `compatibility` | No | string | 1–500 characters. | Environment requirements (target products, system packages, network access). |
+| `metadata` | No | map (string: string) | Arbitrary string key-value mapping (e.g., `author`, `version`, `category`). | Client-specific or catalog metadata. Custom extensions belong here. |
+| `allowed-tools` | No | string (**space-separated**) | Space-separated tool patterns, e.g. `Bash(git:*) Bash(jq:*) Read`. | Pre-approved tools the skill may run (experimental). |
 
-## Manual-only default
+> **Note on Client-Specific Extensions:**
+> - Some clients support proprietary or experimental flags (e.g., `disable-model-invocation: true` in Claude Code / Cursor, or `agents/openai.yaml` in Codex).
+> - These are **not** part of the official `agentskills.io` open specification. Strict specification validators (like `skills-ref validate`) will flag unrecognized top-level fields as errors (`Unexpected fields in frontmatter`).
+> - For pure specification compliance and broad interoperability across all 38+ agent products (Claude Code, Cursor, Copilot, Antigravity, Windsurf), keep frontmatter restricted to the 6 official fields. Place extra metadata inside `metadata:`.
 
-Every skill built with this workflow is manual-only unless the user explicitly asks for auto-discovery. Global skill lists stay small and nothing fires by surprise.
+### Frontmatter Rules
 
-Two files carry the setting, because tools read different places:
-
-1. `SKILL.md` frontmatter (Claude Code, Cursor, VS Code):
-
-   ```yaml
-   ---
-   name: my-skill
-   description: Use skill if you are ...
-   disable-model-invocation: true
-   ---
-   ```
-
-2. `agents/openai.yaml` next to `SKILL.md` (Codex ignores the frontmatter key and reads this file):
-
-   ```yaml
-   policy:
-     allow_implicit_invocation: false
-   ```
-
-   If the file already exists (for example with an `interface:` block), append the `policy:` block and keep the rest.
-
-Effects: in Claude Code the description is not loaded into context and the skill runs only on `/skill-name`; in Codex it runs only on `$skill-name` or `/skills`. Keep the description accurate anyway, since it feeds the slash-command menu and humans reading the listing. Trigger-phrase tests in Step 8 become "does the description make sense when the user picks it from the menu" plus a manual-invocation functional test.
-
-Opt-out: only when the user asks for auto-discovery. Say so in the output and leave both settings off.
-
-### Frontmatter rules
-
-1. Must start on line 1 of the file — no blank lines before `---`
-2. Any YAML syntax error silently prevents loading
-3. Avoid XML angle brackets (`<`, `>`) — they can inject instructions
-4. Unknown fields are ignored by the loader
-5. If `name` is omitted, the parent directory name is used
-6. If `description` is omitted, the first paragraph of the markdown body is used
-7. Skills named with "claude" or "anthropic" prefix are reserved by Anthropic and forbidden
+1. Must start on line 1 of the file — no blank lines before `---`.
+2. Must be valid YAML (parsed strictly via `strictyaml`).
+3. Avoid XML angle brackets (`<`, `>`) — they can inject instructions into LLM system prompts.
+4. `name` is **strictly required** and must match the directory name.
+5. `description` is **strictly required** (no fallback to markdown body).
+6. Unknown top-level fields trigger errors in the official `skills-ref` validator.
 
 ## Body structure
 
-The markdown body after frontmatter contains the instructions the agent follows when the skill is invoked.
+The markdown body after frontmatter contains the instructions the agent follows when the skill is activated.
 
 ### Recommended sections
 
@@ -89,37 +63,23 @@ The markdown body after frontmatter contains the instructions the agent follows 
 
 Brief one-line purpose statement.
 
-## Decision tree
+## Integration & prerequisites
+Mandatory dependencies, such as companion skills (e.g. run-research).
 
-Route the agent to the correct reference file based on the task.
+## Core modes & decision tree
+Route the agent based on the task (Discovery, Creation, Conversation-driven, Research-driven).
 
-## Quick start
+## Step-by-step instructions
+Actionable, progressive procedures with clear validation gates.
 
-Minimal steps to accomplish the most common use case.
+## Available scripts
+Document bundled MJS / Python scripts in scripts/ with usage examples.
 
-## Key patterns
+## Key patterns & gotchas
+Essential conventions, concrete edge cases, and pitfalls with actionable fixes.
 
-2-5 essential patterns with code examples.
-
-## Common pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-
-## Minimal reading sets
-
-### "I need to do X"
-- `references/relevant-file.md`
-
-## Reference files
-
-| File | When to read |
-|---|---|
-
-## Guardrails
-
-- Do not...
-- Do not...
+## Reference routing
+Table mapping every file in references/ to specific conditions when it must be loaded.
 ```
 
 ### Body guidelines
@@ -128,223 +88,23 @@ Minimal steps to accomplish the most common use case.
 |---|---|
 | Keep under 500 lines | Larger files consume excessive context budget |
 | Use imperative language ("Run...", "Write...") | Clearer agent instructions than passive voice |
-| Reference files via relative paths | Portability across environments |
-| Use `{baseDir}` for script references | Agent resolves to the skill's directory |
-| Include 1-3 inline examples | Demonstrates expected behavior without bloat |
+| Reference files via relative paths (`references/doc.md`) | Portability across environments |
 | Move large docs to `references/` | Progressive disclosure — loaded only when needed |
+| Bundle scripts in `scripts/` (prefer `.mjs` or `.py`) | Automate deterministic logic instead of relying on fuzzy model generation |
+| Test scripts before shipping | Ensure runtime infrastructure and dependencies execute cleanly |
 
-## Three-level loading system
+## Progressive disclosure architecture
 
-Understanding how agents load skills is critical for sizing decisions.
+Agents manage context through progressive disclosure:
 
-### Level 1 — Discovery (always loaded)
+1. **Discovery (Startup)**: Only `name` and `description` are loaded (~100 tokens per skill) into the system prompt or agent catalog.
+2. **Activation (On Demand)**: When a user query matches the skill's description or when manually invoked, the full `SKILL.md` body is loaded (<5,000 tokens recommended).
+3. **Deep Reference & Scripts (As Needed)**: Additional documentation in `references/` or executables in `scripts/` are only read or executed when explicitly required by the workflow.
 
-At session start, the agent reads every skill's `name` + `description` from frontmatter.
+## Validation with `skills-ref`
 
-- Cost: ~100 tokens per skill
-- Purpose: Decides which skills exist and when to invoke them
-- Implication: `description` must contain trigger phrases the user would naturally say
+Validate any skill against the official open specification using the reference validator:
 
-### Level 2 — Activation (on demand)
-
-When a skill matches (auto or manual `/name`), the full SKILL.md body is loaded.
-
-- Cost: Up to ~5,000 tokens
-- Purpose: Provides the workflow instructions
-- Implication: Keep the body focused — offload reference material
-
-### Level 3 — Deep reference (on demand)
-
-When SKILL.md references external files (via `Read` or explicit links), those files are loaded.
-
-- Cost: Variable, effectively unlimited
-- Purpose: Detailed guides, specs, examples, large code samples
-- Implication: Only loaded when the skill explicitly requests them
-
+```bash
+skills-ref validate ./my-skill
 ```
-Session start
-  └─ Level 1: Load name + description (~100 tokens/skill)
-       └─ Trigger match?
-            └─ Level 2: Load full SKILL.md body (≤5K tokens)
-                 └─ Reference needed?
-                      └─ Level 3: Load references/ files (unlimited)
-```
-
-## Agent-specific locations
-
-Skills are discovered in platform-specific directories:
-
-| Agent | Project scope | Personal scope |
-|---|---|---|
-| Claude Code | `.claude/skills/<name>/` | `~/.claude/skills/<name>/` |
-| Cursor | `.cursor/skills/<name>/` | `~/.cursor/skills/<name>/` |
-| Codex | `.codex/skills/<name>/` | `~/.codex/skills/<name>/` |
-| Generic | `skills/<name>/` | `~/.skills/<name>/` |
-
-Project-scope skills take precedence over personal-scope when names conflict.
-
-## Writing effective descriptions
-
-The `description` field is the most important piece of frontmatter. It determines whether the agent auto-invokes the skill.
-
-### Formula
-
-```
-Use skill if you are [doing what] and need [what outcome] [optional: before/after what].
-```
-
-### Good descriptions
-
-```yaml
-description: Use skill if you are building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK.
-```
-
-```yaml
-description: Use skill if you are creating or redesigning a Claude skill and need workspace-first evidence, remote skill research, and comparison before drafting.
-```
-
-```yaml
-description: Use skill if you are reviewing a GitHub pull request with a systematic, evidence-based workflow.
-```
-
-```yaml
-description: Manages Linear project workflows including sprint planning,
-  task creation, and status tracking. Use when user mentions "sprint",
-  "Linear tasks", "project planning", or asks to "create tickets".
-```
-
-### Bad descriptions
-
-```yaml
-description: Helps with code.
-# Too vague — no trigger phrases, no specificity
-```
-
-```yaml
-description: A skill for TypeScript.
-# No "when" — doesn't tell the agent what task this serves
-```
-
-```yaml
-description: Use this skill to <generate> React components with proper <typing>.
-# Angle brackets can inject instructions into the agent
-```
-
-```yaml
-description: Implements the Project entity model with hierarchical relationships.
-# Too technical — no user-natural language, no trigger phrases
-```
-
-## Output contract timing
-
-When defining the output contract (what the skill produces), show each artifact at the step that produces it — not batched at the end. If the output contract lists five deliverables and all five appear only after the final step, intermediate review is impossible and errors compound silently.
-
-Include timing hints in the output contract:
-
-```markdown
-## Output contract
-
-| Artifact | Produced at | Format |
-|---|---|---|
-| Source shortlist | After Step 4 | Markdown list in output |
-| Comparison table | After Step 5 | Markdown table in output |
-| Draft SKILL.md | After Step 7 | File on disk |
-| Final checklist | After Step 9 | Inline checklist |
-```
-
-**Common mistake:** Reaching the final step without having shown any output. If you find yourself at the end of a workflow with nothing yet visible to the user, the output contract is missing timing hints.
-
-## Frontmatter validation checklist
-
-Before finalizing frontmatter, verify all three of the following:
-
-1. **Description length:** `echo ${#description}` — must be under 1024 characters
-2. **No angle brackets:** The `description` and other frontmatter values must not contain `<` or `>` characters (they can inject unintended instructions into the agent)
-3. **Directory-name match:** The parent directory name must match the frontmatter `name` field
-
-Failing any of these causes silent loading failures or cryptic upload errors.
-
-## Validation checklist
-
-Before shipping a skill, verify:
-
-- [ ] File is named `SKILL.md` (exact case)
-- [ ] Frontmatter starts on line 1
-- [ ] `name` follows naming rules (lowercase, hyphens, ≤64 chars)
-- [ ] `name` does not contain "claude" or "anthropic" (reserved)
-- [ ] `description` includes what + when with trigger phrases
-- [ ] No `<` or `>` in frontmatter values
-- [ ] Body is under 500 lines
-- [ ] All referenced files actually exist
-- [ ] Every file in `references/` is routed from SKILL.md
-- [ ] `allowed-tools` is minimal (not over-broad)
-- [ ] Manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `allow_implicit_invocation: false`
-- [ ] `metadata` includes author and version for published skills
-
-## Metadata field reference
-
-The `metadata` field accepts any custom key-value pairs. Suggested keys:
-
-```yaml
-metadata:
-  author: Company Name
-  version: 1.0.0
-  mcp-server: server-name
-  category: productivity
-  tags: [project-management, automation]
-  documentation: https://example.com/docs
-  support: support@example.com
-```
-
-## Complete minimal example
-
-```yaml
----
-name: create-component
-description: Use skill if you are creating a new React component and need consistent file structure, typing, and test scaffolding.
-allowed-tools: Read, Write, Glob
----
-
-# Create Component
-
-Generate a new React component with TypeScript types and test file.
-
-## Steps
-
-1. Ask for the component name and location
-2. Create the component file with proper exports
-3. Create the test file with a basic render test
-4. Update the barrel export if one exists
-
-## Output format
-
-Each component gets three files:
-- `ComponentName.tsx` — the component
-- `ComponentName.test.tsx` — the test
-- `index.ts` — barrel export (update if exists)
-
-## Example
-
-For a component named `UserCard` in `src/components/`:
-
-```tsx
-// src/components/UserCard/UserCard.tsx
-export interface UserCardProps {
-  name: string;
-  email: string;
-}
-
-export function UserCard({ name, email }: UserCardProps) {
-  return (
-    <div className="user-card">
-      <h3>{name}</h3>
-      <p>{email}</p>
-    </div>
-  );
-}
-```
-
-
----
-
-> Tip: When this file's guidance conflicts with a downloaded skill's structure, this file wins. Downloaded skills are evidence, not templates. See `references/comparison-workflow.md` for quality assessment guidance.

@@ -101,7 +101,7 @@ cat round1-urls.txt round2-urls.txt round3-urls.txt | sort -u > all-urls.txt
 
 ### Niche topics (max match count 1-2)
 
-When even the best results only match 1-2 keywords, the topic is niche on playbooks.com. In this case:
+When even the best results only match 1-2 keywords, the topic is niche on the registry (skills.sh). In this case:
 
 1. Manually review the full result list (do not use `--min-match`)
 2. Evaluate by skill name relevance, not match count

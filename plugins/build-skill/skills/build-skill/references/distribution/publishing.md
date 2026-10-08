@@ -83,15 +83,14 @@ The primary discovery platform for Claude skills.
 Users can install skills directly from GitHub:
 
 ```bash
-# The bundled scripts/skill-dl is pure bash — no install. Run from the
-# skill directory after cloning the host repo:
-bash scripts/skill-dl --version
+# The bundled scripts/skill-dl.mjs runs via Node.js:
+node scripts/skill-dl.mjs --where
 
 # Download a skill into ~/.claude/skills/
-bash scripts/skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ~/.claude/skills/
+node scripts/skill-dl.mjs https://skills.sh/owner/repo/skill-name -o ~/.claude/skills/
 
 # Discover candidate skills before downloading (npx-only by default)
-bash scripts/skill-dl search skill creation research comparison --top 20
+node scripts/skill-dl.mjs search skill creation research comparison --top 20
 
 # Or git clone directly
 git clone https://github.com/owner/repo.git
@@ -320,7 +319,7 @@ One-line description matching the SKILL.md description.
 ## Quick install
 
 \```bash
-skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ~/.claude/skills/
+node scripts/skill-dl.mjs https://skills.sh/owner/repo/skill-name -o ~/.claude/skills/
 \```
 
 ## What's included

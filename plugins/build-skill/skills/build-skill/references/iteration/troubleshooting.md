@@ -324,24 +324,24 @@ Skill problem?
 
 ```bash
 # Verify the bundled script resolves and required commands are present
-bash scripts/skill-dl --where
-for cmd in bash git curl npx; do command -v "$cmd" >/dev/null || echo "MISSING: $cmd"; done
+node scripts/skill-dl.mjs --where
+for cmd in node git npx; do command -v "$cmd" >/dev/null || echo "MISSING: $cmd"; done
 ```
 
 Use it like:
 
 ```bash
-export SERPER_API_KEY=...   # optional; layers Google playbooks.com hits
-bash scripts/skill-dl search typescript mcp server --top 20
-bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f
+node scripts/skill-dl.mjs search typescript mcp server --top 20
+node scripts/skill-dl.mjs urls.txt -o ./research-corpus --no-auto-category -f
+node scripts/skill-dl.mjs inspect ./research-corpus
 ```
 
-If `npx` is missing and you cannot install Node.js, fall back to:
+If `npx` is missing and you cannot run registry searches, fall back to:
 
-1. MCP tools (`skills-as-context-search-skills`, `skills-as-context-get-skill-details`)
-2. Manual GitHub search for repos containing SKILL.md files
+1. GitHub search via `gh search code` or web search for repos containing `SKILL.md`
+2. Direct deep research via `skills/run-research`
 
-**Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability. From inside this skill, `bash scripts/skill-dl ...` is the preferred portable entrypoint.
+**Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability. From inside this skill, `node scripts/skill-dl.mjs ...` is the preferred portable entrypoint.
 
 ---
 

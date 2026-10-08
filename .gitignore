@@ -38,6 +38,7 @@ to-delete/
 !.agents/
 !.agents/plugins/
 !.agents/plugins/marketplace.json
+.agents/teamwork/
 
 # CI workflows are shipped too (same dotdir-hiding caveat).
 !.github/

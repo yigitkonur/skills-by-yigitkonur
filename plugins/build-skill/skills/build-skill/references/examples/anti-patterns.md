@@ -62,40 +62,51 @@ description: Does something useful when...
 
 **Rule:** `---` must be on line 1. No blank lines before it.
 
-### AP-4: Over-broad allowed-tools
+### AP-4: Malformed or over-broad allowed-tools
 
 **Wrong:**
 ```yaml
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, Task, Agent
 ```
 
-**Problem:** Grants the skill access to every tool, including destructive ones. A read-only skill shouldn't have `Write` or `Bash` permissions.
+**Problem:** 
+1. The `agentskills.io` specification strictly requires a **space-separated** list of tool identifiers, NOT comma-separated.
+2. Grants the skill access to every tool, including destructive ones. A read-only skill shouldn't have `Write` or `Bash` permissions.
 
 **Fix:**
 ```yaml
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read Grep Glob
 ```
 
-**Rule:** List only the tools the skill actually needs. Principle of least privilege.
+**Rule:** List only the tools the skill actually needs, separated by spaces. Follow the principle of least privilege.
 
-### AP-5: Missing manual-only settings (`disable-model-invocation`, `agents/openai.yaml`)
+### AP-5: Non-standard frontmatter fields or unguarded side-effects
 
 **Wrong:**
 ```yaml
 name: deploy-production
 description: Deploy the application to production.
+disable-model-invocation: true
+user-invocable: true
 ```
 
-**Problem:** The agent may auto-invoke this skill when the user mentions "production," causing unintended deployments.
+**Problem:** 
+1. Non-standard fields like `disable-model-invocation` or `user-invocable` are rejected by the official `agentskills.io` specification validator (`skills-ref validate`).
+2. Relying on client-specific flags to prevent unintended execution fails on open spec agents.
 
 **Fix:**
 ```yaml
 name: deploy-production
-description: Deploy the application to production environment.
-disable-model-invocation: true
+description: Deploy the application to production environment when the user explicitly requests a production deployment.
 ```
 
-**Rule:** Every skill ships manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `policy:` / `allow_implicit_invocation: false`. Side-effect skills (deploy, delete, commit, publish) are the clearest case, but the default applies to all.
+And in the workflow body, enforce an explicit confirmation gate:
+```markdown
+## Step 1: Confirmation Gate (Mandatory)
+Ask the user for explicit confirmation with the target environment and commit SHA before running any deployment commands. Never proceed autonomously.
+```
+
+**Rule:** Adhere strictly to canonical `agentskills.io` frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`). Handle dangerous side-effects through mandatory confirmation gates, dry-run flags, and explicit user-facing verification steps in the workflow.
 
 ## Category 2: Structure problems
 
@@ -182,7 +193,7 @@ references/
 
 ### AP-11: Copying a source skill wholesale
 
-**Wrong:** Downloading a skill from Playbooks, renaming the directory, and publishing it as your own.
+**Wrong:** Downloading a skill from skills.sh or GitHub, renaming the directory, and publishing it as your own.
 
 **Problem:**
 - Copyright violation (if the source has a restrictive license)

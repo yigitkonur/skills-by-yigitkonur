@@ -15,7 +15,7 @@ Use the full checklist for published skills. Use Phase 0-3 for personal skills. 
 
 Planning and preparation before writing any files.
 
-- [ ] If using the full research path: verified the bundled `bash scripts/skill-dl --where` resolves and that `npx` is available (or `SERPER_API_KEY` is exported as a fallback channel). No install step is needed; the script is pure bash.
+- [ ] If using the full research path: verified the bundled `node scripts/skill-dl.mjs --where` resolves and that Node.js / git are available. Confirmed companion skill `run-research` is installed and ready.
 - [ ] Identified 2-3 concrete use cases with specific user trigger phrases
 - [ ] Classified skill type: Document/Asset Creation, Workflow Automation, or MCP Enhancement
 - [ ] Listed all tools needed: built-in Claude tools, MCP servers, scripts
@@ -65,11 +65,11 @@ The frontmatter determines whether Claude ever loads your skill.
 - [ ] Negative triggers added if over-triggering risk exists ("Do NOT use for...")
 - [ ] Tested: asked Claude "When would you use [skill-name]?" and answer matches intent
 
-### Optional fields
-- [ ] `allowed-tools` is minimal — only tools the skill actually needs
-- [ ] Manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `policy.allow_implicit_invocation: false` (unless the user asked for auto-discovery)
-- [ ] `compatibility` field set if the skill requires specific platforms or dependencies
-- [ ] `metadata` includes `author` and `version` for published skills
+### Optional fields (per agentskills.io spec)
+- [ ] `allowed-tools` is space-separated tool patterns (e.g. `Bash(git:*) Read`)
+- [ ] `compatibility` field set if the skill requires specific platforms, packages, or network access
+- [ ] `metadata` includes string key-value pairs (e.g. `author`, `version`)
+- [ ] Any client-specific options (e.g. `disable-model-invocation`) only added when explicitly requested by user
 
 ---
 

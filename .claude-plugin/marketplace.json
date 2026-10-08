@@ -306,7 +306,7 @@
     {
       "name": "build-skill",
       "source": "./",
-      "description": "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md.",
+      "description": "Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows.",
       "version": "1.0.104",
       "category": "skills",
       "strict": false,
