@@ -6,10 +6,15 @@ disable-model-invocation: true
 
 # Run TS Cleanup
 
-A TypeScript codebase accumulates. Features get deprecated but their files stay. A refactor lands half-finished and both abstractions survive. An LLM writes `cn` for the fourth time in a fourth directory. Dependencies outlive the code that imported them. Types get exported "just in case" and never consumed. This skill sweeps all of it into a clean end state:
+A TypeScript codebase accumulates. Features get deprecated but their files stay. A refactor lands half-finished and both abstractions survive. An LLM writes `cn` for the fourth time in a fourth directory, launders types with `as any`, duplicates schemas, and blankets properties in defensive `?.` optional chains. Dependencies outlive the code that imported them. Types get exported "just in case" and never consumed. This skill sweeps all of it into a clean end state guided by **The 4 Pillars of TypeScript Project Cleanup**:
+
+1. **Reachability & Dead Code (Graph Layer):** Prune unreferenced files, dead exports, orphaned dependencies, and abandoned zombie features using Knip.
+2. **Encapsulation & Boundary Integrity (Visibility Layer):** Decouple test-only leaks, internalize in-file exports, and designate explicit public API entry points (`!`).
+3. **Type System Rigor & Soundness (Semantic Layer):** Eradicate type laundering (`as any`, `as unknown as T`), maintain the type-coverage ratchet, enforce schema inference as single source of truth, and ensure declaration-emit safety.
+4. **Module & Build Graph Health (Architecture Layer):** Eliminate barrel smog, break cyclic dependency loops via `dpdm`/`madge`, restore tree-shaking, and maintain deterministic lockfiles.
 
 - Every **dead symbol, file, export, type, and dependency** is found by a real engine, not by guesswork — and each finding is **triaged before deletion**, never deleted on the engine's word alone.
-- Every deletion lands in a **reversible wave** behind a passing verification gate, so any single step reverts with one `git revert`.
+- Every deletion lands in a **reversible causal wave** behind a passing verification gate, so any single step reverts with one `git reset` or `git revert`.
 - The **root cause** is addressed, not just the symptom: duplicate helpers get consolidated, circular barrels get untangled, single-use wrappers get inlined — so the same bloat does not regrow.
 - The codebase ends **more navigable than it started**, for the next agent and the next human, without a single behavioural change.
 
@@ -39,7 +44,7 @@ Pick the mode explicitly at the start, from the user's ask. Announce which one y
 
 | Mode | Runs | Fires on |
 |---|---|---|
-| **Sweep** | Phase 0-1, then lint autofix and Wave 1 only | *"tidy this up quickly"*, *"drop the unused deps"* |
+| **Sweep** | Phase 0-1, then lint autofix and Wave 1 only | *"tidy this up quickly"*, *"drop the dead files"* |
 | **Standard** | Phases 0-3, then Waves 1-5 | *"clean up the dead code"* — **the default** |
 | **Deep** | Standard, plus Phase 4 root-cause work, type hardening, and structural refactor | *"the codebase is a mess"*, *"make this maintainable"* |
 
@@ -49,11 +54,11 @@ No single tool finds everything. Each engine sees one scope and is blind to the 
 
 | Engine | Finds | Scope |
 |---|---|---|
-| **Knip** | Unused files, exports, types, dependencies | Module graph |
+| **Knip (v5/v6)** | Unused files, exports, types, dependencies | Module graph |
 | **Biome / Oxlint / ESLint / Ultracite** | Unused locals, dead imports, correctness lint | File AST |
 | **`tsc`** | Type errors, declaration-emit breakage | Program |
 | **`type-coverage`** | `any`-creep, as a number | Program |
-| **`madge`** | Circular dependencies | Import graph |
+| **`dpdm` / `madge`** | Circular dependencies | Import graph |
 | **anti-slop (Oxlint plugin)** | LLM-generated antipatterns | File AST |
 
 Knip and the linters are complements, not alternatives: Knip finds a file nothing imports, a linter finds an import nothing uses. Read [references/engines/engine-matrix.md](references/engines/engine-matrix.md) for the full matrix and the auto-detection protocol.
@@ -68,7 +73,7 @@ Decided once; override per-project only if the repo says otherwise (`AGENTS.md` 
 | **branch** | `chore/ts-cleanup` | Never work on `main`. |
 | **config file** | `knip.jsonc` (fallback `knip.json`) | JSONC carries comments explaining why each entry exists. |
 | **package manager** | Detected from `packageManager` field, else lockfile | Never hardcode `pnpm`. See waves.md §1.2. |
-| **wave order** | Deps → Files → Barrels → Exports → Types | Reverse order leaves dangling imports and ghost references. |
+| **wave order** | Files → Barrels → Encapsulation → Types → Dependencies | Causal order: pruning leaves first eliminates dead import branches; dependencies pruned last avoids TS2307 crashes. |
 | **commit unit** | One commit per wave | Each wave reverts independently. |
 | **suppression** | Targeted keys only | `ignoreDependencies`, `ignoreBinaries`, `ignoreExportsUsedInFile`, explicit `entry`. |
 
@@ -77,9 +82,9 @@ Decided once; override per-project only if the repo says otherwise (`AGENTS.md` 
 1. **Start green.** Verify `git status --porcelain` is empty, the typecheck passes, and the test suite passes before touching anything. A cleanup that begins on a red baseline cannot distinguish its own damage from pre-existing damage.
 2. **Suppress false positives with targeted keys.** Reach for `ignoreDependencies`, `ignoreBinaries`, `ignoreExportsUsedInFile`, or an explicit `entry` — each one silences exactly the finding it names. A broad top-level `ignore` severs graph edges instead, so files the ignored code imports start reporting as dead and get deleted.
 3. **Triage every finding before deleting it.** Apply the Three-Question Verification Test to each one. An engine reports what it cannot see a reference to; framework entry points, dynamic imports, and published API surfaces are all invisible to it.
-4. **Delete in wave order.** Dependencies, then files, then barrels, then exports, then types. Each wave's output is the next wave's input.
+4. **Delete in causal wave order.** Files first, then barrels and cycles, then internalizing exports, then unused types, then dependencies and lockfile sync.
 5. **Run the gate after every wave, before every commit.** A wave that fails the gate is reverted or fixed, never committed.
-6. **Prove declaration-emit safety before un-exporting.** `tsc --noEmit` builds the implementation graph and never the declaration graph, so it passes on code that `tsc -b` will reject. See [references/types/declaration-emit.md](references/types/declaration-emit.md).
+6. **Prove declaration-emit safety before un-exporting.** `tsc --noEmit` builds the implementation graph and never the declaration graph, so it passes on code that `tsc -b` will reject. Use `--outDir /tmp/dts-check` (avoiding the `TS5053` flag conflict) or `--isolatedDeclarations`. See [references/types/declaration-emit.md](references/types/declaration-emit.md).
 7. **Fix the cause, then the symptom.** Consolidate the four copies of `cn` before deleting three of them; migrate the call sites before pruning the abstraction.
 
 ## The Six Phases
@@ -155,7 +160,7 @@ Each phase gates the next. If you are tempted to skip one, re-survey instead.
    ```
    Batches 1-6 come from the dead-code engine, each with a risk score and a gate rendered for the detected manager.
 2. Run the remaining engines the mode calls for — lint, `type-coverage`, `madge`. Their findings form batches 7-9. Commands in [references/engines/lint-engines.md](references/engines/lint-engines.md) and [references/engines/analysis-engines.md](references/engines/analysis-engines.md).
-3. Read the batch definitions and risk model in [references/detection/finding-classification.md](references/detection/finding-classification.md) — nine batches, each naming its producing engine and the wave it feeds. Several collapse: batches 4 and 5 both feed Wave 4, 3 and 9 feed Wave 3, 6 and 8 feed Wave 5.
+3. Read the batch definitions and risk model in [references/detection/finding-classification.md](references/detection/finding-classification.md) — nine batches, each naming its producing engine and the wave it feeds. Several collapse: batches 3 and 9 feed Wave 2, batches 4 and 5 feed Wave 3, batches 6 and 8 feed Wave 4, and batch 1 feeds Wave 5.
 
 **Gate → Phase 3 when:** `cleanup-plan.md` exists, every finding sits in a batch, and every batch carries a risk score.
 
@@ -193,7 +198,7 @@ Deleting the symptom leaves the generator running. Work out which origin produce
 
 | What you found | Where to go |
 |---|---|
-| Four copies of `cn`, duplicate `formatDate`, useless try/catch, phantom null checks, boolean theater | [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) — origins and per-pattern remediation |
+| Four copies of `cn`, duplicate `formatDate`, useless try/catch, phantom null checks, boolean theater, type laundering | [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) — 4 pillars, 7 agent patterns, and per-pattern remediation |
 | Circular imports, bloated barrels, single-use wrappers, scattered helpers | [references/remediation/structural-refactor.md](references/remediation/structural-refactor.md) — plan-first structural work |
 | Brain methods, deep nesting, long parameter lists, speculative generality | [references/remediation/complexity-thresholds.md](references/remediation/complexity-thresholds.md) — numeric thresholds to prioritise by |
 | `any` sprawl, missing strict flags, weak inference | [references/types/strict-migration.md](references/types/strict-migration.md) — the ratchet |
@@ -208,17 +213,18 @@ Consolidation is a code change like any other: run the gate and commit it before
 
 **Think first:** *"What is the smallest deletion I can make, prove, and commit right now?"*
 
-Five waves, in order. After each: **run the gate**, then commit. A wave that fails the gate gets fixed or reverted — never committed. Full protocol, per-wave scope, and rollback in [references/remediation/waves.md](references/remediation/waves.md).
+Five waves, in causal order. After each: **run the gate**, then commit. A wave that fails the gate gets fixed or reverted — never committed. Full protocol, per-wave scope, and rollback in [references/remediation/waves.md](references/remediation/waves.md).
 
 | Wave | Deletes | Additional check | Commit |
 |---|---|---|---|
-| **1** | Unused dependencies, then refresh the lockfile | — | `chore(deps): prune unused dependencies` |
-| **2** | Orphaned and unreferenced files (`git rm`) | — | `chore: remove unreferenced files` |
-| **3** | Dead barrel re-exports; repoint consumers at source modules | — | `refactor: prune dead barrel re-exports` |
-| **4** | Test-only leaks and in-file-only exports (strip `export`) | Declaration emit, then **lint autofix** | `refactor: internalize private exports` |
-| **5** | Unused types, interfaces, enum members | Declaration emit | `refactor: prune dead types` |
+| **1** | Orphaned and unreferenced files (`git rm`) | — | `chore: remove unreferenced files` |
+| **2** | Dead barrel re-exports; break cycles and repoint consumers | — | `refactor: prune dead barrel re-exports and cycles` |
+| **3** | Test-only leaks and in-file-only exports (strip `export`) | — | `refactor: internalize private exports` |
+| **BRIDGE** | Linter autofix and formatter pass (between Wave 3 & 4) | Clears unused locals (`TS6133`) and formats | `chore: linter autofix and format after un-export` |
+| **4** | Unused types, interfaces, enum members | Declaration emit (`--outDir /tmp/dts-check` or `tsc -b`) | `refactor: prune dead types` |
+| **5** | Unused dependencies, then refresh the lockfile | — | `chore(deps): prune unused dependencies and sync lockfile` |
 
-**Wave 4 needs the linter bridge.** Stripping an `export` leaves the importing files holding specifiers that now reference nothing. Run the detected engine's autofix immediately after — recipes in [references/engines/lint-engines.md](references/engines/lint-engines.md), timing rationale in waves.md §7. Verify declaration emit before stripping anything reachable from a public signature: [references/types/declaration-emit.md](references/types/declaration-emit.md).
+**Wave 3 needs the linter bridge.** Stripping an `export` turns unused in-module bindings into unused locals (`TS6133`). Run the detected engine's autofix immediately after — recipes in [references/engines/lint-engines.md](references/engines/lint-engines.md), timing rationale in waves.md §8. Note: linters clean file-local un-export residue; any consumer actively referencing a stripped export must be refactored in Wave 3 directly. Verify declaration emit before stripping anything reachable from a public signature: [references/types/declaration-emit.md](references/types/declaration-emit.md).
 
 ### Post-flight
 
@@ -238,8 +244,8 @@ Five waves, in order. After each: **run the gate**, then commit. A wave that fai
 | Broad top-level `"ignore": ["src/legacy/**"]` | Knip stops traversing those files, so their imports report as dead and get deleted | Use `ignoreDependencies` / `ignoreBinaries` / `ignoreExportsUsedInFile` / explicit `entry` |
 | Acting on findings before resolving config hints | Every downstream finding is suspect; you triage noise | Clear hints in Phase 1, then survey |
 | One big cleanup commit | No bisect, no partial revert, unreviewable | One commit per wave |
-| Deleting exports before pruning dependencies | Dangling imports and confusing compiler cascades | Wave order: deps → files → barrels → exports → types |
-| Trusting `tsc --noEmit` before un-exporting | It never builds the declaration graph; `tsc -b` then fails on TS4023 | Verify declaration emit explicitly |
+| Deleting dependencies before pruning dead files | Orphaning transitive packages and triggering TS2307 on unreferenced code | Wave order: files → barrels → exports → types → dependencies |
+| Trusting `tsc --declaration --emitDeclarationOnly --noEmit` | Fails immediately with error TS5053 option conflict | Use `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` or `--isolatedDeclarations` |
 | Hardcoding `pnpm` in the gate | The gate silently no-ops on npm/yarn/bun repos | Resolve the manager from `packageManager` or the lockfile |
 | Deleting duplicate helpers without migrating callers | Each copy had drifted; consumers depended on the differences | Consolidate, migrate, gate, *then* delete |
 | Skipping Phase 0 because the repo "looks fine" | Pre-existing failures get attributed to the cleanup | Prove green first |

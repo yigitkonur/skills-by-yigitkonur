@@ -134,13 +134,13 @@ Frameworks that use TypeScript decorators and reflection metadata (e.g., NestJS,
 ### Knip Configuration Strategy for Decorator-Heavy Code
 
 #### Option A: Disable Unused Member Rule
-Class properties and enum members are the primary targets of decorator false positives. Set these rules to `"off"`:
+Class properties and enum members are the primary targets of decorator false positives. Note that Knip v6 removed the `classMembers` rule entirely to eliminate decorator false positives; in Knip v5, set `classMembers` to `"off"`:
 
 ```json
 {
   "rules": {
-    "classMembers": "off",
-    "enumMembers": "warn"
+    "enumMembers": "warn",
+    "classMembers": "off" // Knip v5 only; removed in Knip v6
   }
 }
 ```
@@ -418,7 +418,7 @@ The last row is the reason the Three-Question Test exists: a green gate disprove
 | Flagged Finding | Engine | Verification Check | Decision | Remediation Action |
 |---|---|---|---|---|
 | Export in `app/api/*/route.ts` | Knip | Next.js App Router route handler | False Positive | Ensure `next` plugin is enabled; do not un-export. |
-| Class method in `@Entity()` class | Knip | Decorated TypeORM field | False Positive | Set `"classMembers": "off"` or register entity in entry. |
+| Class method in `@Entity()` class | Knip | Decorated TypeORM field | False Positive | Removed in Knip v6; in Knip v5 set `"classMembers": "off"` or register entity in entry. |
 | Function only called in `*.test.ts` | Knip | Test-Only Leak | True Defect | Move helper into test directory or un-export and test public caller. |
 | Dependency `autoprefixer` | Knip | PostCSS config plugin string | False Positive | Add `"postcss": true` or add to `ignoreDependencies`. |
 | CLI binary `docker` | Knip | Shell invocation in `package.json` | False Positive | Add `"docker"` to `ignoreBinaries`. |
@@ -427,7 +427,7 @@ The last row is the reason the Three-Question Test exists: a green gate disprove
 | File with 0 incoming imports | Knip | `rg` shows no dynamic `import()` | True Defect | Remove file from repository via `git rm`. |
 | Unused param `_req` in a handler | lint | Signature fixed by framework contract | False Positive | Configure `argsIgnorePattern: "^_"`; keep the underscore. |
 | Unused `catch (_err)` binding | lint | Deliberate swallow with fallback | False Positive | Configure `caughtErrorsIgnorePattern: "^_"`. |
-| Unused local after Wave 4 | lint / `tsc` `TS6133` | Un-export residue | True Defect | Clear with linter autofix in the inter-wave bridge. |
+| Unused local after Wave 3 | lint / `tsc` `TS6133` | Un-export residue | True Defect | Clear with linter autofix in the inter-wave bridge. |
 | Coverage drop in `src/generated/**` | `type-coverage` | Codegen output, not authored code | False Positive | Add `--ignore-files "src/generated/**"`; pin it in `package.json`. |
 | Coverage drop with no new `any` | `type-coverage` | Well-typed code deleted, ratio shifted | True Signal | Compare against the pre-flight baseline; investigate remaining `any`. |
 | Cycle where both edges are `import type` | madge | Erased at emit under `isolatedModules` | False Positive | Dismiss; enable `verbatimModuleSyntax` to keep it erased. |

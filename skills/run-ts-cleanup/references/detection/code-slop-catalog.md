@@ -1,18 +1,40 @@
 # Code Slop and Bloat Taxonomy
 
-The single catalog of removable code this skill targets. Section 1 covers **architectural origins** — why the bloat exists, and therefore what unit to delete. Section 2 covers **slop patterns** — what the bloat looks like in source, with ripgrep detection and deterministic remediation. Section 3 is the executable sweep.
+The comprehensive catalog of removable bloat and agent anti-patterns this skill targets. Section 1 establishes **The 4 Pillars Mental Model** and **architectural origins**. Section 2 specifies **The Taxonomy of Agent Bloat (7 Patterns)** and code-level slop signatures with ripgrep detection and deterministic remediation. Section 3 is the executable audit sweep.
 
 ---
 
-## 1. Architectural Origins
+## 1. The 4 Pillars Mental Model & Architectural Origins
+
+A true TypeScript cleanup is not merely running `knip` and deleting lines. A production-grade TypeScript cleanup operates across four architectural pillars that govern maintainability, compile-time soundness, and runtime stability:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   THE 4 PILLARS OF TYPESCRIPT CLEANUP                  │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│ 1. Reachability & Dead Code      │ 2. Encapsulation & Boundaries       │
+│    (Graph Layer)                 │    (Interface & Visibility Layer)   │
+│    • Unreferenced files          │    • Test-only leak containment     │
+│    • Orphaned dependencies       │    • In-file private internalization│
+│    • Abandoned zombie features   │    • Public API designation (!)     │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 3. Type Rigor & Soundness        │ 4. Module & Graph Health            │
+│    (Semantic & Inference Layer)  │    (Architecture & Build Layer)     │
+│    • Ban type laundering (as any)│    • Eliminate barrel smog          │
+│    • Schema-type single source   │    • Break import cycles (dpdm)     │
+│    • Declaration emit safety     │    • Deterministic lockfile sync    │
+└──────────────────────────────────┴─────────────────────────────────────┘
+```
+
+### Architectural Origins
 
 Dead-code engines report symptoms: unused files, dead exports, orphaned dependencies. The origin determines the correct deletion unit. Pruning a single flagged export out of a zombie feature leaves the rest of the corpse in the tree; deleting the whole feature directory resolves dozens of findings at once.
 
 | Origin | Typical Engine Report | Correct Deletion Unit |
 |---|---|---|
 | **A. Zombie feature / dead experiment** | Unreferenced files, unused exports, orphaned deps | The whole feature directory + its flag, fixtures, schema |
-| **B. LLM generation without cross-file memory** | Duplicate unreferenced exports, single-file exports | The duplicate implementation (see every pattern in §2) |
-| **C. Barrel inflation & circular webs** | Nothing (transitive masking) — cycles found by `madge` | The `export *` statement, not the module behind it |
+| **B. LLM generation without cross-file memory** | Duplicate unreferenced exports, single-file exports, type laundering | The duplicate implementation & anti-patterns (see §2) |
+| **C. Barrel inflation & circular webs** | Nothing (transitive masking) — cycles found by `madge`/`dpdm` | The `export *` statement, not the module behind it |
 | **D. Half-finished refactor / dual abstraction** | Unused dependency, unreferenced adapter files | The minority library and every call site that reaches it |
 
 ---
@@ -95,65 +117,26 @@ rg -c "from 'ky'" src/
 
 ---
 
-## 2. Slop Patterns
+### 2. The Taxonomy of Agent Bloat (7 Core Patterns)
 
-Seven code-level signatures. Each compiles cleanly and passes shallow tests, which is exactly why linters and graph scanners miss them: they live in the seam between syntax checking and reachability analysis.
-
----
-
-### Pattern 1: Useless Try/Catch Wrappers
-
-Two destructive variants:
-- **Passthrough re-throw** — `catch (e) { throw e; }`. Zero recovery, wasted frames, truncated async stack traces under transpilation.
-- **Blind swallow** — `catch (e) { console.error(e); return null; }`. Converts network failures, schema drift, and auth errors into benign `null`, which detonates as `TypeError` far from the root cause.
-
-```bash
-# Passthrough re-throws
-rg -U -n 'catch\s*\((?:e|err|error)\)\s*\{\s*throw\s+(?:e|err|error);\s*\}' src/
-
-# Swallowed errors returning a sentinel
-rg -U -n 'catch\s*\((?:e|err|error)?\)\s*\{\s*(?:console\.[a-z]+\([^)]*\);\s*)?return\s+(?:null|undefined|false);\s*\}' src/
-
-# Empty catch blocks
-rg -U -n 'catch\s*\([^)]*\)\s*\{\s*\}' src/
-```
-
-Delete the wrapper and let the error reach the nearest boundary. Where context genuinely helps, enrich instead of swallowing:
-
-```diff
-- export async function loadDashboardStats(orgId: string): Promise<Stats | null> {
--   try {
--     return await statsService.calculate(orgId);
--   } catch (err) {
--     console.error('Failed to load stats:', err);
--     return null; // UI renders blank, cause is lost
--   }
-- }
-+ export async function loadDashboardStats(orgId: string): Promise<Stats> {
-+   try {
-+     return await statsService.calculate(orgId);
-+   } catch (err) {
-+     throw new Error(`Failed to calculate dashboard stats for org ${orgId}`, { cause: err });
-+   }
-+ }
-```
-
-Keep when: the catch is a framework boundary converting exceptions to HTTP responses; a telemetry sink that reports then re-throws; or a documented, monitored fallback for a non-critical background task.
+When AI agents write and refactor TypeScript, they introduce systemic bloat resulting from bounded context windows, lack of cross-file memory, and optimization pressure to "make the compiler green" at all costs. These 7 patterns live in the seam between syntax checking and reachability analysis.
 
 ---
 
-### Pattern 2: Blind Type Assertions
+### Pattern 1: Type Laundering & Cast Cascades
 
-At any awkward boundary — complex generics, untyped SDKs, raw JSON — the model reaches for `as any`, `as unknown as T`, or a chain of `!`. Each one disables checking for every downstream consumer, hides breaking dependency upgrades, and blinds the export scanner, which cannot trace references through `any`.
+At any difficult interface boundary — complex generics, third-party libraries, JSON deserialization — an agent reaches for `as any`, `as unknown as T`, or chained non-null assertions (`!`). This disables compiler checking across all downstream consumers, hides breaking upstream changes, and blinds dead-code analysis (which cannot follow graph reachability through `any`).
 
 ```bash
+# Double casts and blind casts
 rg -n '\bas\s+any\b' src/
 rg -n '\bas\s+unknown\s+as\s+[A-Z]\w*' src/
 rg -n '<\s*any\s*>' src/
-rg -n '(?:\w+!\.){2,}' src/          # chained non-null assertions
+# Chained non-null assertions
+rg -n '(?:\w+!\.){2,}' src/
 ```
 
-Validate external input at the boundary with a schema, and use `satisfies` for internal literals:
+**Remediation:** Validate at the boundary using schemas (e.g. Zod) or `satisfies` for internal literals:
 
 ```diff
 - const payload = JSON.parse(rawBody) as any;
@@ -161,11 +144,9 @@ Validate external input at the boundary with a schema, and use `satisfies` for i
 + const WebhookEventSchema = z.object({
 +   id: z.string().uuid(),
 +   event_name: z.string().min(1),
-+   data: z.record(z.unknown()).default({}),
 + });
 + export type WebhookEvent = z.infer<typeof WebhookEventSchema>;
-+ const parsed: unknown = JSON.parse(rawBody);
-+ return WebhookEventSchema.parse(parsed);
++ return WebhookEventSchema.parse(JSON.parse(rawBody));
 ```
 
 ```diff
@@ -173,13 +154,39 @@ Validate external input at the boundary with a schema, and use `satisfies` for i
 + const theme = { primary: '#0070f3', accent: '#ff0080' } satisfies ThemeConfig;
 ```
 
-Keep when: an untyped CommonJS package has no `@types/*` and a `.d.ts` is not yet written; a test builds a partial mock (`as unknown as DeepDependency`) rather than 200 lines of irrelevant fixture; or a legacy global is being read (`(window as any).__PRERENDER_STATE__`).
+---
+
+### Pattern 2: Schema-Type Duplication & Drift
+
+When defining data contracts, agents routinely declare both a runtime validator (Zod, Valibot, Yup, ArkType) and a standalone TypeScript `interface` or `type` with the identical fields. Over time, fields are added or modified in one but forgotten in the other, causing silent runtime type desynchronization.
+
+```bash
+# Grep for interface names that mirror schema definitions
+rg -n 'export\s+interface\s+([A-Za-z0-9_$]+)\b' src/
+rg -n 'export\s+const\s+([A-Za-z0-9_$]+)Schema\b' src/
+```
+
+**Remediation:** Enforce a Single Source of Truth via type inference from the schema:
+
+```diff
+  export const UserProfileSchema = z.object({
+    id: z.string().uuid(),
+    email: z.string().email(),
+    displayName: z.string().min(1),
+  });
+- export interface UserProfile {
+-   id: string;
+-   email: string;
+-   displayName: string;
+- }
++ export type UserProfile = z.infer<typeof UserProfileSchema>;
+```
 
 ---
 
-### Pattern 3: Phantom Null/Undefined Checks
+### Pattern 3: Defensive Null Paranoia & Optional Chaining Smog
 
-The model cannot track invariants established up the call stack, so it re-guards a parameter already typed non-nullable. Under `strictNullChecks` these branches can never be taken: they are unreachable code that depresses coverage and lies about the domain model.
+Lacking whole-program context, an agent cannot be certain whether an upstream caller guaranteed non-nullability. It defensively decorates every property read with `?.` and `?? null`, nesting 4–5 levels deep, or adds conjunction checks (`if (user && user.profile && user.profile.settings)`). Under `strictNullChecks`, these branches are unreachable dead code that degrades performance and obscures domain invariants.
 
 ```bash
 # Repeated conjunction guards: if (x && x.y)
@@ -188,6 +195,8 @@ rg -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/
 # Optional chains three or more links deep
 rg -n '(?:\?\.[a-zA-Z0-9_$]+){3,}' src/
 ```
+
+**Remediation:** Trust domain models and non-nullable types; eliminate impossible branches:
 
 ```diff
   export function formatCustomerTier(customer: Customer): string {
@@ -209,110 +218,100 @@ Keep when: the value crossed an external boundary (`fetch`, WebSocket, raw SQL r
 
 ---
 
-### Pattern 4: Hallucinated / Obvious Comments
+### Pattern 4: Barrel Smog & Circular Dependency Loops
 
-Comments that restate the next line in English: `// Set the user id`, `// Return the result`, `// Imports`, and JSDoc blocks echoing the parameter name back (`@param id The ID`). They inflate token cost, rot on the first refactor, and bury the two comments in the file that actually matter.
+Agents love generating convenience index aggregators (`index.ts` with `export * from './...'`) in every subdirectory, and then importing siblings back through that barrel (`import { Button } from '../components'` inside `src/components/Modal.tsx`). This defeats tree-shaking, bloats production bundles, and causes non-deterministic module initialization where imported symbols are silently `undefined` at runtime.
 
 ```bash
-# Comments restating the verb and identifier below them
-rg -i -n '^\s*//\s*(sets?|gets?|returns?|calls?|updates?|deletes?|fetches?|creates?|renders?|initializes?)\s+(the|a|an)?\s*[a-zA-Z0-9_$]+' src/
+# Detect cycles
+npx madge --circular --extensions ts,tsx src/
+# Or with dpdm
+npx dpdm --circular --warning=false ./src/index.ts
 
-# Section divider noise
-rg -i -n '^\s*//\s*(=|-){3,}\s*(imports?|constants?|types?|functions?|hooks?|helpers?|render|exports?)\s*(=|-){3,}' src/
-
-# Tautological JSDoc params
-rg -U -n '\*\s*@param\s+(\w+)\s+(?:The\s+)?\1' src/
+# Detect wildcard barrel re-exports
+rg -n 'export\s+\*\s+from' src/
 ```
 
-Delete every comment describing *what* the syntax does. Preserve only the *why*:
-
-```typescript
-// Section 179: cap the equipment deduction at the IRS annual limit for the 2026 tax year
-const cappedDeduction = Math.min(equipmentExpenses, IRS_SECTION_179_LIMIT_2026);
-
-// Workaround for Safari 17.2 flexbox bug: container height collapses with aspect-ratio
-element.style.minHeight = '0px';
-```
-
-Keep when: the JSDoc is on a published package's public API and drives consumer hover docs; the comment points at an ADR, RFC, or ticket; or it cites a formula or paper (`// Haversine distance for spherical coordinates`).
+**Remediation:**
+1. Ban components and internal utilities from importing through their own directory barrels (use direct relative imports: `import { Button } from './Button'`).
+2. Replace wildcard `export *` with explicit named re-exports of public symbols only.
+3. Extract shared types or constants to leaf modules (e.g. `src/components/types.ts`) to sever cyclic links.
 
 ---
 
-### Pattern 5: Verbose Ternaries & Boolean Theater
+### Pattern 5: Mock & Test Utility Bleed
 
-Boolean identity ternaries (`condition ? true : false`), explicit literal comparisons (`=== true`), `if/else` blocks returning `true`/`false`, and double negation on already-boolean values (`return !!isReady`).
+When agents write unit tests, they frequently export partial mocks, test doubles, test-only mutations, or fixture factories directly from production files instead of setting up a clean test harness. This bleeds test infrastructure into production bundles and bloats the public API surface.
 
 ```bash
-rg -n '\?\s*(true\s*:\s*false|false\s*:\s*true)' src/
-rg -n '(===|!==)\s*(true|false)' src/
-rg -U -n 'if\s*\([^)]+\)\s*\{\s*return\s+true;\s*\}\s*else\s*\{\s*return\s+false;\s*\}' src/
-rg -n 'return\s+!!(is[A-Z]\w*|has[A-Z]\w*|can[A-Z]\w*|should[A-Z]\w*)' src/
+# Grep for test-only terminology in non-test source files
+rg -n 'export\s+(?:const|function|type|interface)\s+(?:mock|fixture|createMock|dummy|fake|testHelper)[A-Za-z0-9_$]*\b' --glob '!**/*.{test,spec,stories}.*' --glob '!**/test*/**' src/
 ```
+
+**Remediation:** Relocate mock fixtures and test utilities to dedicated test directories (`test/helpers/`, `src/__mocks__/`) or colocate them in `*.test.ts`. Strip the `export` keyword from production files.
+
+---
+
+### Pattern 6: Phantom Interfaces & Speculative Generics
+
+Agents often over-engineer simple logic by creating unneeded generic parameters (`function fetchItem<T = unknown, E = Error>()`), single-implementor interfaces (`interface IUserService`), or speculative enum variants "just in case" future requirements emerge. This introduces cognitive overhead, worsens compiler performance, and creates ghost types.
+
+```bash
+# Grep for interfaces named with I-prefix or generic abstractions with default types
+rg -n 'export\s+interface\s+I[A-Z]\w*' src/
+rg -n 'export\s+interface\s+[A-Za-z0-9_$]+<[A-Za-z0-9_$,\s=]+>' src/
+```
+
+**Remediation:** Inline single-use interfaces into concrete types or function parameters. Delete unconstrained or unused generic type parameters. Replace speculative enums with tight string unions (`'active' | 'inactive'`).
+
+---
+
+### Pattern 7: Anemic Type Guards & Unsound Narrowing
+
+Agents often create custom type predicates (`val is User`) to silence type errors, but implement only shallow or vacuous checks inside the function body (`typeof val === 'object' && val !== null`), completely failing to verify required properties. Downstream consumers assume compile-time safety, leading to runtime `TypeError: Cannot read properties of undefined`.
+
+```bash
+# Find custom type guards
+rg -n 'function\s+[A-Za-z0-9_$]+\s*\([^)]*\)\s*:\s*\w+\s+is\s+' src/
+```
+
+**Remediation:** Use genuine schema parsing (`zod.safeParse()`) or verify every mandatory field explicitly before asserting the type predicate:
 
 ```diff
-  export function isUserEligibleForPromo(user: User, hasPurchased: boolean): boolean {
--   const isMember = user.membershipStatus === 'active' ? true : false;
--   const isFirstTime = hasPurchased === false ? true : false;
--   if (isMember === true && isFirstTime === true) { return true; } else { return false; }
-+   return user.membershipStatus === 'active' && !hasPurchased;
-  }
+- function isUser(val: unknown): val is User {
+-   return typeof val === 'object' && val !== null;
+- }
++ function isUser(val: unknown): val is User {
++   return UserSchema.safeParse(val).success;
++ }
 ```
-
-Biome (`noExtraBooleanCast`, `noUselessTernary`) and ESLint (`no-unneeded-ternary`, `no-extra-boolean-cast`) autofix this pattern mechanically — do it before touching exports.
-
-Keep when: discriminating tri-state `boolean | undefined` where `=== true` deliberately excludes `undefined`; or guarding JSX against rendering `0` (`{items.length > 0 && <ItemList />}`).
 
 ---
 
-### Pattern 6: Premature Micro-Abstractions
+## 2.1 Code-Level Syntax & Structural Slop Manifestations
 
-One-line helpers used exactly once: `const getUserId = (user: User) => user.id;`. They provide no reuse and no seam, but destroy locality (five jumps to read a fifteen-line procedure), inflate the export surface, and generate "used only in file" findings.
+Beyond the 7 core agent architectural patterns, models repeatedly generate four mechanical slop manifestations:
 
-```bash
-# One-line arrow declarations
-rg -n 'const\s+([a-zA-Z0-9_$]+)\s*=\s*\([^)]*\)\s*=>\s*[^;{]+;' src/
+### Slop Manifestation A: Useless Try/Catch Wrappers
+- **Passthrough re-throw** — `catch (e) { throw e; }`. Zero recovery, wasted stack frames, truncated async traces.
+- **Blind swallow** — `catch (e) { console.error(e); return null; }`. Destroys root cause context.
+- **Remediation:** Delete the wrapper or enrich with `new Error(..., { cause: e })`.
 
-# Rank them by repository-wide reference count
-for name in $(rg -o -N 'const\s+([a-zA-Z0-9_$]+)\s*=\s*\([^)]*\)\s*=>' -r '$1' src/); do
-  count=$(rg -w "$name" src/ | wc -l)
-  [ "$count" -le 2 ] && echo "single-use ($count refs): $name"
-done
-```
+### Slop Manifestation B: Hallucinated & Obvious Comments
+- Comments restating syntax: `// Set the user id`, `// Return result`, `// Imports`.
+- **Remediation:** Delete comments describing *what* the code does; keep only architectural *why* comments.
 
-```diff
-- const getFullName = (u: User) => `${u.firstName} ${u.lastName}`.trim();
-- const getAvatar = (u: User) => u.avatarUrl ?? '/default.png';
--
-  export function UserHeader({ user }: { user: User }) {
--   const fullName = getFullName(user);
--   const avatar = getAvatar(user);
-+   const fullName = `${user.firstName} ${user.lastName}`.trim();
-+   const avatar = user.avatarUrl ?? '/default.png';
-    return <img src={avatar} alt={fullName} />;
-  }
-```
+### Slop Manifestation C: Verbose Ternaries & Boolean Theater
+- `condition ? true : false`, `=== true`, `return !!isReady`.
+- **Remediation:** Clean up with Biome (`noExtraBooleanCast`, `noUselessTernary`) or ESLint.
 
-For multi-file wrappers and the full inlining protocol, see [../remediation/structural-refactor.md](../remediation/structural-refactor.md).
-
-Keep when: the name carries intent into a callback (`posts.sort(byMostRecent)`); it is a custom React hook encapsulating state or effects; or it is a pure domain formula with its own edge-case tests.
-
----
-
-### Pattern 7: Utility Duplication & Helper Sprawl
-
-The highest-volume signature of Origin B. Lacking cross-file memory, the model re-implements the same trivial helper in every directory it touches. A mature repository accumulates five `formatDate`s (each with different `Intl` options), three `cn` wrappers (`src/utils/cn.ts`, `src/lib/utils.ts`, `src/components/ui/utils.ts`), and a `slugify` per feature, each with a different regex.
-
-Recurring families:
-
-| Family | Duplicated identifiers |
-|---|---|
-| Formatting | `formatDate`, `formatTimestamp`, `toIsoString`, `humanizeDate`, `formatCurrency` |
-| String transforms | `capitalize`, `slugify`, `truncate`, `sanitizeString` |
-| Guards and parsing | `isEmpty`, `isNil`, `hasKey`, `safeJsonParse` |
-| Styling | `cn` / `clsx` / `twMerge` wrappers |
-| Timing | `sleep`, `delay`, ad-hoc `new Promise(r => setTimeout(r, ms))` |
-
-Costs: edge cases fixed in one copy stay broken in the other four; bundlers cannot deduplicate near-identical ASTs; every copy becomes an unreferenced export the moment one consumer is refactored.
+### Slop Manifestation D: Premature Micro-Abstractions & Utility Sprawl
+- Single-use 1-line helpers (`const getUserId = (u: User) => u.id;`) that destroy locality without providing reuse.
+- Repeated reimplementations of formatting, string manipulation, and styling helpers across disconnected directories:
+  - Formatting: `formatDate`, `formatTimestamp`, `toIsoString`, `formatCurrency`
+  - String transforms: `capitalize`, `slugify`, `truncate`, `sanitizeString`
+  - Styling: `cn` / `clsx` / `twMerge` wrappers
+  - Timing: `sleep`, `delay`, ad-hoc `new Promise(r => setTimeout(r, ms))`
 
 ```bash
 # Exported duplicates across the workspace
@@ -327,34 +326,16 @@ rg -n 'new\s+Promise\(\s*\(?resolve\)?\s*=>\s*setTimeout\s*\(\s*resolve' src/
 
 Consolidation protocol:
 1. **Catalog** every call site of the duplicated helper.
-2. **Pick one canonical module.** Never a junk drawer: a `utils.ts`, `helpers.ts`, or `common.ts` holding hundreds of unrelated exports is the failure mode this pattern creates. Target cohesive domain modules — `src/lib/format/`, `src/lib/http/`, `src/lib/async.ts` — not ten shallow files split across `src/utils/`, `src/helpers/`, and `src/lib/`.
-3. **Superset the canonical implementation** so it satisfies every observed call site (empty strings, null input, timezones, Unicode).
+2. **Pick one canonical module.** Never create a junk drawer: a `utils.ts` holding hundreds of unrelated exports creates circular webs. Target cohesive domain modules (`src/lib/format/`, `src/lib/http/`, `src/lib/async.ts`, `src/lib/utils.ts`).
+3. **Superset the canonical implementation** so it satisfies all call sites cleanly.
 4. **Redirect imports**, then delete every duplicate definition.
-5. **Verify**: `npx tsc --noEmit && pnpm test && npx knip` — zero broken imports, zero orphaned duplicate exports.
-
-```typescript
-// src/lib/utils.ts — one canonical definition
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
-}
-
-export function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-```
-
-Keep duplicates only when: the copies run in execution environments that cannot import each other (Edge runtime vs. Node server vs. browser script), or a zero-dependency published package in the monorepo may not depend on internal shared libraries.
+5. **Verify**: `npx tsc --noEmit && pnpm test && npx knip`.
 
 ---
 
 ## 3. Slop Audit Sweep
 
-Run during any cleanup pass, and always after a heavy LLM generation cycle. Order matters: sweep, autofix the mechanical patterns, restructure, then let the engine collect the newly orphaned exports.
+Run during any cleanup pass, and always after a heavy LLM generation cycle. Order matters: sweep for patterns, autofix mechanical syntax issues, restructure domain models, and then execute the wave protocol.
 
 ### Step 1: Pattern Sweep
 
@@ -362,35 +343,44 @@ Run during any cleanup pass, and always after a heavy LLM generation cycle. Orde
 #!/usr/bin/env bash
 set -uo pipefail
 
-echo "=== 1. Useless try/catch ==="
+echo "=== 1. Type Laundering (as any, as unknown as, non-null chains) ==="
+rg -n '\bas\s+any\b|\bas\s+unknown\s+as\s+[A-Z]\w*|<\s*any\s*>|(?:\w+!\.){2,}' src/ || true
+
+echo "=== 2. Defensive Null Paranoia & Optional Chaining Smog ==="
+rg -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/ || true
+rg -n '(?:\?\.[a-zA-Z0-9_$]+){3,}' src/ || true
+
+echo "=== 3. Barrel Smog & Circular Dependency Indicators ==="
+rg -n 'export\s+\*\s+from' src/ || true
+
+echo "=== 4. Mock & Test Utility Bleed into Production ==="
+rg -n 'export\s+(?:const|function|type|interface)\s+(?:mock|fixture|createMock|dummy|fake|testHelper)[A-Za-z0-9_$]*\b' \
+  --glob '!**/*.{test,spec,stories}.*' --glob '!**/test*/**' src/ || true
+
+echo "=== 5. Phantom Interfaces & Speculative Generics ==="
+rg -n 'export\s+interface\s+I[A-Z]\w*' src/ || true
+
+echo "=== 6. Anemic Type Guards ==="
+rg -n 'function\s+[A-Za-z0-9_$]+\s*\([^)]*\)\s*:\s*\w+\s+is\s+' src/ || true
+
+echo "=== 7. Useless Try/Catch Wrappers ==="
 rg -U -n 'catch\s*\((?:e|err|error)\)\s*\{\s*throw\s+(?:e|err|error);\s*\}' src/ || true
 rg -U -n 'catch\s*\((?:e|err|error)?\)\s*\{\s*(?:console\.[a-z]+\([^)]*\);\s*)?return\s+(?:null|undefined|false);\s*\}' src/ || true
 
-echo "=== 2. Blind type assertions ==="
-rg -n '\bas\s+any\b|\bas\s+unknown\s+as\s+[A-Z]\w*' src/ || true
-
-echo "=== 3. Phantom null checks ==="
-rg -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/ || true
-
-echo "=== 4. Obvious comments ==="
+echo "=== 8. Boolean Theater & Obvious Comments ==="
+rg -n '\?\s*(true\s*:\s*false|false\s*:\s*true)|(===|!==)\s*(true|false)' src/ || true
 rg -i -n '^\s*//\s*(sets?|gets?|returns?|calls?|updates?|deletes?|fetches?|creates?)\s+(the|a|an)?\s*[a-zA-Z0-9_$]+' src/ || true
 
-echo "=== 5. Boolean theater ==="
-rg -n '\?\s*(true\s*:\s*false|false\s*:\s*true)|(===|!==)\s*(true|false)' src/ || true
-
-echo "=== 6. Single-use micro-abstractions ==="
-rg -n 'const\s+([a-zA-Z0-9_$]+)\s*=\s*\([^)]*\)\s*=>\s*[^;{]+;' src/ || true
-
-echo "=== 7. Duplicated utilities ==="
+echo "=== 9. Duplicated Utilities ==="
 rg -n 'export\s+(?:const|function)\s+(capitalize|slugify|formatDate|formatTime|cn|sleep|delay)\b' src/ || true
 ```
 
 ### Step 2: Linter Autofix
 
-Patterns 1, 5, and dead stores are mechanically fixable. Apply the autofix before touching exports, so the dead-code engine analyses a clean AST:
+Patterns with deterministic mechanical fixes (useless try/catch, boolean casts, unneeded ternaries, unused locals) are cleared ahead of graph refactoring:
 
 ```bash
-npx @biomejs/biome check --write src/     # noUselessCatch, noUselessTernary, noExtraBooleanCast
+npx @biomejs/biome check --write src/     # noUselessCatch, noUselessTernary, noExtraBooleanCast, noUnusedImports
 npx eslint --fix "src/**/*.{ts,tsx}"      # no-useless-catch, no-unneeded-ternary, no-useless-return
 ```
 
@@ -398,7 +388,7 @@ Engine detection order and per-engine rule tables live in [../engines/lint-engin
 
 ### Step 3: Consolidate and Inline
 
-Apply Pattern 7's consolidation protocol and Pattern 6's inlining, bounded to five files per batch, per [../remediation/structural-refactor.md](../remediation/structural-refactor.md).
+Apply the consolidation protocol for duplicated utilities, inline single-use micro-abstractions, and extract shared types to sever barrel cycles per [../remediation/structural-refactor.md](../remediation/structural-refactor.md).
 
 ### Step 4: Engine Waves and Verification
 

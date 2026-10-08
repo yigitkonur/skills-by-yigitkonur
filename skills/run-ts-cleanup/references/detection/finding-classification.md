@@ -108,7 +108,7 @@ Highest blast radius in the package: a framework-routed file deleted here passes
 
 ### Batch 3: Dead Barrel Re-exports
 
-**Engine:** Knip · **`wave:` 3**
+**Engine:** Knip · **`wave:` 2**
 
 Exports inside aggregator modules (`index.ts`, `api.ts`) never consumed outside the barrel.
 
@@ -127,20 +127,20 @@ export * from './Button';
 export { ActiveCard } from './Cards';
 ```
 
-Re-run the engine after pruning: `DeadModal.ts` now has zero incoming imports and cascades into batch 2 on the next cycle.
+Re-run the engine after pruning: `DeadModal.ts` now has zero incoming imports and cascades into Wave 1 on any subsequent cycle.
 
 ---
 
 ### Batch 4: Test-Only Leaks
 
-**Engine:** Knip · **`wave:` 4**
+**Engine:** Knip · **`wave:` 3**
 
 Production symbols carrying `export` solely so a unit test can reach internal state.
 
 **Rules:** `exports`, detected when production files are analysed against production entries only.
 
 ```bash
-knip --include exports --exclude-libs
+knip --include exports
 rg "internalCalculationHelper" src/    # only *.test.ts / *.spec.ts hits => test-only leak
 ```
 
@@ -149,13 +149,13 @@ rg "internalCalculationHelper" src/    # only *.test.ts / *.spec.ts hits => test
 2. Move the helper into a test harness module (`test/helpers/state.ts`).
 3. If exposure is temporarily unavoidable, mark intent: `/** @internal */ export const _helper = ...`.
 
-Never resolve this batch by un-exporting alone — the suite turns red inside Wave 4. Relocate the test first, then strip the keyword in the same commit.
+Never resolve this batch by un-exporting alone — the suite turns red inside Wave 3. Relocate the test first, then strip the keyword in the same commit.
 
 ---
 
 ### Batch 5: Internally-Only-Used Exports
 
-**Engine:** Knip · **`wave:` 4**
+**Engine:** Knip · **`wave:` 3**
 
 Symbols declared with `export` but imported by no other file; used only where they are declared.
 
@@ -178,11 +178,11 @@ Symbols in this batch that were never called *anywhere* become unused locals on 
 
 ### Batch 6: Unused Types, Interfaces and Enums
 
-**Engine:** Knip · **`wave:` 5**
+**Engine:** Knip · **`wave:` 4**
 
 Type declarations, interfaces, and enum members with no consumers.
 
-**Rules:** `types`, `nsTypes`, `enumMembers`.
+**Rules:** `types`, `nsTypes`, `enumMembers`, `namespaceMembers`.
 
 **Risk: zero runtime blast radius.** Types are erased at compile time; removal cannot change emitted JavaScript. The cost they impose is maintenance drag, autocomplete pollution, and agent-navigation noise.
 
@@ -206,9 +206,9 @@ Verify with the declaration-emit extension of the gate, not with `tsc --noEmit` 
 
 ### Batch 7: Unused Locals and Dangling Imports
 
-**Engine:** lint engine (Biome, Oxlint, ESLint) and `tsc` · **`wave:` bridge, after Wave 4**
+**Engine:** lint engine (Biome, Oxlint, ESLint) and `tsc` · **`wave:` bridge, after Wave 3**
 
-Bindings that exist and are never read. Mostly *created* by Wave 4 rather than found before it.
+Bindings that exist and are never read. Mostly *created* by Wave 3 rather than found before it.
 
 **Rules:** `noUnusedVariables` / `noUnusedImports` (Biome), `no-unused-vars` / `unused-imports` (Oxlint, ESLint), `noUnusedLocals` and `noUnusedParameters` (`tsc`, diagnostic `TS6133`).
 
@@ -216,8 +216,8 @@ Bindings that exist and are never read. Mostly *created* by Wave 4 rather than f
 
 | Sub-kind | Origin | Action |
 |---|---|---|
-| Un-export residue local | Wave 4 stripped `export` from a symbol nothing called | Delete the declaration. |
-| Dangling import specifier | Consumer still imports a now-private symbol (`TS2305`) | Delete the specifier. |
+| Un-export residue local | Wave 3 stripped `export` from a symbol nothing called | Delete the declaration. |
+| Dangling import specifier | Consumer still imports a now-private symbol (`TS2305`) | Refactor consumer in Wave 3 or delete if unused. |
 | Pre-existing unused local | Ordinary rot, present before cleanup started | Delete; report separately from cleanup churn. |
 | Intentionally unused parameter | Signature conformance, `_`-prefixed | False positive — see [`false-positive-triage.md`](false-positive-triage.md). |
 
@@ -227,7 +227,7 @@ Autofix commands live in [`../engines/lint-engines.md`](../engines/lint-engines.
 
 ### Batch 8: Type-Safety Findings
 
-**Engine:** `tsc` and `type-coverage` · **`wave:` 5**
+**Engine:** `tsc` and `type-coverage` · **`wave:` 4**
 
 Type-layer defects that dead-code analysis cannot see because the symbols in question are used — just badly typed.
 
@@ -245,13 +245,13 @@ type-coverage --detail --strict --at-least 95
 tsc -b --noEmit
 ```
 
-Declaration-emit failures in this batch are frequently *caused* by Wave 4: internalizing a type that still appears in a public signature. Diagnose with [`../types/declaration-emit.md`](../types/declaration-emit.md); the coverage baseline comparison belongs to post-flight in [`../remediation/waves.md`](../remediation/waves.md).
+Declaration-emit failures in this batch are frequently *caused* by Wave 3: internalizing a type that still appears in a public signature. Diagnose with [`../types/declaration-emit.md`](../types/declaration-emit.md); the coverage baseline comparison belongs to post-flight in [`../remediation/waves.md`](../remediation/waves.md).
 
 ---
 
 ### Batch 9: Circular Dependencies
 
-**Engine:** madge (or dpdm) · **`wave:` 3**
+**Engine:** madge (or dpdm) · **`wave:` 2**
 
 Import cycles between modules. Cause non-deterministic initialization order, `undefined` at module scope, and tree-shaking failure.
 
