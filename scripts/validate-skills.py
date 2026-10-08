@@ -69,7 +69,6 @@ RESEARCH_REMOVED_PARAMETER_MARKERS = (
 RESEARCH_GUARDED_SKILLS = (
     "run-research",
     "run-deep-research",
-    "run-github-scout",
     "test-by-mcpc-cli",
 )
 # Parameter-name guarding is narrower than tool-name guarding: `keywords` and

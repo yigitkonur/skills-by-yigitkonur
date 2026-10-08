@@ -12,11 +12,6 @@ START: What needs to happen after the MCP audit or architecture sketch?
 |       Use for tools, schemas, responses, auth, sessions, transports,
 |       MCP Apps widgets, ChatGPT Apps, Inspector, and deploy mechanics.
 |
-+-- Enforce TypeScript layer boundaries in an mcp-use server?
-|   +-- YES --> build-clean-mcp-architecture
-|       Use for folder layout, dependency direction, composition root,
-|       TypeScript quality, and layer-boundary refactors.
-|
 +-- Implement or maintain raw official SDK v1?
 |   +-- YES --> build-mcp-server-sdk-v1
 |       Use for @modelcontextprotocol/sdk v1.x, single-package imports,
@@ -60,7 +55,6 @@ START: What needs to happen after the MCP audit or architecture sketch?
 | `build-mcp-server-sdk-v1` | `@modelcontextprotocol/sdk` v1 single-package servers | v2 split-package imports |
 | `build-mcp-server-sdk-v2` | `@modelcontextprotocol/server` v2 split-package servers where alpha risk is accepted | Production-default raw SDK work when v2 is still alpha |
 | `test-by-mcpc-cli` | Running stdio/Streamable HTTP smoke checks and JSON-scripted validation | Static design review without a running server |
-| `build-clean-mcp-architecture` | TypeScript `mcp-use` layer-boundary or quality issues | Raw SDK servers without `mcp-use` |
 | `audit-agentic-cli` | CLI command contracts and machine-readable execution surfaces | MCP protocol, schema, auth, or transport design |
 | No MCP / existing CLI | Mature CLI/SDK already exposes the workflow cleanly | Multi-user auth, approval, or typed tool discovery needs |
 | Agent skill | Runtime access is unnecessary; the agent needs workflow knowledge | Live external state, auth, or per-call data access |

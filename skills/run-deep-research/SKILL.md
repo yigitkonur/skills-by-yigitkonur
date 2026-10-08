@@ -44,7 +44,6 @@ Do NOT use when:
 |---|---|
 | One technical question, single answer | `run-research` |
 | 1-4 entities, one polished single-page summary, no folder structure | `run-research` |
-| Finding or shortlisting GitHub repos as the deliverable | `run-github-scout` |
 | Codebase analysis, code review, or implementation work | not this skill |
 | Polished single deliverable (HTML battlecard, slide deck) | downstream skills polish |
 

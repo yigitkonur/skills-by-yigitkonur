@@ -4,7 +4,7 @@ Use parallel agents only when one technical question spans at least three
 independent evidence lenses and the final deliverable remains one synthesis.
 
 Do not use this path for a market map, reusable corpus, or five-plus entities;
-use `run-deep-research`. Use `run-github-scout` for repository discovery.
+use `run-deep-research`.
 
 ## Split by lens
 

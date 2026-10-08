@@ -84,7 +84,6 @@ The verb registry was rewritten on 2026-05-17. Renames applied in the same commi
 
 | Old | New | Reason |
 |---|---|---|
-| `apply-clean-mcp-architecture` | `build-clean-mcp-architecture` | `apply-` dropped; refactor IS code-writing → `build-` |
 | | `review-self` | `ask-` dropped; opening a self-review IS a review |
 | `check-completion` | `audit-completion` | `check-` dropped; read-only verification → `audit-` |
 | `convert-mcp-server-sdk-v1-to-v2` | `convert-mcp-sdk-v1-to-v2` | Shorten object |

@@ -1,6 +1,6 @@
 # Mission Brief: Swiss Design System Tokens & Anti-Slop Audit
 
-## 3.0 Skills / Tools: view_file, run_command, craft-brand-theme.
+## 3.0 Skills / Tools: view_file, run_command.
 
 ## 3.1 Context Block
 

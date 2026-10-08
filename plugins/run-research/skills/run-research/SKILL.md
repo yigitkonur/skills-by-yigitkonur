@@ -21,8 +21,6 @@ Route elsewhere when:
 
 - the deliverable is a reusable corpus, market map, or comparison of five or
   more entities: use `run-deep-research`;
-- the request is primarily GitHub repository discovery: use
-  `run-github-scout`;
 - local code or a supplied document already answers the question;
 - the user forbids web research.
 

@@ -306,7 +306,6 @@
 
 ## Root hubs
 
-- `references/00-clean-architecture-coordination.md` — Clean Architecture Coordination
 - `references/00-reference-index.md` — Reference Index
 - `references/00-symptom-index.md` — Symptom Index
 - `references/00-version-drift.md` — Version Drift Policy
