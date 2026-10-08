@@ -4,31 +4,26 @@ Understanding and configuring transport protocols ensures reliable tunnel connec
 
 ---
 
-## 1. Protocol Comparison: QUIC (UDP) vs HTTP/2 (TCP)
+## 1. Protocol Comparison & The `auto` Default
 
-Cloudflared connects to Cloudflare edge data centers using either **QUIC (HTTP/3 over UDP)** or **HTTP/2 (over TCP)**.
+Modern `cloudflared` defaults to `--protocol auto`, which automatically negotiates the best available transport protocol (testing QUIC over UDP port 7844, and gracefully falling back to HTTP/2 over TCP port 7844).
 
-| Feature | QUIC (Default) | HTTP/2 (Fallback) |
+| Feature | QUIC (HTTP/3 over UDP) | HTTP/2 (over TCP) |
 |---|---|---|
-| **Underlying Transport** | UDP (Destination port 7844) | TCP (Destination port 443) |
-| **Multiplexing** | Stream-level (zero Head-of-Line blocking) | Connection-level (packet loss stalls all streams) |
-| **Connection Migration**| Supported (resilient to client IP changes) | Not supported (disconnects on IP change) |
-| **Firewall Friendliness**| Often blocked by strict corporate firewalls | Universally allowed on standard HTTPS port 443 |
-| **CPU / Performance** | Lower latency, higher throughput | Slightly higher latency on packet loss |
+| **Underlying Transport** | **UDP (Destination port 7844)** | **TCP (Destination port 7844)** |
+| **Multiplexing** | Stream-level (zero Head-of-Line blocking) | Connection-level (packet loss stalls streams) |
+| **Connection Migration**| Supported (resilient to client IP changes) | Not supported (reconnects on IP change) |
+| **Firewall Requirement**| Outbound UDP port 7844 allowed | Outbound TCP port 7844 allowed |
+| **CPU / Performance** | Lower latency, higher throughput | Slightly higher latency on lossy links |
+
+> [!IMPORTANT]
+> **Port 7844 is required for BOTH protocols.** A common misconception is that HTTP/2 connects on standard port 443. Both QUIC and HTTP/2 data plane tunnels terminate at Cloudflare edge on destination **port 7844**. Port 443 is used strictly for control plane API calls (`api.cloudflare.com`).
 
 ---
 
 ## 2. When to Force HTTP/2
 
-By default, `cloudflared` attempts to connect over QUIC. If UDP traffic is dropped or blocked by firewalls, security groups, or ISP filters, the tunnel connection will fail or hang during the handshake.
-
-### Symptoms of QUIC Blocking:
-* Tunnel logs show: `UDP Connectivity: FAIL` or `failed to dial to edge with quic`.
-* Frequent connection retry loops every few seconds.
-* High latency or packet drop on local VPN connections.
-
-### Solution: Force HTTP/2 Protocol
-Pass `--protocol http2` explicitly in the command line or configuration file:
+While `--protocol auto` handles fallback automatically, you can explicitly force HTTP/2 if UDP egress on port 7844 is blocked by strict enterprise firewall policies:
 
 ```bash
 cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080
@@ -48,20 +43,35 @@ ingress:
 
 ---
 
-## 3. Pre-Checks and Startup Latency
+## 3. Pre-Checks, Diagnostics & Startup Latency
 
 When `cloudflared` starts, it performs connectivity pre-checks against Cloudflare edge servers (`region1.v2.argotunnel.com` and `region2.v2.argotunnel.com`) testing DNS, UDP, TCP, and Cloudflare API reachability.
 
 ### Speeding Up Startup in Automated Environments
-In CI/CD, unit tests, or ephemeral subagent runs, connectivity pre-checks can add 3–5 seconds to startup. You can safely bypass them with `--no-prechecks`:
-
+In CI/CD or ephemeral subagent runs, connectivity pre-checks can add 2–4 seconds to startup. You can bypass them with `--no-prechecks`:
 ```bash
 cloudflared tunnel --no-prechecks --url http://127.0.0.1:8080
 ```
 
+### Comprehensive Network Diagnostics (`cloudflared tunnel diag`)
+To verify edge connectivity, port 7844 reachability, and generate a diagnostic bundle:
+```bash
+cloudflared tunnel diag
+```
+
 ---
 
-## 4. ICMP Socket Warnings in Docker Containers
+## 4. Post-Quantum Hybrid Key Exchange
+
+Modern `cloudflared` supports and automatically negotiates post-quantum hybrid key exchange (`X25519MLKEM768`) to future-proof encrypted tunnel connections against "harvest now, decrypt later" attacks. You can explicitly opt into experimental post-quantum tunnels with:
+
+```bash
+cloudflared tunnel --post-quantum --url http://127.0.0.1:8080
+```
+
+---
+
+## 5. ICMP Socket Warnings in Docker Containers
 
 When running `cloudflared` as the root user inside Docker containers, you may see this warning in logs:
 ```
@@ -76,12 +86,12 @@ WRN ICMP proxy feature is disabled error="cannot create ICMPv4 proxy: Group ID 0
 
 ---
 
-## 5. Firewall Egress Rules
+## 6. Firewall Egress Rules
 
 If running in a locked-down network or VPC, ensure outbound rules allow:
 
 | Port | Protocol | Destination | Purpose |
 |---|---|---|---|
-| **7844** | UDP | `*.v2.argotunnel.com` | QUIC tunnel transport (preferred) |
-| **443** | TCP | `*.v2.argotunnel.com` | HTTP/2 tunnel transport (fallback) |
-| **443** | TCP | `api.cloudflare.com` | Tunnel registration and authentication |
+| **7844** | UDP | `*.v2.argotunnel.com` | QUIC tunnel data transport |
+| **7844** | TCP | `*.v2.argotunnel.com` | HTTP/2 tunnel data transport |
+| **443** | TCP | `api.cloudflare.com` | Tunnel management, registration, and auth |

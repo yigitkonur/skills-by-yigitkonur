@@ -6,40 +6,43 @@ Cloudflare Tunnel bridges isolated execution environments (containers, remote cl
 
 ## 1. The Target Client Verification Gate (Zero False Positives)
 
-When an agent develops inside a Linux container and delivers a preview to a user's machine (e.g. MacBook via SSH) or automated browser, **probing from inside the container is not proof of external reachability**.
+When an agent develops inside a Linux container and delivers a preview to a user's machine (e.g. MacBook via SSH, host machine) or automated browser, **probing from inside the container is not proof of external reachability**.
 
 ### The False-Positive Trap:
 * `curl -Is <URL>` inside the container can connect to Cloudflare edge IPs while the remote user's operating system still has DNS unresolved or cached as NXDOMAIN.
-* Triggering `ssh macbook "open '<URL>'"` prematurely causes the user to see `DNS_PROBE_FINISHED_NXDOMAIN` or connection failures.
+* Triggering `open '<URL>'` prematurely on the client causes the user to see `DNS_PROBE_FINISHED_NXDOMAIN` or connection failures.
 
 ### The Mandatory Target-Perspective Probe:
 Before triggering any browser `open` command on the remote machine:
 
 ```bash
-# 1. Flush remote DNS cache
-ssh macbook "dscacheutil -flushcache 2>/dev/null || true"
+# Target host configuration (e.g., remote MacBook via SSH, or client host)
+TARGET_HOST="${TARGET_HOST:-user@host}"  # e.g., "macbook" or "developer@192.168.1.50"
+
+# 1. Flush remote DNS cache (macOS example; on Linux use 'resolvectl flush-caches')
+ssh "$TARGET_HOST" "dscacheutil -flushcache 2>/dev/null || true"
 
 # 2. Probe HTTP status directly from the remote client's OS network stack
 PROBE_OK=false
 for attempt in {1..20}; do
-  STATUS=$(ssh macbook "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" 2>/dev/null || echo "000")
+  STATUS=$(ssh "$TARGET_HOST" "curl -s -o /dev/null -w '%{http_code}' -m 5 '$TUNNEL_URL'" 2>/dev/null || echo "000")
   if [[ "$STATUS" == "200" ]]; then
     PROBE_OK=true
     break
   fi
   if (( attempt % 3 == 0 )); then
-    ssh macbook "dscacheutil -flushcache 2>/dev/null || true"
+    ssh "$TARGET_HOST" "dscacheutil -flushcache 2>/dev/null || true"
   fi
   sleep 1.5
 done
 
 if [[ "$PROBE_OK" != "true" ]]; then
-  echo "Error: Target machine could not reach tunnel (HTTP status: $STATUS)" >&2
+  echo "Error: Target machine ($TARGET_HOST) could not reach tunnel (HTTP status: $STATUS)" >&2
   exit 1
 fi
 
 # 3. ONLY after remote 200 OK, trigger browser
-ssh macbook "open '$TUNNEL_URL'"
+ssh "$TARGET_HOST" "open '$TUNNEL_URL'"
 ```
 
 ---
@@ -124,8 +127,12 @@ Quick tunnels are ideal for testing third-party webhooks locally without setting
 # 1. Start webhook consumer locally on port 4000
 python3 server.py &
 
-# 2. Expose via tunnel with isolated daemon
-setsid nohup cloudflared tunnel --url http://127.0.0.1:4000 --logfile /tmp/webhook-cf.log </dev/null >/dev/null 2>&1 &
+# 2. Expose via tunnel with isolated daemon (cross-platform setsid check)
+if command -v setsid &>/dev/null; then
+  setsid nohup cloudflared tunnel --url http://127.0.0.1:4000 --output json > /tmp/webhook-cf.log 2>&1 &
+else
+  nohup cloudflared tunnel --url http://127.0.0.1:4000 --output json > /tmp/webhook-cf.log 2>&1 &
+fi
 sleep 3
 WEBHOOK_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/webhook-cf.log | tail -n 1)
 

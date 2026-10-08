@@ -4,33 +4,34 @@ Running `cloudflared` inside agentic workflows, subagents, or automated CI syste
 
 ---
 
-## 1. Process Group Isolation for AI Agents (`setsid`)
+## 1. Process Group Isolation for AI Agents
 
-When an AI coding agent executes bash commands via tools (e.g. `run_command`), each tool invocation creates a subshell. Standard background commands (`cmd &` or `nohup cmd &`) remain bound to the tool process group and standard input.
+When an AI coding agent executes shell commands via tools (e.g. `run_command`), each tool invocation creates a subshell. Standard background commands (`cmd &` or `nohup cmd &`) remain bound to the tool process group and standard input.
 
 When the tool invocation finishes:
 * The subshell sends `SIGHUP` and `SIGTERM` to all child processes in the process group.
-* Standard `cloudflared &` background processes terminate immediately upon tool exit.
+* Bare background processes may terminate prematurely upon tool exit.
 
-### The Agent-Safe Background Recipe
+### The Agent-Safe Cross-Platform Background Recipe
 
-To ensure the tunnel persists across tool calls, agents **must** use `setsid` with detached `stdio`:
+To ensure the tunnel persists across tool calls on both Linux and macOS, decouple stdio and check for `setsid`:
 
 ```bash
 PORT=8099
 LOGFILE="/tmp/cloudflared-${PORT}.log"
 PIDFILE="/tmp/cloudflared-${PORT}.pid"
 
-# 1. Clean previous state & session tokens
-rm -rf "$LOGFILE" "$PIDFILE" ~/.cloudflared/
+# 1. Clean previous run state (DO NOT touch ~/.cloudflared/)
+rm -f "$LOGFILE" "$PIDFILE"
 
-# 2. Launch detached daemon with process group isolation
-setsid nohup cloudflared tunnel \
-  --url "http://127.0.0.1:${PORT}" \
-  --logfile "$LOGFILE" \
-  --pidfile "$PIDFILE" \
-  --no-autoupdate \
-  --protocol quic </dev/null >/dev/null 2>&1 &
+# 2. Launch detached daemon with cross-platform fallback
+SPAWN_CMD="cloudflared tunnel --url http://127.0.0.1:${PORT} --logfile $LOGFILE --pidfile $PIDFILE --no-autoupdate --output json"
+
+if command -v setsid &>/dev/null; then
+  setsid nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+else
+  nohup $SPAWN_CMD </dev/null >/dev/null 2>&1 &
+fi
 
 DAEMON_PID=$!
 
@@ -58,11 +59,17 @@ echo "Active Persistent Tunnel URL: $URL"
 
 ---
 
-## 2. Health Checks and Metrics Endpoints
+## 2. Health Checks, Metrics & Built-in Diagnostics
 
-`cloudflared` includes an embedded HTTP server for metrics and health checking.
+`cloudflared` includes an embedded HTTP server for metrics and health checking, as well as an automated diagnostic suite.
 
-### Enabling Metrics:
+### Diagnostic Command: `cloudflared tunnel diag`
+To inspect tunnel state, system info, goroutine/heap profiles, and automated connectivity pre-checks (port 7844 UDP/TCP reachability):
+```bash
+cloudflared tunnel diag
+```
+
+### Enabling Local Metrics:
 Pass `--metrics 127.0.0.1:20241` to bind a predictable local port:
 ```bash
 cloudflared tunnel --metrics 127.0.0.1:20241 --url http://127.0.0.1:8080 ...
@@ -77,9 +84,12 @@ cloudflared tunnel --metrics 127.0.0.1:20241 --url http://127.0.0.1:8080 ...
   * `cloudflared_tunnel_active_streams`: Currently open concurrent streams.
   * `cloudflared_tunnel_ha_connections`: Number of active redundant edge connections.
 
+> [!NOTE]
+> The `--pidfile` path is populated **after the first successful connection** to Cloudflare edge is established, not synchronously at initial process fork.
+
 ---
 
-## 3. Deterministic Teardown & Session Reset
+## 3. Deterministic Teardown & Safe Reset
 
 Never leave orphaned `cloudflared` processes running in the background when a task ends.
 
@@ -92,14 +102,18 @@ if [[ -f /tmp/cloudflared-8099.pid ]]; then
 fi
 ```
 
-### Complete Cleanup (Processes + Session Cache):
+### Complete Cleanup (Processes & Logs):
 ```bash
-# Terminate any running cloudflared quick tunnels
+# Terminate running quick tunnels
 pkill -f "cloudflared tunnel" || true
 
-# Free hung origin port
-fuser -k 8099/tcp 2>/dev/null || true
+# Free hung origin port portably across macOS and Linux
+if command -v lsof &>/dev/null; then
+  lsof -ti :8099 | xargs kill -9 2>/dev/null || true
+elif command -v fuser &>/dev/null; then
+  fuser -k 8099/tcp 2>/dev/null || true
+fi
 
-# Remove stale session tokens to guarantee fresh subdomain on next run
-rm -rf /tmp/cloudflared* ~/.cloudflared/
+# Clean temporary logs only (PRESERVE ~/.cloudflared/)
+rm -f /tmp/cloudflared*
 ```

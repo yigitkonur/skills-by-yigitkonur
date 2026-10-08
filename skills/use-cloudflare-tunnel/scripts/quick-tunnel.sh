@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # scripts/quick-tunnel.sh
 # Automated launcher and URL extractor for Cloudflare Quick Tunnels (trycloudflare.com)
-# with process group isolation (setsid) and global DNS publication checks.
+# with process group isolation (cross-platform setsid/nohup) and global DNS publication checks.
 set -euo pipefail
 
 PORT=""
 HOST="127.0.0.1"
-PROTOCOL="quic"
+PROTOCOL="auto"
 LOGFILE=""
 PIDFILE=""
 OUTFILE=""
 TIMEOUT=20
 JSON_OUTPUT=false
 VERIFY_DNS=true
+POST_QUANTUM=false
 
 print_usage() {
   cat <<HELP
@@ -21,7 +22,8 @@ Usage: $(basename "$0") --port <PORT> [options]
 Options:
   -p, --port <PORT>        Local port to expose (required, e.g. 3000, 8080, 8099)
   -h, --host <HOST>        Local host address (default: 127.0.0.1)
-      --protocol <proto>   Protocol to use: quic or http2 (default: quic)
+      --protocol <proto>   Protocol to use: auto, quic, or http2 (default: auto)
+      --pq                 Enable experimental post-quantum hybrid key exchange
   -l, --logfile <path>     Path for cloudflared log (default: /tmp/cloudflared-<PORT>.log)
       --pidfile <path>     Path to record daemon PID (default: /tmp/cloudflared-<PORT>.pid)
   -o, --out <path>         File to write the public tunnel URL into
@@ -40,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     -p|--port) PORT="$2"; shift 2 ;;
     -h|--host) HOST="$2"; shift 2 ;;
     --protocol) PROTOCOL="$2"; shift 2 ;;
+    --pq|--post-quantum) POST_QUANTUM=true; shift ;;
     -l|--logfile) LOGFILE="$2"; shift 2 ;;
     --pidfile) PIDFILE="$2"; shift 2 ;;
     -o|--out) OUTFILE="$2"; shift 2 ;;
@@ -64,18 +67,31 @@ if ! command -v cloudflared &>/dev/null; then
   exit 1
 fi
 
-# Clean up previous state
-rm -rf "$LOGFILE" "$PIDFILE" ~/.cloudflared/
+# Clean up previous temporary files for this port (NEVER delete ~/.cloudflared/)
+rm -f "$LOGFILE" "$PIDFILE"
+
+# Prepare cloudflared arguments
+CF_ARGS=(
+  "tunnel"
+  "--url" "http://${HOST}:${PORT}"
+  "--protocol" "$PROTOCOL"
+  "--logfile" "$LOGFILE"
+  "--pidfile" "$PIDFILE"
+  "--no-autoupdate"
+)
+
+if [[ "$POST_QUANTUM" == "true" ]]; then
+  CF_ARGS+=("--pq")
+fi
 
 # Launch cloudflared quick tunnel in background with process group isolation
-setsid nohup cloudflared tunnel \
-  --url "http://${HOST}:${PORT}" \
-  --protocol "$PROTOCOL" \
-  --logfile "$LOGFILE" \
-  --pidfile "$PIDFILE" \
-  --no-autoupdate </dev/null >/dev/null 2>&1 &
-
-DAEMON_PID=$!
+if command -v setsid &>/dev/null; then
+  setsid nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
+  DAEMON_PID=$!
+else
+  nohup cloudflared "${CF_ARGS[@]}" </dev/null >/dev/null 2>&1 &
+  DAEMON_PID=$!
+fi
 
 # Wait for the trycloudflare.com URL to appear in logs
 TUNNEL_URL=""
@@ -132,6 +148,7 @@ if [[ "$JSON_OUTPUT" == "true" ]]; then
   "pidfile": "${PIDFILE}",
   "logfile": "${LOGFILE}",
   "protocol": "${PROTOCOL}",
+  "postQuantum": ${POST_QUANTUM},
   "dnsResolved": ${DNS_RESOLVED}
 }
 JSON
@@ -141,6 +158,8 @@ else
   echo "  Public URL   : ${TUNNEL_URL}"
   echo "  Local Origin : http://${HOST}:${PORT}"
   echo "  Daemon PID   : ${DAEMON_PID}"
+  echo "  Protocol     : ${PROTOCOL}"
+  echo "  Post-Quantum : ${POST_QUANTUM}"
   echo "  DNS Ready    : ${DNS_RESOLVED}"
   echo "  Log File     : ${LOGFILE}"
   echo "  PID File     : ${PIDFILE}"

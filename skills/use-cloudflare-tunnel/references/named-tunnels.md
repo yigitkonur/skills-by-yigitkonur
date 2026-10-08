@@ -29,8 +29,9 @@ Tunnels managed entirely through local YAML and JSON files on disk.
 2. **Create the tunnel:**
    ```bash
    cloudflared tunnel create my-app-tunnel
-   # Output: Tunnel credentials written to /root/.cloudflared/<UUID>.json
+   # Output: Tunnel credentials written to ~/.cloudflared/<UUID>.json
    ```
+   *(Note: Never run `rm -rf ~/.cloudflared/` during quick tunnel testing, as it destroys these credentials and your `cert.pem` login).*
 3. **Route DNS hostname to the tunnel:**
    ```bash
    cloudflared tunnel route dns my-app-tunnel api.mycompany.com

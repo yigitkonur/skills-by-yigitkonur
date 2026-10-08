@@ -7,13 +7,14 @@ Ingress rules tell `cloudflared` how to map incoming public traffic from Cloudfl
 ## 1. Core Rule Structure & Evaluation Order
 
 * **First Match Wins:** Ingress rules are evaluated from **top to bottom**. The first rule that matches both the `hostname` and the optional `path` processes the request.
+* **Go Regular Expressions for `path`:** The `path` attribute is parsed using **Go regular expressions (`regexp`)**, NOT shell glob wildcards. For example, `^/v2/.*` matches any path beginning with `/v2/`, whereas `/v2/*` matches `/v2` followed by multiple slashes.
 * **Mandatory Catch-All:** Every `ingress` configuration **must** end with a catch-all rule that has no `hostname` or `path` filter, typically `- service: http_status:404`. Without this, `cloudflared` will refuse to start.
 
 ```yaml
 ingress:
-  # Specific path on a hostname
+  # Specific path on a hostname (Go regex)
   - hostname: api.example.com
-    path: /v2/*
+    path: ^/v2/.*
     service: http://localhost:8002
 
   # Entire hostname
