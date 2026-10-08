@@ -3,6 +3,19 @@
 Read this as the orchestrator. Workers use their assigned role reference and
 handoff; they do not take over this loop.
 
+## Workflow tracks: Streamlined vs. Full Campaign
+
+Choose the workflow track based on campaign scope:
+
+### Track A: Streamlined Fast-Path (Recommended for smoke checks, single journeys, or pre-authored suites)
+Bypasses exploratory roles (Feature scout, Planner, Plan auditor, Ticket writer) to eliminate unnecessary latency and token burn:
+1. **Wave 0 Readiness**: Verify runtime target, port leases, and specialized runner (`ego-browser`, `test-by-maestro`, `test-by-mcpc-cli`, or CLI process).
+2. **Parallel Execution**: Dispatch executors concurrently across ready test cases up to host capacity. For remote web/mobile runners, retrieve remote artifacts via `scp` to local `evidences/`.
+3. **Concurrent Verification**: When `review_count: 2` is declared, dispatch Verifier A and Verifier B **concurrently in parallel**. Reconcile verdicts immediately.
+
+### Track B: Full Multi-Agent Campaign (Exploratory discovery, large product surfaces, or multi-team fixes)
+Follows the comprehensive 12-role lifecycle detailed below.
+
 ## Establish the campaign
 
 1. Inspect project instructions, Git state, remotes, the requested target, and
@@ -15,6 +28,7 @@ handoff; they do not take over this loop.
    branches. Silence is not approval. Routine worktree, runtime, commit, PR, and
    scoped merge actions use the task's existing authority.
 4. Run `doctor`; use `doctor --setup` for the locked external dependency cache.
+   Verify that required test runner skills/CLIs exist (`ego-browser`, `maestro`, `mcpc`).
    Initialize a unique campaign or read the existing campaign's status. Record
    decisions in `02-decisions.md` with source and affected scope.
 
@@ -32,7 +46,7 @@ product decision hidden in a default.
   Wave 0 proves tool access, actual-client reachability, source identity,
   fixture/reset access, and owned resources. It does not execute the campaign's
   acceptance cases or award PASS.
-- Delegate a plan from the frozen case specs and available targets. A different
+- In Track B, delegate a plan from frozen case specs and available targets. A different
   plan-auditor context checks coverage, dependencies, resources, and review
   counts. Accept only its approved revision through `plan accept`.
 
@@ -43,13 +57,15 @@ ready target, declared dependencies/resources, and approved plan membership.
 
 Use [Scheduling](scheduling.md). For each ready task: reserve it through the CLI,
 launch one fresh host worker with the generated handoff and narrow reading set,
-then bind its real host handle. Messages may notify; files carry durable truth.
-Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.
+then bind its real host handle. Use **Claude 3.7 Sonnet** with `low` or `medium`
+reasoning effort; never use Opus. Messages (`send_message`) enable real-time
+notifications and blocker escalation; files carry durable truth.
 
+Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.
 Execution produces observations and artifact references. The verifier opens
 those artifacts and judges each expectation. Critical cases get the declared
-blind second review. Any additional experiment is a new executor task, never an
-action performed by the verifier.
+blind second review dispatched concurrently in parallel. Any additional experiment
+is a new executor task, never an action performed by the verifier.
 
 When a failure is verified, delegate diagnosis immediately. Implementation-bound
 defects proceed to deduplicated tickets and scoped fixes; blockers and evidence
