@@ -15,6 +15,40 @@ extract-evidence -> exact continuation.next_call in same conversation/session
 Pending work is a non-error partial result. Preserve completed findings and do
 not call a pending requirement `not-found`. See `resumable-extraction.md`.
 
+## 0. Subagent-First Deep Research (Complex & Multi-Dimensional Inquiries)
+
+Use when the research question spans multiple authority domains (e.g. theoretical limits, commercial claims, and practitioner field realities), requires multiple rounds of iterative search, or risks polluting the primary orchestrator's context window.
+
+Sequence:
+```text
+[Orchestrator: Quick Recon (1-2 queries)]
+  │
+  ├── Formulate hypothesis & communicate plan to user
+  ├── Invoke `plan-research` as advisory stress-test / sounding board
+  │
+  ▼
+[Fork to Subagents: Max 3 Parallel, Mid-Tier Model, Medium Reasoning]
+  │
+  ├── Subagent A (Theoretical / Academic Lens)
+  │     └── Iterative Multi-Query Search -> SERP Consensus -> Verbatim extract-evidence
+  │
+  ├── Subagent B (Empirical / Benchmark Lens)
+  │     └── Iterative Multi-Query Search -> SERP Consensus -> Verbatim extract-evidence
+  │
+  └── Subagent C (Practitioner / Incident Lens)
+        └── Iterative Multi-Query Search -> SERP Consensus -> Verbatim extract-evidence
+  │
+  ▼
+[Orchestrator: Merge & Reconcile]
+  └── Reconcile cross-lens contradictions -> Synthesize final grounded answer
+```
+
+Rules:
+- The orchestrator maintains context hygiene; subagents absorb the heavy scraping and search iterations.
+- Subagents run on mid-tier models (Sonnet / Flash / balanced mid-weight) with reasoning capped at medium.
+- Each subagent runs the `run-research` skill on its assigned orthogonal lens.
+- Subagents return only distilled findings with verified verbatim quotations and locators.
+
 ## 1. Known public URL
 
 Sequence:
