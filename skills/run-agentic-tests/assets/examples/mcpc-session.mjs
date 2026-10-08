@@ -44,7 +44,7 @@ async function main() {
   };
   await mkdir(state, { recursive: true, mode: 0o700 });
   const tool = { name: 'mcpc', version: (await client(['--version'])).trim() };
-  if (tool.version !== '0.6.0') fail('MCPC_VERSION_UNSUPPORTED', 'This example uses the verified MCPC 0.6.0 session-file contract. Check the installed client contract before adapting it.');
+  if (!/^0\.[67]\./.test(tool.version)) fail('MCPC_VERSION_UNSUPPORTED', 'This adapter supports verified MCPC 0.6.x and 0.7.x contracts. Check the installed client contract before adapting it.');
   const list = async () => {
     // `mcpc --json` can reconnect crashed bridges; inspect its private state
     // without invoking a command that could change this runtime generation.

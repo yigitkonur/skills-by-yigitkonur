@@ -1,12 +1,11 @@
 # Client-owned MCP stdio with MCPC
 
-Use this example when MCPC is the selected test client. It is optional; other
-clients implement the same tool-session contract. The bundled
+Use this reference when MCPC is the selected test client. Refer to
+[test-by-mcpc-cli](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-mcpc-cli)
+for the authoritative command and session reference. The bundled
 [session adapter](../assets/examples/mcpc-session.mjs) uses the installed client
-and owns one namespaced session. It is neither an MCP server nor a transport
-broker. Inspect `mcpc --version` and `mcpc help connect` before setup. The example
-requires the verified MCPC 0.6.0 session-file format and POSIX process identity;
-adapt and verify the example before using a different client version/platform.
+and owns one namespaced session. Inspect `mcpc --version` before setup; the
+current contract targets verified **MCPC 0.7.x** (`0.7.0`) session-first syntax.
 
 ## Prepare the actual server
 
@@ -52,7 +51,7 @@ readiness:
   body_contains: actual_tool_name
   timeout_ms: 30000
 session:
-  tool: {name: mcpc, version: "0.6.0"}
+  tool: {name: mcpc, version: "0.7.0"}
   owner_id: A00003
   session_id: "@campaign-g001"
   attachment: "MCPC_HOME_DIR=/campaign/environments/G001/mcpc/client mcpc @campaign-g001"
@@ -67,7 +66,7 @@ session:
 Replace the three illustrative lists with the same actual `command.argv` array.
 The controller injects the action; no separate action argument is needed. Avoid
 YAML anchors because the strict record parser rejects aliases. Set the tool
-version and owner/session IDs to their actual assigned values. Optional
+version (e.g. `0.7.0`) and owner/session IDs to their actual assigned values. Optional
 `--binary PATH` selects an installed MCPC executable; `--timeout-ms N` bounds an
 individual client command and must fit within the outer readiness timeout.
 
@@ -78,7 +77,7 @@ receipt proves attachment and discovery; it does not prove the acceptance case.
 
 ## Execute through the same client
 
-The executor uses the exact recorded client state and session, for example:
+The executor uses the exact recorded client state and session using mcpc 0.7.x session-first syntax:
 
 ```bash
 MCPC_HOME_DIR="$OWNED_STATE/client" mcpc --json "$SESSION" tools-list
@@ -86,9 +85,9 @@ MCPC_HOME_DIR="$OWNED_STATE/client" mcpc --json "$SESSION" tools-call "$TOOL" "$
 ```
 
 Save the real calls, arguments, output, exit status, and relevant protocol errors
-under the assigned evidence directory. The verifier reads those saved artifacts.
-Tool discovery or a successful subprocess exit is not a substitute for comparing
-the actual tool result with the frozen expectation.
+under the assigned evidence directory. Note exit codes: exit 1 represents CLI/transport
+failure, exit 2 represents an MCP error (`isError: true`) or timeout. The verifier
+reads those saved artifacts.
 
 ## Inspect, recover, and close
 
@@ -100,6 +99,6 @@ ownership mismatch; it never authorizes closing the replacement session.
 
 Recovery uses a fresh target, state directory, and session name. The adapter
 refuses to adopt a same-name session without its own saved ownership record.
-Cleanup invokes `mcpc close` for only the verified session and preserves logs.
+Cleanup invokes `mcpc close @session` for only the verified session and preserves logs.
 It does not run global `mcpc clean`, kill matching processes, or delete unrelated
 client state. Keep the final session available when user inspection requires it.
