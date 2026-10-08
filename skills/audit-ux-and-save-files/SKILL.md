@@ -1,6 +1,7 @@
 ---
 name: audit-ux-and-save-files
 description: "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree."
+disable-model-invocation: true
 ---
 
 # Audit UX and Save Files

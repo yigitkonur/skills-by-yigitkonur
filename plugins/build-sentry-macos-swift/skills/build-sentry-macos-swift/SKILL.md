@@ -1,6 +1,7 @@
 ---
 name: build-sentry-macos-swift
 description: "Use if adding or auditing Sentry crash reporting in a macOS/Swift app — dSYM, breadcrumbs, tracing."
+disable-model-invocation: true
 ---
 
 # Build Sentry Into a macOS / Swift App

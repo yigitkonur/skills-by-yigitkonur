@@ -1,6 +1,7 @@
 ---
 name: build-cloudflare-email-sending
 description: "Use if sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email."
+disable-model-invocation: true
 ---
 
 # Build Cloudflare Email Sending

@@ -2,6 +2,7 @@
 name: run-agent-browser
 description: "Use if driving agent-browser for webpage interaction, screenshots, @ref snapshots, tabs, UI verification, CDP attach, Steel Browser, or cloud providers (Browser Use, Browserbase, Browserless, Kernel)."
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*), Bash(env:*agent-browser:*), Bash(curl:*)
+disable-model-invocation: true
 ---
 
 # run-agent-browser

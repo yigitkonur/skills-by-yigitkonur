@@ -6,6 +6,7 @@ metadata:
   version: 2.1.0
   category: observability
   tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp]
+disable-model-invocation: true
 ---
 
 # Sentry

@@ -1,6 +1,7 @@
 ---
 name: run-ego-e2e
 description: "Use if running user-faithful agentic end-to-end web tests using ego-browser, testing PR features, verifying live journeys, and parallelizing test runs across Herdr workspaces."
+disable-model-invocation: true
 ---
 
 # Run Ego E2E — Agentic End-to-End Testing

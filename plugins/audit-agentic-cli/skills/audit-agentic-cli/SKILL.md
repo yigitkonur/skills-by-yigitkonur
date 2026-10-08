@@ -1,6 +1,7 @@
 ---
 name: audit-agentic-cli
 description: "Use if auditing or designing a CLI for agent/LLM use — JSON output, exit codes, non-interactive."
+disable-model-invocation: true
 ---
 
 # audit-agentic-cli

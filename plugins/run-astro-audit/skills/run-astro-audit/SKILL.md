@@ -1,6 +1,7 @@
 ---
 name: run-astro-audit
 description: "Use if conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge queues."
+disable-model-invocation: true
 ---
 
 # Astro Audit & Remediation Framework (run-astro-audit)

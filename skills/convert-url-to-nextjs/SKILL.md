@@ -1,6 +1,7 @@
 ---
 name: convert-url-to-nextjs
 description: "Use if rebuilding a live URL or .html snapshot as a pixel-faithful AS-IS Next.js project."
+disable-model-invocation: true
 ---
 
 # Convert URL or HTML Snapshot to Next.js — AS-IS Pixel-Faithful Rebuild

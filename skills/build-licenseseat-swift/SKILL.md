@@ -1,6 +1,7 @@
 ---
 name: build-licenseseat-swift
 description: "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats."
+disable-model-invocation: true
 ---
 
 # Build LicenseSeat Licensing Into a Swift App

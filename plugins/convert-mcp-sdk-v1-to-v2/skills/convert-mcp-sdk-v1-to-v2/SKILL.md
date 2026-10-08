@@ -1,6 +1,7 @@
 ---
 name: convert-mcp-sdk-v1-to-v2
 description: "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK."
+disable-model-invocation: true
 ---
 
 # Convert MCP Server (SDK v1 → v2)

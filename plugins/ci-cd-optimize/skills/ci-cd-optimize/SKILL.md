@@ -3,6 +3,7 @@ name: ci-cd-optimize
 description: Use skill if you are diagnosing or optimizing slow, flaky, queued, expensive, or cache-inefficient CI/CD pipelines, or waiting on remote runs, while preserving required checks, security gates, and exact-commit verification.
 metadata:
   author: yigitkonur
+disable-model-invocation: true
 ---
 
 # CI/CD Optimize

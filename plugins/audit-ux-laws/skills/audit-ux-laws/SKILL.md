@@ -1,6 +1,7 @@
 ---
 name: audit-ux-laws
 description: "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load)."
+disable-model-invocation: true
 ---
 
 # Audit UX Laws

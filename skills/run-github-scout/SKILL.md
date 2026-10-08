@@ -2,6 +2,7 @@
 name: run-github-scout
 description: "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence."
 version: 1.0.0
+disable-model-invocation: true
 ---
 
 # GitHub Repo Scout

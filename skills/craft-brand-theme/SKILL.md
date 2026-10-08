@@ -1,6 +1,7 @@
 ---
 name: craft-brand-theme
 description: "Use if reverse-engineering, crafting, or deploying production-grade brand design themes, semantic CSS tokens, and self-hosted fonts without ad-hoc element selectors."
+disable-model-invocation: true
 ---
 
 # Craft Brand Theme: Architecture & Design System Engine

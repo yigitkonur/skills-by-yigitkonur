@@ -1,6 +1,7 @@
 ---
 name: build-cloudflare-access-sso
 description: "Use if protecting a subdomain with Cloudflare Access + Google SSO, or locking an origin against Access bypass."
+disable-model-invocation: true
 ---
 
 # build-cloudflare-access-sso

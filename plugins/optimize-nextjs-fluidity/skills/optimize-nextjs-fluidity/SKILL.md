@@ -1,6 +1,7 @@
 ---
 name: optimize-nextjs-fluidity
 description: "Use if auditing and optimizing a Next.js App Router repo for performance and fluidity, producing a version-gated task plan the agent then executes."
+disable-model-invocation: true
 ---
 
 # Optimize Next.js Fluidity

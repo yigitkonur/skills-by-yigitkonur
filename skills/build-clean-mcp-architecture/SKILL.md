@@ -1,6 +1,7 @@
 ---
 name: build-clean-mcp-architecture
 description: "Use if structuring or auditing TypeScript mcp-use/server code for Clean Architecture boundaries."
+disable-model-invocation: true
 ---
 
 # Apply Clean MCP Architecture

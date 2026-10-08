@@ -1,6 +1,7 @@
 ---
 name: init-jean-json
 description: "Use if onboarding a repo to Jean — jean.json and .worktreeinclude setup, run, teardown, ports."
+disable-model-invocation: true
 ---
 
 # init-jean-json

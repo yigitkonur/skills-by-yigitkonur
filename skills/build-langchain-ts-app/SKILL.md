@@ -1,6 +1,7 @@
 ---
 name: build-langchain-ts-app
 description: "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output."
+disable-model-invocation: true
 ---
 
 # Build LangChain TypeScript App

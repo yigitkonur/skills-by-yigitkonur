@@ -1,6 +1,7 @@
 ---
 name: build-mcp-server-sdk-v2
 description: "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool."
+disable-model-invocation: true
 ---
 
 # Build MCP Server (SDK v2 Alpha)

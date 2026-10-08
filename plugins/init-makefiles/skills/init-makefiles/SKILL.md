@@ -1,6 +1,7 @@
 ---
 name: init-makefiles
 description: "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel."
+disable-model-invocation: true
 ---
 
 # init-makefiles

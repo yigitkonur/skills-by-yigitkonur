@@ -4,6 +4,7 @@ description: "Use skill if you are supervising coding agents with adversarial ve
 metadata:
   author: yigitkonur
   pairs-with: herdr
+disable-model-invocation: true
 ---
 
 # Project Manager

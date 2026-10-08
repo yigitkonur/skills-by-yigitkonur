@@ -2,3 +2,5 @@ interface:
   display_name: "Run TestSprite Frontend"
   short_description: "Run exact TestSprite frontend verification loops"
   default_prompt: "Use $run-testsprite-frontend to create or reuse safe frontend browser tests, diagnose failures, and fresh-run the exact deployed revision."
+policy:
+  allow_implicit_invocation: false

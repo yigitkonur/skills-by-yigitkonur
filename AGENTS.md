@@ -15,14 +15,14 @@ This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex 
 - `skills` CLI global install: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur` (or `/skills/<skill-name>`)
 
 The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
-- `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
+- `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + themed `yk-*` bundles + `yk-everything`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
 - `.codex-plugin/plugin.json`: the root Codex plugin manifest for the all-pack plugin.
 - `plugins/<skill>/`: one generated, self-contained Codex plugin package per canonical skill.
 - `.agents/plugins/marketplace.json`: the Codex repo marketplace entries for the all-pack and every individual skill.
 
 Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a Claude-compatible skill in exactly one `GROUPS` bundle; place a runtime-specific Codex skill in `CODEX_ONLY_SKILLS` and no Claude bundle.
 
-**Agents:** subagent suites live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Marketplace entries reference explicit agent-file lists (`RESEARCHER_AGENTS` / `BROWSER_AGENTS` in `gen-marketplace.py`, never a bare folder): the internet-researcher suite ships with `yk-researchers`, `yk-research`, and `yk-everything`; the agent-browser tester/extractor suite ships with `yk-automation`, the `run-agent-browser` per-skill plugin, and `yk-everything`. A new agent file must be added to the matching list (or a new one) in `gen-marketplace.py` or it ships nowhere. Never rename `subagents/` back to `agents/`.
+**Manual-only skills:** every skill sets `disable-model-invocation: true` in its `SKILL.md` frontmatter (Claude Code, Cursor, VS Code) and ships `agents/openai.yaml` with `policy: allow_implicit_invocation: false` (Codex ignores the frontmatter key). Users invoke skills by name (`/skill-name` or `$skill-name`); descriptions never enter the model's default context. Keep both on every new skill.
 
 **Versioning:** `VERSION` is the single source of truth; `gen-marketplace.py` stamps it onto every plugin entry, and `.github/workflows/version-bump.yml` patch-bumps it only after an explicit confirmed manual dispatch; routine pushes do nothing.
 
@@ -42,9 +42,6 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a 
 │   ├── gen-marketplace.py          # Generates .claude-plugin/marketplace.json from skills/
 │   └── bump-version.py             # Bumps VERSION patch + regenerates marketplace (CI)
 ├── VERSION                         # Single source of truth for plugin versions (CI-bumped)
-├── subagents/                      # Subagent suites (NOT auto-discovered)
-│   ├── claude/                     # Claude Code variants — researcher + agent-browser suites, shipped via explicit agents lists
-│   └── codex/                      # Codex variants (researchers only) — for ~/.codex/agents, not the marketplace
 ├── .agents/plugins/
 │   └── marketplace.json            # Generated — Codex plugin marketplace catalog (do not hand-edit)
 ├── .claude-plugin/

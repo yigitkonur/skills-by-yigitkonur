@@ -1,6 +1,7 @@
 ---
 name: build-mcp-use-server
 description: "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers."
+disable-model-invocation: true
 ---
 
 # Build mcp-use Server

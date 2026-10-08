@@ -1,6 +1,7 @@
 ---
 name: run-codex-review-loop
 description: "Use skill if you are running repeatable Codex reviews across lenses or branches, optionally verifying and fixing confirmed findings in isolated worktrees."
+disable-model-invocation: true
 ---
 
 # run-codex-review-loop

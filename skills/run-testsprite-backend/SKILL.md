@@ -1,6 +1,7 @@
 ---
 name: run-testsprite-backend
 description: Use skill if you are creating, debugging, running, or managing credentials for TestSprite backend API tests against deployed services; not frontend, load, fuzz, security scanning, or native-only testing.
+disable-model-invocation: true
 ---
 
 # Run TestSprite Backend

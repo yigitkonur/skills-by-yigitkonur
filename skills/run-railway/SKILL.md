@@ -1,6 +1,7 @@
 ---
 name: run-railway
 description: "Use if running railway CLI — deploys, logs, env vars, link, ssh, db shells, scaling."
+disable-model-invocation: true
 ---
 
 # run-railway

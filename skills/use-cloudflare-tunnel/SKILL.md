@@ -1,6 +1,7 @@
 ---
 name: use-cloudflare-tunnel
 description: "Use if exposing localhost ports or multi-service apps via Cloudflare Tunnel for public URLs, remote testing, webhooks, or previewing without port forwarding."
+disable-model-invocation: true
 ---
 
 # Cloudflare Tunnel

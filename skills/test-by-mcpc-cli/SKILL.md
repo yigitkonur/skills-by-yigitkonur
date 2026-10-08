@@ -1,6 +1,7 @@
 ---
 name: test-by-mcpc-cli
 description: "Use skill if you are driving mcpc 0.6.x to test or smoke-check an MCP server over stdio or Streamable HTTP."
+disable-model-invocation: true
 ---
 
 # Test MCP Servers with mcpc

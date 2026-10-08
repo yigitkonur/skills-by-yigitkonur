@@ -1,6 +1,7 @@
 ---
 name: build-mcp-use-client
 description: "Use if writing TypeScript mcp-use MCP client code — MCPClient, MCPSession, useMcp, mcp-use/react."
+disable-model-invocation: true
 ---
 
 # Build mcp-use Client

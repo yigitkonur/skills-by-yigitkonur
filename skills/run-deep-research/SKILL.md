@@ -1,6 +1,7 @@
 ---
 name: run-deep-research
 description: "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus."
+disable-model-invocation: true
 ---
 
 # Run Deep Research

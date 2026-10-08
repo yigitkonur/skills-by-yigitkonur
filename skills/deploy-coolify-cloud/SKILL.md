@@ -1,6 +1,7 @@
 ---
 name: deploy-coolify-cloud
 description: "Use if deploying/updating a docker-compose service on Coolify Cloud via its API — domains, env."
+disable-model-invocation: true
 ---
 
 # deploy-coolify-cloud

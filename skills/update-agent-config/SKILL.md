@@ -1,6 +1,7 @@
 ---
 name: update-agent-config
 description: "Use if auditing AGENTS.md/CLAUDE.md/REVIEW.md for drift after refactors — stale refs, rules."
+disable-model-invocation: true
 ---
 
 # Update Agent Config

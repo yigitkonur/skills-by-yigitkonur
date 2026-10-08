@@ -1,6 +1,7 @@
 ---
 name: build-mcp-server-sdk-v1
 description: "Use if building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod."
+disable-model-invocation: true
 ---
 
 # Build MCP Server (SDK v1.x)

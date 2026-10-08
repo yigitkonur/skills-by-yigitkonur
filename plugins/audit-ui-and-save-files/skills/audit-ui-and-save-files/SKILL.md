@@ -1,6 +1,7 @@
 ---
 name: audit-ui-and-save-files
 description: "Use if auditing a running web app UI across pages/viewports, saving per-bug findings to a tree."
+disable-model-invocation: true
 ---
 
 # Audit UI and Save Files

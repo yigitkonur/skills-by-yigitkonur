@@ -1,6 +1,7 @@
 ---
 name: build-raycast-script-command
 description: "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes."
+disable-model-invocation: true
 ---
 
 # Build Raycast Script Command

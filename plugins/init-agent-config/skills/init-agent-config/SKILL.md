@@ -1,6 +1,7 @@
 ---
 name: init-agent-config
 description: "Use if creating, auditing, or migrating CLAUDE.md/AGENTS.md/REVIEW.md instruction files."
+disable-model-invocation: true
 ---
 
 # Init Agent Config

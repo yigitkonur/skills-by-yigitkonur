@@ -2,6 +2,7 @@
 name: run-agent-device
 description: "Use if testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage."
 allowed-tools: Bash(agent-device:*)
+disable-model-invocation: true
 ---
 
 # run-agent-device — iOS product testing

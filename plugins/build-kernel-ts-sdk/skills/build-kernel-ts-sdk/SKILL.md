@@ -1,6 +1,7 @@
 ---
 name: build-kernel-ts-sdk
 description: "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools."
+disable-model-invocation: true
 ---
 
 # Build Kernel TS SDK

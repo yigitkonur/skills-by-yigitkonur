@@ -1,6 +1,7 @@
 ---
 name: build-tinacms-nextjs
 description: "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing."
+disable-model-invocation: true
 ---
 
 # Build TinaCMS Next.js

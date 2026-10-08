@@ -1,6 +1,7 @@
 ---
 name: herdr
 description: Use if controlling interactive coding agents, tabs, worktrees, or session lifecycle through Herdr CLI.
+disable-model-invocation: true
 ---
 
 # Herdr

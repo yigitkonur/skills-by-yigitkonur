@@ -1,6 +1,7 @@
 ---
 name: test-by-maestro
 description: "Use if writing, running, or debugging Maestro mobile E2E tests on iOS Simulators or Android."
+disable-model-invocation: true
 ---
 
 # Test Mobile UI with Maestro

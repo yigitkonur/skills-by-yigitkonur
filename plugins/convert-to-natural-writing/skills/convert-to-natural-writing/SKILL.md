@@ -1,6 +1,7 @@
 ---
 name: convert-to-natural-writing
 description: Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.
+disable-model-invocation: true
 ---
 
 # Convert to Natural Writing

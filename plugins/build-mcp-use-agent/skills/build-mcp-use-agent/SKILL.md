@@ -1,6 +1,7 @@
 ---
 name: build-mcp-use-agent
 description: "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream)."
+disable-model-invocation: true
 ---
 
 # Build MCP Use Agent

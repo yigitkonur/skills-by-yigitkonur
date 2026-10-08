@@ -1,6 +1,7 @@
 ---
 name: audit-agentic-mcp
 description: "Use if auditing or designing an MCP server for agent-readiness — framework, security, context."
+disable-model-invocation: true
 ---
 
 # audit-agentic-mcp — Audit, Optimize, Architect MCP Servers

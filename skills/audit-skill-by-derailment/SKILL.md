@@ -1,6 +1,7 @@
 ---
 name: audit-skill-by-derailment
 description: "Use if testing a skill with an agent execution trace; never for ordinary code, PR, or workflow review."
+disable-model-invocation: true
 ---
 
 # Audit Skill by Derailment: The Native Two-Tier Auditor

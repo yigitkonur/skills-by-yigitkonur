@@ -2,6 +2,7 @@
 name: mobilerun-control
 description: "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe."
 allowed-tools: Bash(mobilerun:*) Bash(adb:*) Read
+disable-model-invocation: true
 ---
 
 # Mobilerun device control — you are the agent

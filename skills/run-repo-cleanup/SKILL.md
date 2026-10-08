@@ -1,6 +1,7 @@
 ---
 name: run-repo-cleanup
 description: "Use if finishing a project — review and merge every branch/worktree into main, retire dead branches."
+disable-model-invocation: true
 ---
 
 # Run Repo Cleanup

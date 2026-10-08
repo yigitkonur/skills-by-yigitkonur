@@ -98,6 +98,7 @@ Good reference docs:
 Before submitting:
 
 - [ ] SKILL.md is at `skills/<name>/SKILL.md` (flat layout per agentskills.io spec)
+- [ ] Manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `policy: allow_implicit_invocation: false`
 - [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
 - [ ] `description` starts with `Use if`
 - [ ] `description` is 100 characters or fewer

@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **61 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **60 skills**, all manual-only (invoked by name, never auto-discovered). review, research, writing, ui/ux audit, mcp & framework builders, frontend/backend testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex and Claude Code both get the complete 61-skill pack.
+three ways in. Codex and Claude Code both get the complete 60-skill pack.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -16,12 +16,11 @@ add the marketplace once:
 /plugin marketplace add yigitkonur/skills-by-yigitkonur
 ```
 
-then grab exactly what you want — one skill, a themed bundle, the researcher agents, or everything — and drop it just as fast:
+then grab exactly what you want — one skill, a themed bundle, or everything — and drop it just as fast:
 
 ```
 /plugin install run-review@yigitkonur          # one skill
 /plugin install yk-mcp@yigitkonur              # a themed bundle
-/plugin install yk-researchers@yigitkonur      # just the internet-researcher agents
 /plugin install yk-everything@yigitkonur       # the whole thing
 /plugin uninstall run-review@yigitkonur        # gone
 ```
@@ -75,14 +74,13 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 61 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
-| **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
+| **yk-everything** | all 60 skills | `/plugin install yk-everything@yigitkonur` |
 | **yk-review** | review, codex review loops, completion audit | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
 | **yk-testing** | independent agentic E2E, Maestro mobile flows, ego-browser, and TestSprite verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
-| **yk-research** | research, deep-research, github-scout (+ agents) | `/plugin install yk-research@yigitkonur` |
+| **yk-research** | research, deep-research, github-scout | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, project manager supervision, browser automation, ios/android testing | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | cloudflare tunnel, railway, coolify-cloud deploy, sentry observability, ci/cd optimization, repo-cleanup, typescript cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
@@ -186,13 +184,13 @@ judge a change for merge-readiness, triage feedback, and verify "done".
 
 ## 🔬 research & discovery
 
-answer questions and find things with real web evidence. ships the `internet-researcher-*` subagents.
+answer questions and find things with real web evidence.
 
 - **[run-research](skills/run-research/)** — one technical question, current web + reddit practitioner evidence, source-backed synthesis, optionally fanned across subagents.
 - **[run-deep-research](skills/run-deep-research/)** — wave-based multi-file corpus research over 5+ entities or a market/category; parallel subagent orchestration and evaluation.
 - **[run-github-scout](skills/run-github-scout/)** — adaptive github repo discovery, shortlisting for a concrete need, oss comparison with repo evidence.
 
-`/plugin install yk-research@yigitkonur` · agents only: `/plugin install yk-researchers@yigitkonur`
+`/plugin install yk-research@yigitkonur`
 
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: run-ts-cleanup
 description: "Use if cleaning up a TypeScript codebase — dead code, unused deps, AI slop, weak types."
+disable-model-invocation: true
 ---
 
 # Run TS Cleanup

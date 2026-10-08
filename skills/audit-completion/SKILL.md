@@ -1,6 +1,7 @@
 ---
 name: audit-completion
 description: "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence."
+disable-model-invocation: true
 ---
 
 # Check Completion

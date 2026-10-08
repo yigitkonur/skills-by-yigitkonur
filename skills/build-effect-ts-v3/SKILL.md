@@ -1,6 +1,7 @@
 ---
 name: build-effect-ts-v3
 description: "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream."
+disable-model-invocation: true
 ---
 
 # Build Effect-TS v3

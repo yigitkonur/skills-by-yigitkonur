@@ -118,12 +118,12 @@ GROUPS = {
     ),
     "yk-research": (
         "research",
-        "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting. Bundles the internet-researcher subagents.",
-        ["run-research", "run-deep-research", "run-github-scout", "compare-anything"],
+        "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting.",
+        ["run-research", "run-deep-research", "run-github-scout"],
     ),
     "yk-automation": (
         "automation",
-        "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
+        "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing.",
         [
             "herdr",
             "project-manager",
@@ -164,35 +164,6 @@ GROUPS = {
         ["convert-to-natural-writing"],
     ),
 }
-
-# Subagent suites in subagents/claude/. Explicit file lists — a bare folder
-# reference would leak every future agent into the researcher-only entries.
-RESEARCHER_AGENTS = [
-    f"./subagents/claude/internet-researcher-{k}.md"
-    for k in ["api-docs", "debug-stuck", "generic", "quick", "shipping-pattern", "tech-choice"]
-]
-BROWSER_AGENTS = [
-    "./subagents/claude/agent-browser-tester.md",
-    "./subagents/claude/agent-browser-extractor.md",
-]
-NEXTJS_PERF_AGENTS = [
-    "./subagents/claude/nextjs-perf-auditor.md",
-    "./subagents/claude/nextjs-perf-fixer.md",
-]
-# every agent list that must exist on disk — extend this when adding a suite
-ALL_AGENT_LISTS = RESEARCHER_AGENTS + BROWSER_AGENTS + NEXTJS_PERF_AGENTS
-# bundle -> agent files it ships alongside its skills
-AGENT_BUNDLES = {
-    "yk-research": RESEARCHER_AGENTS,
-    "yk-automation": BROWSER_AGENTS,
-    "yk-frontend": NEXTJS_PERF_AGENTS,
-}
-# skill -> agent files its per-skill plugin ships (agents that require the skill)
-SKILL_AGENTS = {
-    "run-agent-browser": BROWSER_AGENTS,
-    "optimize-nextjs-fluidity": NEXTJS_PERF_AGENTS,
-}
-
 
 def load_validator():
     spec = importlib.util.spec_from_file_location(
@@ -250,16 +221,6 @@ def build_claude_marketplace():
         print("marketplace generation failed:\n  " + "\n  ".join(problems), file=sys.stderr)
         sys.exit(2)
 
-    # Every referenced agent file must exist — no dangling agents lists.
-    missing_agents = [
-        p
-        for p in ALL_AGENT_LISTS
-        if not os.path.isfile(os.path.join(REPO_ROOT, p))
-    ]
-    if missing_agents:
-        print(f"marketplace generation failed:\n  agent files missing: {missing_agents}", file=sys.stderr)
-        sys.exit(2)
-
     plugins = []
     ver = version()
 
@@ -268,33 +229,17 @@ def build_claude_marketplace():
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "Every Claude-compatible skill — all {} skills. Heaviest context cost; prefer a themed bundle or single skill.".format(
                 len(skills)
             ),
             "version": ver,
             "category": "bundle",
             "strict": False,
             "skills": [f"./skills/{s}" for s in skills],
-            "agents": ALL_AGENT_LISTS,
         }
     )
 
-    # 2) agents-only plugin — install just the internet-researcher subagents
-    plugins.append(
-        {
-            "name": "yk-researchers",
-            "source": "./",
-            "description": "Internet-researcher subagents only (no skills) — api-docs, debug-stuck, tech-choice, shipping-pattern, quick, generic. Fan them out for source-backed answers.",
-            "version": ver,
-            "category": "bundle",
-            "tags": ["agents"],
-            "strict": False,
-            "skills": [],
-            "agents": RESEARCHER_AGENTS,
-        }
-    )
-
-    # 3) themed bundles
+    # 2) themed bundles
     for key, (category, blurb, members) in GROUPS.items():
         entry = {
             "name": key,
@@ -306,11 +251,9 @@ def build_claude_marketplace():
             "strict": False,
             "skills": [f"./skills/{m}" for m in members],
         }
-        if key in AGENT_BUNDLES:
-            entry["agents"] = AGENT_BUNDLES[key]
         plugins.append(entry)
 
-    # 4) one plugin per skill (fine-grained install/uninstall)
+    # 3) one plugin per skill (fine-grained install/uninstall)
     skill_to_cat = skill_categories()
     for s in skills:
         entry = {
@@ -322,8 +265,6 @@ def build_claude_marketplace():
             "strict": False,
             "skills": [f"./skills/{s}"],
         }
-        if s in SKILL_AGENTS:
-            entry["agents"] = SKILL_AGENTS[s]
         plugins.append(entry)
 
     return {
@@ -333,7 +274,7 @@ def build_claude_marketplace():
             "url": "https://github.com/yigitkonur",
         },
         "metadata": {
-            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill, or just the researcher agents.",
+            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill.",
             "version": version(),
         },
         "plugins": plugins,

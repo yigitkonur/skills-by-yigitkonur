@@ -1,6 +1,7 @@
 ---
 name: build-skill
 description: "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md."
+disable-model-invocation: true
 ---
 
 # Synthesize Skills

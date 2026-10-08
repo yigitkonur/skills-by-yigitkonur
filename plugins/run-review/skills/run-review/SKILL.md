@@ -1,6 +1,7 @@
 ---
 name: run-review
 description: "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating."
+disable-model-invocation: true
 ---
 
 # run-review

@@ -1,6 +1,7 @@
 ---
 name: build-chrome-extension
 description: "Use if building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts."
+disable-model-invocation: true
 ---
 
 # Build Chrome Extension

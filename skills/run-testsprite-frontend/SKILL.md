@@ -1,6 +1,7 @@
 ---
 name: run-testsprite-frontend
 description: Use skill if you are creating, running, debugging, or release-gating TestSprite frontend browser tests, including public-target CLI or localhost MCP routing; not backend, load, security, or local-unit testing.
+disable-model-invocation: true
 ---
 
 # Run TestSprite Frontend

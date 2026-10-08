@@ -1,6 +1,7 @@
 ---
 name: use-chatgpt-by-applescript
 description: "Use if driving macOS ChatGPT desktop app via AppleScript or SSH to run web research, computer actions, status checks, or markdown extraction."
+disable-model-invocation: true
 ---
 
 # Use ChatGPT by AppleScript

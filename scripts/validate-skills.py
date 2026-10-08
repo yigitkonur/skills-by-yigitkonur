@@ -6,7 +6,7 @@ Checks:
   2. Frontmatter — name matches directory, description format and length
   3. SKILL.md length — SKILL.md must stay under 500 lines
   4. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
-  5. Research surfaces (skills + subagents, source and generated installs) stay
+  5. Research surfaces (skills, source and generated installs) stay
      on the current Research Powerpack v9 four-tool contract
 
 Usage:
@@ -20,7 +20,6 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
-SUBAGENTS_DIR = os.path.join(REPO_ROOT, "subagents")
 
 JUNK_PATTERNS = {".DS_Store", ".swp", "Thumbs.db", ".gitkeep"}
 JUNK_DIRS = {"evals", "__pycache__"}
@@ -439,34 +438,6 @@ def check_run_research_v9_contract(skill_name, skill_dir):
     return errors
 
 
-def check_subagent_research_contract():
-    """Researcher subagents must teach the same four-tool protocol as the skills."""
-    if not os.path.isdir(SUBAGENTS_DIR):
-        return []
-
-    errors = scan_markdown_for_retired_research_vocabulary(
-        "subagents", SUBAGENTS_DIR, check_parameters=False
-    )
-
-    for runtime in ("claude", "codex"):
-        runtime_dir = os.path.join(SUBAGENTS_DIR, runtime)
-        if not os.path.isdir(runtime_dir):
-            errors.append(f"subagents/{runtime} directory is missing")
-            continue
-        for filename in sorted(os.listdir(runtime_dir)):
-            if not filename.startswith("internet-researcher") or not filename.endswith(".md"):
-                continue
-            with open(os.path.join(runtime_dir, filename)) as fh:
-                content = fh.read()
-            missing = [tool for tool in RESEARCH_TOOL_NAMES if tool not in content]
-            if missing:
-                errors.append(
-                    f"subagents/{runtime}/{filename} never mentions: {', '.join(missing)}"
-                )
-
-    return errors
-
-
 def main():
     all_errors = {}
     skills_checked = 0
@@ -491,10 +462,6 @@ def main():
         skills_checked += 1
 
     # Report
-    subagent_errors = check_subagent_research_contract()
-    if subagent_errors:
-        all_errors["subagents"] = subagent_errors
-
     print(f"Validated {skills_checked} skills")
 
     total_errors = sum(len(e) for e in all_errors.values())

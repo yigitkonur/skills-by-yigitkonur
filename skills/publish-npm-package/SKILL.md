@@ -1,6 +1,7 @@
 ---
 name: publish-npm-package
 description: "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release."
+disable-model-invocation: true
 ---
 
 # Publish npm Package

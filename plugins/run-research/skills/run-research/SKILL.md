@@ -1,6 +1,7 @@
 ---
 name: run-research
 description: "Use skill if you are researching one current technical question with source-grounded web evidence. Do not use for five-plus-entity corpora, GitHub-repository discovery, local-only answers, or web-forbidden requests."
+disable-model-invocation: true
 ---
 
 # Run Technical Research

@@ -1,6 +1,7 @@
 ---
 name: upgrade-typescript-go
 description: "Use if upgrading a TypeScript project to the native Go compiler (TypeScript 7.0+ / tsgo) — preflight audit, tsconfig modernization, Compiler API bridging, and post-migration verification."
+disable-model-invocation: true
 ---
 
 # Upgrade TypeScript Go

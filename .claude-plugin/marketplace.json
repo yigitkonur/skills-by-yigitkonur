@@ -5,14 +5,14 @@
     "url": "https://github.com/yigitkonur"
   },
   "metadata": {
-    "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill, or just the researcher agents.",
+    "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill.",
     "version": "1.0.94"
   },
   "plugins": [
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 61 skills plus the internet-researcher, agent-browser, and nextjs-perf subagents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 60 skills. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.94",
       "category": "bundle",
       "strict": false,
@@ -42,7 +42,6 @@
         "./skills/build-skill",
         "./skills/build-tinacms-nextjs",
         "./skills/ci-cd-optimize",
-        "./skills/compare-anything",
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
@@ -78,38 +77,6 @@
         "./skills/use-chatgpt-by-applescript",
         "./skills/use-cloudflare-tunnel",
         "./skills/use-sentry"
-      ],
-      "agents": [
-        "./subagents/claude/internet-researcher-api-docs.md",
-        "./subagents/claude/internet-researcher-debug-stuck.md",
-        "./subagents/claude/internet-researcher-generic.md",
-        "./subagents/claude/internet-researcher-quick.md",
-        "./subagents/claude/internet-researcher-shipping-pattern.md",
-        "./subagents/claude/internet-researcher-tech-choice.md",
-        "./subagents/claude/agent-browser-tester.md",
-        "./subagents/claude/agent-browser-extractor.md",
-        "./subagents/claude/nextjs-perf-auditor.md",
-        "./subagents/claude/nextjs-perf-fixer.md"
-      ]
-    },
-    {
-      "name": "yk-researchers",
-      "source": "./",
-      "description": "Internet-researcher subagents only (no skills) — api-docs, debug-stuck, tech-choice, shipping-pattern, quick, generic. Fan them out for source-backed answers.",
-      "version": "1.0.94",
-      "category": "bundle",
-      "tags": [
-        "agents"
-      ],
-      "strict": false,
-      "skills": [],
-      "agents": [
-        "./subagents/claude/internet-researcher-api-docs.md",
-        "./subagents/claude/internet-researcher-debug-stuck.md",
-        "./subagents/claude/internet-researcher-generic.md",
-        "./subagents/claude/internet-researcher-quick.md",
-        "./subagents/claude/internet-researcher-shipping-pattern.md",
-        "./subagents/claude/internet-researcher-tech-choice.md"
       ]
     },
     {
@@ -146,10 +113,6 @@
         "./skills/audit-ux-and-save-files",
         "./skills/craft-brand-theme",
         "./skills/run-astro-audit"
-      ],
-      "agents": [
-        "./subagents/claude/nextjs-perf-auditor.md",
-        "./subagents/claude/nextjs-perf-fixer.md"
       ]
     },
     {
@@ -219,7 +182,7 @@
     {
       "name": "yk-research",
       "source": "./",
-      "description": "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting. Bundles the internet-researcher subagents.",
+      "description": "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting.",
       "version": "1.0.94",
       "category": "bundle",
       "tags": [
@@ -229,22 +192,13 @@
       "skills": [
         "./skills/run-research",
         "./skills/run-deep-research",
-        "./skills/run-github-scout",
-        "./skills/compare-anything"
-      ],
-      "agents": [
-        "./subagents/claude/internet-researcher-api-docs.md",
-        "./subagents/claude/internet-researcher-debug-stuck.md",
-        "./subagents/claude/internet-researcher-generic.md",
-        "./subagents/claude/internet-researcher-quick.md",
-        "./subagents/claude/internet-researcher-shipping-pattern.md",
-        "./subagents/claude/internet-researcher-tech-choice.md"
+        "./skills/run-github-scout"
       ]
     },
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing. Bundles the agent-browser tester/extractor subagents.",
+      "description": "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing.",
       "version": "1.0.94",
       "category": "bundle",
       "tags": [
@@ -258,10 +212,6 @@
         "./skills/run-agent-device",
         "./skills/mobilerun-control",
         "./skills/use-chatgpt-by-applescript"
-      ],
-      "agents": [
-        "./subagents/claude/agent-browser-tester.md",
-        "./subagents/claude/agent-browser-extractor.md"
       ]
     },
     {
@@ -608,17 +558,6 @@
       ]
     },
     {
-      "name": "compare-anything",
-      "source": "./",
-      "description": "Use if turning documents, tools, or candidates into an interactive, weighted comparison matrix and executable Astro canvas comparison page.",
-      "version": "1.0.94",
-      "category": "research",
-      "strict": false,
-      "skills": [
-        "./skills/compare-anything"
-      ]
-    },
-    {
       "name": "convert-mcp-sdk-v1-to-v2",
       "source": "./",
       "description": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
@@ -737,10 +676,6 @@
       "strict": false,
       "skills": [
         "./skills/optimize-nextjs-fluidity"
-      ],
-      "agents": [
-        "./subagents/claude/nextjs-perf-auditor.md",
-        "./subagents/claude/nextjs-perf-fixer.md"
       ]
     },
     {
@@ -774,10 +709,6 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-browser"
-      ],
-      "agents": [
-        "./subagents/claude/agent-browser-tester.md",
-        "./subagents/claude/agent-browser-extractor.md"
       ]
     },
     {
