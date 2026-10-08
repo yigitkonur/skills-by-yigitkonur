@@ -1,6 +1,6 @@
 {
   "name": "test-by-maestro",
-  "version": "1.0.102",
+  "version": "1.0.103",
   "description": "Use if writing, running, or debugging Maestro mobile E2E tests on iOS Simulators or Android.",
   "author": {
     "name": "Yigit Konur",

@@ -1,6 +1,6 @@
 {
   "name": "run-astro-audit",
-  "version": "1.0.102",
+  "version": "1.0.103",
   "description": "Use if conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge queues.",
   "author": {
     "name": "Yigit Konur",
