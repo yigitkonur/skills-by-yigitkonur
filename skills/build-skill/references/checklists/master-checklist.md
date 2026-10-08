@@ -67,7 +67,7 @@ The frontmatter determines whether Claude ever loads your skill.
 
 ### Optional fields
 - [ ] `allowed-tools` is minimal — only tools the skill actually needs
-- [ ] Side-effect skills (deploy, delete, publish) use `disable-model-invocation: true`
+- [ ] Manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `policy.allow_implicit_invocation: false` (unless the user asked for auto-discovery)
 - [ ] `compatibility` field set if the skill requires specific platforms or dependencies
 - [ ] `metadata` includes `author` and `version` for published skills
 
