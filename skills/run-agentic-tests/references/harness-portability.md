@@ -11,17 +11,22 @@ Domain execution relies on specialized sibling skills:
 
 The harness verifies these prerequisites during preflight and refuses to start if the required runner is missing.
 
-## Model selection and reasoning budget
+## Model selection & reasoning configuration per provider
 
-To maintain fast execution loops and prevent 5x–10x token cost inflation:
+Automated test loops require fast turnaround, accurate tool invocation, and token discipline. Model selection differs fundamentally across providers: **Anthropic splits models by family, whereas Codex and Gemini split capabilities primarily by reasoning effort.**
 
-1. **Model Tier**:
-   - Always use **Sonnet** (Claude 3.7 Sonnet or Claude 3.5 Sonnet) or equivalent mid-tier frontier models.
-   - **Never use Opus for automated test execution loops.** Opus is 5x more expensive and has significantly higher per-turn latency, creating severe bottlenecks during multi-step tool interactions without improving UI or assertion accuracy.
-2. **Reasoning Effort & Thinking Budget**:
-   - Set reasoning effort to **`low` or `medium`** (or cap extended thinking to 1,024–2,048 tokens; disable for routine deterministic assertions).
-   - High reasoning budgets cause models to burn thousands of thinking tokens over analyzing mundane DOM snapshots or command outputs, triggering rate-limit exhaustion and runaway costs.
-   - Deep reasoning is reserved strictly for complex defect diagnosis.
+1. **Anthropic**:
+   - **Models**: Use `sonnet-5.5` or `haiku-5.5` (unless a newer version has come out, in which case use the newer one).
+   - **Reasoning**: *Omitted*. Anthropic sorts models by family rather than reasoning tiers; no reasoning level is needed.
+   - **Prohibition**: Never use heavy flagship family models like Opus for automated execution or verification loops.
+
+2. **Codex**:
+   - **Simple ops** (routine execution, CLI commands, basic UI navigation): `gpt-6-luna` with `xhigh` reasoning effort. `luna` is a compact, lightweight model, so `xhigh` reasoning keeps execution and assertions robust without inflating token costs.
+   - **Evidence checks** (verifiers, assertion checks, artifact analysis): `gpt-6.1-sol` with `medium` reasoning effort.
+
+3. **Gemini**:
+   - **Simple ops** (routine execution, basic command loops): `gemini-3.8-flash` with `medium` reasoning effort.
+   - **Everything else** (evidence checks, verification, diagnosis, planning): `gemini-3.8-flash` with `high` reasoning effort.
 
 ## Map host capabilities once
 

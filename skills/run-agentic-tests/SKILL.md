@@ -10,12 +10,17 @@ scoped repairs, integrated-target retests, and an inspectable HTML report. This 
 provides the operational harness for multi-agent testing across web, mobile, MCP, and CLI,
 integrating directly with specialized test runners.
 
-## Model selection and reasoning budget
+## Model selection & reasoning configuration per provider
 
-To prevent prohibitive costs, runaway token budgets, and excessive test latency:
+Models are configured strictly per provider to balance execution speed, assertion accuracy, and token economics. **Core architectural rule:** Anthropic splits models by family (no reasoning level needed), while Codex and Gemini split capabilities primarily by reasoning effort.
 
-- **Model tier**: Use **Claude 3.7 Sonnet** (or balanced mid-tier frontier models like Claude 3.5 Sonnet / Gemini Flash). **NEVER use Opus** for automated test execution or verification loops. Opus is 5x more expensive ($15/$75 per MTok vs $3/$15) and has significantly higher latency across multi-turn tool calling without improving UI or command verification accuracy.
-- **Reasoning effort / thinking budget**: Set reasoning effort to **`low` or `medium`** (or cap extended thinking to 1,024–2,048 tokens; disable for routine deterministic steps). High reasoning effort causes the model to spend thousands of thinking tokens analyzing mundane DOM states or terminal outputs, causing rate-limit bottlenecks and 10x cost inflation. Deep reasoning is reserved strictly for complex root-cause diagnosis.
+| Provider | Task category | Model | Reasoning effort | Operational rule |
+|---|---|---|---|---|
+| **Anthropic** | All operations (execution, verification, diagnosis) | `sonnet-5.5` or `haiku-5.5` (use newer version if released) | *None* | Anthropic sorts models by family; reasoning level is omitted. Never use heavy flagship family models like Opus for automated loops. |
+| **Codex** | Simple ops (routine execution, CLI commands, basic steps) | `gpt-6-luna` | `xhigh` | `luna` is a compact model; `xhigh` reasoning effort keeps tool calls and deterministic steps rock-solid. |
+| **Codex** | Evidence checks (verifiers, assertion checks, artifact analysis) | `gpt-6.1-sol` | `medium` | Balanced reasoning ensures rigorous evaluation of screenshots, logs, and state evidence without timeout delays. |
+| **Gemini** | Simple ops (routine execution, navigation, basic steps) | `gemini-3.8-flash` | `medium` | High throughput, fast response times for multi-step browser/CLI steps. |
+| **Gemini** | Everything else (evidence checks, verification, diagnosis, planning) | `gemini-3.8-flash` | `high` | Increased reasoning depth for independent verification, root-cause diagnosis, and scenario authoring. |
 
 ## Tool dependencies & specialized sibling skills
 

@@ -20,7 +20,7 @@ this repository's role, evidence, isolation, and delivery contracts.
 
 ## Material external constraints
 
-- [Anthropic Claude 3.7 Sonnet & Extended Thinking](https://www.anthropic.com/news/claude-3-7-sonnet): Sonnet is 5x cheaper than Opus ($3/$15 vs $15/$75 per MTok) with superior agentic tool-use velocity. High reasoning effort introduces excessive latency on deterministic UI steps; cap thinking to low/medium.
+- Provider model configurations & reasoning boundaries: Anthropic structures its model lineup by family (`sonnet-5.5` / `haiku-5.5` or newer), omitting reasoning levels. Codex and Gemini scale performance primarily through reasoning effort tiers (`gpt-6-luna` with `xhigh` reasoning for simple ops, `gpt-6.1-sol` with `medium` reasoning for evidence checks; `gemini-3.8-flash` with `medium` for simple ops, `high` for everything else). Heavy flagship tiers (such as Opus) are avoided in automated loops to eliminate runaway cost and latency.
 - [GitHub issue-closing syntax](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue): closing keywords also accept qualified repository references and colons. Avoid automatic closure in PR descriptions and commit messages until independent retest proves resolution.
 - [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/): random URLs, 200 concurrent in-flight requests, HTTP 429 at the limit, no SSE support, and no uptime/SLA guarantee. Select based on actual protocol needs.
 - [MCP transports](https://modelcontextprotocol.io/specification/basic/transports): stdio attaches a client-launched subprocess; Streamable HTTP handles remote servers.

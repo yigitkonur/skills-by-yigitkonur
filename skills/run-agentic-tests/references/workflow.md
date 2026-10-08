@@ -57,8 +57,7 @@ ready target, declared dependencies/resources, and approved plan membership.
 
 Use [Scheduling](scheduling.md). For each ready task: reserve it through the CLI,
 launch one fresh host worker with the generated handoff and narrow reading set,
-then bind its real host handle. Use **Claude 3.7 Sonnet** with `low` or `medium`
-reasoning effort; never use Opus. Messages (`send_message`) enable real-time
+then bind its real host handle. Configure models per provider: Anthropic (`sonnet-5.5` or `haiku-5.5`, no reasoning level needed); Codex (`gpt-6-luna` with `xhigh` for simple ops, `gpt-6.1-sol` with `medium` for evidence checks); Gemini (`gemini-3.8-flash` with `medium` for simple ops, `high` for everything else). Messages (`send_message`) enable real-time
 notifications and blocker escalation; files carry durable truth.
 
 Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.

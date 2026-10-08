@@ -6,7 +6,7 @@ records reservations; the host provides actual worker lifecycle controls.
 ## Capacity, model sizing, and independence
 
 - **Concurrency**: Use `min(campaign max_active, actual host capacity)` active role workers. Default to realistic local concurrency (2–4 workers) to prevent OOM and port collisions.
-- **Model Economy**: Enforce **Claude 3.7 Sonnet** with `low` or `medium` reasoning effort (or capped extended thinking). **Never use Opus** for automated execution or verification loops.
+- **Model Economy**: Configure workers per provider. Anthropic: `sonnet-5.5` or `haiku-5.5` (or newer; no reasoning level needed, split by family; never Opus). Codex: `gpt-6-luna` with `xhigh` reasoning for simple ops; `gpt-6.1-sol` with `medium` reasoning for evidence checks. Gemini: `gemini-3.8-flash` with `medium` reasoning for simple ops, `high` for everything else.
 - **Independence**: Enforce author != executor, executor != verifier, distinct blind verifiers, and implementer != independent retest executor/verifier. Workers do not dispatch other workers.
 
 Sequence each launch: `task create` -> `task dispatch` -> host launch -> `task bind`.
