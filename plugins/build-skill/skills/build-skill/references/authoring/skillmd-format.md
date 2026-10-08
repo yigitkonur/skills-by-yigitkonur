@@ -26,7 +26,7 @@ description: Use skill if you are doing X and need Y before Z.
 | `name` | Recommended | string | Lowercase letters, numbers, hyphens only. Max 64 chars. No leading/trailing hyphen. No consecutive hyphens. | Display name and `/slash-command` identifier. Defaults to directory name if omitted. |
 | `description` | Recommended | string | Max 1024 chars. Avoid `<` and `>` (can inject unintended instructions). | Primary signal for auto-invocation. Must state **what** the skill does AND **when** to use it. |
 | `allowed-tools` | No | string (comma-separated) | Tool identifiers like `Read, Grep, Glob` | Pre-approves specific tools without per-use confirmation. Supports wildcards. |
-| `disable-model-invocation` | No | boolean | `true` or `false` | When `true`, prevents auto-loading. Only manual `/name` invocation works. Use for side-effect-heavy skills. |
+| `disable-model-invocation` | **Set `true` by default** | boolean | `true` or `false` | When `true`, prevents auto-loading and keeps the description out of the model's context. Only manual `/name` invocation works. This repo's default for every skill (see Manual-only default). |
 | `user-invocable` | No | boolean | `true` or `false` | When `false`, hides from the `/` menu. For background-knowledge skills only. |
 | `model` | No | string | Model identifier or `inherit` | Override the model when skill is active. Defaults to session model. |
 | `context` | No | string | `fork` | Runs the skill in an isolated sub-agent context. |
@@ -38,6 +38,35 @@ description: Use skill if you are doing X and need Y before Z.
 | `license` | No | string | e.g., `MIT`, `Apache-2.0` | License for open-source distribution. Common: MIT, Apache-2.0. |
 | `compatibility` | No | string | 1-500 characters | Environment requirements: intended product, required system packages, network access needs. |
 | `metadata` | No | map | Custom key-value pairs | Suggested keys: `author`, `version`, `mcp-server`, `category`, `tags`, `documentation`, `support`. |
+
+## Manual-only default
+
+Every skill built with this workflow is manual-only unless the user explicitly asks for auto-discovery. Global skill lists stay small and nothing fires by surprise.
+
+Two files carry the setting, because tools read different places:
+
+1. `SKILL.md` frontmatter (Claude Code, Cursor, VS Code):
+
+   ```yaml
+   ---
+   name: my-skill
+   description: Use skill if you are ...
+   disable-model-invocation: true
+   ---
+   ```
+
+2. `agents/openai.yaml` next to `SKILL.md` (Codex ignores the frontmatter key and reads this file):
+
+   ```yaml
+   policy:
+     allow_implicit_invocation: false
+   ```
+
+   If the file already exists (for example with an `interface:` block), append the `policy:` block and keep the rest.
+
+Effects: in Claude Code the description is not loaded into context and the skill runs only on `/skill-name`; in Codex it runs only on `$skill-name` or `/skills`. Keep the description accurate anyway, since it feeds the slash-command menu and humans reading the listing. Trigger-phrase tests in Step 8 become "does the description make sense when the user picks it from the menu" plus a manual-invocation functional test.
+
+Opt-out: only when the user asks for auto-discovery. Say so in the output and leave both settings off.
 
 ### Frontmatter rules
 
@@ -249,7 +278,7 @@ Before shipping a skill, verify:
 - [ ] All referenced files actually exist
 - [ ] Every file in `references/` is routed from SKILL.md
 - [ ] `allowed-tools` is minimal (not over-broad)
-- [ ] Side-effect skills use `disable-model-invocation: true`
+- [ ] Manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `allow_implicit_invocation: false`
 - [ ] `metadata` includes author and version for published skills
 
 ## Metadata field reference

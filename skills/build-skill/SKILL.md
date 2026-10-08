@@ -35,6 +35,7 @@ Do NOT use this skill for:
 5. **Original, repo-fit output only.** Distill patterns; do not rename-clone a source skill.
 6. **Progressive disclosure.** Trigger logic in frontmatter, workflow and decisions in `SKILL.md`, bulky detail in `references/`.
 7. **Test before shipping.** Run trigger tests and at least one functional test before declaring done.
+8. **Manual-only by default.** Every skill you create or revise ships with `disable-model-invocation: true` in `SKILL.md` frontmatter and `agents/openai.yaml` containing `policy:` / `allow_implicit_invocation: false`. It is activated only when the user names it (`/skill-name` in Claude Code, `$skill-name` in Codex), never from the always-loaded skill list. Drop this only when the user explicitly asks for auto-discovery, and say so in the output. Details in `references/authoring/skillmd-format.md` (Manual-only default).
 
 ## Available scripts
 
@@ -132,6 +133,7 @@ Before drafting:
 - Reuse existing references; do not duplicate them.
 - Add new files only when clearly necessary and explicitly routed.
 - Read `references/authoring/description-engineering.md` to craft the description field.
+- Add the manual-only pair: `disable-model-invocation: true` in frontmatter plus `agents/openai.yaml` with `policy:` / `allow_implicit_invocation: false` (rule 8).
 - Drafting focuses on three constraints: SKILL.md <500 lines, every reference routed, description follows the formula. Run the full `references/checklists/master-checklist.md` review in Step 9.
 
 ### 8. Test the skill
@@ -149,6 +151,7 @@ Before drafting:
 - Confirm every file in `references/` is explicitly routed from `SKILL.md`.
 - Confirm the result is synthesized from evidence, not copied from the most detailed source.
 - Confirm no `<` or `>` in frontmatter, no reserved names ("claude", "anthropic").
+- Confirm the skill is manual-only: `disable-model-invocation: true` in `SKILL.md` and `allow_implicit_invocation: false` in `agents/openai.yaml`.
 - Shared repo issue blocks a clean result? Report it instead of editing shared files by default.
 
 ## Decision rules
@@ -204,7 +207,7 @@ Load the smallest relevant set for the branch you are in.
 
 | File | Read when |
 |---|---|
-| `references/authoring/skillmd-format.md` | Writing or validating frontmatter, body structure, or progressive-disclosure fit. |
+| `references/authoring/skillmd-format.md` | Writing or validating frontmatter, the manual-only default (`disable-model-invocation` plus `agents/openai.yaml`), body structure, or progressive-disclosure fit. |
 | `references/authoring/description-engineering.md` | Crafting or improving the description field, trigger phrases, or negative triggers. |
 | `references/authoring/decision-tree-patterns.md` | Designing branch logic, routing labels, or decision-tree structure. |
 | `references/authoring/reference-file-structure.md` | Deciding what belongs in SKILL.md vs references/, or reorganizing reference layout. |
@@ -285,6 +288,7 @@ Before declaring done, confirm:
 - [ ] `name` does not contain "claude" or "anthropic"
 - [ ] description follows the formula: what + when + trigger phrases
 - [ ] description is under 1024 characters with no `<` or `>`
+- [ ] manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `allow_implicit_invocation: false` (unless the user asked for auto-discovery)
 - [ ] `SKILL.md` body is under 500 lines
 - [ ] `SKILL.md` contains decisions and routing, not bulky reference content
 - [ ] every reference file is explicitly routed

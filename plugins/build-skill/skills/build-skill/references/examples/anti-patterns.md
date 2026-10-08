@@ -78,7 +78,7 @@ allowed-tools: Read, Grep, Glob
 
 **Rule:** List only the tools the skill actually needs. Principle of least privilege.
 
-### AP-5: Missing disable-model-invocation on dangerous skills
+### AP-5: Missing manual-only settings (`disable-model-invocation`, `agents/openai.yaml`)
 
 **Wrong:**
 ```yaml
@@ -95,7 +95,7 @@ description: Deploy the application to production environment.
 disable-model-invocation: true
 ```
 
-**Rule:** Any skill with side effects (deploy, delete, commit, publish) should use `disable-model-invocation: true`.
+**Rule:** Every skill ships manual-only: `disable-model-invocation: true` in frontmatter and `agents/openai.yaml` with `policy:` / `allow_implicit_invocation: false`. Side-effect skills (deploy, delete, commit, publish) are the clearest case, but the default applies to all.
 
 ## Category 2: Structure problems
 
@@ -397,7 +397,7 @@ Before publishing, verify none of these apply:
 - [ ] Angle brackets in frontmatter (AP-2)
 - [ ] Missing `---` delimiters (AP-3)
 - [ ] Over-broad `allowed-tools` (AP-4)
-- [ ] Dangerous skill without `disable-model-invocation` (AP-5)
+- [ ] Skill without the manual-only pair (AP-5)
 - [ ] SKILL.md over 500 lines (AP-6)
 - [ ] Empty SKILL.md (AP-7)
 - [ ] Orphaned reference files (AP-8)
