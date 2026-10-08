@@ -1,6 +1,6 @@
 # Mission Brief: Interactive Tools, Calculators & Comparison Matrices Audit
 
-## 3.0 Skills / Tools: view_file, run_command, compare-anything, react-doctor.
+## 3.0 Skills / Tools: view_file, run_command, react-doctor.
 
 ## 3.1 Context Block
 
