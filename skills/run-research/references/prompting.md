@@ -122,6 +122,6 @@ After executing a search wave, pause and inspect the leads:
 
 ## 5. Strict Schema Reminders
 
-- `web-search`: Only accepts `queries: string[]`. Never pass `country`, `freshness`, or `domain` as JSON keys; embed all filters directly into the query strings (e.g. `site:github.com`, `after:2024`).
+- `web-search`: Only accepts `queries: string[]` (up to 100 queries; recommended 1–50). Never pass `country`, `freshness`, or `domain` as JSON keys; embed all filters directly into the query strings (e.g. `site:github.com`, `after:2024`).
 - `extract-evidence`: Accepts `urls: string[]` (max 20) and `evidence_requirements: string[]` (max 20).
-- If `extract-evidence` returns `continuation.required: true`, invoke `continuation.next_call` immediately in the same session without modifying arguments.
+- If unfinished work remains: follow `continuation.next_call` when `continuation.required: true` (schema-v2), or re-invoke with `retry.sources` and `retry.evidence_requirements` (schema-v3).

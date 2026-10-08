@@ -4,11 +4,11 @@ Use these as call-shape recipes, not fixed call counts. Let extracted gaps and
 the session review determine whether another round has enough expected value.
 
 For every sequence below, an `extract-evidence` result with
-`continuation.required: true` inserts an extraction-continuation loop before
+`continuation.required: true` (schema-v2) or `retry.sources` (schema-v3) inserts an extraction-continuation loop before
 review or synthesis:
 
 ```text
-extract-evidence -> exact continuation.next_call in same conversation/session
+extract-evidence -> continuation.next_call (schema-v2) or retry.sources (schema-v3)
                 -> repeat until settled or caller budget is exhausted
 ```
 

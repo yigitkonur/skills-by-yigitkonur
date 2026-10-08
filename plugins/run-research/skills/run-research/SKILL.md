@@ -56,8 +56,8 @@ Prefer the Research Powerpack MCP server. Canonical tool names and inputs:
 | Tool | Strict input | Primary Function & Semantics |
 |---|---|---|
 | `plan-research` | `objective: string` | Generates advisory clusters, checkable requirements, query ideas, first-wave probes, and stop conditions. Use as a sounding board, not a rigid script. |
-| `web-search` | `queries: string[]` | Discovers candidate URLs from 1–50 complete retrieval queries. **Leads only**—does not read bodies or cite facts. Strict schema: all filters (site, year, quotes) must be in the query strings. |
-| `extract-evidence` | `urls: string[]`, `evidence_requirements: string[]` | Reads 1–20 known URLs and extracts schema-v2 quotation-grounded evidence for 1–20 explicit requirements. Automatically handles multi-tier scraping (Jina -> Scrape.do basic -> Scrape.do JS -> browser render) and Reddit API. |
+| `web-search` | `queries: string[]` | Discovers candidate URLs from 1–50 complete retrieval queries (schema accepts up to 100). **Leads only**—does not read bodies or cite facts. Strict schema: all filters (site, year, quotes) must be in the query strings. |
+| `extract-evidence` | `urls: string[]`, `evidence_requirements: string[]` | Reads 1–20 known URLs and extracts schema-v2 / schema-v3 quotation-grounded evidence for 1–20 explicit requirements. Automatically handles multi-tier scraping (Jina -> Scrape.do basic -> Scrape.do JS -> browser render) and Reddit API. |
 
 Treat `structuredContent` as canonical. When tool outputs exceed buffer limits, the host environment automatically writes them to `output.txt` on disk. Inspect the referenced file to read coverage metrics, ranked leads, and verified quotes.
 
@@ -128,7 +128,7 @@ Within each research thread:
 - **Zero-Hallucination Rule:** Count a finding only when backed by a verified verbatim quote and code-derived locator (`lines X-Y`, block ID).
 - **Negative Evidence is Valuable:** If a source genuinely lacks an answer, a `not-found` status is legitimate evidence of omission—never treat it as a failure.
 - **Handling Interstitials & Paywalls:** If a source returns `blocked`, do not invent claims. Note the provenance gap and find an alternate mirror or archive.
-- **Resumable Continuation:** If `continuation.required: true`, invoke `continuation.next_call` exactly in the same session before reviewing or synthesizing.
+- **Resumable Continuation & Retries:** If unfinished work remains, follow `continuation.next_call` when `continuation.required` is true (schema-v2), or re-invoke `extract-evidence` with `retry.sources` and original `retry.evidence_requirements` (schema-v3, at most twice total per URL).
 
 ### Step 6: Deliberate Stopping & Synthesis
 Stop when:
@@ -140,12 +140,12 @@ Stop when:
 
 ## 5. Resumable Extraction Protocol
 
-Only `extract-evidence` uses output `schema_version: "2"`. It freezes completed work before the 60-second transport ceiling and describes unfinished sources under `continuation.pending_sources`.
+Only `extract-evidence` uses output `schema_version: "2"` (and `schema-v3`). It freezes completed work before the 60-second transport ceiling and describes unfinished sources under `continuation.pending_sources` (schema-v2) or `retry.sources` (schema-v3).
 
-When `continuation.required` is true:
+When `continuation.required` is true (schema-v2) or `retry.sources` are returned (schema-v3):
 1. Retain completed findings already returned.
-2. Verify `continuation.next_call` is non-null.
-3. If budget permits, execute that exact tool call in the same conversation/session.
+2. If `continuation.next_call` is present and non-null, execute that exact tool call in the same conversation/session.
+3. If `retry.sources` are provided, re-invoke `extract-evidence` with `retry.sources` and `retry.evidence_requirements`.
 4. Repeat until settled or task budget forces an explicit partial-answer limitation.
 5. Evaluate evidence coverage against your stop conditions before synthesizing.
 

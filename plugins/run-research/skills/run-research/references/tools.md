@@ -48,7 +48,7 @@ Input:
 }
 ```
 
-Limits: one to 50 complete queries, each at most 500 characters. Unknown input
+Limits: one to 50 complete queries (schema accepts up to 100), each at most 500 characters. Unknown input
 properties are invalid.
 
 Important output fields:
@@ -75,7 +75,7 @@ Interpretation rules:
 
 ## `extract-evidence`
 
-This is the only public tool whose output uses `schema_version: "2"`. Its input
+This is the only public tool whose output uses `schema_version: "2"` (and schema-v3 retry support). Its input
 is unchanged.
 
 Input:
@@ -131,11 +131,11 @@ count. `contradictions[]` contains only verified findings. `output_truncated`
 means lower-value records were omitted with counts; it must not be interpreted
 as full coverage.
 
-Top-level `continuation` reports whether work remains, durability/scope of its
+Top-level `continuation` (schema-v2) reports whether work remains, durability/scope of its
 one-hour encrypted retrieval checkpoint, every pending input position, and an
-exact next tool call. When `continuation.required` is true and caller budget
-permits, invoke non-null `continuation.next_call` unchanged in the same
-conversation/session before review or synthesis. Repeat as needed.
+exact next tool call. In schema-v3, unfinished work and temporary failures return actual
+URLs in `retry.sources` with original `retry.evidence_requirements`. When `continuation.required` is true or `retry.sources` are returned,
+invoke the continuation or retry call unchanged before review or synthesis. Repeat as needed (at most twice total per URL).
 
 Semantics:
 

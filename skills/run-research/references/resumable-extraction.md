@@ -195,3 +195,7 @@ trace. Never move a continuation into a parallel agent and assume state follows.
 - A disconnected caller aborts work and does not receive an ordinary partial
   response. Start a fresh call only from state actually available to the host.
 - An extraction continuation must be completed before treating findings as final.
+
+## Schema-v3 retry extension
+
+In schema-v3, unfinished work and temporary failures return actual URLs in `retry.sources` alongside original `retry.evidence_requirements`. The caller may re-invoke `extract-evidence` using these parameters, up to twice total per URL including the first invocation. Both the schema-v2 continuation pattern (`continuation.next_call`) and schema-v3 retry pattern (`retry.sources`) provide safe, bounded recovery without losing previously verified findings.
