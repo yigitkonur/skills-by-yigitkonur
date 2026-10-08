@@ -1,6 +1,6 @@
 {
   "name": "run-railway",
-  "version": "1.0.94",
+  "version": "1.0.95",
   "description": "Use if running railway CLI — deploys, logs, env vars, link, ssh, db shells, scaling.",
   "author": {
     "name": "Yigit Konur",

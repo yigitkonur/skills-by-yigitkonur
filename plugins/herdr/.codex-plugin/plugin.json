@@ -1,6 +1,6 @@
 {
   "name": "herdr",
-  "version": "1.0.94",
+  "version": "1.0.95",
   "description": "Use if controlling interactive coding agents, tabs, worktrees, or session lifecycle through Herdr CLI.",
   "author": {
     "name": "Yigit Konur",
