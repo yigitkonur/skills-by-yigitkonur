@@ -1,6 +1,6 @@
 {
   "name": "run-agentic-tests",
-  "version": "1.0.111",
+  "version": "1.0.112",
   "description": "Use if orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops.",
   "author": {
     "name": "Yigit Konur",
