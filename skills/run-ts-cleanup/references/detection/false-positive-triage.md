@@ -265,7 +265,7 @@ A lint engine reports "declared but never read" without knowing whether the bind
 | `function f(_a: string, b: number)` | Overload conformance or an interface implementation. | False positive |
 | `constructor(private readonly _svc: Svc)` | NestJS or InversifyJS parameter injection; used via decorator metadata. | False positive |
 | `const [, second] = tuple` | Positional destructuring gap. | False positive |
-| `const unusedHelper = ...` after Wave 4 | Genuine un-export residue. | True defect |
+| `const unusedHelper = ...` after Wave 3 | Genuine un-export residue. | True defect |
 
 **The underscore convention is the contract.** A binding prefixed with `_` declares deliberate non-use. Configure the engine to honour it, then treat any remaining finding as a true defect.
 

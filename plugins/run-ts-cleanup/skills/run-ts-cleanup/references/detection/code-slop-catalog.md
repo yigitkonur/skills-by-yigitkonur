@@ -190,7 +190,7 @@ Lacking whole-program context, an agent cannot be certain whether an upstream ca
 
 ```bash
 # Repeated conjunction guards: if (x && x.y)
-rg -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/
+rg -P -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/
 
 # Optional chains three or more links deep
 rg -n '(?:\?\.[a-zA-Z0-9_$]+){3,}' src/
@@ -347,7 +347,7 @@ echo "=== 1. Type Laundering (as any, as unknown as, non-null chains) ==="
 rg -n '\bas\s+any\b|\bas\s+unknown\s+as\s+[A-Z]\w*|<\s*any\s*>|(?:\w+!\.){2,}' src/ || true
 
 echo "=== 2. Defensive Null Paranoia & Optional Chaining Smog ==="
-rg -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/ || true
+rg -P -n 'if\s*\(\s*([a-zA-Z0-9_$]+)\s*&&\s*\1\.' src/ || true
 rg -n '(?:\?\.[a-zA-Z0-9_$]+){3,}' src/ || true
 
 echo "=== 3. Barrel Smog & Circular Dependency Indicators ==="

@@ -67,7 +67,23 @@ def knip_schema_url(major: str, fmt: str) -> str:
     filename = "schema-jsonc.json" if fmt == "jsonc" else "schema.json"
     return f"https://unpkg.com/knip@{major}/{filename}"
 
-DEFAULT_STRICT_RULES: dict[str, str] = {
+DEFAULT_STRICT_RULES_V6: dict[str, str] = {
+    "files": "error",
+    "dependencies": "error",
+    "devDependencies": "error",
+    "unlisted": "error",
+    "binaries": "error",
+    "unresolved": "error",
+    "exports": "error",
+    "types": "error",
+    "nsExports": "error",
+    "nsTypes": "error",
+    "namespaceMembers": "error",
+    "duplicateExports": "error",
+    "enumMembers": "warn",
+}
+
+DEFAULT_STRICT_RULES_V5: dict[str, str] = {
     "files": "error",
     "dependencies": "error",
     "devDependencies": "error",
@@ -82,6 +98,8 @@ DEFAULT_STRICT_RULES: dict[str, str] = {
     "enumMembers": "warn",
     "classMembers": "off",
 }
+
+DEFAULT_STRICT_RULES = DEFAULT_STRICT_RULES_V6
 
 DEFAULT_TARGETED_IGNORES: dict[str, Any] = {
     "ignoreExportsUsedInFile": {
@@ -352,9 +370,10 @@ class ProjectScanner:
 class ConfigGenerator:
     """Builds optimal Knip configuration tailored to discovered frameworks."""
 
-    def __init__(self, scan: ScanResult, schema_url: str = "") -> None:
+    def __init__(self, scan: ScanResult, schema_url: str = "", knip_major: str = DEFAULT_KNIP_MAJOR) -> None:
         self.scan = scan
-        self.schema_url = schema_url or knip_schema_url(DEFAULT_KNIP_MAJOR, "jsonc")
+        self.knip_major = knip_major
+        self.schema_url = schema_url or knip_schema_url(knip_major, "jsonc")
 
     def build_config(self) -> dict[str, Any]:
         """Construct the configuration dictionary."""
@@ -376,10 +395,18 @@ class ConfigGenerator:
         config.update(DEFAULT_TARGETED_IGNORES)
 
         # Strict rules configuration
-        rules = dict(DEFAULT_STRICT_RULES)
-        # NestJS or decorator heavy repos benefit from disabling classMembers to prevent false positives
-        if "nest" in self.scan.frameworks:
-            rules["classMembers"] = "off"
+        try:
+            major_num = int(self.knip_major)
+        except ValueError:
+            major_num = 6
+
+        if major_num >= 6:
+            rules = dict(DEFAULT_STRICT_RULES_V6)
+        else:
+            rules = dict(DEFAULT_STRICT_RULES_V5)
+            # In Knip v5, NestJS decorator-heavy repos benefit from disabling classMembers
+            if "nest" in self.scan.frameworks:
+                rules["classMembers"] = "off"
         config["rules"] = rules
 
         # Plugins
@@ -712,8 +739,9 @@ Examples:
             )
             return 1
 
-    schema_url = knip_schema_url(detect_knip_major(target_path), args.format)
-    generator = ConfigGenerator(scan_result, schema_url=schema_url)
+    major = detect_knip_major(target_path)
+    schema_url = knip_schema_url(major, args.format)
+    generator = ConfigGenerator(scan_result, schema_url=schema_url, knip_major=major)
     content = generator.to_jsonc() if args.format == "jsonc" else generator.to_json()
 
     if args.dry_run:

@@ -303,7 +303,7 @@ Lower `MAX_ALLOWED` in the same commit that removes suppressions. `@ts-expect-er
 
 ## 4. Type Tidying Rules
 
-Apply during Wave 5 (Unused Type Pruning): tidy residual type structures, eliminate redundant indirection, and convert ambiguous unions into discriminated types.
+Apply during Wave 4 (Unused Type Pruning): tidy residual type structures, eliminate redundant indirection, and convert ambiguous unions into discriminated types.
 
 ### Rule 1: Convert Overlapping Unions Into Discriminated Unions
 

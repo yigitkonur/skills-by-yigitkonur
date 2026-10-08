@@ -28,40 +28,41 @@ Nine batches collapse into five waves plus the inter-wave bridge:
 
 | Batch | Finding kind | Producing engine | `wave:` |
 |---|---|---|---|
-| **1** | Unused dependencies and devDependencies | Knip | Wave 1 |
-| **2** | Unused and unreferenced files | Knip | Wave 2 |
-| **3** | Dead barrel re-exports | Knip | Wave 3 |
-| **9** | Circular dependencies | madge (or dpdm) | Wave 3 |
-| **4** | Test-only leaks | Knip | Wave 4 |
-| **5** | Internally-only-used exports | Knip | Wave 4 |
-| **7** | Unused locals and dangling imports | Biome / Oxlint / ESLint, `tsc` | Bridge (after Wave 4) |
-| **6** | Unused types, interfaces, enums | Knip | Wave 5 |
-| **8** | Type-safety findings | `tsc`, `type-coverage` | Wave 5 |
+| **2** | Unused and unreferenced files | Knip | Wave 1 |
+| **3** | Dead barrel re-exports | Knip | Wave 2 |
+| **9** | Circular dependencies | madge (or dpdm) | Wave 2 |
+| **4** | Test-only leaks | Knip | Wave 3 |
+| **5** | Internally-only-used exports | Knip | Wave 3 |
+| **7** | Unused locals and dangling imports | Biome / Oxlint / ESLint, `tsc` | Bridge (between Wave 3 & 4) |
+| **6** | Unused types, interfaces, enums | Knip | Wave 4 |
+| **8** | Type-safety findings | `tsc`, `type-coverage` | Wave 4 |
+| **1** | Unused dependencies and devDependencies | Knip | Wave 5 |
 
 ### The Collapses
 
 Three batch pairs merge because they mutate the same structural layer and must land in one commit:
 
-- **Batches 4 and 5 both feed Wave 4.** Test-only leaks and internally-only-used exports are the same edit — removing the `export` keyword — differing only in *why* the symbol was exported. Splitting them into two waves produces two commits touching the same lines, and un-exporting a test-only leak without first relocating the test breaks the suite mid-sequence. Land both together.
-- **Batches 3 and 9 both feed Wave 3.** A dead barrel re-export and a circular dependency are usually the same edge seen by two engines. Fixing one fixes the other.
-- **Batches 6 and 8 both feed Wave 5.** Both are type-layer edits with zero runtime blast radius, and both are verified by the same declaration-emit extension of the gate.
+- **Batches 3 and 9 both feed Wave 2.** A dead barrel re-export and a circular dependency are usually the same edge seen by two engines. Fixing one untangles the other.
+- **Batches 4 and 5 both feed Wave 3.** Test-only leaks and internally-only-used exports are the same edit — removing the `export` keyword — differing only in *why* the symbol was exported. Splitting them into two waves produces two commits touching the same lines, and un-exporting a test-only leak without first relocating the test breaks the suite mid-sequence. Land both together.
+- **Batches 6 and 8 both feed Wave 4.** Both are type-layer edits with zero runtime blast radius, and both are verified by the same declaration-emit extension of the gate.
+- **Batch 1 feeds Wave 5.** Unused dependencies are pruned last, after all dead files and unreferenced code importing them have been deleted.
 
 ### Ordering Mechanics
 
-Wave order is causal, not stylistic. Editing exports before pruning dependencies creates ghost references; deleting files before pruning barrels creates dangling imports.
+Wave order is strictly causal. Pruning dead files in Wave 1 removes unreferenced import leaves so downstream dependency pruning in Wave 5 never triggers `TS2307`. Untangling barrels and cycles in Wave 2 prevents runtime initialization deadlocks. Internalizing exports in Wave 3 feeds the linter bridge to clean up local unused bindings before Wave 4 prunes dead types.
 
 ```
- Wave 1  <-- batch 1        manifests and lockfile
+ Wave 1  <-- batch 2        orphan modules & dead files (git rm)
     |
- Wave 2  <-- batch 2        orphan modules
+ Wave 2  <-- batches 3, 9   barrel pruning & cycle breaking
     |
- Wave 3  <-- batches 3, 9   graph decoupling
-    |
- Wave 4  <-- batches 4, 5   encapsulation
+ Wave 3  <-- batches 4, 5   encapsulation (un-export)
     |
  Bridge  <-- batch 7        linter autofix clears un-export residue
     |
- Wave 5  <-- batches 6, 8   type hygiene
+ Wave 4  <-- batches 6, 8   type hygiene & dead enums
+    |
+ Wave 5  <-- batch 1        manifests and lockfile sync
 ```
 
 ---
@@ -70,7 +71,7 @@ Wave order is causal, not stylistic. Editing exports before pruning dependencies
 
 ### Batch 1: Unused Dependencies and DevDependencies
 
-**Engine:** Knip · **`wave:` 1**
+**Engine:** Knip · **`wave:` 5**
 
 Packages declared in `package.json` that are never imported or referenced by any configuration.
 
@@ -89,7 +90,7 @@ rg -g '!node_modules' -g '!dist' "dependency-name"   # catch config-string usage
 
 ### Batch 2: Unused and Unreferenced Files
 
-**Engine:** Knip · **`wave:` 2**
+**Engine:** Knip · **`wave:` 1**
 
 Files with no incoming import edge from any configured entry point.
 
@@ -284,15 +285,15 @@ Score every batch across five vectors before remediating:
 
 | Batch | Category | Engine / rule | Blast radius | Runtime impact | Rollback | Gate leg that catches it | `wave:` |
 |---|---|---|---|---|---|---|---|
-| **1** | Unused dependencies | Knip `dependencies`, `devDependencies` | Medium | Low–Medium | Low (`git checkout package.json <lockfile>` + install) | Leg 3 build | Wave 1 |
-| **2** | Unused files | Knip `files` | High | Medium–High | Low (`git checkout <file>`) | Legs 1–3, and *no leg* for dynamic routes | Wave 2 |
-| **3** | Dead barrel re-exports | Knip `exports`, `nsExports` | High | Low | Low (`git diff`) | Leg 1 typecheck | Wave 3 |
-| **9** | Circular dependencies | madge `--circular` | High | Medium | Medium (structural edit) | Leg 2 tests, leg 3 build | Wave 3 |
-| **4** | Test-only leaks | Knip `exports` | Medium | Zero | Low (`git diff`) | Leg 2 tests | Wave 4 |
-| **5** | Internally-used exports | Knip `exports` | Low | Zero | Lowest (`git diff`) | Leg 1 typecheck | Wave 4 |
-| **7** | Unused locals, dangling imports | lint engine, `tsc` `TS6133` | Low | Zero | Lowest (`git diff`) | Leg 1 typecheck | Bridge |
-| **6** | Unused types and enums | Knip `types`, `enumMembers` | Lowest | Zero (erased) | Lowest (`git diff`) | Leg 1 + declaration emit | Wave 5 |
-| **8** | Type-safety findings | `tsc`, `type-coverage` | Low | Zero | Lowest (`git diff`) | Declaration emit, coverage delta | Wave 5 |
+| **2** | Unused files | Knip `files` | High | Medium–High | Low (`git checkout <file>`) | Legs 1–3, and *no leg* for dynamic routes | Wave 1 |
+| **3** | Dead barrel re-exports | Knip `exports`, `nsExports` | High | Low | Low (`git diff`) | Leg 1 typecheck | Wave 2 |
+| **9** | Circular dependencies | madge `--circular` | High | Medium | Medium (structural edit) | Leg 2 tests, leg 3 build | Wave 2 |
+| **4** | Test-only leaks | Knip `exports` | Medium | Zero | Low (`git diff`) | Leg 2 tests | Wave 3 |
+| **5** | Internally-used exports | Knip `exports` | Low | Zero | Lowest (`git diff`) | Leg 1 typecheck | Wave 3 |
+| **7** | Unused locals, dangling imports | lint engine, `tsc` `TS6133` | Low | Zero | Lowest (`git diff`) | Leg 1 typecheck | Bridge (after Wave 3) |
+| **6** | Unused types and enums | Knip `types`, `enumMembers` | Lowest | Zero (erased) | Lowest (`git diff`) | Leg 1 + declaration emit | Wave 4 |
+| **8** | Type-safety findings | `tsc`, `type-coverage` | Low | Zero | Lowest (`git diff`) | Declaration emit, coverage delta | Wave 4 |
+| **1** | Unused dependencies | Knip `dependencies`, `devDependencies` | Medium | Low–Medium | Low (`git checkout package.json <lockfile>` + install) | Leg 3 build | Wave 5 |
 
 Batch 2 is the only row where a green gate does not prove safety. Apply the Three-Question Verification Test in [`false-positive-triage.md`](false-positive-triage.md) to every batch 2 finding without exception.
 
@@ -310,4 +311,4 @@ Apply to each batch, in `wave:` order:
 6. **Commit atomically.** One commit per wave, naming the wave — not the batch number, and never a phase number.
 7. **Re-run the engine.** Confirm this batch reports zero findings before advancing. A batch that does not reach zero has an uncodified false positive.
 
-Batches sharing a wave (4+5, 3+9, 6+8) complete steps 2–4 for both, then run steps 5–7 once.
+Batches sharing a wave (3+9, 4+5, 6+8) complete steps 2–4 for both, then run steps 5–7 once.

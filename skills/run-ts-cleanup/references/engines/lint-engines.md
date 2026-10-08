@@ -5,7 +5,7 @@ Per-engine command reference for the file-level AST engines: Biome, Oxlint, ESLi
 **Scope of this file:** engine commands and configuration only.
 
 - Detect which engine a repository uses: [`./engine-matrix.md`](./engine-matrix.md) §3.
-- Decide *when* to run an engine, and run the verification gate afterward: [`../remediation/waves.md`](../remediation/waves.md) §7 (Inter-Wave Bridge) and §9 (Post-Flight Reconciliation). That file is the canonical authority for linter timing and for every gate command.
+- Decide *when* to run an engine, and run the verification gate afterward: [`../remediation/waves.md`](../remediation/waves.md) §8 (Inter-Wave Bridge) and §11 (Post-Flight Reconciliation). That file is the canonical authority for linter timing and for every gate command.
 
 ---
 

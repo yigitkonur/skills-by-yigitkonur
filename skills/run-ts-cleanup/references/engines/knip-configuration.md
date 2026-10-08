@@ -89,7 +89,7 @@ const config: KnipConfig = {
     nsTypes: 'error',
     duplicateExports: 'error',
     enumMembers: 'warn',
-    classMembers: 'off',
+    namespaceMembers: 'error', // Added in Knip v6 (classMembers was dropped)
   },
 
   // File compilers for non-TS/JS extensions (Astro, MDX, Vue, Svelte)
@@ -682,7 +682,8 @@ Violations detected by Knip are classified by rule. Each rule accepts `"error"`,
 | `nsTypes` | Unused type exports inside namespace objects | `warn` | `off` |
 | `duplicateExports` | Identical identifier exported multiple times | `error` | `error` |
 | `enumMembers` | Unreferenced enum members | `warn` | `off` |
-| `classMembers` | Unreferenced class properties or methods | `warn` | `off` |
+| `namespaceMembers` | Unreferenced members in TypeScript namespaces (added in Knip v6) | `error` | `error` |
+| `classMembers` *(Knip v5 only)* | Unreferenced class properties or methods (dropped in Knip v6) | `warn` | `off` |
 
 ---
 

@@ -178,7 +178,7 @@ export async function loadDashboard(userId: string) {
 - The wrapper is a **mock seam** used by tests via dependency injection or module mocking.
 - The wrapper satisfies an interface contract enforced by a framework or schema.
 
-Related: deduplicating helpers is a different operation — consolidate to a canonical module per Pattern 7 in [../detection/code-slop-catalog.md](../detection/code-slop-catalog.md). Stripping `export` from an internal-only symbol belongs to Wave 4 in [waves.md](waves.md), not here.
+Related: deduplicating helpers is a different operation — consolidate to a canonical module per [../detection/code-slop-catalog.md](../detection/code-slop-catalog.md). Stripping `export` from an internal-only symbol belongs to Wave 3 in [waves.md](waves.md), not here.
 
 ---
 
@@ -329,7 +329,7 @@ rg -l "from '@/components'" src/
    + import { BarChart } from '@/components/charts/BarChart';
    ```
 
-Prune barrel entries with no consumers outside the folder as part of Wave 3 in [waves.md](waves.md).
+Prune barrel entries with no consumers outside the folder as part of Wave 2 in [waves.md](waves.md).
 
 ---
 

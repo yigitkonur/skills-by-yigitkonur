@@ -10,7 +10,7 @@ and groups findings into 6 dependency-ordered remediation batches:
     5: internal-only-exports (exports consumed strictly in-file)
     6: unused-types (dead interfaces, type aliases, unreferenced enums)
 
-Each batch carries the remediation wave it feeds. Batches 4 and 5 both feed Wave 4,
+Each batch carries the remediation wave it feeds. Batches 4 and 5 both feed Wave 3,
 so the 6 batches collapse into 5 waves. Waves are the only ordering axis here; the
 enclosing workflow's phases are numbered separately and are not referenced by this tool.
 
@@ -95,49 +95,50 @@ def render_gate(template: str, manager: str) -> str:
     return template.format(**MANAGER_COMMANDS[manager])
 
 
-# `wave` is the remediation wave each batch feeds. Batches 4 and 5 both feed
-# Wave 4, so 6 batches collapse into 5 waves. Gates are templates -- render them
+# `wave` is the remediation wave each batch feeds. Causal wave order:
+# Wave 1 (Files) -> Wave 2 (Barrels/Cycles) -> Wave 3 (Encapsulation) -> Bridge -> Wave 4 (Types) -> Wave 5 (Deps).
+# Batches 4 and 5 both feed Wave 3, so 6 batches collapse into 5 waves. Gates are templates -- render them
 # through render_gate() with the detected manager before display.
 BATCH_METADATA: dict[int, dict[str, str]] = {
     1: {
         "name": "unused-dependencies",
         "title": "Unused Dependencies & DevDependencies",
-        "wave": "Wave 1",
+        "wave": "Wave 5",
         "description": "Packages declared in package.json with zero references or missing unlisted packages.",
         "verification_gate": "{install} && npx tsc --noEmit && {build}",
     },
     2: {
         "name": "unreferenced-files",
         "title": "Unreferenced & Orphaned Files",
-        "wave": "Wave 2",
+        "wave": "Wave 1",
         "description": "Orphan files with no incoming import edges from any configured entry point.",
         "verification_gate": "npx tsc --noEmit && {test} && {build}",
     },
     3: {
         "name": "dead-barrel-exports",
         "title": "Dead Barrel Re-exports",
-        "wave": "Wave 3",
+        "wave": "Wave 2",
         "description": "Re-exports in aggregator index files never consumed outside that barrel.",
         "verification_gate": "npx tsc --noEmit && {build}",
     },
     4: {
         "name": "test-only-exports",
         "title": "Test-Only Leaks",
-        "wave": "Wave 4",
+        "wave": "Wave 3",
         "description": "Production symbols exported solely for unit test inspection.",
         "verification_gate": "{test} && npx tsc --noEmit",
     },
     5: {
         "name": "internal-only-exports",
         "title": "Internally-Only-Used Exports",
-        "wave": "Wave 4",
+        "wave": "Wave 3",
         "description": "Symbols declared with export keyword but only referenced within the same file.",
         "verification_gate": "npx tsc --noEmit",
     },
     6: {
         "name": "unused-types",
         "title": "Unused Types, Interfaces & Enums",
-        "wave": "Wave 5",
+        "wave": "Wave 4",
         "description": "Zero-runtime TypeScript declarations and enum variants with zero consumers.",
         "verification_gate": "npx tsc --noEmit",
     },
@@ -740,13 +741,13 @@ class ReportEmitter:
             "## 3. Recommended Remediation Sequence Protocol",
             "",
             "1. **Pre-flight Check**: Ensure `git status --porcelain` is clean before starting any wave.",
-            "2. **Wave 1 (Dependencies)**: Prune unused packages from `package.json`, then run lockfile sync.",
-            "3. **Wave 2 (Dead Files)**: Remove unreferenced source files using `git rm`.",
-            "4. **Wave 3 (Barrels)**: Prune unused exports from barrel files to break circular dependency loops.",
-            "5. **Wave 4 (Encapsulation)**: Decouple production code from unit test inspection (Batch 4), then"
-            " remove the `export` keyword from symbols only referenced within their own module (Batch 5).",
-            "6. **Wave 5 (Types & Enums)**: Prune unreferenced type aliases, interfaces, and enum variants.",
-            "7. **Post-flight Verification**: Re-run the dead-code engine to confirm zero remaining violations.",
+            "2. **Wave 1 (Dead Files)**: Remove unreferenced source files using `git rm`.",
+            "3. **Wave 2 (Barrels & Cycles)**: Prune dead barrel re-exports and untangle import cycles.",
+            "4. **Wave 3 (Encapsulation)**: Internalize in-module exports (Batch 5) and decouple test-only leaks (Batch 4).",
+            "5. **Inter-Wave Bridge**: Run linter autofix and formatter to clear local unused bindings (TS6133).",
+            "6. **Wave 4 (Types & Enums)**: Prune unreferenced type aliases, interfaces, and enum variants (Batch 6).",
+            "7. **Wave 5 (Dependencies)**: Prune unused packages from `package.json`, then run lockfile sync.",
+            "8. **Post-flight Verification**: Re-run engines and verify declaration emit to confirm zero remaining violations.",
             "",
         ])
 

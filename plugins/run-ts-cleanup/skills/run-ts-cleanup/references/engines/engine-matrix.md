@@ -69,7 +69,7 @@ No single engine sees the whole picture. Cleanup requires all three scopes becau
 
 ### Why Cleanup Demands Every Scope
 
-1. **Graph engines alone leave orphaned imports.** Removing `export` from a utility in Wave 4 leaves consuming files holding dangling import specifiers (`import { helper } from './utils'`). Knip cannot prune those consuming declarations.
+1. **Graph engines alone leave orphaned imports.** Removing `export` from a utility in Wave 3 leaves consuming files holding dangling import specifiers (`import { helper } from './utils'`). Knip cannot prune those consuming declarations.
 2. **File engines alone leave zombie code.** A linter cannot determine whether `export function calculateTotal()` in `math.ts` is consumed anywhere in the repository. While `export` is present, the linter treats the symbol as public interface and ignores it.
 3. **Neither proves correctness.** Only `tsc` confirms a removal broke nothing. Only `type-coverage` proves the removal did not launder types through `any` on the way.
 4. **The paired workflow.** Knip un-exports the unreferenced symbol; the linter autofix strips the now-unused import in consuming files; `tsc --noEmit` passes cleanly with zero manual intervention.
@@ -221,8 +221,8 @@ Engines are not interchangeable across phases. Bind each to its stage.
 | **Pre-flight baseline** | `tsc`, `type-coverage`, test runner | Prove a green starting point and record ratchet baselines |
 | **Discovery** | Knip, `madge`, anti-slop, ripgrep sweep | Enumerate dead code, cycles, and slop into work items |
 | **Root-cause pass** | `madge`, anti-slop, lint engine | Break cycles and strip antipatterns before pruning symbols |
-| **Waves 1-5** | Knip (report), manual edits | Remove dependencies, files, barrels, exports, types in order |
-| **Inter-wave bridge** | Lint engine autofix | Clear un-export residue between Wave 4 and Wave 5 |
+| **Waves 1-5** | Knip (report), manual edits | Remove files, barrels/cycles, exports, types, and dependencies in causal order |
+| **Inter-wave bridge** | Lint engine autofix | Clear un-export residue between Wave 3 and Wave 4 |
 | **Wave gates** | `tsc --noEmit`, `tsc -b --noEmit`, tests, build | Prove each wave introduced zero regressions |
 | **Post-flight** | Knip, `type-coverage`, `madge` | Confirm zero findings and no ratchet regression |
 

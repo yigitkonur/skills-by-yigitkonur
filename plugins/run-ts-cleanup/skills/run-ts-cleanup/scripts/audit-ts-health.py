@@ -1364,7 +1364,7 @@ class AuditReporter:
         # Post-wave linter autofix
         if self.linter_report.autofix_command and self.linter_report.autofix_command != "none":
             recs.append(
-                f"**Post-Wave Linter Bridge**: Run `{self.linter_report.autofix_command}` after Wave 4 to strip dangling imports."
+                f"**Post-Wave Linter Bridge**: Run `{self.linter_report.autofix_command}` after Wave 3 to strip dangling imports."
             )
 
         return recs

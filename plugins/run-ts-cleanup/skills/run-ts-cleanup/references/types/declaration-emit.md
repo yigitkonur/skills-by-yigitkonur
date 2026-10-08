@@ -6,16 +6,16 @@ Gate for un-exporting and pruning types without breaking `.d.ts` generation: the
 
 ## 1. When This Gate Applies
 
-Run this gate before committing any change that strips an `export` keyword or deletes a type declaration — Wave 4 (Internalizing Exports) and Wave 5 (Unused Type Pruning) in [`../remediation/waves.md`](../remediation/waves.md).
+Run this gate before committing any change that strips an `export` keyword or deletes a type declaration — Wave 3 (Internalizing Exports) and Wave 4 (Unused Type Pruning) in [`../remediation/waves.md`](../remediation/waves.md).
 
 Declaration emit risk activates when any of these conditions hold:
 
 | Condition | tsconfig / package signal | Verification command |
 |---|---|---|
-| Project emits declaration files | `"declaration": true`, `"emitDeclarationOnly": true` | `tsc --declaration --emitDeclarationOnly --noEmit` |
+| Project emits declaration files | `"declaration": true`, `"emitDeclarationOnly": true` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
 | Package is a composite project reference | `"composite": true` | `tsc -b --noEmit` |
-| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --isolatedDeclarations --noEmit` |
-| Package ships types to consumers | `package.json` `"types"`, `"typings"`, or `exports["."].types` | `tsc --declaration --emitDeclarationOnly --noEmit` |
+| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
+| Package ships types to consumers | `package.json` `"types"`, `"typings"`, or `exports["."].types` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
 
 Detect exposure before assuming the gate is optional:
 
@@ -58,7 +58,7 @@ export function createUserService(config?: UserInternalConfig) {
 Failure surface:
 
 - `tsc --noEmit` passes.
-- `tsc --declaration --emitDeclarationOnly --noEmit` fails: `user.d.ts` cannot name `UserInternalConfig`.
+- `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` fails: `user.d.ts` cannot name `UserInternalConfig`.
 - `tsc -b` fails for every downstream package in the project-reference graph, not just the edited one.
 - `isolatedDeclarations` fails because a per-file emitter cannot resolve the symbol without whole-program inference.
 
@@ -77,7 +77,7 @@ Hold this invariant: **every type reachable from an exported signature is part o
 | **TS2742** | `The inferred type of '{0}' cannot be named without a reference to '{1}'. This is likely not portable.` | Return type inferred from a transitive package or unexported local symbol under pnpm/monorepo node_modules layouts. | Add an explicit return type annotation to the public symbol; never rely on inference across package boundaries. |
 | **TS2883** | `Type alias '{0}' refers to type '{1}' but is not exported.` | A private symbol leaks through an alias under `isolatedDeclarations: true`. | Export `{1}` directly, or rewrite `{0}` to avoid referencing private types. |
 
-Map each code to its owner: TS4060/TS4081/TS4082 come from stripping `export` (Wave 4/5 regressions — revert or re-export). TS4023/TS2742 come from missing explicit annotations (annotate, do not re-export). TS2883 is `isolatedDeclarations`-only.
+Map each code to its owner: TS4060/TS4081/TS4082 come from stripping `export` (Wave 3/4 regressions — revert or re-export). TS4023/TS2742 come from missing explicit annotations (annotate, do not re-export). TS2883 is `isolatedDeclarations`-only.
 
 ---
 
@@ -193,25 +193,25 @@ Under `isolatedDeclarations`, every exported symbol needs an explicit, locally-r
 
 ## 5. Declaration Emit Verification Workflow
 
-`tsc --noEmit` does not check declaration emit unless combined with `--declaration` or `--isolatedDeclarations`. Execute declaration-specific verification before committing any export-pruning wave:
+`tsc --noEmit` does not check declaration emit diagnostics. Furthermore, passing `tsc --declaration --emitDeclarationOnly --noEmit` triggers `error TS5053: Option 'emitDeclarationOnly' cannot be specified with option 'noEmit'`. To run a fast, side-effect-free declaration check without polluting the project source tree, redirect emit output to an ephemeral temporary directory:
 
 ```bash
-# 1. Single project: build the declaration graph without writing files to disk
-npx tsc --declaration --emitDeclarationOnly --noEmit
+# 1. Single project: verify declaration graph without polluting the workspace
+npx tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check
 
 # 2. Composite monorepo: rebuild the full project-reference graph from scratch
 #    (--clean is mandatory; stale .tsbuildinfo masks fresh emit failures)
 npx tsc -b --clean && npx tsc -b --noEmit
 
-# 3. Isolated declarations (TypeScript 5.5+): verify swc/esbuild/oxc can emit .d.ts per file
-npx tsc --isolatedDeclarations --noEmit
+# 3. Clean up the ephemeral probe directory after verification
+rm -rf /tmp/dts-check
 ```
 
 Diagnose a failure without hunting through build output:
 
 ```bash
 # List only declaration-emit diagnostics, deduplicated by file
-npx tsc --declaration --emitDeclarationOnly --noEmit 2>&1 \
+npx tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check 2>&1 \
   | rg 'TS(4023|4060|4081|4082|2742|2883)' \
   | sort -u
 ```
@@ -223,7 +223,7 @@ Install the checks as first-class scripts so CI and pre-commit hooks run them un
 {
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "typecheck:emit": "tsc --declaration --emitDeclarationOnly --noEmit",
+    "typecheck:emit": "tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check",
     "typecheck:build": "tsc -b --noEmit"
   }
 }
