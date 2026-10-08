@@ -1,6 +1,6 @@
 # Synthesize verified evidence
 
-The final answer belongs to the calling agent. Planning and review guide the
+The final answer belongs to the calling agent. Planning and deliberate evaluation guide the
 process; search discovers leads; only quotation-validated extraction records
 support claims.
 
@@ -15,7 +15,7 @@ Keep three classes visibly separate:
 3. **Inference**: a reasoned implication no source states directly. Label it
    and name the evidence it depends on.
 
-Plans, review reasons, search titles/snippets, diagnostic excerpts, generated
+Plans, search titles/snippets, diagnostic excerpts, generated
 translations, and unverified model statements are not direct evidence.
 
 ## Source authority
@@ -70,7 +70,7 @@ Use top-level independent-source counts as a triangulation signal, not a vote.
 `pending` is source-level `retrieval_status` or `extraction_status`, never a
 requirement status. It means retrieval or extraction did not finish inside the
 bounded response and says nothing about whether the source contains the answer.
-Follow the exact same-session continuation when affordable; otherwise expose
+Follow the exact same-session continuation (schema-v2) or retry call (schema-v3) when affordable; otherwise expose
 the unfinished source and requirement as a gap.
 
 ## Resolve contradictions
@@ -136,12 +136,12 @@ future terms.
 ### Insufficient evidence
 
 Say what was verified, which high-value gaps remain, why they could not be
-closed, and what conclusion is safe despite them. Do not turn a blocked review
+closed, and what conclusion is safe despite them. Do not turn blocked research or unresolved gaps
 into a confident recommendation.
 
-If the caller's budget ends with `continuation.required: true`, identify the
+If the caller's budget ends with `continuation.required: true` (schema-v2) or pending `retry.sources` (schema-v3), identify the
 pending sources/requirements separately from terminal not-found or failed
-sources. Completed schema-v2 findings remain usable; unfinished work cannot
+sources. Completed schema-v2 / schema-v3 findings remain usable; unfinished work cannot
 support an absence claim.
 
 ## Fresh-context gate
@@ -150,15 +150,15 @@ Before delivery, re-read the answer as if the research trace were unavailable:
 
 - Can every numeric, versioned, priced, security, or exact-behavior claim be
   traced to a verified quotation and URL?
-- Did any search snippet, title, plan, review sentence, or diagnostic excerpt
+- Did any search snippet, title, plan, intermediate note, or diagnostic excerpt
   become evidence?
 - Are translations, inference, and direct quotations distinguishable?
 - Are contradictions visible?
 - Does source completeness justify the strength of each statement?
 - Are sources actually independent and current enough for the topic?
-- Did the answer retain limitations even if the session verdict was ready?
+- Did the answer retain limitations even if the inquiry seemed complete?
 - Did any pending extraction become a false not-found or disappear from the
-  limitations, and were all affordable exact continuations completed first?
+  limitations, and were all affordable exact continuations or retries completed first?
 
 Fix every unsupported claim before delivering. A cleanly stated uncertainty is
 more useful than fabricated completeness.

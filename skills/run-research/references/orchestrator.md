@@ -52,7 +52,7 @@ Every subagent brief must be bounded, explicit, and self-contained. Include:
 4. **Target Authority Classes:** Which sources to seek (e.g., academic arXiv/proceedings, official vendor docs, or GitHub issue discussions) and noise to reject (SEO blogs, content farms).
 5. **Checkable Evidence Requirements:** 2–4 specific, falsifiable questions to answer.
 6. **Zero-Hallucination & Anti-Slop Rules:** Citable findings must be backed by verified verbatim quotations and locators from `extract-evidence`. Search snippets are leads only.
-7. **Resumable Extraction Directive:** The subagent must follow any `continuation.next_call` exactly in its own session until settled or its round budget ends.
+7. **Resumable Extraction Directive:** The subagent must follow any `continuation.next_call` (schema-v2) or re-invoke `extract-evidence` with `retry.sources` and original `retry.evidence_requirements` (schema-v3, at most twice total per URL) exactly in its own session until settled or its round budget ends.
 8. **Compact Structured Return Shape:**
    - Summary of findings for its lens.
    - Verified quotations with exact URLs and block/line locators.

@@ -187,5 +187,5 @@ When `continuation.required` is true (schema-v2) or `retry.sources` are returned
 - [ ] Iterative search deepening performed across emerging terms before locking findings.
 - [ ] Every substantive claim backed by verified verbatim quotations and locators from `extract-evidence`.
 - [ ] Negative evidence (`not-found`) recorded honestly; search snippets not cited as facts.
-- [ ] All required extraction continuations completed.
+- [ ] All required extraction continuations and retries completed.
 - [ ] Contradictions and provenance gaps transparently surfaced in the final synthesis.

@@ -12,12 +12,13 @@ evidence promptly and represents unfinished work explicitly instead of making a
 - [Why calls can return pending](#why-calls-can-return-pending)
 - [Checkpoint store versus research ledger](#checkpoint-store-versus-research-ledger)
 - [Retry and review discipline](#retry-and-review-discipline)
+- [Schema-v3 retry extension](#schema-v3-retry-extension)
 
 ## Caller protocol
 
 After every `extract-evidence` call:
 
-1. Read canonical `structuredContent`; confirm `schema_version` is `"2"`.
+1. Read canonical `structuredContent`; confirm `schema_version` is `"2"` (or schema-v3).
 2. Preserve completed findings, citations, coverage, and contradictions.
 3. Inspect `continuation.required`.
 4. When it is `true` and the task still has enough time, invoke
@@ -194,7 +195,7 @@ trace. Never move a continuation into a parallel agent and assume state follows.
   rather than issuing concurrent duplicate retrieval.
 - A disconnected caller aborts work and does not receive an ordinary partial
   response. Start a fresh call only from state actually available to the host.
-- An extraction continuation must be completed before treating findings as final.
+- An extraction continuation or retry must be completed before treating findings as final.
 
 ## Schema-v3 retry extension
 
