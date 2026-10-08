@@ -1,6 +1,6 @@
 # Browser control surfaces
 
-Kernel exposes a Chromium browser in a unikernel VM. Four surfaces drive it. Pick one per task — mixing surfaces in the same flow is allowed but rarely needed.
+Kernel exposes a Chromium browser in a unikernel VM. Eight surfaces drive it. Pick the right surface for your workload — mixing surfaces in the same session is supported because they all share the same browser VM and session state.
 
 ## Decision tree
 
@@ -13,9 +13,15 @@ What are you doing?
 ├── Vision-loop / VLM-driven agent (computer use)
 │   └─► `kernel.browsers.computer.*` — screenshot + mouse/keyboard primitives
 ├── HTTP from the browser's TLS fingerprint (no DOM needed)
-│   └─► `kernel.browsers.curl(id, { url })`
-└── WebDriver BiDi client (Vibium etc.)
-    └─► Pass `session.webdriver_ws_url` instead of CDP
+│   └─► `kernel.browsers.curl(id, { url })` or `kernel.browsers.fetch(id, url)`
+├── WebDriver BiDi client (Vibium etc.)
+│   └─► Pass `session.webdriver_ws_url` instead of CDP
+├── Persistent interactive Node.js scripting in VM across calls
+│   └─► Browser REPL via `kernel.browsers.repl.*` or `kernel browsers repl`
+├── Page-declared or custom Model Context Protocol tools
+│   └─► WebMCP via `kernel.browsers.webmcp.*` or `kernel browsers webmcp`
+└── Direct OS-level commands, PTY, or local tooling inside VM
+    └─► Process execution via `kernel.browsers.process.*` or `kernel browsers process`
 ```
 
 ## Surface 1 — Raw CDP
@@ -162,6 +168,103 @@ When to use:
 - API calls from inside the browser's network stack (cookies, proxy, fingerprint all preserved)
 - Bypassing CDP for non-DOM work
 - Hitting endpoints that block standard `fetch` from your server
+
+## Surface 5 — Persistent Browser REPL
+
+A long-lived Node.js runtime inside the browser VM where top-level variables, bindings, closures, and imports persist across calls until explicitly reset.
+
+```ts
+// Initial call sets up state, imports libraries, or navigates
+const initRes = await kernel.browsers.repl(session.session_id, {
+  code: `
+    const { chromium } = require('playwright');
+    globalThis.browser = await chromium.connectOverCDP('http://localhost:9222');
+    globalThis.page = (await globalThis.browser.contexts())[0].pages()[0];
+    await globalThis.page.goto('https://example.com');
+    repl.write('Page loaded: ' + (await globalThis.page.title()));
+  `,
+});
+console.log('REPL outputs:', initRes.outputs);
+
+// Subsequent call reuses the existing `page` and variables!
+const extractRes = await kernel.browsers.repl(session.session_id, {
+  code: `
+    const links = await globalThis.page.$$eval('a', els => els.map(a => a.href));
+    repl.write('Found ' + links.length + ' links');
+  `,
+});
+```
+
+CLI counterpart: `kernel browsers repl <session_id>` drives an interactive terminal directly into the VM.
+
+When to use:
+- Multi-step interactive workflows where initializing Playwright or downloading libraries on every step is prohibitive
+- Co-located agents (such as running coding agents inside the browser VM alongside Chromium)
+- Inspecting page state dynamically with `repl.help()` and `repl.write()`
+
+## Surface 6 — WebMCP (Model Context Protocol)
+
+WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally.
+
+```ts
+// 1. Discover tools provided natively by the page (or registered polyfills)
+const tools = await kernel.browsers.webmcp.listTools(session.session_id);
+for (const tool of tools.tools) {
+  console.log('Tool:', tool.tool_name, tool.description);
+}
+
+// 2. Invoke a discovered page tool
+const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
+  tool_ref: tools.tools[0].tool_ref,
+  input: { query: 'laptop' },
+});
+
+// 3. Register custom tools backed by CDP or page evaluations
+await kernel.browsers.webmcp.customTools.add(session.session_id, {
+  namespace: 'custom',
+  tools: [
+    {
+      name: 'get_cart_total',
+      description: 'Reads current cart total from DOM',
+      input_schema: { type: 'object', properties: {} },
+    }
+  ],
+});
+```
+
+CLI counterpart: `kernel browsers webmcp custom-tools list|add|remove <session_id>`.
+
+When to use:
+- Websites exposing native AI agent interfaces via `navigator.modelContext`
+- Declarative forms with `awaiting_submission` workflows
+- Uniform tool contracts across complex web applications
+
+## Surface 7 — Process Execution
+
+Direct execution of shell commands, CLI utilities, and background processes inside the unikernel VM.
+
+```ts
+// Synchronous command execution
+const execRes = await kernel.browsers.process.exec(session.session_id, {
+  command: 'uname',
+  args: ['-a'],
+  timeout_ms: 10_000,
+});
+console.log('stdout:', execRes.stdout);
+
+// Spawn a long-lived process or PTY
+const proc = await kernel.browsers.process.spawn(session.session_id, {
+  command: 'node',
+  args: ['-e', 'console.log("running...")'],
+});
+```
+
+CLI counterpart: `kernel browsers process <session_id>`.
+
+When to use:
+- Running local diagnostic or inspection tools in the VM
+- Interacting with Linux filesystem utilities, measuring memory, or downloading files
+- Executing standalone CLI tools co-located with the browser
 
 ## WebDriver BiDi
 

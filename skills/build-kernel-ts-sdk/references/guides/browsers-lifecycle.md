@@ -12,7 +12,7 @@ const session = await kernel.browsers.create({
   viewport: { width: 1920, height: 1080 }, // browser WINDOW size; refresh_rate auto-derived when omitted
   profile: { name: 'user-123', save_changes: true }, // persist cookies/storage
   proxy: { mode: 'default' },       // typed proxy config — exactly one of mode | id | name
-  region: 'us-east',                // 'us-east' | 'eu-west'; FIXED at create; Start-Up/Enterprise only
+  region: 'us-east',                // 'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'; FIXED at create; Start-Up/Enterprise only
   name: 'checkout-run-42',          // unique among active sessions; usable anywhere an id is
   tags: { team: 'growth', env: 'prod' }, // up to 50 pairs; filter via browsers.list({ tags })
   start_url: 'https://example.com', // best-effort navigation on boot
@@ -20,13 +20,14 @@ const session = await kernel.browsers.create({
   kiosk_mode: false,                // hide address bar and tabs in live view
   gpu: false,                       // headful only; Start-Up/Enterprise plan; not available in pools
   extensions: [{ name: 'my-ext' }], // pre-installed extensions; each by id or name
+  vaults: [{ id: 'vlt_123' }],       // project-scoped credential or payment vaults linked at create
   invocation_id: '…',               // tag with parent invocation for cleanup-on-stop
 });
 ```
 
-That is 15 of the 19 `BrowserCreateParams` fields. The remaining four are advanced: `network` (`{ private_hosts: [...] }` — route named hosts through the session's own network instead of Kernel egress; cannot be changed after creation), `chrome_policy` (Chrome enterprise policy overrides; kernel-managed policies are blocked), `telemetry`, and the `@deprecated` `proxy_id`. Read `node_modules/@onkernel/sdk/resources/browsers/browsers.d.ts` for the full doc comments.
+That is 16 of the 20 `BrowserCreateParams` fields. The remaining four are advanced: `network` (`{ private_hosts: [...] }` — route named hosts through the session's own network instead of Kernel egress), `chrome_policy` (Chrome enterprise policy overrides; kernel-managed policies are blocked), `telemetry`, and the `@deprecated` `proxy_id`. Read `node_modules/@onkernel/sdk/resources/browsers/browsers.d.ts` for the full doc comments.
 
-Fixed for the life of the session: **`region`** and **`network`** are documented as unchangeable after create, and `headless`, `gpu`, `memory`, `stealth`, `kiosk_mode`, and `timeout_seconds` have no counterpart in `BrowserUpdateParams`. Only `name`, `tags`, `profile`, `proxy`, `viewport`, and `telemetry` can be changed on a running session.
+Fixed for the life of the session: **`region`** and `vaults` are immutable after create, and `headless`, `gpu`, `memory`, `stealth`, `kiosk_mode`, and `timeout_seconds` have no counterpart in `BrowserUpdateParams`. `name`, `tags`, `profile`, `proxy`, `viewport`, `telemetry`, `start_url` (which navigates or collapses restored tabs to a single page), and `network` (`allowed_hosts`) can be changed on a running session.
 
 `proxy_id` is `@deprecated` in v0.92.0 in favor of the typed `proxy` object, and the two **cannot be combined**. Omit `proxy` entirely to get the default (stealth → Kernel's stealth proxy, non-stealth → direct egress). `mode: 'direct'` forces direct egress even with `stealth: true`; `mode: 'default'` restores the stealth-derived default. Proxy selection changes egress only — it never enables or disables stealth or the CAPTCHA solver.
 
@@ -43,7 +44,7 @@ Returns `BrowserCreateResponse`:
 ## Inspect and update a live session
 
 - `kernel.browsers.retrieve(idOrName)` — inspect one session. Returns `region`, `memory`, `usage`, `pool`, `profile`, `tags`, `telemetry`, `deleted_at`, and the URLs. Use this instead of scanning `list()` when you already know the session.
-- `kernel.browsers.update(idOrName, { name?, tags?, profile?, proxy?, viewport?, telemetry? })` — mutate a live session. `profile` is only allowed if the session does not already have one loaded; `tags` is a full replace, not a merge. **`timeout_seconds` is not updatable** — pick it at create time.
+- `kernel.browsers.update(idOrName, { name?, tags?, profile?, proxy?, viewport?, telemetry?, start_url?, network? })` — mutate a live session. `profile` is only allowed if the session does not already have one loaded; `tags` is a full replace, not a merge; `start_url` navigates or collapses restored tabs; `network.allowed_hosts` updates network filters. **`timeout_seconds` is not updatable** — pick it at create time.
 - `kernel.browsers.list({ status?, region?, tags?, query? })` — `status` defaults to `'active'`; pass `'all'` to include soft-deleted sessions. `tags` pairs are ANDed.
 
 Every `idOrName` parameter accepts either the `session_id` or the `name` you set at create time.
@@ -183,15 +184,19 @@ Profile management API: `kernel.profiles.create / retrieve / update / list / del
 
 ## Replays
 
-Captured `.webm` recordings of the browser session. Headful only. Multiple per session allowed.
+Captured `.mp4` video recordings of the browser session. Headful only. Multiple per session allowed.
 
 ```ts
-const r = await kernel.browsers.replays.start(session.session_id);
+// Optional settings: framerate (above 20 requires GPU), max_duration_in_seconds, record_audio (boolean)
+const r = await kernel.browsers.replays.start(session.session_id, {
+  framerate: 20,
+  record_audio: false,
+});
 // … work …
-await kernel.browsers.replays.stop(r.replay_id, { id: session.session_id });
+await kernel.browsers.replays.stop(r.replay_id, { id_or_name: session.session_id });
 
 const all = await kernel.browsers.replays.list(session.session_id);
-const dl = await kernel.browsers.replays.download(r.replay_id, { id: session.session_id });
+const dl = await kernel.browsers.replays.download(r.replay_id, { id_or_name: session.session_id });
 const buffer = Buffer.from(await dl.arrayBuffer());
 ```
 
@@ -207,12 +212,14 @@ await kernel.browsers.create({ invocation_id: ctx.invocation_id, stealth: true }
 
 Then `kernel.invocations.update(id, { status: 'failed' })` (or a graceful stop) reaps every browser tagged to that invocation. Without the tag, an aborted invocation leaves orphan browsers running until their `timeout_seconds` elapses.
 
-## Per-browser HTTP, files, processes, logs
+## Per-browser HTTP, files, processes, REPL, WebMCP, logs
 
-Each browser VM exposes more than the Chromium surface:
+Each browser VM exposes a rich set of services alongside Chromium:
 
 - `kernel.browsers.curl(id, { url, method, headers, body, timeout_ms, response_encoding })` — HTTP through Chrome's TLS fingerprint; returns a structured JSON envelope (status, headers, body, timing)
 - `kernel.browsers.fetch(id, input, init)` — plain `fetch` through the VM's network stack, returns a real `Response` (use when you want `res.json()` / streaming ergonomics instead of `curl`'s envelope)
+- `kernel.browsers.repl.*` — persistent in-VM Node.js runtime (`create`, `write`, `emitImage`, `help`) with top-level variable persistence
+- `kernel.browsers.webmcp.*` — page and CDP-backed Model Context Protocol tool discovery and execution (`listTools`, `invokeTool`, `customTools.*`)
 - `kernel.browsers.fs.*` — read/write files, watch directories
 - `kernel.browsers.process.*` — exec/spawn inside the VM (PTY, stdin/stdout streaming)
 - `kernel.browsers.logs.stream(id, { source: 'supervisor' \| 'path', path?, supervisor_process?, follow? })` — VM-level log events (`source` is required)

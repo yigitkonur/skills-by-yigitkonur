@@ -78,9 +78,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** An org-wide API key sees browsers / apps from other projects.
 
-**Cause:** Org-wide API keys are not project-scoped by default. OAuth (CLI) is always org-wide.
+**Cause:** Org-wide API keys are not project-scoped by default unless configured. In the CLI, OAuth tokens can be project-scoped with `kernel config set project <project_id>`.
 
-**Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override.
+**Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override. In the CLI, run `kernel config set project <project_id>` to persist the project scope.
 
 ## 11. `invocations.create` without `version` does not compile
 

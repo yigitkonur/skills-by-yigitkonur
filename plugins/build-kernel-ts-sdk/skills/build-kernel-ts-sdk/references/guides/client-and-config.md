@@ -51,7 +51,7 @@ new Kernel({
 | `KERNEL_LOG` | Log level (`debug` / `info` / `warn` (default) / `error` / `off`). |
 | `KERNEL_CUSTOM_HEADERS` | Newline-separated `Header: value` pairs added to every request. |
 | `KERNEL_SUPPRESS_BUN_WARNING` | Suppress Bun + Playwright CDP warning (set when intentional). |
-| `KERNEL_BROWSER_ROUTING_SUBRESOURCES` | Comma-separated allowlist of `/browsers/{id}/<tail>` prefixes routed straight to the browser VM's `base_url` instead of the API. Default `curl,telemetry/stream`; set to an empty string to disable direct-to-VM routing. |
+| `KERNEL_BROWSER_ROUTING_SUBRESOURCES` | Comma-separated allowlist of `/browsers/{id}/<tail>` prefixes routed straight to the browser VM's `base_url` instead of the API. Default `curl,telemetry/stream,computer,playwright,process,fs,logs/stream`; set to an empty string to disable direct-to-VM routing. |
 | `KERNEL_PROJECT` | **Not read by the SDK** — wire it through the first-class `projectID:` client option (see "Project scoping" below). The `kernel` CLI's `--project` flag *does* read it, so this spelling keeps SDK and CLI consistent. |
 
 ## Environments
@@ -230,7 +230,7 @@ ctx.authorization.credential_scope.project_id;  // null = organization-wide
 ctx.authorization.effective_scope.project_id;   // scope selected for this request
 ```
 
-OAuth (CLI) is always org-wide; only API keys can be project-scoped.
+OAuth (CLI) supports persistent project scoping via `kernel config set project <project_id>` and `kernel auth token` issues project-scoped tokens.
 
 ## Runtime support
 

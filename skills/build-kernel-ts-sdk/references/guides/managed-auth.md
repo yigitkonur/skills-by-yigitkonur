@@ -27,7 +27,7 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 
 `kernel.auth.context.retrieve()` is the other half of the `auth.*` surface — it reports the caller's principal, organization, and `authorization.credential_scope` / `effective_scope` project ids.
 
-**Cost and re-auth defaults.** `health_checks` defaults to **true**: Kernel runs a background browser session against the target site on `health_check_interval` (default 3600s or your plan minimum, whichever is larger — Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400) for the life of the connection. Budget for it, or pass `health_checks: false` for one-shot connections. `auto_reauth` also defaults to true but is a **no-op when `health_checks: false`**, because re-auth only fires after a failed scheduled health check. `browser` (`ManagedAuthBrowserConfig`) is where proxy and telemetry for login, re-auth, and health-check sessions now go; the top-level `proxy` and `browser_telemetry` params are deprecated.
+**Cost and re-auth defaults.** `health_checks` defaults to **true**: Kernel runs a background browser session against the target site on `health_check_interval` (default 3600s or your plan minimum, whichever is larger — Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400) for the life of the connection. Budget for it, or pass `health_checks: false` for one-shot connections. Connections whose health check is skipped or missing a check URL show as `Unverified`. `auto_reauth` also defaults to true but is a **no-op when `health_checks: false`**, because re-auth only fires after a failed scheduled health check. `browser` (`ManagedAuthBrowserConfig`) is where proxy, telemetry, and regional placement (`region?: 'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'`) for login, re-auth, and health-check sessions go; top-level `proxy` and `browser_telemetry` are deprecated.
 
 `auth.connections.create` returns 409 if a connection with the same `domain` + `profile_name` already exists. Either reuse the existing one (`retrieve`/`list`) or pick a different `profile_name`.
 
@@ -38,6 +38,12 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 **`flow_step`** (programmatic): `DISCOVERING`, `AWAITING_INPUT`, `SUBMITTING`, `AWAITING_EXTERNAL_ACTION` (push approval / hardware key), `COMPLETED`. The flow can move between these in any order — `AWAITING_EXTERNAL_ACTION` can precede `SUBMITTING` for SSO, and the loop may revisit `AWAITING_INPUT` multiple times. Branch on the current `flow_step`, do not assume a fixed sequence.
 
 **Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required).
+
+**Reauthentication status:**
+- `Auto`: Fully automated re-auth (stored credentials + automated 2FA/TOTP secret available).
+- `Best effort`: Partial automation (e.g. optimistic TOTP retry without guaranteed automated solve).
+- `Needs human`: Human intervention required (email magic link, push approval, hardware key, or missing credential).
+- `Unverified`: Health check skipped or no check URL configured.
 
 ## Hosted UI — the simple path
 

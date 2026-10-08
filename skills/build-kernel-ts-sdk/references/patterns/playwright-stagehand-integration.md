@@ -134,7 +134,7 @@ kernel create --name my-stagehand-app --language typescript --template stagehand
 
 All three of `--name`, `--language`, `--template` are required in a non-interactive shell — the CLI fails fast instead of prompting when stdin is not a TTY. `--yes` overwrites an existing directory without confirmation. The `stagehand` template is TypeScript-only.
 
-Which major version it scaffolds is ambiguous: `@onkernel/cli` 0.31.0's own `create --help` describes it as "Implements the Stagehand v3 SDK", while Kernel's integration docs say "The CLI template uses v4." Check the generated `package.json` for the `@browserbasehq/stagehand` range and follow the matching section above.
+As of modern `@onkernel/cli` releases, the `stagehand` template is standardized on Stagehand v4 (`@browserbasehq/stagehand^4`). Follow the Stagehand v4 instructions above when working with template-scaffolded projects.
 
 ## Puppeteer
 

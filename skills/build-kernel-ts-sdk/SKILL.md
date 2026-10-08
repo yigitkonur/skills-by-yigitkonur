@@ -13,12 +13,12 @@ Build with the Kernel TypeScript SDK (`@onkernel/sdk`, generated from Kernel's O
 Use this skill if the task involves any of:
 
 - _building or extending TypeScript code that imports `@onkernel/sdk` or constructs `new Kernel(...)`_
-- _driving a Kernel browser via `kernel.browsers.create`, `cdp_ws_url`, `kernel.browsers.playwright.execute`, or `kernel.browsers.computer.*`_
+- _driving a Kernel browser via `kernel.browsers.create`, `cdp_ws_url`, `kernel.browsers.playwright.execute`, `kernel.browsers.computer.*`, `kernel.browsers.repl.*`, `kernel.browsers.webmcp.*`, or `kernel.browsers.process.*`_
 - _deploying a Kernel App with `kernel deploy` and invoking it via `kernel.invocations.create` (sync or async with `invocations.follow`)_
 - _wiring Playwright, Stagehand, Browser Use, Claude Agent SDK, Vibium, Notte, Magnitude, Laminar, or Val Town to a Kernel browser_
-- _using profiles (`profiles.*`), browser pools (`browserPools.*`), credentials (`credentials.*`), or replays/file I/O (`browsers.fs.*`, `browsers.replays.*`)_
+- _using profiles (`profiles.*`), browser pools (`browserPools.*`), vaults/credentials (`vaults.*`, `credentials.*`), or replays/file I/O (`browsers.fs.*`, `browsers.replays.*`)_
 - _implementing Managed Auth with `auth.connections.*` and the React `<KernelManagedAuth />` component_
-- _scoping `KERNEL_API_KEY` per project via the `projectID` client option_
+- _scoping `KERNEL_API_KEY` or CLI OAuth per project via `projectID` client option or `kernel config set project`_
 - _debugging Kernel-specific failures: `browser.close()` not cleaning up, sync-invocation 100 s timeout, default-context confusion, 409 profile conflicts_
 
 Do **NOT** use this skill for:
@@ -39,7 +39,7 @@ Do **NOT** use this skill for:
 
 | Mode | When | Code lives | Invocation |
 |---|---|---|---|
-| **A. Embed** | Drive Kernel from your own service (Next.js route, worker, CLI tool) | Your repo | `new Kernel()` → `browsers.create` → CDP / `playwright.execute` / `computer.*` |
+| **A. Embed** | Drive Kernel from your own service (Next.js route, worker, CLI tool) | Your repo | `new Kernel()` → `browsers.create` → CDP / `playwright.execute` / `computer.*` / `repl.*` / `webmcp.*` / `process.*` |
 | **B. Deploy** | Long-running, browser-co-located actions; want zero CDP latency or per-invocation isolation | A Kernel App (your repo, deployed via `kernel deploy`) | Register actions → `kernel deploy` → `kernel.invocations.create({ app_name, action_name, version, payload })` |
 
 Mixing is fine — most production setups deploy long-running browser work as a Kernel App and invoke it from an embedding service. Don't try to make a single function do both.
@@ -58,7 +58,7 @@ Mixing is fine — most production setups deploy long-running browser work as a 
 3. **Never use `browser.close()` as cleanup.** Playwright/Puppeteer `close()` only severs the local CDP connection. Always call `kernel.browsers.deleteByID(session_id)` (or rely on `timeout_seconds`).
 4. **Sync invocation cap is ~100 s.** Anything longer must use `async: true` with `async_timeout_seconds` (10–3600) and `invocations.follow(id)` for SSE. Switching after the fact requires re-deploying.
 5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
-6. **Project scoping is a client option.** With an org-wide API key, scope to a project by passing `new Kernel({ projectID: '…' })` — the SDK stamps `X-Kernel-Project-Id` on every request and `withOptions()` carries it. A companion `project` option sets `X-Kernel-Project`. Both default to `null` and the SDK reads no project env var, so pass it explicitly (e.g. `projectID: process.env.KERNEL_PROJECT`). Hand-wiring `defaultHeaders` still works but is the escape hatch, not the idiom. OAuth (CLI) is always org-wide.
+6. **Project scoping is supported in SDK and CLI.** With an org-wide API key, scope to a project by passing `new Kernel({ projectID: '…' })` — the SDK stamps `X-Kernel-Project-Id` on every request and `withOptions()` carries it. A companion `project` option sets `X-Kernel-Project`. Both default to `null` and the SDK reads no project env var, so pass it explicitly (e.g. `projectID: process.env.KERNEL_PROJECT`). Hand-wiring `defaultHeaders` still works but is the escape hatch, not the idiom. In the CLI, project scope can be persisted org-wide with `kernel config set project <project_id>`, and `kernel auth token` issues project-scoped tokens.
 7. **Runtime requirements.** TypeScript ≥ 4.9. Supported runtimes: up-to-date browsers, Node 20 LTS+, Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge Runtime, Jest 28+ (`"node"` env), Nitro v2.6+. React Native is unsupported.
 8. **Payload limits are doc-conflicted.** App development and CLI docs say 64 KB; app invocation docs say 4.5 MB. Verify live docs before relying on large payloads; route multi-MB artifacts through `browsers.fs.*` or object storage.
 
@@ -113,14 +113,14 @@ Before running code, name every operation that may create paid or quota-bound re
 
 For each resource, decide the cleanup path before running: `deleteByID`, pool `release`, invocation/browser cleanup by `invocation_id`, deployment terminal state, or explicit timeout with reason. Report anything left alive.
 
-Read the real caps instead of guessing at plan tiers: `await kernel.organization.limits.retrieve()` returns `max_concurrent_sessions`, `default_project_max_concurrent_sessions`, `max_auth_connections` vs `auth_connections_used`, and `min_health_check_interval_seconds`. Per-project overrides live at `kernel.projects.limits.retrieve(idOrName)`. Discover project ids with `kernel.projects.list()` or `kernel.projects.retrieve('<id-or-name>')`.
+Read the real caps instead of guessing at plan tiers: `await kernel.organization.limits.retrieve()` returns `max_concurrent_sessions`, `default_project_max_concurrent_sessions`, `concurrent_sessions_used`, `concurrent_sessions_available`, `max_auth_connections` vs `auth_connections_used`, `vaults_used`, `max_vaults`, and `min_health_check_interval_seconds`. Per-project overrides live at `kernel.projects.limits.retrieve(idOrName)`. Discover project ids with `kernel.projects.list()` or `kernel.projects.retrieve('<id-or-name>')`.
 
 ## Workflow
 
 1. **Classify** the operating mode (A vs B). If mixed, name which surface each piece is on.
-2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY` is the only required one; `KERNEL_LOG`, `KERNEL_BASE_URL`, `KERNEL_CUSTOM_HEADERS`, `KERNEL_SUPPRESS_BUN_WARNING`, and `KERNEL_BROWSER_ROUTING_SUBRESOURCES` — comma-separated path prefixes routed direct-to-VM, default `curl,telemetry/stream`, empty string disables direct routing — are optional). For local dev hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. For project-scoped work with an org-wide key, pass `projectID` to the constructor. See [references/guides/client-and-config.md](references/guides/client-and-config.md).
-3. **Pick the browser-control surface** — raw CDP / Playwright-inside-VM / computer-controls / browser-curl. See [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md).
-4. **Wire profiles or Managed Auth** if the agent needs persistent login. See [references/patterns/profiles-pools-credentials.md](references/patterns/profiles-pools-credentials.md) and [references/guides/managed-auth.md](references/guides/managed-auth.md).
+2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY` is the only required one; `KERNEL_LOG`, `KERNEL_BASE_URL`, `KERNEL_CUSTOM_HEADERS`, `KERNEL_SUPPRESS_BUN_WARNING`, and `KERNEL_BROWSER_ROUTING_SUBRESOURCES` — comma-separated path prefixes routed direct-to-VM, default `curl,telemetry/stream,computer,playwright,process,fs,logs/stream`, empty string disables direct routing — are optional). For local dev hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. For project-scoped work with an org-wide key, pass `projectID` to the constructor. See [references/guides/client-and-config.md](references/guides/client-and-config.md).
+3. **Pick the browser-control surface** — raw CDP / Playwright-inside-VM / computer-controls / browser-curl / browser REPL / WebMCP / process execution. See [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md).
+4. **Wire profiles, browser pools, or Managed Auth / Vaults** if the agent needs persistent state or credentials. See [references/patterns/profiles-pools-credentials.md](references/patterns/profiles-pools-credentials.md) and [references/guides/managed-auth.md](references/guides/managed-auth.md).
 5. **Handle lifecycle.** Always pair `browsers.create` with `browsers.deleteByID`, even on error paths. Use `try/finally`. See [references/guides/browsers-lifecycle.md](references/guides/browsers-lifecycle.md).
 6. **Deploy or run.** For Mode B, `kernel deploy` and consume invocations; for Mode A, run inside your service. See [references/guides/apps-deploy-invoke.md](references/guides/apps-deploy-invoke.md) and [references/examples/deploy-and-invoke-app.md](references/examples/deploy-and-invoke-app.md).
 
@@ -150,6 +150,10 @@ Read the real caps instead of guessing at plan tiers: `await kernel.organization
 > **Stagehand v4 attaches over CDP; `new Stagehand(...)` is gone.** The constructor is private — use `Stagehand.create()`, and pass a `browser` (it is required). Mirror the Stagehand extension onto the Kernel browser's filesystem first (`browsers.fs.uploadZip`), then `const browser = await localBrowser.connect({ cdpUrl: session.cdp_ws_url })` and `await Stagehand.create({ browser, model: { modelName: 'openai/gpt-4o', apiKey: process.env.MODEL_API_KEY } })`. `env: 'LOCAL'` and `localBrowserLaunchOptions` are v3-only and do not exist in v4; `modelName` must be namespaced (`openai/…`, `anthropic/…`), never bare `'gpt-4o'`. Top-level `apiKey` is the **Stagehand** key — model credentials belong in `model.apiKey`. `projectId` is not a `Stagehand.create` option at all; Browserbase credentials live on `browserbase.connect(...)`. `stagehand.page` was removed — `act`/`extract`/`observe` are on the instance.
 
 > **`proxy_id` is deprecated on `browsers.create`.** Pass the typed `proxy` object instead — `proxy: { id }`, `proxy: { name }`, or `proxy: { mode: 'direct' | 'default' }`. `proxy` and `proxy_id` cannot be combined, and `proxy_id` is `@deprecated` on every browser response shape too.
+
+> **Supported Regions:** Kernel supports four deployment and browser regions: `'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'`. Region selection requires a Start-Up or Enterprise plan and defaults to `us-east` when omitted on create.
+
+> **Vaults on `browsers.create`:** Pass `vaults: [{ id }]` to bind project-scoped credential or payment vaults at session creation. Vault links are immutable after session boot. Paced autofill injects credentials into the DOM at human typing speed without exposing secrets to the agent context.
 
 ## Bundled scripts
 
@@ -226,9 +230,8 @@ End-to-end checks for any Kernel-TS task:
 
 ## Scope boundaries
 
-This skill covers `@onkernel/sdk` and `@onkernel/managed-auth-react` in TypeScript. It does not cover:
+This skill covers `@onkernel/sdk`, `@onkernel/managed-auth-react`, and the corresponding `@onkernel/cli` workflows in TypeScript. It does not cover:
 
 - The Python SDK (`kernel-python-sdk`)
 - Terminal-driving the `agent-browser` CLI (use `run-agent-browser`)
-- The full `kernel` CLI surface beyond `deploy` and `invoke` (read `kernel --help` directly)
 - Browser Use's Python framework — there is no native TS package

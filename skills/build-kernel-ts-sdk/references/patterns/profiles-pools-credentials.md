@@ -45,7 +45,7 @@ A single profile can carry login state for **multiple domains** when paired with
 
 ## Browser pools (Reserved Browsers)
 
-Pre-configure a fixed set of browsers ready for instant acquire. As of the 2026-05-09 docs check, browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pricing docs and the April 10 changelog both say idle pool storage charges were removed for Start-Up too. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
+Pre-configure a fixed set of browsers ready for instant acquire. Browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pools can be created or updated with `memory: '16GiB'` (or default `'8GiB'`). Pricing docs and the April 10 changelog both confirm idle pool storage charges were removed for Start-Up too. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
 
 ```ts
 const pool = await kernel.browserPools.create({
@@ -53,22 +53,27 @@ const pool = await kernel.browserPools.create({
   size: 10,
   stealth: true,
   headless: false,
+  memory: '16GiB',                  // '8GiB' (default) or '16GiB'
   timeout_seconds: 600,
   viewport: { width: 1280, height: 800 },
 });
 
 // Acquire is a long-poll. If no browser is free in the poll window,
 // the response is empty (HTTP 204) and you must retry until your own deadline.
-async function acquireWithDeadline(name: string, deadlineMs: number) {
+// You can dynamically bind a profile on acquire!
+async function acquireWithDeadline(name: string, deadlineMs: number, profileName?: string) {
   const end = Date.now() + deadlineMs;
   while (Date.now() < end) {
-    const res = await kernel.browserPools.acquire(name, { acquire_timeout_seconds: 30 });
+    const res = await kernel.browserPools.acquire(name, {
+      acquire_timeout_seconds: 30,
+      profile: profileName ? { name: profileName } : undefined,
+    });
     if (res?.session_id) return res;
   }
   throw new Error(`pool ${name}: no browser available before deadline`);
 }
 
-const session = await acquireWithDeadline('my-pool', 5 * 60_000);
+const session = await acquireWithDeadline('my-pool', 5 * 60_000, 'user-123');
 try {
   // … use session.cdp_ws_url like any Kernel browser …
 } finally {
@@ -82,19 +87,19 @@ try {
 
 Operations:
 
-- `kernel.browserPools.create({ name, size, … })` — define a pool with browser-create params baked in.
+- `kernel.browserPools.create({ name, size, memory?, … })` — define a pool with browser-create params baked in.
 - `kernel.browserPools.retrieve(name)` — current `available_count`, `acquired_count`, etc.
-- `kernel.browserPools.acquire(name, { acquire_timeout_seconds })` — long-poll for a browser. Returns `204 No Content` (an empty response, not a throw) when the poll window elapses; **the client must retry** until your own outer deadline.
+- `kernel.browserPools.acquire(name, { profile?, acquire_timeout_seconds?, … })` — long-poll for a browser. Can dynamically bind a profile (`profile: { name }` or `{ id }`) to the acquired session. Returns `204 No Content` (an empty response, not a throw) when the poll window elapses; **the client must retry** until your own outer deadline.
 - `kernel.browserPools.release(name, { session_id, reuse })` — return a browser to the pool. `reuse: false` destroys and rebuilds (useful after credential changes or sensitive flows).
 - `kernel.browserPools.flush(name)` — destroy all idle browsers; the pool refills automatically.
 - `kernel.browserPools.update / delete / list` — standard.
 
 Pools and profiles:
 
-- `kernel.browserPools.create({ …, profile: { name }, refresh_on_profile_update: true })` attaches one profile to every browser in the pool. Provide either `id` or `name`; the profile must exist first.
-- **The pool loads that profile read-only and never persists changes back to it.** `save_changes` is not part of the pool profile shape, and any `save_changes` value sent on a pool profile is silently ignored rather than rejected. Re-auth writes must happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session.
-- `refresh_on_profile_update` flushes idle browsers when the pool's profile is updated so they pick up the latest data. It defaults to `true` when a profile is given at create, and requires a profile on the pool.
-- `browserPools.acquire` takes no `profile` — its params are exactly `acquire_timeout_seconds?`, `name?`, `start_url?`, `tags?`, `telemetry?`. Profile selection is pool-level only. Setting one after the fact means `browsers.update(session_id, { profile })`, which is allowed only if the session has no profile loaded.
+- `kernel.browserPools.create({ …, profile: { name }, refresh_on_profile_update: true })` attaches a baseline profile to every browser in the pool. Provide either `id` or `name`; the profile must exist first.
+- **Pool-level profiles load read-only and never persist changes back.** `save_changes` is not part of the pool profile shape, and any `save_changes` value sent on a pool profile is silently ignored rather than rejected. Re-auth writes must happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session.
+- `refresh_on_profile_update` flushes idle browsers when the pool's baseline profile is updated so they pick up the latest data. It defaults to `true` when a profile is given at create, and requires a profile on the pool.
+- `browserPools.acquire` supports dynamic **profile binding**: pass `profile: { name }` (or `id`) to bind a specific user profile to the acquired browser for that lease. When released back with `reuse: true`, the browser returns to the pool baseline. Omit `profile` to use the pool's baseline profile.
 
 Acquired browsers are exempt from `flush`. Use `flush` to roll the pool after a config change or to invalidate session state across all idle instances.
 
@@ -178,6 +183,55 @@ await kernel.auth.connections.create({
 ```
 
 `kernel.credentialProviders.listItems(id)` enumerates available items for picker UIs. TOTP secrets stored in 1Password items are used automatically.
+
+## Kernel Vaults (Credentials, Payments, and MPP)
+
+Kernel Vaults provide encrypted storage and autofill for sensitive logins and payment instruments. Secrets are injected directly into the DOM and **never exposed to agent context or logs**.
+
+### 1. Linking Vaults to Browsers
+
+Bind project-scoped vaults to a browser session at creation:
+
+```ts
+const session = await kernel.browsers.create({
+  stealth: true,
+  vaults: [{ id: 'vlt_checkout_prod' }],
+});
+```
+
+Vault links are immutable for the duration of the browser session.
+
+### 2. General Credential Items & Paced Fill
+
+Store logins or secrets inside vaults, collect them through Kernel-hosted forms or `@onkernel/vault-react`, and autofill them into web forms:
+
+```ts
+// Autofill credentials into page inputs with human-speed typing
+await kernel.vaults.items.fill('vlt_item_login', {
+  session_id: session.session_id,
+  target_selector: 'input#username',
+  paced: true, // writes character-by-character with randomized delays
+});
+```
+
+### 3. Payment Vaults (Link & AgentCard)
+
+- **Stripe Link:** Complete checkouts by injecting saved cards into Link forms using publishable key configurations.
+- **AgentCard:** Automated card authorization rules (`checkout_origin`), virtual payment cards, and provider rejection logging.
+
+### 4. Machine Payments Protocol (MPP) Browser Purchases
+
+Agents can purchase stealth, headful browser sessions through the Machine Payments Protocol without pre-funding an account or providing API keys:
+
+```ts
+// Request purchase through 402 challenge flow
+const buyResponse = await fetch('https://api.onkernel.com/v1/browsers/buy', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ stealth: true }),
+});
+// Handles 402 payment challenge via MPP wallet
+```
 
 ## Composition guide
 

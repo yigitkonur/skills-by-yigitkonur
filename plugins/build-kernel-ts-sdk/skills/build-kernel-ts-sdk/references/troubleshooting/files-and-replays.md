@@ -38,11 +38,11 @@ await kernel.browsers.fs.setFilePermissions(id, { path: '/tmp/a', mode: '0644' }
 // note: `watch.start` returns `watch_id` as OPTIONAL — guard before use.
 const watch = await kernel.browsers.fs.watch.start(id, { path: '/tmp' });
 if (!watch.watch_id) throw new Error('watch.start did not return a watch_id');
-for await (const evt of await kernel.browsers.fs.watch.events(watch.watch_id, { id })) {
+for await (const evt of await kernel.browsers.fs.watch.events(watch.watch_id, { id_or_name: id })) {
   // evt.type is the uppercase enum: 'CREATE' | 'WRITE' | 'DELETE' | 'RENAME'
   // evt.path is the affected absolute path.
 }
-await kernel.browsers.fs.watch.stop(watch.watch_id, { id });
+await kernel.browsers.fs.watch.stop(watch.watch_id, { id_or_name: id });
 ```
 
 ## Common file-I/O issues
@@ -114,10 +114,10 @@ await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), { path: '/tmp/data.j
 ```ts
 const r = await kernel.browsers.replays.start(session.session_id);
 // … session work …
-await kernel.browsers.replays.stop(r.replay_id, { id: session.session_id });
+await kernel.browsers.replays.stop(r.replay_id, { id_or_name: session.session_id });
 
 const list = await kernel.browsers.replays.list(session.session_id);
-const dl = await kernel.browsers.replays.download(r.replay_id, { id: session.session_id });
+const dl = await kernel.browsers.replays.download(r.replay_id, { id_or_name: session.session_id });
 // Replays are mp4 — the SDK sends `Accept: video/mp4` on this call.
 fs.writeFileSync(`./replay-${r.replay_id}.mp4`, Buffer.from(await dl.arrayBuffer()));
 ```
