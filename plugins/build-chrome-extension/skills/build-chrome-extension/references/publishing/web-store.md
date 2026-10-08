@@ -126,8 +126,9 @@ Reject-risk pattern:
 Verified: 2026-05-09 against the official MV2 timeline.
 
 - July 24, 2025: MV2 was disabled everywhere with Chrome 138; users cannot re-enable MV2 extensions.
-- Chrome 139 removes enterprise policy support for MV2.
-- New or updated Web Store guidance should target MV3 only.
+- Chrome 139 removes enterprise policy support for MV2 (`ExtensionManifestV2Availability`).
+- August 31, 2026: All remaining Manifest V2 extensions are permanently removed from the Chrome Web Store.
+- New and updated Web Store submissions must target Manifest V3 exclusively.
 
 ## Review Checklist
 
@@ -162,7 +163,7 @@ Use deferred publishing when release timing matters. If a bug is found after sub
 
 ## Payments
 
-Use an external payment and license system for current monetization. Follow the Chrome Web Store payment policy for truthful pricing, seller identification, terms, refunds, sensitive data handling, and prohibited transactions. Do not present Chrome Web Store Payments as a viable new integration unless current official docs are re-verified first.
+Chrome Web Store Payments was permanently deprecated and shut down in 2021. Built-in CWS billing does not exist. All extension monetization must use external payment providers (e.g. Stripe, Lemon Squeezy, Paddle, ExtensionPay) while complying with CWS policies: clear disclosures of paid features, transparent pricing terms, merchant identification, refund policy, and secure checkout off-extension or via authorized authentication flows.
 
 ## Final Report Fields
 

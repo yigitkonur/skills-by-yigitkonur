@@ -235,13 +235,22 @@ export function useChromeStorage<T>(key: string, defaultValue: T, area: "local" 
   const storage = chrome.storage[area];
 
   useEffect(() => {
-    storage.get(key).then((r) => { if (r[key] !== undefined) setValue(r[key]); });
-    const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
-      if (changes[key]) setValue(changes[key].newValue);
+    storage.get(key).then((r) => {
+      if (r[key] !== undefined) {
+        setValue(r[key]);
+      } else {
+        setValue(defaultValue);
+      }
+    });
+
+    const listener = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+      if (areaName === area && changes[key]) {
+        setValue(changes[key].newValue !== undefined ? changes[key].newValue : defaultValue);
+      }
     };
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
-  }, [key, area]);
+  }, [key, area, defaultValue]);
 
   return [value, (v: T) => { setValue(v); storage.set({ [key]: v }); }];
 }

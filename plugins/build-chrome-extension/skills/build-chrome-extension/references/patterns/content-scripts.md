@@ -248,10 +248,18 @@ observer.observe(document.body, { childList: true, subtree: true });
 window.addEventListener("message", (e) => { /* ... */ }, { signal: controller.signal });
 window.addEventListener("beforeunload", () => { controller.abort(); observer.disconnect(); });
 
-// Also detect extension unload
-chrome.runtime.onConnect.addListener((port) => {
-  port.onDisconnect.addListener(() => { controller.abort(); observer.disconnect(); });
-});
+// Detect extension context invalidation (e.g. extension reload or update):
+// Open a port to the extension runtime. When the extension is reloaded or disabled,
+// the port is disconnected automatically.
+try {
+  const port = chrome.runtime.connect({ name: "content-script-lifecycle" });
+  port.onDisconnect.addListener(() => {
+    controller.abort();
+    observer.disconnect();
+  });
+} catch (e) {
+  // Context already invalidated
+}
 ```
 
 ## match_patterns Syntax Reference

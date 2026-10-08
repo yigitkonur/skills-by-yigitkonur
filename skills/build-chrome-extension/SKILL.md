@@ -49,10 +49,10 @@ These are the failures that recur across every MV3 build. Internalize before wri
 - Service workers idle out (~30s default). Global module-scope state disappears between events. Persist before each await and rehydrate at event entry.
 - Register `chrome.runtime.onMessage`, `onInstalled`, `onStartup`, alarm, and tab listeners **synchronously at top level**. Late-registered listeners miss wake-up events.
 - `setTimeout`/`setInterval` cannot keep a service worker alive and will not fire reliably across idle cycles. Use `chrome.alarms.create` with `periodInMinutes >= 0.5`.
-- `chrome.runtime.onMessage` async handlers must `return true` synchronously to keep the message channel open; otherwise `sendResponse` throws.
+- `chrome.runtime.onMessage` async handlers must `return true` synchronously to keep the message channel open; otherwise the message channel closes immediately and the sender receives `undefined` (or rejects with "The message port closed before a response was received"). Never mark the listener function itself as `async` because returning a Promise does not keep the channel open.
 - Content scripts run in an isolated world by default. The page's JS, frameworks, and `window.*` globals are invisible. Use `world: "MAIN"` only for page-JS access, then bridge with `postMessage` plus a same-origin token.
 - Extension-origin `fetch` requires matching `host_permissions`. Content-script `fetch` is bound by the page's origin and CORS rules — route privileged requests through the service worker via `chrome.runtime.sendMessage`.
-- MV3 CSP forbids inline `<script>`, `eval()`, `new Function()`, and remote executable code. Bundle everything; no CDN-loaded scripts.
+- MV3 CSP forbids inline `<script>`, `eval()`, `new Function()`, and remote executable code in extension pages. Bundle everything; no CDN-loaded scripts. (Sandboxed pages in `manifest.sandbox` are the sole exception where `unsafe-eval` is permitted).
 - Hand-written `manifest.json` paths must point at built artifacts (e.g. `background.js`, `content.js`, `popup.html`), never `src/*.ts` or unbuilt source.
 - Requesting `<all_urls>` or broad host permissions at install time triggers Web Store review friction. Prefer `activeTab` plus optional host grants.
 

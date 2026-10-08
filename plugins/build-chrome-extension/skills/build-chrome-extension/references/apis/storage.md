@@ -19,7 +19,7 @@ Chrome extensions have four storage areas, each with distinct scope and persiste
 |---|---|---|---|---|---|
 | `local` | 10 MB | No per-item limit | No limit | N/A | Use `unlimitedStorage` permission to remove 10 MB cap |
 | `sync` | 100 KB total | 8 KB per item | 512 items | 120 / min, 1,800 / hour | Sustained write quota is deprecated in current docs |
-| `session` | 10 MB | No per-item limit | No limit | No enforced limit | Chrome 102+ MV3+; in-memory only; fast but ephemeral |
+| `session` | 10 MB | No per-item limit | No limit | No enforced limit | Universal 10 MB since Chrome 112 (was 1 MB in 102–111); in-memory only; `setAccessLevel` controls context access, not quota |
 | `managed` | N/A | N/A | N/A | Read-only | Schema declared in `storage.managed_schema` manifest key |
 
 ---
@@ -64,6 +64,12 @@ const data = await chrome.storage.sync.get(["preferredLanguage", "notifications"
 
 // Get ALL keys in an area (use sparingly)
 const everything = await chrome.storage.local.get(null);
+
+// Get list of all existing keys without loading full values into memory (Chrome 130+)
+if ("getKeys" in chrome.storage.local) {
+  const keys = await chrome.storage.local.getKeys();
+  console.log("Existing storage keys:", keys);
+}
 ```
 
 ### Remove (Delete)

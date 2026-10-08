@@ -48,7 +48,7 @@ chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
 
 ## chrome.scripting
 
-**Permission:** `"scripting"` (plus host permissions for the target URLs)
+**Permission:** `"scripting"` (plus host permissions for the target URLs, or `"activeTab"` for active user-invoked tab interactions)
 
 **Replaces:** The deprecated `chrome.tabs.executeScript` and `chrome.tabs.insertCSS` from MV2.
 
@@ -119,7 +119,7 @@ await chrome.scripting.registerContentScripts([
 **Key methods:** `create`, `get`, `getAll`, `clear`, `clearAll`, `onAlarm`
 
 ```typescript
-// Create a repeating alarm (minimum period: 1 minute in production)
+// Create a repeating alarm (minimum period: 0.5 minutes / 30 seconds in production since Chrome 120)
 await chrome.alarms.create("sync-data", {
   delayInMinutes: 0.5,     // first fire in 30 seconds
   periodInMinutes: 5,       // then every 5 minutes
@@ -150,7 +150,7 @@ const all = await chrome.alarms.getAll();
 console.log(`${all.length} alarms active`);
 ```
 
-> **Minimum interval:** In packed (production) extensions, the minimum `periodInMinutes` is 1 minute. During development (unpacked), Chrome may allow shorter intervals for testing.
+> **Minimum interval:** In Chrome 120+, the minimum `periodInMinutes` in production is 0.5 minutes (30 seconds). Prior to Chrome 120, production extensions were clamped to 1 minute. During development (unpacked), Chrome may allow even shorter intervals for testing.
 
 **When to use:** Periodic background tasks (sync, cleanup, polling), scheduled notifications, replacing `setInterval` which dies when the service worker suspends.
 
@@ -216,7 +216,8 @@ chrome.notifications.onButtonClicked.addListener((notifId, buttonIndex) => {
 **Key methods:** `create`, `update`, `remove`, `removeAll`, `onClicked`
 
 ```typescript
-// Create menus on install (service worker top-level or onInstalled)
+// Create menus on install (MUST be in chrome.runtime.onInstalled, NOT bare service worker top-level,
+// otherwise SW wakeups will attempt re-creation and throw "Cannot create item with duplicate id")
 chrome.runtime.onInstalled.addListener(() => {
   // Parent menu
   chrome.contextMenus.create({
@@ -325,7 +326,9 @@ for (const cmd of commands) {
 
 ## chrome.declarativeNetRequest
 
-**Permission:** `"declarativeNetRequest"` (or `"declarativeNetRequestWithHostAccess"` for more flexible matching). Static rules also need `"declarativeNetRequest"` + a `"rule_resources"` entry in manifest.
+**Permission:** `"declarativeNetRequest"` (or `"declarativeNetRequestWithHostAccess"` to scope rules only to URLs where the extension has host permissions, without triggering scary install-time warnings). Static rules also need `"declarativeNetRequest"` + a `"rule_resources"` entry in manifest.
+
+> **Important (Host Permissions for Actions):** While simple `block` rules do not require host permissions, rules with action type `redirect`, `upgradeScheme`, or `modifyHeaders` strictly require host permissions for the matched request URL (and the redirect destination URL for redirects). Without host permissions, these actions will fail silently or be ignored.
 
 **Key methods:** `updateDynamicRules`, `updateSessionRules`, `getDynamicRules`, `getSessionRules`, `updateEnabledRulesets`, `getMatchedRules`
 
@@ -493,22 +496,42 @@ await chrome.sidePanel.setPanelBehavior({
 
 ## chrome.offscreen
 
-**Permission:** None (but the API itself is restricted to MV3 service workers).
+**Permission:** `"offscreen"` (must be declared in manifest `"permissions"`). Restricted to service workers.
 
 **Purpose:** Create hidden offscreen documents to use DOM APIs (Canvas, audio, clipboard, DOM parsing) that are unavailable in service workers.
 
-**Key methods:** `createDocument`, `closeDocument`, `hasDocument`
+**Key methods:** `createDocument`, `closeDocument`, `hasDocument` (Chrome 150+)
 
 ```typescript
 // background.ts
 async function ensureOffscreenDocument() {
-  const exists = await chrome.offscreen.hasDocument();
-  if (!exists) {
+  const offscreenUrl = chrome.runtime.getURL("offscreen.html");
+
+  // In Chrome 116+, getContexts is the standard way to check for existing offscreen documents.
+  // Note: chrome.offscreen.hasDocument() was added only in Chrome 150+.
+  if ("getContexts" in chrome.runtime) {
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+      documentUrls: [offscreenUrl],
+    });
+    if (existingContexts.length > 0) {
+      return;
+    }
+  } else if ("hasDocument" in chrome.offscreen && await (chrome.offscreen as any).hasDocument()) {
+    return;
+  }
+
+  try {
     await chrome.offscreen.createDocument({
-      url: chrome.runtime.getURL("offscreen.html"),
+      url: offscreenUrl,
       reasons: [chrome.offscreen.Reason.DOM_PARSER],
       justification: "Parse HTML content for data extraction",
     });
+  } catch (err: any) {
+    // Avoid race conditions if another async call created it in parallel
+    if (!err?.message?.includes("Only a single offscreen document may be created")) {
+      throw err;
+    }
   }
 }
 
@@ -609,7 +632,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 **Permission:** None (always available).
 
-**Key methods:** `getURL`, `getManifest`, `sendMessage`, `connect`, `onInstalled`, `onStartup`, `onSuspend`, `onMessage`, `onConnect`, `openOptionsPage`, `reload`, `id`
+**Key methods:** `getURL`, `getManifest`, `sendMessage`, `connect`, `onInstalled`, `onStartup`, `onMessage`, `onConnect`, `openOptionsPage`, `reload`, `id`
 
 ```typescript
 // Get a URL to a bundled resource
@@ -638,13 +661,9 @@ chrome.runtime.onStartup.addListener(() => {
   console.log("Browser started, initializing...");
   initializeState();
 });
-
-// Service worker is about to be suspended
-chrome.runtime.onSuspend.addListener(() => {
-  console.log("Service worker suspending — clean up resources");
-  // Close WebSocket connections, flush buffers, etc.
-});
 ```
+
+> **Note on `onSuspend`:** `chrome.runtime.onSuspend` is **NOT supported** in Manifest V3 service workers (it only applied to MV2 persistent background pages). MV3 service workers are terminated abruptly by Chrome upon reaching idle timeout without invoking `onSuspend`. Persist state proactively to `chrome.storage` during processing.
 
 **When to use:** Extension lifecycle hooks (install, update, startup), resolving resource URLs, reading manifest info, opening options page.
 
@@ -652,7 +671,7 @@ chrome.runtime.onSuspend.addListener(() => {
 
 ## chrome.identity
 
-**Permission:** `"identity"` (for `getAuthToken`). Web auth flow also needs the OAuth provider URL in `permissions` or `host_permissions`.
+**Permission:** `"identity"`. OAuth token exchange endpoints belong in `"host_permissions"` (not `"permissions"`). The manifest `"oauth2"` section is strictly required for Google OAuth (`getAuthToken`), not for third-party OAuth (`launchWebAuthFlow`).
 
 **Manifest (for Google OAuth):**
 
@@ -739,7 +758,7 @@ Not every API is available in every extension context. Quick reference:
 | API | Service Worker | Popup / Options | Content Script | Offscreen Doc |
 |---|---|---|---|---|
 | `chrome.tabs` | Yes | Yes | No | No |
-| `chrome.scripting` | Yes | No | No | No |
+| `chrome.scripting` | Yes | Yes | No | No |
 | `chrome.alarms` | Yes | Yes | No | No |
 | `chrome.notifications` | Yes | Yes | No | No |
 | `chrome.contextMenus` | Yes | No | No | No |
@@ -759,15 +778,15 @@ Not every API is available in every extension context. Quick reference:
 | API | Permission | Manifest Key |
 |---|---|---|
 | `chrome.tabs` | None (basic) / `"tabs"` (url/title) | `"permissions"` |
-| `chrome.scripting` | `"scripting"` + host_permissions | `"permissions"` |
+| `chrome.scripting` | `"scripting"` (+ host_permissions or `"activeTab"`) | `"permissions"` |
 | `chrome.alarms` | `"alarms"` | `"permissions"` |
 | `chrome.notifications` | `"notifications"` | `"permissions"` |
 | `chrome.contextMenus` | `"contextMenus"` | `"permissions"` |
 | `chrome.commands` | None | `"commands"` key in manifest |
-| `chrome.declarativeNetRequest` | `"declarativeNetRequest"` | `"permissions"` + `"declarative_net_request"` |
+| `chrome.declarativeNetRequest` | `"declarativeNetRequest"` (or `"declarativeNetRequestWithHostAccess"`) | `"permissions"` + `"declarative_net_request"` |
 | `chrome.sidePanel` | `"sidePanel"` | `"side_panel"` key in manifest |
-| `chrome.offscreen` | None | N/A |
+| `chrome.offscreen` | `"offscreen"` | `"permissions"` |
 | `chrome.action` | None | `"action"` key in manifest |
 | `chrome.runtime` | None | N/A |
-| `chrome.identity` | `"identity"` | `"permissions"` + `"oauth2"` key |
+| `chrome.identity` | `"identity"` (+ host_permissions for endpoints) | `"permissions"` (and `"oauth2"` key for Google OAuth) |
 | `chrome.storage` | `"storage"` | `"permissions"` |

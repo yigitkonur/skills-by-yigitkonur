@@ -63,7 +63,7 @@ Queued events, running handlers, extension API calls, and active network work re
 | Sending messages over a long-lived `Port` | Yes; Chrome 114+ keeps alive when messages are sent |
 | Opening a `Port` and leaving it idle | No; Chrome 114+ no longer resets timers just for opening the port |
 | Pending `fetch()` request | Yes, until response completes |
-| `chrome.alarms` handler executing | Yes, for handler duration |
+| `chrome.alarms` handler executing | Only while making extension API calls or active `fetch()`; returning a Promise does **not** keep SW alive past 30s |
 | `setTimeout` / `setInterval` | **No** — does not prevent termination |
 | `chrome.storage` async call in progress | Yes, until callback |
 | `waitUntil()` (ExtendableEvent) | Yes (install/activate only) |
@@ -76,7 +76,7 @@ Queued events, running handlers, extension API calls, and active network work re
 |---|---|---|
 | Persists across SW restart | Yes | Yes |
 | Persists across browser restart | **No** | Yes |
-| Quota | 10 MB (1 MB default; extend with `setAccessLevel`) | 10 MB (`unlimitedStorage` for more) |
+| Quota | 10 MB (universal since Chrome 112; `setAccessLevel` grants context access, not quota) | 10 MB (`unlimitedStorage` for more) |
 | Available in content scripts | Only with `TRUSTED_AND_UNTRUSTED_CONTEXTS` | Yes |
 | Use case | Session tokens, ephemeral caches | User settings, persistent data |
 
@@ -144,7 +144,7 @@ chrome.runtime.onStartup.addListener(() => {
 
 ## Alarm Pulse Pattern
 
-`chrome.alarms` is the only reliable periodic mechanism. Minimum interval: 30s (dev), 1 min (production).
+`chrome.alarms` is the only reliable periodic mechanism. Minimum interval: 0.5 min / 30s (Chrome 120+ in production; earlier Chrome versions clamped production to 1 min).
 
 ```typescript
 // Set up alarms at install

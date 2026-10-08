@@ -21,17 +21,17 @@ scripts/preflight-extension.sh dist
 
 ## What It Checks
 
-- manifest-declared icons exist.
+- manifest-declared icons exist (both dictionary maps and single-string `default_icon` paths).
 - PNG icons match their declared manifest sizes when dimensions can be read.
-- `_locales/*/messages.json` exists and parses when `_locales/` exists.
-- broad permissions and host permissions are surfaced as `REVIEW` lines.
+- `manifest.default_locale` is declared and `_locales/*/messages.json` exists and parses when `_locales/` exists.
+- broad permissions and host permissions (e.g. `<all_urls>`, `*://*/*`) are surfaced as `REVIEW` lines.
 - extension-page CSP does not allow `unsafe-eval` or remote script sources.
 - package input does not contain common junk:
   - `.DS_Store`
   - `__MACOSX`
-  - source maps
   - tests or `__tests__`
   - `node_modules`, `.git`, or `.github`
+- source maps (`.map`) trigger a `REVIEW` notice (strip before upload unless intentionally shipped, or silence with `ALLOW_SOURCE_MAPS=1`).
 
 ## Output
 
@@ -45,7 +45,8 @@ Review-only signal:
 
 ```text
 REVIEW permission needs review justification: tabs
-REVIEW host permission needs review justification: https://*/*
+REVIEW broad host permission needs review justification: https://*/*
+REVIEW package input contains source map (strip before upload unless intentionally shipped): app.js.map
 PASS extension package preflight: dist
 ```
 
@@ -53,8 +54,8 @@ Failure:
 
 ```text
 FAIL icons.16 is not a valid PNG: icons/icon-16.png
-FAIL CSP script-src allows remote scripts
-FAIL package input contains source map: app.js.map
+FAIL CSP extension_pages script-src allows remote scripts
+FAIL package input contains .DS_Store: .DS_Store
 ```
 
 ## Limits

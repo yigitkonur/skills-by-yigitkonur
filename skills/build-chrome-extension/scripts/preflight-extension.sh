@@ -74,9 +74,16 @@ if (!fs.existsSync(manifestPath)) {
 const manifest = failures.length ? null : readJson(manifestPath, "manifest.json");
 
 if (manifest) {
-  for (const [size, rel] of Object.entries(manifest.icons || {})) checkIcon(rel, Number(size), `icons.${size}`);
-  for (const [size, rel] of Object.entries(manifest.action?.default_icon || {})) {
-    if (typeof rel === "string") checkIcon(rel, Number(size), `action.default_icon.${size}`);
+  if (typeof manifest.icons === "object" && manifest.icons !== null) {
+    for (const [size, rel] of Object.entries(manifest.icons)) checkIcon(rel, Number(size), `icons.${size}`);
+  }
+
+  if (typeof manifest.action?.default_icon === "string") {
+    checkIcon(manifest.action.default_icon, null, "action.default_icon");
+  } else if (typeof manifest.action?.default_icon === "object" && manifest.action?.default_icon !== null) {
+    for (const [size, rel] of Object.entries(manifest.action.default_icon)) {
+      if (typeof rel === "string") checkIcon(rel, Number(size), `action.default_icon.${size}`);
+    }
   }
 
   const broadPermissions = new Set(["<all_urls>", "tabs", "history", "bookmarks", "cookies", "webRequest"]);
@@ -84,18 +91,33 @@ if (manifest) {
     if (broadPermissions.has(perm)) review(`permission needs review justification: ${perm}`);
   }
   for (const host of manifest.host_permissions || []) {
-    if (host === "<all_urls>" || /^\*:\/\/\*\/?\*?$/.test(host) || host.includes("*")) {
-      review(`host permission needs review justification: ${host}`);
+    if (host === "<all_urls>" || /^(\*|https?):\/\/\*(\/.*)?$/.test(host) || /^\*:\/\//.test(host)) {
+      review(`broad host permission needs review justification: ${host}`);
     }
   }
 
-  const csp = JSON.stringify(manifest.content_security_policy || {});
-  if (/\bunsafe-eval\b/.test(csp)) fail("CSP contains unsafe-eval");
-  if (/script-src[^;]*(https?:|\/\/)/i.test(csp)) fail("CSP script-src allows remote scripts");
+  if (manifest.content_security_policy !== undefined) {
+    if (typeof manifest.content_security_policy === "string") {
+      fail("CSP must be an object in MV3, not a string");
+    } else if (typeof manifest.content_security_policy === "object" && manifest.content_security_policy !== null) {
+      const extPagesCsp = manifest.content_security_policy.extension_pages || "";
+      if (typeof extPagesCsp === "string") {
+        if (/(?<!wasm-)unsafe-eval/.test(extPagesCsp)) {
+          fail("CSP extension_pages contains unsafe-eval");
+        }
+        if (/script-src[^;]*(https?:|\/\/)/i.test(extPagesCsp)) {
+          fail("CSP extension_pages script-src allows remote scripts");
+        }
+      }
+    }
+  }
 }
 
 const locales = path.join(root, "_locales");
 if (fs.existsSync(locales)) {
+  if (!manifest?.default_locale || typeof manifest.default_locale !== "string" || manifest.default_locale.trim() === "") {
+    fail("default_locale is required in manifest.json when _locales directory exists");
+  }
   for (const entry of fs.readdirSync(locales, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const messages = path.join(locales, entry.name, "messages.json");
@@ -107,13 +129,20 @@ if (fs.existsSync(locales)) {
 const junkPatterns = [
   { re: /(^|\/)\.DS_Store$/, label: ".DS_Store" },
   { re: /(^|\/)__MACOSX(\/|$)/, label: "__MACOSX" },
-  { re: /\.map$/i, label: "source map" },
   { re: /(^|\/)(test|tests|__tests__)(\/|$)/i, label: "test files" },
   { re: /\.(test|spec)\.(js|jsx|ts|tsx)$/i, label: "test files" },
   { re: /(^|\/)(node_modules|\.git|\.github)(\/|$)/, label: "non-package directory" },
 ];
 
 for (const rel of walk(root)) {
+  if (/\.map$/i.test(rel)) {
+    if (process.env.ALLOW_SOURCE_MAPS === "1") {
+      review(`package input contains source map (explicitly allowed by ALLOW_SOURCE_MAPS): ${rel}`);
+    } else {
+      review(`package input contains source map (strip before upload unless intentionally shipped): ${rel}`);
+    }
+    continue;
+  }
   for (const pattern of junkPatterns) {
     if (pattern.re.test(rel)) {
       fail(`package input contains ${pattern.label}: ${rel}`);

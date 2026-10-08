@@ -76,7 +76,9 @@ chrome.runtime.onMessage.addListener(
 );
 ```
 
-> **The `return true` rule:** If a handler does asynchronous work before calling `sendResponse`, it **must** `return true` from the listener synchronously. Otherwise Chrome closes the message channel and the sender receives `undefined`.
+> **The `return true` rule:** If a handler does asynchronous work before calling `sendResponse`, it **must** `return true` from the listener synchronously. Otherwise Chrome closes the message channel immediately and the sender receives `undefined` (or rejects with "The message port closed before a response was received").
+>
+> **Crucial pitfall:** Never define the listener function itself as `async` (`chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => { ... })`). An `async` function returns a `Promise`, not the boolean `true`. Chrome's messaging engine ignores Promises returned from listeners and immediately closes the channel. Always use a standard synchronous function and return `true` explicitly if invoking asynchronous operations.
 
 ### Sending from Background to a Specific Content Script
 
