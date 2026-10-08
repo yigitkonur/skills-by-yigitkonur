@@ -28,7 +28,6 @@ This skill **does not write SDK code**. It diagnoses, prescribes, and routes.
 - Writing or fixing raw `@modelcontextprotocol/server` v2 alpha code → route to `build-mcp-server-sdk-v2`
 - Writing or fixing `mcp-use/server` code → route to `build-mcp-use-server`
 - Live CLI smoke-testing of an MCP server → route to `test-by-mcpc-cli`
-- Enforcing TypeScript Clean Architecture layering on `mcp-use/server` → route to `build-clean-mcp-architecture`
 - CLI agent-readiness (not MCP) → route to `audit-agentic-cli`
 - Migrating SDK v1 code to v2 → route to `convert-mcp-sdk-v1-to-v2`
 
@@ -126,7 +125,6 @@ Do not load the whole reference tree by default. Start with the smallest bundle.
 | [`build-mcp-use-server`](../../../build-mcp-use-server/) | New HTTP-first TypeScript server wanting `mcp-use/server` conventions, widgets/apps, OAuth helpers | Locks into `mcp-use/server` imports; less bare-metal control |
 | [`convert-mcp-sdk-v1-to-v2`](../../../convert-mcp-sdk-v1-to-v2/) | Migrating existing SDK v1 code to v2 alpha | Targets the migration only |
 | [`test-by-mcpc-cli`](../../../test-by-mcpc-cli/) | Repeatable stdio/Streamable HTTP smoke checks, JSON scripting, post-edit verification | Requires `mcpc 0.2.x` locally |
-| [`build-clean-mcp-architecture`](../../../build-clean-mcp-architecture/) | TypeScript `mcp-use/server` audit hits layer-boundary, folder-layout, or dependency-direction issues | Layer discipline; not a replacement for this agent-readiness audit |
 | [`audit-agentic-cli`](../../../audit-agentic-cli/) | The interface should stay CLI-first or the task is CLI agent-readiness, not MCP | CLI contract work, not MCP protocol work |
 
 ## Execution rhythm

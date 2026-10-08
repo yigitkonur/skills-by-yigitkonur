@@ -27,7 +27,6 @@ Do **not** use this skill when:
 - *The code is app-side `MCPClient` / browser / react client mounting — route to `build-mcp-use-client`.*
 - *The work is `MCPAgent` LLM orchestration over MCP tools — route to `build-mcp-use-agent`.*
 - *The user wants raw official SDK primitives or strict stdio without mcp-use — route v1 `@modelcontextprotocol/sdk` work to `build-mcp-server-sdk-v1`, and split-package v2 `@modelcontextprotocol/{core,server,client}` work to `build-mcp-server-sdk-v2` (mcp-use v2 cannot serve stdio).*
-- *The question is layer placement, import direction, or composition-root structure — route to `build-clean-mcp-architecture` first (see `references/00-clean-architecture-coordination.md`), then return here for mechanics.*
 
 ## Version stance
 
@@ -41,7 +40,6 @@ This skill teaches **v2** (verified against `mcp-use@2.0.0-beta.66`; exact pins 
 
 | Skill | Owns | Handoff |
 |---|---|---|
-| `build-clean-mcp-architecture` | Folder layout, import direction, layer boundaries, composition root. | Read first for placement; this skill second for APIs. See `references/00-clean-architecture-coordination.md`. |
 | `build-mcp-use-client` | `MCPClient`, browser/react client mounting, code mode. | Hand off when the code stops being the server. |
 | `build-mcp-use-agent` | `MCPAgent` orchestration where an LLM picks tools. | Hand off when the work is the agent loop. |
 | `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` | Raw official SDK servers, stdio-only constraints. | Hand off if the user forbids mcp-use or needs stdio. |
@@ -187,7 +185,6 @@ Start with intent or symptoms; use the inventory only as fallback.
 
 - **Symptom index:** `references/00-symptom-index.md`
 - **Version drift:** `references/00-version-drift.md`
-- **Clean architecture handoff:** `references/00-clean-architecture-coordination.md`
 - **Full inventory:** `references/00-reference-index.md`
 - **Bundled scripts:** `scripts/check-mcp-use-version.sh.md`, `scripts/audit-server-readiness.sh.md`, `scripts/scaffold-mcp-use-server.sh.md`
 - **Concepts:** `references/01-concepts/01-what-is-mcp-use.md`, `references/01-concepts/02-server-vs-client-vs-agent.md`, `references/01-concepts/03-transports-overview.md`, `references/01-concepts/04-stateless-model-and-request-state.md`, `references/01-concepts/05-mcp-spec-version-history.md`, `references/01-concepts/06-mcp-apps-and-views-terminology.md`, `references/01-concepts/07-this-skill-vs-build-mcp-use-client.md`

@@ -9,18 +9,18 @@ A single combined skills pack — not a loose collection. Every skill must feel 
 This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex plugin marketplace. Codex consumes the complete `skills/` folder; Claude Code receives explicit allowlists that exclude entries in `CODEX_ONLY_SKILLS`. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
 
 **Distribution model:**
-- Claude Code plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`. Codex-only skills are absent from all four Claude surfaces.
+- Claude Code plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur` or `yk-everything@yigitkonur`. Codex-only skills are absent from the Claude surfaces.
 - Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `<skill>@yigitkonur` or the all-pack `skills-by-yigitkonur@yigitkonur` from `/plugins`.
 - `skills` CLI project install (recommended): `npx -y skills add -y yigitkonur/skills-by-yigitkonur` (or `/skills/<skill-name>`)
 - `skills` CLI global install: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur` (or `/skills/<skill-name>`)
 
 The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
-- `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + themed `yk-*` bundles + `yk-everything`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
+- `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + `yk-everything`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
 - `.codex-plugin/plugin.json`: the root Codex plugin manifest for the all-pack plugin.
 - `plugins/<skill>/`: one generated, self-contained Codex plugin package per canonical skill.
 - `.agents/plugins/marketplace.json`: the Codex repo marketplace entries for the all-pack and every individual skill.
 
-Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a Claude-compatible skill in exactly one `GROUPS` bundle; place a runtime-specific Codex skill in `CODEX_ONLY_SKILLS` and no Claude bundle.
+Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a runtime-specific Codex skill in `CODEX_ONLY_SKILLS`; every other skill is picked up automatically.
 
 **Manual-only skills:** every skill sets `disable-model-invocation: true` in its `SKILL.md` frontmatter (Claude Code, Cursor, VS Code) and ships `agents/openai.yaml` with `policy: allow_implicit_invocation: false` (Codex ignores the frontmatter key). Users invoke skills by name (`/skill-name` or `$skill-name`); descriptions never enter the model's default context. Keep both on every new skill.
 
@@ -338,7 +338,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 6. **Add `references/`** docs only if the skill needs them — reference every file from `SKILL.md`
 7. **Create `README.md`** at the skill root with install instructions (see format above)
 8. **Update root `README.md`** — add the skill to its category section
-9. **Regenerate the marketplace** — add a Claude-compatible skill to one bundle in `GROUPS`, or add a Codex-only skill to `CODEX_ONLY_SKILLS` and no bundle; then run `python3 scripts/gen-marketplace.py`
+9. **Regenerate the marketplace** — add a Codex-only skill to `CODEX_ONLY_SKILLS` if it is runtime-specific; then run `python3 scripts/gen-marketplace.py`
 10. **Validate:**
    ```bash
    python3 scripts/validate-skills.py
@@ -353,7 +353,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 3. **Remove** stale internal references and old names everywhere
 4. If you **add** a reference file, route to it from `SKILL.md`
 5. If you **remove** a reference file, remove all references to it from `SKILL.md`
-6. If you **rename**, update directory + frontmatter + README + NAMING.md + the `GROUPS` map in `scripts/gen-marketplace.py` + all cross-skill references together, then regenerate the marketplace
+6. If you **rename**, update directory + frontmatter + README + NAMING.md + all cross-skill references together, then regenerate the marketplace
 7. **Validate** before pushing: `python3 scripts/validate-skills.py`
 
 ## Testing a skill's quality

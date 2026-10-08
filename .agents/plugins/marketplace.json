@@ -113,18 +113,6 @@
       "category": "Productivity"
     },
     {
-      "name": "build-clean-mcp-architecture",
-      "source": {
-        "source": "local",
-        "path": "./plugins/build-clean-mcp-architecture"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "build-cloudflare-access-sso",
       "source": {
         "source": "local",
@@ -353,18 +341,6 @@
       "category": "Productivity"
     },
     {
-      "name": "craft-brand-theme",
-      "source": {
-        "source": "local",
-        "path": "./plugins/craft-brand-theme"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "deploy-coolify-cloud",
       "source": {
         "source": "local",
@@ -449,18 +425,6 @@
       "category": "Productivity"
     },
     {
-      "name": "project-manager",
-      "source": {
-        "source": "local",
-        "path": "./plugins/project-manager"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "publish-npm-package",
       "source": {
         "source": "local",
@@ -521,46 +485,10 @@
       "category": "Productivity"
     },
     {
-      "name": "run-codex-review-loop",
-      "source": {
-        "source": "local",
-        "path": "./plugins/run-codex-review-loop"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "run-deep-research",
       "source": {
         "source": "local",
         "path": "./plugins/run-deep-research"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "run-ego-e2e",
-      "source": {
-        "source": "local",
-        "path": "./plugins/run-ego-e2e"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "run-github-scout",
-      "source": {
-        "source": "local",
-        "path": "./plugins/run-github-scout"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -597,18 +525,6 @@
       "source": {
         "source": "local",
         "path": "./plugins/run-research"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "run-review",
-      "source": {
-        "source": "local",
-        "path": "./plugins/run-review"
       },
       "policy": {
         "installation": "AVAILABLE",

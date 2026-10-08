@@ -3,8 +3,7 @@
 
 Every Claude-compatible skill becomes an individually installable plugin (so
 users can `/plugin install <skill>@yigitkonur` and uninstall it just as easily).
-Themed bundles group related skills for one-shot installs, and an `everything`
-bundle installs every Claude-compatible skill. Codex-only skills remain in the
+One `yk-everything` plugin installs every Claude-compatible skill. Codex-only skills remain in the
 root `skills/` tree but are excluded from every Claude marketplace allowlist.
 
 All plugins share the single skills/ folder at the repo root via
@@ -40,7 +39,7 @@ MARKETPLACE_NAME = "yigitkonur"
 CODEX_PLUGIN_NAME = "skills-by-yigitkonur"
 
 # Runtime-specific skills that ship through the root Codex plugin only. Keep
-# these out of Claude's per-skill plugins, themed bundles, and yk-everything.
+# these out of Claude's per-skill plugins and yk-everything.
 CODEX_ONLY_SKILLS = set()
 
 
@@ -50,120 +49,6 @@ def version():
         return open(VERSION_PATH).read().strip()
     except FileNotFoundError:
         return "1.0.0"
-
-# Themed bundles. Every Claude-compatible skill MUST appear in exactly one
-# group; Codex-only skills MUST NOT appear in a group (enforced below).
-# key -> (category label, human blurb, [skill dirs])
-GROUPS = {
-    "yk-review": (
-        "review",
-        "Review & completion — code review, Codex review loops, feedback triage, and done-claim audits.",
-        ["run-review", "run-codex-review-loop", "audit-completion"],
-    ),
-    "yk-frontend": (
-        "frontend",
-        "Frontend rebuild & audit — pixel-faithful URL→Next.js, Next.js performance/fluidity optimization, Astro audit & Sentinel linter, brand themes, UI/UX/Laws-of-UX audits.",
-        [
-            "convert-url-to-nextjs",
-            "optimize-nextjs-fluidity",
-            "audit-ux-laws",
-            "audit-ui-and-save-files",
-            "audit-ux-and-save-files",
-            "craft-brand-theme",
-            "run-astro-audit",
-        ],
-    ),
-    "yk-mcp": (
-        "mcp",
-        "MCP & agent interfaces — build (SDK v1/v2, mcp-use), clean architecture, convert v1→v2, test, and agent-readiness audits for MCP servers and CLIs.",
-        [
-            "audit-agentic-mcp",
-            "audit-agentic-cli",
-            "build-clean-mcp-architecture",
-            "build-mcp-server-sdk-v1",
-            "build-mcp-server-sdk-v2",
-            "build-mcp-use-agent",
-            "build-mcp-use-client",
-            "build-mcp-use-server",
-            "convert-mcp-sdk-v1-to-v2",
-            "test-by-mcpc-cli",
-        ],
-    ),
-    "yk-testing": (
-        "testing",
-        "Testing — independent agentic E2E campaigns, Maestro mobile flows, TestSprite, and ego-browser journeys.",
-        [
-            "run-agentic-tests",
-            "run-ego-e2e",
-            "run-testsprite-backend",
-            "run-testsprite-frontend",
-            "test-by-maestro",
-        ],
-    ),
-    "yk-build": (
-        "build",
-        "App & framework builders — Chrome MV3, Cloudflare Access SSO, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
-        [
-            "build-chrome-extension",
-            "build-cloudflare-access-sso",
-            "build-cloudflare-email-sending",
-            "build-effect-ts-v3",
-            "build-kernel-ts-sdk",
-            "build-langchain-ts-app",
-            "build-licenseseat-swift",
-            "build-raycast-script-command",
-            "build-sentry-macos-swift",
-            "build-tinacms-nextjs",
-        ],
-    ),
-    "yk-research": (
-        "research",
-        "Research & discovery — single-question and wave-based corpus research plus GitHub repository scouting.",
-        ["run-research", "run-deep-research", "run-github-scout"],
-    ),
-    "yk-automation": (
-        "automation",
-        "Live automation — Herdr terminal/agent control, project manager supervision, browser automation, and iOS and Android testing.",
-        [
-            "herdr",
-            "project-manager",
-            "run-agent-browser",
-            "run-agent-device",
-            "mobilerun-control",
-            "use-chatgpt-by-applescript",
-        ],
-    ),
-    "yk-config": (
-        "config",
-        "Instruction & config files — AGENTS.md/CLAUDE.md/REVIEW.md hierarchies, drift audits, scenario Makefiles.",
-        ["init-agent-config", "update-agent-config", "init-makefiles", "init-jean-json"],
-    ),
-    "yk-ops": (
-        "ops",
-        "Ops & observability — Cloudflare Tunnel, Railway, Coolify Cloud compose deploys, Sentry fullstack observability & triage, CI/CD optimization, repo cleanup, TypeScript dead-code cleanup, npm publishing.",
-        [
-            "use-cloudflare-tunnel",
-            "run-railway",
-            "deploy-coolify-cloud",
-            "ci-cd-optimize",
-            "use-sentry",
-            "run-repo-cleanup",
-            "run-ts-cleanup",
-            "upgrade-typescript-go",
-            "publish-npm-package",
-        ],
-    ),
-    "yk-skills": (
-        "skills-meta",
-        "Skill authoring — research-driven skill creation and derailment stress-testing of existing SKILL.md files.",
-        ["build-skill", "audit-skill-by-derailment"],
-    ),
-    "yk-writing": (
-        "productivity",
-        "Writing & editing — multilingual natural-writing diagnosis, evidence-safe rewriting, and publication review for text, Markdown, MDX, and HTML.",
-        ["convert-to-natural-writing"],
-    ),
-}
 
 def load_validator():
     spec = importlib.util.spec_from_file_location(
@@ -185,87 +70,47 @@ def all_skills():
     )
 
 
-def skill_categories():
-    return {
-        skill: category
-        for _bundle, (category, _blurb, members) in GROUPS.items()
-        for skill in members
-    }
-
-
 def build_claude_marketplace():
     v = load_validator()
     repo_skills = all_skills()
     skills = sorted(set(repo_skills) - CODEX_ONLY_SKILLS)
 
-    # Coverage invariant: every Claude-compatible skill is in exactly one
-    # group, while every declared Codex-only skill exists and is in no group.
-    grouped = [s for _c, _b, members in GROUPS.values() for s in members]
-    dupes = sorted({s for s in grouped if grouped.count(s) > 1})
-    missing = sorted(set(skills) - set(grouped))
-    unknown = sorted(set(grouped) - set(repo_skills))
     missing_codex_only = sorted(CODEX_ONLY_SKILLS - set(repo_skills))
-    grouped_codex_only = sorted(CODEX_ONLY_SKILLS & set(grouped))
-    problems = []
-    if dupes:
-        problems.append(f"skills in >1 group: {dupes}")
-    if missing:
-        problems.append(f"skills in NO group: {missing}")
-    if unknown:
-        problems.append(f"group lists non-existent skills: {unknown}")
     if missing_codex_only:
-        problems.append(f"Codex-only skills do not exist: {missing_codex_only}")
-    if grouped_codex_only:
-        problems.append(f"Codex-only skills appear in Claude groups: {grouped_codex_only}")
-    if problems:
-        print("marketplace generation failed:\n  " + "\n  ".join(problems), file=sys.stderr)
+        print(f"marketplace generation failed:\n  Codex-only skills do not exist: {missing_codex_only}", file=sys.stderr)
         sys.exit(2)
 
     plugins = []
     ver = version()
 
-    # 1) everything bundle
+    # 1) all-pack plugin
     plugins.append(
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "Every Claude-compatible skill — all {} skills. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "Every Claude-compatible skill — all {} skills. Every skill is manual-only (invoked by name).".format(
                 len(skills)
             ),
             "version": ver,
-            "category": "bundle",
+            "category": "skills",
             "strict": False,
             "skills": [f"./skills/{s}" for s in skills],
         }
     )
 
-    # 2) themed bundles
-    for key, (category, blurb, members) in GROUPS.items():
-        entry = {
-            "name": key,
-            "source": "./",
-            "description": blurb,
-            "version": ver,
-            "category": "bundle",
-            "tags": [category],
-            "strict": False,
-            "skills": [f"./skills/{m}" for m in members],
-        }
-        plugins.append(entry)
-
-    # 3) one plugin per skill (fine-grained install/uninstall)
-    skill_to_cat = skill_categories()
+    # 2) one plugin per skill (fine-grained install/uninstall)
     for s in skills:
-        entry = {
-            "name": s,
-            "source": "./",
-            "description": skill_desc(v, s),
-            "version": ver,
-            "category": skill_to_cat[s],
-            "strict": False,
-            "skills": [f"./skills/{s}"],
-        }
-        plugins.append(entry)
+        plugins.append(
+            {
+                "name": s,
+                "source": "./",
+                "description": skill_desc(v, s),
+                "version": ver,
+                "category": "skills",
+                "strict": False,
+                "skills": [f"./skills/{s}"],
+            }
+        )
 
     return {
         "name": MARKETPLACE_NAME,
@@ -274,7 +119,7 @@ def build_claude_marketplace():
             "url": "https://github.com/yigitkonur",
         },
         "metadata": {
-            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill.",
+            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack or a single skill.",
             "version": version(),
         },
         "plugins": plugins,
