@@ -183,9 +183,19 @@ const initRes = await kernel.browsers.repl(session.session_id, {
     await globalThis.page.goto('https://example.com');
     repl.write('Page loaded: ' + (await globalThis.page.title()));
   `,
+  timeout_sec: 60,
 });
+
+// Response is `BrowserReplResult`:
+// { repl_id, success, content?, content_truncated?, duration_ms?, error?, repl_terminated?, stack? }
+console.log('REPL ID:', initRes.repl_id); // stable CUID2 across calls
 for (const item of initRes.content ?? []) {
-  if (item.type === 'text') console.log('REPL output:', item.text);
+  if (item.type === 'text') {
+    // item.channel: 'write' (from repl.write) | 'stdout' | 'stderr'
+    console.log(`[${item.channel}] ${item.text}`);
+  } else if (item.type === 'image') {
+    console.log(`Image: ${item.format} (${item.data.length} b64 chars)`);
+  }
 }
 
 // Subsequent call reuses the existing `page` and variables!
@@ -197,33 +207,37 @@ const extractRes = await kernel.browsers.repl(session.session_id, {
 });
 ```
 
-CLI counterpart: `kernel browsers repl <session_id>` drives an interactive terminal directly into the VM.
+CLI counterpart: `kernel browsers repl <session_id>` drives an interactive terminal directly into the VM (requires `@onkernel/cli` v0.38.2+).
 
 When to use:
 - Multi-step interactive workflows where initializing Playwright or downloading libraries on every step is prohibitive
-- Co-located agents (such as running coding agents inside the browser VM alongside Chromium)
+- Co-located coding agents running inside the browser VM
 - Inspecting page state dynamically with in-VM `repl` helpers (`repl.write()`, `repl.emitImage()`, `repl.help()`)
 
 ## Surface 6 — WebMCP (Model Context Protocol)
 
-WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally.
+WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally. Page-declared tools, polyfills (`navigator.modelContext`), and custom CDP-backed tools are automatically discovered.
 
 ```ts
-// 1. Discover tools provided natively by the page (or registered polyfills)
+// 1. Discover tools (query: { exclude_custom?: boolean })
 const tools = await kernel.browsers.webmcp.listTools(session.session_id);
-for (const tool of tools.tools) {
-  console.log('Tool:', tool.tool.name, tool.tool.description);
+for (const item of tools.tools) {
+  // item: { tool_ref: string, source: 'page' | 'custom', tool: ToolMetadata }
+  console.log('Tool:', item.tool.name, item.tool.description, item.tool.inputSchema);
 }
 
-// 2. Invoke a discovered page tool
+// 2. Invoke a discovered tool
 const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
   tool_ref: tools.tools[0].tool_ref,
   input: { query: 'laptop' },
+  timeout_sec: 30,
 });
+console.log('Result:', result.output, result.error_text);
 
-// 3. Register custom tools backed by CDP or page evaluations (source: JS code string)
-await kernel.browsers.webmcp.customTools.add(session.session_id, {
+// 3. Register custom tools (backed by page evaluations or CDP)
+const registered = await kernel.browsers.webmcp.customTools.add(session.session_id, {
   namespace: 'custom',
+  force_overwrite_namespace: true,
   source: `[{
     match: { url_patterns: ['*'] },
     tool: {
@@ -234,13 +248,25 @@ await kernel.browsers.webmcp.customTools.add(session.session_id, {
     execute: async () => ({ total: document.querySelector('#cart-total')?.textContent })
   }]`,
 });
+
+// List or remove custom tools:
+const customList = await kernel.browsers.webmcp.customTools.list(session.session_id);
+// Note: remove takes tool ID as 1st arg, browser id_or_name in params:
+await kernel.browsers.webmcp.customTools.remove(customList.tools[0].id, {
+  id_or_name: session.session_id,
+});
 ```
 
-CLI counterpart: `kernel browsers webmcp custom-tools list|add|remove <session_id>`.
+CLI counterpart:
+```bash
+kernel browsers webmcp list <session_id>
+kernel browsers webmcp invoke <session_id> --tool-ref <ref> --input '{"query":"laptop"}'
+kernel browsers webmcp custom-tools list|add|remove <session_id>
+```
 
 When to use:
-- Websites exposing native AI agent interfaces via `navigator.modelContext`
-- Declarative forms with `awaiting_submission` workflows
+- Websites exposing native AI agent interfaces or `navigator.modelContext` polyfills
+- Exposing DOM extraction or CDP actions to agent LLMs with strict JSON schemas
 - Uniform tool contracts across complex web applications
 
 ## Surface 7 — Process Execution
@@ -248,27 +274,34 @@ When to use:
 Direct execution of shell commands, CLI utilities, and background processes inside the unikernel VM.
 
 ```ts
-// Synchronous command execution (timeout_sec, returns base64 stdout/stderr)
+// 1. Synchronous command execution
+// Response: { exit_code?: number, stdout_b64?: string, stderr_b64?: string, duration_ms?: number }
 const execRes = await kernel.browsers.process.exec(session.session_id, {
   command: 'uname',
   args: ['-a'],
   timeout_sec: 10,
+  // as_root: false,
+  // env: { FOO: 'bar' },
+  // cwd: '/tmp',
 });
 const stdout = Buffer.from(execRes.stdout_b64 ?? '', 'base64').toString('utf8');
 console.log('stdout:', stdout);
 
-// Spawn a long-lived process or PTY
+// 2. Spawn long-lived background process or PTY
 const proc = await kernel.browsers.process.spawn(session.session_id, {
   command: 'node',
   args: ['-e', 'console.log("running...")'],
+  pty: false,
 });
+const status = await kernel.browsers.process.status(proc.process_id, { id_or_name: session.session_id });
+await kernel.browsers.process.kill(proc.process_id, { id_or_name: session.session_id });
 ```
 
-CLI counterpart: `kernel browsers process <session_id>`.
+CLI counterpart: `kernel browsers process <session_id> --command "uname -a"`.
 
 When to use:
-- Running local diagnostic or inspection tools in the VM
-- Interacting with Linux filesystem utilities, measuring memory, or downloading files
+- Running local diagnostic or inspection tools in the VM (e.g. measuring memory via `free -m`)
+- Interacting with Linux filesystem utilities or downloading binaries
 - Executing standalone CLI tools co-located with the browser
 
 ## WebDriver BiDi

@@ -38,9 +38,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** Even with `stealth: true`, the site flags the browser as a bot.
 
-**Cause:** Stealth adds a default ISP proxy and an automatic CAPTCHA solver. It does not defeat every detector — sophisticated sites combine IP reputation, fingerprinting, and behavioral heuristics.
+**Cause:** Stealth adds a default ISP proxy and an automatic CAPTCHA solver. It does not defeat every detector — sophisticated sites combine IP reputation, fingerprinting, and behavioral heuristics. Note that stealth mode's default proxy is an ISP proxy with a residential ASN providing a static IP across sessions, not a dynamic residential rotating proxy.
 
-**Fix:** Layer signals — pair stealth with a residential proxy (`proxy: { id: p.id }` on `browsers.create`; the flat `proxy_id` is `@deprecated` in v0.92.0), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
+**Fix:** Layer signals — pair stealth with a dedicated residential proxy (`proxy: { id: p.id }` or `{ name: p.name }` on `browsers.create`; the flat `proxy_id` is `@deprecated` in v0.92.0, and `disable_default_proxy` is `@deprecated` in favor of `proxy: { mode: 'direct' }`), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
 
 ## 6. CDP latency vs `playwright.execute`
 
@@ -78,7 +78,7 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** An org-wide API key sees browsers / apps from other projects.
 
-**Cause:** Org-wide API keys are not project-scoped by default unless configured. In the CLI, requests can be scoped with `--project <project_id_or_name>` or by setting `KERNEL_PROJECT=<project_id_or_name>`.
+**Cause:** Org-wide API keys are not project-scoped by default unless configured. In the CLI, requests can be scoped with `--project <project_id_or_name>` or by setting `KERNEL_PROJECT=<project_id_or_name>`. Note that REST endpoints for projects moved under `/org/projects/*` (old `/projects/*` paths are deprecated).
 
 **Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override. In the CLI, pass `--project <project_id_or_name>` or export `KERNEL_PROJECT`.
 
@@ -108,13 +108,13 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Add `"type": "module"` to `package.json`. If you have CommonJS-only dependencies, refactor or pin compatible versions.
 
-## 14. Idle pool-cost model
+## 14. Idle pool-cost model and unified concurrency
 
 **Symptom:** Confusion about pool billing — "is the idle pool charging me?"
 
-**Cause:** Per kernel.sh/docs/info/pricing, idle browsers in a pool incur **no disk charges**; you pay compute only when a browser is actively in use (i.e. acquired). Pool plan availability is doc-conflicted: the pricing prose says "Browser pools are available on Start-Up and Enterprise plans," while the plan feature table on the same page marks Browser pools ✅ on all four tiers (Developer / Hobbyist / Start-Up / Enterprise). Verify against your own account before designing around pools.
+**Cause:** Per kernel.sh/docs/info/pricing, idle browsers in a pool incur **no disk charges**; you pay compute only when a browser is actively in use (i.e. acquired). However, reserved pool capacity counts against your **concurrency limit** whether or not the browsers are acquired. Note: on July 10, 2026, separate pooled limits were unified into a single `max_concurrent_sessions` limit (`max_pooled_sessions` is `@deprecated`).
 
-**Fix:** Don't oversize pools "just in case" — there is no idle disk cost, but reserved pool capacity counts against your **concurrency limit** whether or not the browsers are acquired (a pool sized to 40 uses 40 of your limit; Developer caps at 5 concurrent, Hobbyist at 10, Start-Up at 150). Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and tune accordingly. Use `flush()` to reset after a config change.
+**Fix:** Don't oversize pools "just in case" — inspect live usage via `await kernel.organization.limits.retrieve()` (`concurrent_sessions_used`, `concurrent_sessions_available`, `max_concurrent_sessions`). Use `flush()` to reset after a config change, and pass `memory: '16GiB'` or `discard_all_idle: true` when updating pool configurations.
 
 ## 15. Payload limits are doc-conflicted
 
@@ -134,6 +134,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 ## Where to look next
 
+- Dedicated CLI Reference: `references/guides/cli-reference.md`
+- Vaults and Payments: `references/patterns/vaults-and-payments.md`
+- Telemetry and OTLP Export: `references/guides/telemetry.md`
 - File I/O and replay-specific issues: `references/troubleshooting/files-and-replays.md`
 - Auth state and profile errors: `references/troubleshooting/auth-and-profile-errors.md`
 - Picking the right control surface to avoid latency: `references/patterns/browser-control-surfaces.md`

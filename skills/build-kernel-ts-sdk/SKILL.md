@@ -149,11 +149,19 @@ Read the real caps instead of guessing at plan tiers: `await kernel.organization
 
 > **Stagehand v4 attaches over CDP; `new Stagehand(...)` is gone.** The constructor is private — use `Stagehand.create()`, and pass a `browser` (it is required). Mirror the Stagehand extension onto the Kernel browser's filesystem first (`browsers.fs.uploadZip`), then `const browser = await localBrowser.connect({ cdpUrl: session.cdp_ws_url })` and `await Stagehand.create({ browser, model: { modelName: 'openai/gpt-4o', apiKey: process.env.MODEL_API_KEY } })`. `env: 'LOCAL'` and `localBrowserLaunchOptions` are v3-only and do not exist in v4; `modelName` must be namespaced (`openai/…`, `anthropic/…`), never bare `'gpt-4o'`. Top-level `apiKey` is the **Stagehand** key — model credentials belong in `model.apiKey`. `projectId` is not a `Stagehand.create` option at all; Browserbase credentials live on `browserbase.connect(...)`. `stagehand.page` was removed — `act`/`extract`/`observe` are on the instance.
 
-> **`proxy_id` is deprecated on `browsers.create`.** Pass the typed `proxy` object instead — `proxy: { id }`, `proxy: { name }`, or `proxy: { mode: 'direct' | 'default' }`. `proxy` and `proxy_id` cannot be combined, and `proxy_id` is `@deprecated` on every browser response shape too.
+> **`proxy_id` is deprecated on `browsers.create`.** Pass the typed `proxy` object instead — `proxy: { id }`, `proxy: { name }`, or `proxy: { mode: 'direct' | 'default' }`. `proxy` and `proxy_id` cannot be combined, and `proxy_id` is `@deprecated` on every browser response shape too. `disable_default_proxy` is deprecated in favor of `proxy: { mode: 'direct' }`.
 
-> **Supported Regions:** Kernel supports four browser and browser-pool regions: `'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'` (requires Start-Up or Enterprise plan, defaults to `us-east`). App deployments currently support only `'aws.us-east-1a'`.
+> **Supported Regions:** Kernel supports four browser and browser-pool regions: `'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'` (requires Start-Up or Enterprise plan, defaults to `us-east`). App deployments support `'aws.us-east-1a'` with multi-host routing.
 
-> **Vaults on `browsers.create`:** Pass `vaults: [{ id }]` to bind project-scoped credential or payment vaults at session creation. Vault links are immutable after session boot. Paced autofill injects credentials into the DOM at human typing speed without exposing secrets to the agent context.
+> **Audio Defaults:** Headful browsers play audio by default; headless browsers mute audio by default. Replays support `record_audio: boolean` (defaults to false).
+
+> **Unified Concurrency Limits:** On-demand and browser-pool concurrency limits are unified in `max_concurrent_sessions`. The API and CLI report `concurrent_sessions_used` and `concurrent_sessions_available`; `max_pooled_sessions` is `@deprecated`.
+
+> **Browser Pools Extended Memory & Dynamic Profile Binding:** Pools can be created or updated with `memory: '16GiB'` (defaults to `'8GiB'`). `browserPools.acquire` supports dynamic profile binding (`profile: { name }`). Idle pool instances use auto-standby.
+
+> **Persistent Browsers EOL:** Kernel has end-of-lifed persistent VMs (`persistent: true`). Use `timeout_seconds` + Profiles (`save_changes: true`) for state persistence.
+
+> **Vaults, 1Password Autofill & MPP Purchases:** Pass `vaults: [{ id }]` to bind project-scoped credential or payment vaults at session creation. Vault links are immutable after session boot. Paced autofill injects credentials into the DOM at human typing speed without exposing secrets. Supports 1Password Agentic Autofill (`1pw_*` operations), Stripe Link, AgentCard (`checkout_origin`), and autonomous MPP browser purchases via HTTP 402.
 
 ## Bundled scripts
 
@@ -167,10 +175,13 @@ Read the real caps instead of guessing at plan tiers: `await kernel.organization
 | Document | What it contains | Load when |
 |---|---|---|
 | [references/guides/client-and-config.md](references/guides/client-and-config.md) | Env vars, environments, retries, idempotency, pagination, error taxonomy, request options | Constructing the client, debugging auth/network errors, handling pagination |
+| [references/guides/cli-reference.md](references/guides/cli-reference.md) | Full `@onkernel/cli` reference across all 16 command groups and flags | Running CLI commands, debugging shell automation, checking CLI equivalents |
 | [references/guides/browsers-lifecycle.md](references/guides/browsers-lifecycle.md) | `browsers.create` params, `BrowserCreateResponse`, standby, termination, viewport, timeout semantics | Creating, configuring, or terminating browsers |
 | [references/guides/apps-deploy-invoke.md](references/guides/apps-deploy-invoke.md) | `deployments.*`, `invocations.create` sync vs async, `invocations.follow` SSE, secrets, logs | Deploying a Kernel App or invoking it from another service |
 | [references/guides/managed-auth.md](references/guides/managed-auth.md) | 3-piece architecture, `auth.connections.*`, `<KernelManagedAuth />` props, profile interop | Authenticating an agent on a user's behalf into a SaaS |
-| [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md) | Decision tree across CDP, `playwright.execute`, `computer.*`, `curl` | Picking the right control surface for a task |
+| [references/guides/telemetry.md](references/guides/telemetry.md) | Categories (operational vs opt-in), SSE stream, historical events query, OTLP destinations | Streaming live session events or exporting to OpenTelemetry |
+| [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md) | Decision tree across CDP, `playwright.execute`, `computer.*`, `repl`, `webmcp.*`, `process.*` | Picking the right control surface for a task |
+| [references/patterns/vaults-and-payments.md](references/patterns/vaults-and-payments.md) | Vaults, credentials, 1Password Agentic Autofill, Link, AgentCard, MPP browser purchases | Managing credentials, cards, paced autofill, or agent payments |
 | [references/patterns/playwright-stagehand-integration.md](references/patterns/playwright-stagehand-integration.md) | `connectOverCDP` idiom, default-context warning, Stagehand connect/launch options, `kernel create --template` | Wiring Playwright or Stagehand to a Kernel browser |
 | [references/patterns/profiles-pools-credentials.md](references/patterns/profiles-pools-credentials.md) | `profiles.*`, `browserPools.*`, `credentials.*`, `credentialProviders.*` (1Password) | Persistent login state, pool warm-starts, credential providers |
 | [references/patterns/integrations-matrix.md](references/patterns/integrations-matrix.md) | Hookup snippets per integration (Stagehand, Browser Use, Claude Agent SDK, Vibium, etc.) | Connecting a third-party agent framework to a Kernel browser |

@@ -129,10 +129,10 @@ In v3 `apiKey` / `projectId` at the top level are the **Browserbase** credential
 ## Stagehand template
 
 ```bash
-kernel create --name my-stagehand-app --language typescript --template stagehand --yes
+kernel create --name my-stagehand-app --language typescript --template stagehand
 ```
 
-All three of `--name`, `--language`, `--template` are required in a non-interactive shell — the CLI fails fast instead of prompting when stdin is not a TTY. `--yes` overwrites an existing directory without confirmation. The `stagehand` template is TypeScript-only.
+All three of `--name`, `--language`, `--template` are required in a non-interactive shell — the CLI fails fast instead of prompting when stdin is not a TTY. Note that `kernel create` does not have a `--yes` flag. The `stagehand` template is TypeScript-only.
 
 As of modern `@onkernel/cli` releases, the `stagehand` template is standardized on Stagehand v4 (`@browserbasehq/stagehand^4`). Follow the Stagehand v4 instructions above when working with template-scaffolded projects.
 

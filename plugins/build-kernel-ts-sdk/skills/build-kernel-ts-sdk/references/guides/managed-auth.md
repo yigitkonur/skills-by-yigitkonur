@@ -27,7 +27,7 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 
 `kernel.auth.context.retrieve()` is the other half of the `auth.*` surface — it reports the caller's principal, organization, and `authorization.credential_scope` / `effective_scope` project ids.
 
-**Cost and re-auth defaults.** `health_checks` defaults to **true**: Kernel runs a background browser session against the target site on `health_check_interval` (default 3600s or your plan minimum, whichever is larger — Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400) for the life of the connection. Budget for it, or pass `health_checks: false` for one-shot connections. Connections whose health check is skipped or missing a check URL show as `Unverified`. `auto_reauth` also defaults to true but is a **no-op when `health_checks: false`**, because re-auth only fires after a failed scheduled health check. `browser` (`ManagedAuthBrowserConfig`) is where proxy, telemetry, and regional placement (`region?: 'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'`) for login, re-auth, and health-check sessions go; top-level `proxy` and `browser_telemetry` are deprecated.
+**Cost and re-auth defaults.** `health_checks` defaults to **true**: Kernel runs a background browser session against the target site on `health_check_interval` (default 3600s or your plan minimum, whichever is larger — Enterprise 300 / Startup 1200 / Hobbyist 3600 / Free 21600; max 86400) for the life of the connection. Budget for it, or pass `health_checks: false` for one-shot connections. Connections whose health check is skipped or missing a check URL show as `Unverified`. `auto_reauth` also defaults to true but is a **no-op when `health_checks: false`**, because re-auth only fires after a failed scheduled health check. `browser` (`ManagedAuthBrowserConfig`) is where proxy, telemetry, and regional placement (`region?: 'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'`) for login, re-auth, and health-check sessions go; top-level `proxy`, `proxy_id`, and `browser_telemetry` are `@deprecated`.
 
 `auth.connections.create` returns 409 if a connection with the same `domain` + `profile_name` already exists. Either reuse the existing one (`retrieve`/`list`) or pick a different `profile_name`.
 
@@ -37,7 +37,7 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 
 **`flow_step`** (programmatic): `DISCOVERING`, `AWAITING_INPUT`, `SUBMITTING`, `AWAITING_EXTERNAL_ACTION` (push approval / hardware key), `COMPLETED`. The flow can move between these in any order — `AWAITING_EXTERNAL_ACTION` can precede `SUBMITTING` for SSO, and the loop may revisit `AWAITING_INPUT` multiple times. Branch on the current `flow_step`, do not assume a fixed sequence.
 
-**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required). In the SDK, inspect `conn.status`, `conn.can_reauth`, and `conn.can_reauth_reason`.
+**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required). In the SDK, inspect `conn.status`, `conn.can_reauth`, and `conn.can_reauth_reason` (typed enum with 14 values: `requires_totp_without_secret`, `requires_email_code`, `requires_sms_code`, `requires_push_approval`, `requires_security_key`, `requires_password_change`, `no_credential`, `invalid_credential`, `account_locked`, `session_expired`, `no_viable_plans`, `health_check_failed`, `unknown`).
 
 **Dashboard reauthentication status tiers:**
 - `Auto`: Fully automated re-auth (stored credentials + automated 2FA/TOTP secret available).
@@ -227,5 +227,7 @@ Read `can_reauth` and `can_reauth_reason` on the connection to find out whether 
 ## Where to look next
 
 - Embedded React component walk-through: `references/examples/managed-auth-flow.md`
+- Vaults and Agentic 1Password Autofill: `references/patterns/vaults-and-payments.md`
+- CLI reference for auth commands: `references/guides/cli-reference.md`
 - 1Password and other credential providers: `references/patterns/profiles-pools-credentials.md`
 - Common auth errors (409, expired handoff, NEEDS_AUTH loops): `references/troubleshooting/auth-and-profile-errors.md`

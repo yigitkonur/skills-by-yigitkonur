@@ -25,11 +25,33 @@ const session = await kernel.browsers.create({
 });
 ```
 
-That is 16 of the 20 `BrowserCreateParams` fields. The remaining four are advanced: `network` (`{ private_hosts: [...] }` — route named hosts through the session's own network instead of Kernel egress), `chrome_policy` (Chrome enterprise policy overrides; kernel-managed policies are blocked), `telemetry`, and the `@deprecated` `proxy_id`. Read `node_modules/@onkernel/sdk/resources/browsers/browsers.d.ts` for the full doc comments.
+That covers `BrowserCreateParams` fields. The configuration options are:
+- `stealth`: Anti-detection + automated CAPTCHA solver.
+- `headless`: Headless Chromium image. Note: headful sessions play audio by default; headless sessions mute audio by default.
+- `timeout_seconds`: Inactivity seconds before termination (10 to 259,200 = 72h).
+- `viewport`: `{ width, height, refresh_rate? }` window dimensions.
+- `memory`: `'8GiB'` (default) or `'16GiB'` for headful non-GPU sessions.
+- `profile`: `{ name, id, save_changes? }` profile snapshot binding.
+- `proxy`: `{ mode: 'direct' | 'default', id?: string, name?: string }` typed proxy config.
+- `network`:
+  - `allowed_hosts`: Egress allowlist (`string[]`). Destinations not matching an entry are rejected with 403 and `X-Kernel-Proxy-Error: network_policy_denied`. Can be modified on running sessions.
+  - `private_hosts`: Route directly through VM network (e.g. Tailscale/VPN). Defaults to RFC1918, CGNAT `100.64.0.0/10`, and IPv6 ULA; `[]` disables direct routing.
+  - `proxy_routes`: Per-host proxy routing (`Array<{ hosts: string[], proxy: { id?: string, name?: string } }>`).
+- `chrome_policy`: Custom Chrome enterprise policy overrides (`{ [key: string]: unknown }`).
+- `telemetry`: Browser session telemetry configuration (`{ enabled: boolean, ... }`).
+- `kiosk_mode`: Hide address bar and tabs in live view.
+- `gpu`: GPU acceleration (Start-Up/Enterprise, `us-east` only).
+- `extensions`: Pre-installed extensions by id or name.
+- `vaults`: Project-scoped credential or payment vaults linked at create (immutable).
+- `invocation_id`: Tag with parent invocation for automatic cleanup.
+- `name` & `tags`: Unique session name and up to 50 key-value tag pairs (both updatable on running sessions).
+- `start_url`: Initial navigation (can also be passed to `browsers.update` to navigate or collapse restored tabs).
+- `@deprecated proxy_id`: Deprecated in v0.92.0 in favor of typed `proxy` object. Cannot be combined with `proxy`.
+- `@deprecated disable_default_proxy`: Deprecated in favor of `proxy: { mode: 'direct' }`.
 
-Fixed for the life of the session: **`region`** and `vaults` are immutable after create, and `headless`, `gpu`, `memory`, `stealth`, `kiosk_mode`, and `timeout_seconds` have no counterpart in `BrowserUpdateParams`. `name`, `tags`, `profile`, `proxy`, `viewport`, `telemetry`, `start_url` (which navigates or collapses restored tabs to a single page), and `network` (`allowed_hosts`) can be changed on a running session.
+Fixed for the life of the session: **`region`** and `vaults` are immutable after create, and `headless`, `gpu`, `memory`, `stealth`, `kiosk_mode`, and `timeout_seconds` have no counterpart in `BrowserUpdateParams`. `name`, `tags`, `profile`, `proxy`, `viewport`, `telemetry`, `start_url` (which navigates or collapses restored tabs to a single page), and `network.allowed_hosts` can be changed on a running session.
 
-`proxy_id` is `@deprecated` in v0.92.0 in favor of the typed `proxy` object, and the two **cannot be combined**. Omit `proxy` entirely to get the default (stealth → Kernel's stealth proxy, non-stealth → direct egress). `mode: 'direct'` forces direct egress even with `stealth: true`; `mode: 'default'` restores the stealth-derived default. Proxy selection changes egress only — it never enables or disables stealth or the CAPTCHA solver.
+> **Persistent Browsers EOL:** Kernel has end-of-lifed persistent browser VMs (`persistent: true`). Persistent state is now handled natively via Kernel Profiles (`profile: { name, save_changes: true }`) combined with extended `timeout_seconds` and automatic standby mode.
 
 Returns `BrowserCreateResponse`:
 
@@ -40,6 +62,7 @@ Returns `BrowserCreateResponse`:
 | `webdriver_ws_url` | WebDriver BiDi clients (Vibium etc.) |
 | `browser_live_view_url` | Iframe-able human handoff URL (only when `headless: false`) |
 | `base_url` | The browser VM's exposed HTTP base (used by `fs`, `process`, `computer`, `playwright.execute`) |
+| `profile_save_changes` | Boolean indicating whether this session's profile state will save back on termination |
 
 ## Inspect and update a live session
 
@@ -230,6 +253,9 @@ See `references/troubleshooting/files-and-replays.md` for `fs` patterns.
 ## Where to look next
 
 - Picking the right control surface: `references/patterns/browser-control-surfaces.md`
+- Dedicated CLI commands and syntax: `references/guides/cli-reference.md`
+- Vaults, autofill, and payments: `references/patterns/vaults-and-payments.md`
+- Browser telemetry and OTLP streaming: `references/guides/telemetry.md`
 - Stagehand or Playwright wiring: `references/patterns/playwright-stagehand-integration.md`
 - Profiles, pools, and credential providers: `references/patterns/profiles-pools-credentials.md`
 - Common foot-guns: `references/troubleshooting/pitfalls.md`

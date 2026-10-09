@@ -232,6 +232,50 @@ ctx.authorization.effective_scope.project_id;   // scope selected for this reque
 
 The CLI supports project scoping via the `--project <project_id_or_name>` flag or the `KERNEL_PROJECT` environment variable.
 
+> **REST Routing Note:** Project endpoints are routed under `/org/projects/*` (e.g. `GET /org/projects`, `POST /org/projects`, `GET /org/projects/{id}`). The legacy `/projects/*` routes are `@deprecated`.
+
+## Organization limits and entitlements
+
+Inspect real concurrency caps and entitlements rather than guessing:
+
+```ts
+// Unified concurrency limits (counts on-demand sessions and pool reservations together)
+const limits = await kernel.organization.limits.retrieve();
+console.log(limits.concurrent_sessions_used);      // currently active sessions + pool reservations
+console.log(limits.concurrent_sessions_available); // available concurrency slots
+console.log(limits.max_concurrent_sessions);       // effective plan limit
+
+// Note: max_pooled_sessions is @deprecated in favor of unified max_concurrent_sessions.
+
+// Entitlements (active features, regional permissions, plans)
+const entitlements = await kernel.organization.entitlements.retrieve();
+```
+
+## API Key Management & Rotation
+
+Provision and rotate API keys under `/org/api_keys`:
+
+```ts
+// Rotate an active key (issues replacement, sets expiration on old key)
+const rotated = await kernel.apiKeys.rotate('key_123', {
+  expire_in_days: 7, // grace period before old key revokes
+});
+console.log('New key:', rotated.api_key);
+```
+
+## Web Search API
+
+Perform autonomous web searches and fetch page contents:
+
+```ts
+const search = await kernel.search.create({
+  query: 'Kernel browser automation',
+});
+for (const item of search.results) {
+  console.log(item.title, item.url);
+}
+```
+
 ## Runtime support
 
 - Node 20+ with `tsconfig.json` `target: 'es2017'+` and TypeScript ≥ 4.9
@@ -243,5 +287,8 @@ The CLI supports project scoping via the `--project <project_id_or_name>` flag o
 ## Where to look next
 
 - For browser create/use/terminate: `references/guides/browsers-lifecycle.md`
+- For dedicated CLI reference: `references/guides/cli-reference.md`
+- For vaults, autofill, and payments: `references/patterns/vaults-and-payments.md`
+- For session telemetry and OTLP: `references/guides/telemetry.md`
 - For `deployments.*` / `invocations.*`: `references/guides/apps-deploy-invoke.md`
 - For typical errors and root causes: `references/troubleshooting/pitfalls.md`

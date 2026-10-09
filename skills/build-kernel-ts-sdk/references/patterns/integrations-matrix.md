@@ -80,12 +80,13 @@ This is the recommended pattern for any framework that doesn't have a TS port: w
 `kernel create` scaffolds a ready-to-deploy Kernel App for the integration. All three of `--name`, `--language`, `--template` are required in a non-interactive shell — the CLI fails fast instead of prompting when stdin is not a TTY:
 
 ```bash
-kernel create --name my-app --language typescript --template stagehand --yes
+kernel create --name my-app --language typescript --template stagehand
 ```
 
-The full list from `@onkernel/cli` 0.45.0 (`create --help`):
+The full list from `@onkernel/cli` (`create --help`):
 
-- `stagehand` — Stagehand SDK [ts]
+- `stagehand` — Stagehand v4 SDK [ts]
+- `magnitude` — Magnitude SDK integration [ts]
 - `browser-use` — Browser Use SDK [py]
 - `claude-agent-sdk` — Claude Agent SDK browser-automation agent; wires an in-process MCP server exposing an `execute_playwright` tool backed by `kernel.browsers.playwright.execute` [py, ts]
 - `anthropic-computer-use` / `gemini-computer-use` / `openai-computer-use` — computer-use agents [py, ts]

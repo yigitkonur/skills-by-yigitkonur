@@ -97,7 +97,11 @@ Operations:
 Pools and profiles:
 
 - `kernel.browserPools.create({ …, profile: { name }, refresh_on_profile_update: true })` attaches a baseline profile to every browser in the pool. Provide either `id` or `name`; the profile must exist first.
-- **Pool-level profiles load read-only and never persist changes back.** `save_changes` is not part of the pool profile shape, and any `save_changes` value sent on a pool profile is silently ignored rather than rejected. Re-auth writes must happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session.
+- **Pool-level baseline profiles load read-only and never persist changes back.** `save_changes` is not part of the pool-definition profile shape, and any `save_changes` value sent on a pool baseline profile is ignored.
+- **Per-user durable state with browser pools:**
+  1. Create the pool without a profile.
+  2. Call `browserPools.acquire(name, { profile: { name, save_changes: true } })`.
+  3. Release the browser with `reuse: false` so the user's saved state persists but does not leak to the next acquirer.
 - `refresh_on_profile_update` flushes idle browsers when the pool's baseline profile is updated so they pick up the latest data. It defaults to `true` when a profile is given at create, and requires a profile on the pool.
 - `browserPools.acquire` supports dynamic **profile binding**: pass `profile: { name }` (or `id`) to bind a specific user profile to the acquired browser for that lease. When released back with `reuse: true`, the browser returns to the pool baseline. Omit `profile` to use the pool's baseline profile.
 
@@ -246,10 +250,14 @@ const buyResponse = await fetch('https://api.onkernel.com/mpp/browsers', {
 | Per-user login that survives sessions | Profile + Managed Auth (Hosted UI) |
 | Bulk warm-start automation, no auth | Browser pool with `stealth: true` |
 | Many users, same upstream SaaS | Profile-per-user + 1Password provider + auto-match |
-| Pool of pre-authenticated browsers | Pool created with `profile: { name }` (loaded read-only) + `refresh_on_profile_update: true`; re-auth writes happen in a separate non-pooled `browsers.create({ profile: { name, save_changes: true } })` session, then flush/refresh the pool |
+| Pool of pre-authenticated browsers (read-only baseline) | Pool created with `profile: { name }` + `refresh_on_profile_update: true` |
+| Durable per-user pool sessions | Empty pool + `acquire({ profile: { name, save_changes: true } })` + `release({ reuse: false })` |
 | Headless re-auth without prompting | Pre-stored credential + `auth.connections.create({ credential: { name } })` then submit |
+| Credential & Card Autofill | Link vaults on `browsers.create({ vaults: [{ id }] })` + paced fill |
 
 ## Where to look next
 
+- Dedicated Vaults and Payments guide: `references/patterns/vaults-and-payments.md`
 - Hosted UI vs Programmatic flow: `references/guides/managed-auth.md`
+- CLI reference for pools, profiles, credentials: `references/guides/cli-reference.md`
 - Common 409 conflicts and `NEEDS_AUTH` loops: `references/troubleshooting/auth-and-profile-errors.md`
