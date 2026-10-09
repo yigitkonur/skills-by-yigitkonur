@@ -1,6 +1,7 @@
 ---
 name: run-agentic-tests
 description: "Use if orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops."
+disable-model-invocation: true
 ---
 
 # Run Agentic Tests

@@ -1,6 +1,7 @@
 ---
 name: build-skill
 description: "Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: yigitkonur
