@@ -87,6 +87,13 @@ else
         check_warn "No root MCPServer import in $ENTRY. Expected: import { MCPServer } from \"mcp-use\""
     fi
 
+    # Check for default export (mandated by CLI runners)
+    if grep -qE 'export\s+default\s+' "$ENTRY"; then
+        check_pass "Default server export present (required for CLI runners)"
+    else
+        check_warn "No default export found in $ENTRY. CLI runners require: export default server;"
+    fi
+
     # Check for deprecated mcp-use/server import (v1)
     if grep -q 'from.*"mcp-use/server"' "$ENTRY"; then
         check_fail "Found mcp-use/server import (v1 pattern). Change to: import { MCPServer } from \"mcp-use\""

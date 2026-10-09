@@ -1,7 +1,7 @@
 {
   "name": "build-mcp-use-server",
   "version": "1.0.115",
-  "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers.",
+  "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "build-mcp-use-server",
-    "shortDescription": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers.",
+    "shortDescription": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.",
     "longDescription": "Install only the build-mcp-use-server workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

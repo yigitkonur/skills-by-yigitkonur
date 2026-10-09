@@ -41,12 +41,11 @@ The hook represents one rendering invocation for the lifetime of the mounted Vie
 2. Every complete `ontoolinput` or partial `ontoolinputpartial` notification received while pending replaces the current `toolInput` snapshot.
 3. Each changed pending snapshot emits to the hook subscription, so the component rerenders with the latest partial input.
 4. The first result with `structuredContent` becomes `ready`; the first result with `isError: true` becomes `error`.
-5. That first terminal success or error is latched. Later input, result, error, or cancellation notifications do not overwrite it.
-
-Content-only non-error results are ignored while pending because the protocol notifications do not include a tool name or request ID that would let the runtime correlate ambient tool activity. A cancellation notification also leaves this public context pending.
+5. That first terminal success or error is latched.
+6. When the host cancels execution (`ui/notifications/tool-cancelled`), `useToolContext()` transitions to `status: "error"` with `ToolCancelledError` (exported from `mcp-use/react`), carrying the host's cancellation reason.
 
 ```typescript
-import { useToolContext } from "mcp-use/react";
+import { useToolContext, ToolCancelledError } from "mcp-use/react";
 
 function ProductResults() {
   const ctx = useToolContext<"search-products">();
@@ -56,6 +55,9 @@ function ProductResults() {
   }
 
   if (ctx.status === "error") {
+    if (ctx.error instanceof ToolCancelledError) {
+      return <p>Tool execution was cancelled by host: {ctx.error.message}</p>;
+    }
     return <p>Error: {ctx.error.message}</p>;
   }
 

@@ -72,8 +72,8 @@ if command -v npm &>/dev/null; then
         LEGACY_V1=$(npm view mcp-use dist-tags.legacy-v1 2>/dev/null || echo "N/A")
 
         echo "mcp-use npm tags:"
-        echo "  latest: $LATEST (v1 era)"
-        echo "  beta: $BETA (v2)"
+        echo "  latest: $LATEST (v2 stable)"
+        echo "  beta: $BETA (pre-release)"
         echo "  legacy-v1: $LEGACY_V1"
     else
         echo "✗ Could not fetch npm tags"
@@ -86,12 +86,12 @@ echo ""
 
 # Check @mcp-use/cli versions
 if command -v npm &>/dev/null; then
-    CLI_BETA=$(npm view @mcp-use/cli dist-tags.beta 2>/dev/null || echo "N/A")
-    echo "@mcp-use/cli beta tag: $CLI_BETA"
+    CLI_LATEST=$(npm view @mcp-use/cli dist-tags.latest 2>/dev/null || echo "N/A")
+    echo "@mcp-use/cli latest tag: $CLI_LATEST"
 fi
 
 echo ""
 echo "=== Summary ==="
 echo "CLI version detected: $CLI_VERSION"
 echo "Run 'mcp-use --version' for exact version"
-echo "If v1, migrate to v2@beta using: npm install mcp-use@beta"
+echo "If v1, migrate to v2 using: npm install mcp-use"

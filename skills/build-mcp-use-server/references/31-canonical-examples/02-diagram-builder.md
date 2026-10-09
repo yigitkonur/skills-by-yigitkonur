@@ -27,7 +27,7 @@ Diagram Builder is an **external template-gallery app** — a standalone repo ou
 
 ## Pattern this illustrates (verified against real v2 API surface, not this repo's source)
 
-Two view-bound tools sharing one view name, matching the shape documented in `references/04-tools/canonical-anchor.md`:
+One view-bound tool owning the View (`create-diagram`), and an auxiliary tool (`edit-diagram`) invoked from inside the View via `useCallTool` (one View may have at most one owning tool; binding multiple tools to the same View throws):
 
 ```typescript
 export const createDiagram = server.tool(
@@ -49,6 +49,7 @@ export const createDiagram = server.tool(
   }
 );
 
+// Auxiliary tool called from within the View via useCallTool (no view binding)
 export const editDiagram = server.tool(
   {
     name: "edit-diagram",
@@ -58,7 +59,6 @@ export const editDiagram = server.tool(
       instructions: z.string().describe("What to change"),
     }),
     outputSchema: diagramSchema,
-    view: { name: "diagram-editor" },
   },
   async ({ diagramId, instructions }, ctx) => {
     const diagram = await applyDiagramEdit(diagramId, instructions);
@@ -70,7 +70,7 @@ export const editDiagram = server.tool(
 );
 ```
 
-The view side reads tool output with the real hooks — `useToolContext` for the bound tool's own result, `useCallTool` to invoke a different tool from inside the view (`useWidget` is not exported by `mcp-use/react`; the shipped exports are enumerated in `references/18-mcp-apps/view-react/02-usetoolcontext.md` and `references/18-mcp-apps/view-react/03-usecalltool.md`):
+The view side reads tool output with the real hooks — `useToolContext` for the bound tool's own result, and `useCallTool` to invoke `edit-diagram` from inside the view:
 
 ```tsx
 import { useCallTool, useToolContext } from "mcp-use/react";
@@ -80,7 +80,7 @@ export default function DiagramEditor() {
   const editDiagram = useCallTool("edit-diagram"); // returns { callTool, data, error, isPending }
 
   const handleEdit = (instructions: string) => {
-    if (view.status === "result") {
+    if (view.status === "ready") {
       editDiagram.callTool({ diagramId: view.toolOutput.id, instructions });
     }
   };

@@ -17,7 +17,7 @@ Output includes:
   ➜ MCP endpoint:  http://localhost:3000/mcp
   ➜ Inspector:     http://localhost:3000/mcp/inspector
 [mcp-use] starting tunnel for port 3000…
-  ➜ Tunnel:        https://happy-blue.local.mcp-use.run/mcp
+  ➜ Tunnel:        https://happy-blue.tunnel.mcp-use.run/mcp
 ```
 
 **Copy the full URL** (including `/mcp`) into your remote MCP client.
@@ -32,7 +32,7 @@ Output includes:
 ```
 [mcp-use] starting tunnel for port 3000…
 mcp-use server running at http://localhost:3000/mcp
-mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+mcp-use public MCP URL: https://happy-blue.tunnel.mcp-use.run/mcp
 ```
 
 **With a standalone server already running on /mcp:**
@@ -44,7 +44,7 @@ Output:
 ```
 ✔ Local MCP server available at
 
-  https://happy-blue.local.mcp-use.run
+  https://happy-blue.tunnel.mcp-use.run
 
 ```
 
@@ -54,7 +54,7 @@ The standalone package prints the bare origin — **append `/mcp` yourself** bef
 
 The tunnel URL is always:
 ```
-https://<subdomain>.local.mcp-use.run/mcp
+https://<subdomain>.tunnel.mcp-use.run/mcp
 ```
 
 The `/mcp` suffix is required — clients must include it.
@@ -65,7 +65,7 @@ The `/mcp` suffix is required — clients must include it.
 
 Test the tunnel with the `mcp-use client` CLI:
 ```bash
-npx mcp-use client connect tunnel-test https://happy-blue.local.mcp-use.run/mcp
+npx mcp-use client connect tunnel-test https://happy-blue.tunnel.mcp-use.run/mcp
 npx mcp-use client tunnel-test tools list
 ```
 

@@ -88,9 +88,11 @@ export const searchTickets = server.tool(
 | `schema` | `StandardSchemaWithJSON` | undefined | Alias for `inputSchema`. `inputSchema` wins when both are set. Prefer `inputSchema` in new code — it matches the MCP wire field name. |
 | `outputSchema` | `StandardSchemaWithJSON` | undefined | Output schema (required if tool has a `view`); SDK validates `structuredContent` at runtime |
 | `annotations` | `ToolAnnotations` | undefined | Hints: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` |
+| `icons` | `Icon[]` | undefined | Top-level tool icons on `tools/list` (`src`, `mimeType`, `sizes`, `theme`). Relative paths to `public/` are resolved automatically. |
+| `securitySchemes` | `ToolSecurityScheme[]` | undefined | Tool-level auth requirements for Mixed Auth (`[{ type: "noauth" }]`, `[{ type: "oauth2", scopes: [...] }]`) |
 | `_meta` | `MetaObject` | undefined | Opaque extension metadata on `tools/list` descriptor |
 | `visibility` | `"model" \| "app"` | undefined | Host-facing visibility metadata; `"app"` marks an app-private helper tool |
-| `view` | `ToolViewConfig` | undefined | Bind tool to MCP App view; requires `outputSchema`. Shape: `{ name, description?, csp?, permissions?, domain?, prefersBorder? }` |
+| `view` | `ToolViewConfig` | undefined | Bind tool to MCP App view; requires `outputSchema`. Shape: `{ name, description?, csp?, permissions?, domain?, prefersBorder?, entrypoints? }` |
 
 ## Return Type
 

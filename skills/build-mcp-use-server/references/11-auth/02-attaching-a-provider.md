@@ -33,9 +33,16 @@ Only the exact MCP transport route (`basePath`, default `/mcp`) requires `Author
 
 ### Unauthenticated behavior on the MCP route
 
-- No bearer token → **401 Unauthorized**, with a `WWW-Authenticate` header pointing at the protected-resource metadata URL
-- Invalid, expired, wrong-resource, or (when `requiredScopes` is set) insufficiently-scoped token → **401 Unauthorized**
-- Validation happens at the HTTP boundary via `requireBearerAuth`; tool/resource/prompt callback code never runs for a rejected request
+- **Without `mixedAuth` (default):**
+  - No bearer token → **401 Unauthorized**, with a `WWW-Authenticate` header pointing at the protected-resource metadata URL.
+  - Invalid, expired, wrong-resource, or insufficiently-scoped token → **401 Unauthorized**.
+  - Validation happens at the HTTP boundary via `requireBearerAuth`; callback code never runs for a rejected request.
+- **With `mixedAuth: true`:**
+  - `tools/list`, `resources/list`, and `prompts/list` are public and unauthenticated.
+  - Public tools (`securitySchemes: [{ type: "noauth" }]`) and optional tools run without token verification.
+  - Protected tools (`securitySchemes: [{ type: "oauth2", scopes: [...] }]`) trigger dual-challenge rejections:
+    - Standard MCP clients (Claude): HTTP 401/403 with `WWW-Authenticate` header.
+    - ChatGPT: HTTP 200 with JSON-RPC error containing `isError: true` and `_meta["mcp/www_authenticate"]`.
 
 ### Provider-specific metadata
 
@@ -45,7 +52,7 @@ Each provider's `oauthMetadata` object supplies:
 - **`registration_endpoint`** — where the client performs Dynamic Client Registration
 - **`jwks_uri`** — only some providers include this in the metadata object itself (e.g. Auth0 omits it); token verification instead always uses a `jwksUrl` passed internally to `createJwtVerifier`, independent of whether it appears in the advertised metadata
 
-The MCP server does not construct these URLs generically — each built-in provider factory (`oauth/clerk.ts`, `oauth/auth0.ts`, etc.) derives them from the issuer/domain option you pass in.
+The MCP server does not construct these URLs generically — each built-in provider factory (`oauth/clerk.ts`, `oauth/auth0.ts`, `oauth/scalekit.ts`, etc.) derives them from the issuer/domain option you pass in.
 
 ## Resource URL Inference
 
@@ -67,7 +74,7 @@ Listening on a non-local host, or calling `server.fetch` directly (Workers/edge)
 **Advertised scopes** (in OAuth metadata's `scopes_supported`):
 - Passed via `scopesSupported` in provider options
 - Tells clients what scopes the server accepts; used by clients during DCR and authorization
-- Better Auth's factory falls back to `["openid", "profile", "email", "offline_access"]` when `scopesSupported` is omitted — the only built-in provider with a non-empty default; the other five leave it unset unless you supply it
+- Better Auth's factory falls back to `["openid", "profile", "email", "offline_access"]` when `scopesSupported` is omitted — other built-in providers leave it unset unless you supply it
 
 ```typescript
 oauthClerkProvider({

@@ -1,6 +1,6 @@
 # scaffold-mcp-use-server.sh
 
-**What it does:** Drives `create-mcp-use-app@2.0.0-beta.14` non-interactively with real CLI flags from the v2 beta.
+**What it does:** Drives `create-mcp-use-app@latest` non-interactively with real CLI flags for mcp-use v2.
 
 **When to use:** Starting a new MCP server project from scratch.
 

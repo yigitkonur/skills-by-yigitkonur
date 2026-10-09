@@ -41,13 +41,12 @@ Annotations are behavioral hints clients use for confirmation dialogs, tool filt
 
 | Annotation | Type | Default | Meaning |
 |---|---|---|---|
-| `title` | `string` | — | Human-readable display name shown by clients. Falls back to `name` when omitted. |
 | `readOnlyHint` | `boolean` | `false` | Tool does not modify any state. |
 | `destructiveHint` | `boolean` | `true` | Tool may delete or irreversibly alter data. Only meaningful when `readOnlyHint` is `false`. |
 | `idempotentHint` | `boolean` | `false` | Repeated calls with same args produce the same result. Only meaningful when `readOnlyHint` is `false`. |
 | `openWorldHint` | `boolean` | `true` | Tool interacts with external/unbounded systems (web, third-party APIs). |
 
-These five are the only standard MCP annotation fields per the SDK `ToolAnnotations` type. Do **not** use `requiresAuth`, `rateLimit`, or `deprecated` — they are not part of `ToolAnnotations`. Express auth and rate-limit in the description and enforce them in the handler.
+These four are the standard behavioral hint fields per the SDK `ToolAnnotations` type (`title` is a top-level property on `ToolDefinition`, not an annotation). Do **not** use `requiresAuth`, `rateLimit`, or `deprecated` in `annotations` — declare auth via `securitySchemes` and express hints in the description.
 
 ## When to set each
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # scaffold-mcp-use-server.sh
-# Drive create-mcp-use-app@beta non-interactively with real CLI flags.
+# Drive create-mcp-use-app@latest non-interactively with real CLI flags.
 
 set -euo pipefail
 
@@ -43,13 +43,11 @@ case "$PACKAGE_MANAGER" in
         ;;
 esac
 
-echo "Running: npx create-mcp-use-app@2.0.0-beta.14 $PROJECT_NAME --template $TEMPLATE --${PACKAGE_MANAGER} --install"
+echo "Running: npx create-mcp-use-app@latest $PROJECT_NAME --template $TEMPLATE --${PACKAGE_MANAGER} --install"
 echo ""
 
 # Run create-mcp-use-app with flags
-# Flags from /tmp/audit/facts-v2-cli.md:
-#   --template, --install, --npm/pnpm/bun (to select package manager)
-npx create-mcp-use-app@2.0.0-beta.14 "$PROJECT_NAME" \
+npx create-mcp-use-app@latest "$PROJECT_NAME" \
     --template "$TEMPLATE" \
     --"$PACKAGE_MANAGER" \
     --install

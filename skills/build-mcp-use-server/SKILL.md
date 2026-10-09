@@ -1,12 +1,11 @@
 ---
 name: build-mcp-use-server
-description: "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views (MCP Apps), oauth providers, streamable HTTP, deploys, or migrating v1 servers."
-disable-model-invocation: true
+description: "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers."
 ---
 
 # Build mcp-use Server
 
-Server-side mechanics for **mcp-use v2** TypeScript MCP servers (the `beta` npm dist-tag line). This skill owns the v2 API surface; sister skills own structure, clients, agents, and the raw SDK. v1 (`mcp-use/server`, npm `latest`) appears here only as migration material.
+Server-side mechanics for **mcp-use v2** TypeScript MCP servers (stable `2.8.x` line on npm `latest`). This skill owns the v2 API surface; sister skills own structure, clients, agents, and the raw SDK. v1 (`mcp-use/server`) appears here only as migration material.
 
 ## When to use this skill
 
@@ -14,11 +13,13 @@ Trigger when the target code or request involves any of these:
 
 - *Importing `MCPServer` from `mcp-use` (root), or code still importing `mcp-use/server` that must move to v2.*
 - *Defining tools (definition-first `{ name, description, inputSchema, outputSchema }` + callback), resources, or prompts with zod v4 / Standard Schema.*
-- *Server-side `ctx` work — `ctx.auth`, `ctx.sendLog`, `ctx.reportProgress`, `ctx.sendNotification`, `ctx.client.capabilities()`, `ctx.requestState`, elicitation re-entry.*
-- *OAuth via `mcp-use/oauth/*` providers (clerk, auth0, workos, supabase, keycloak, better-auth) or `oauthCustomProvider`.*
-- *MCP Apps / ChatGPT Apps views — `views/<name>/view.tsx`, the tool `view` field, `structuredContent` props, CSP metadata, `mcp-use/react` hooks (`useToolContext`, `useCallTool`, `useViewState`).*
-- *Streamable HTTP serving — `server.listen`, `server.fetch`, `toNodeHandler` (`mcp-use/node`), `withMcpUse`/`createNextHandler` (`mcp-use/next`).*
-- *Running `mcp-use dev | build | typecheck | start | deploy`, the Inspector, tunneling, or the curl handshake on `/mcp`.*
+- *Serving Agent Skills alongside tools via directory discovery or `skills: true | false | { directory }` (SEP-2640).*
+- *Configuring Mixed Authentication (`mixedAuth: true`) and tool-level `securitySchemes: [{ type: "noauth" }]` vs `[{ type: "oauth2", scopes: [...] }]`.*
+- *Server-side `ctx` work — `ctx.auth`, `ctx.sendLog`, `ctx.reportProgress`, `ctx.sendNotification`, `ctx.client.capabilities()`, `ctx.requestState`, `ctx.elicit()` interactive elicitation.*
+- *OAuth via `mcp-use/oauth/*` providers (clerk, auth0, workos, supabase, keycloak, better-auth, scalekit, convex), `createJwtVerifier`, or `oauthCustomProvider`.*
+- *MCP Apps / ChatGPT Apps views — `views/<name>/view.tsx`, tool `view` field, `view.entrypoints` (`global`, `thread`, `file`), native `server.settings()`, `tool.icons`, `structuredContent` props, CSP metadata, `mcp-use/react` hooks (`useToolContext`, `useCallTool`, `useDynamicTool`, `useViewTool`, `useViewState`, `useModelContext`, `useDeepLink`, `useDisplayMode`, `useHostContext`, `useViewTheme`, `useFiles`, `ToolCancelledError`).*
+- *Streamable HTTP serving — `server.listen`, `server.fetch`, `toNodeHandler` (`mcp-use/node`), `withMcpUse`/`createNextHandler` (`mcp-use/next`), `mcp-use/tanstack-start`.*
+- *Running `mcp-use dev | build | typecheck | start | deploy`, `mcp-use client`, the Inspector, tunneling (`mcp-use start --tunnel`, `npx @mcp-use/tunnel`), or the curl handshake on `/mcp`.*
 - *Production hardening and deploys: mcp-use Cloud, Vercel, Cloudflare Workers, Google Cloud Run, Supabase, Deno, Bun, Hono, Railway, Docker.*
 - *Migrating from `mcp-use` v1, raw `@modelcontextprotocol/sdk` servers, or OpenAI Apps-SDK widgets.*
 
@@ -30,11 +31,11 @@ Do **not** use this skill when:
 
 ## Version stance
 
-This skill teaches **v2** (verified against `mcp-use@2.0.0-beta.66`; exact pins and drift policy in `references/00-version-drift.md`). Detect which world the project is in before applying anything:
+This skill teaches **v2** (stable `mcp-use@2.8.1` on npm `latest`; exact pins and drift policy in `references/00-version-drift.md`). Detect which world the project is in before applying anything:
 
 - `from "mcp-use/server"` anywhere → v1 project → start at `references/28-migration/02-v1-to-v2-overview.md`.
 - Root `MCPServer` import, `views/`, `mcp-use/oauth/*` → v2 project → apply this skill directly.
-- Bare `npm install mcp-use` installs v1 (`latest`); v2 needs the `beta` tag.
+- Bare `npm install mcp-use` installs v2 (`latest`); v1 is legacy maintenance.
 
 ## Coordinate with neighboring skills
 
@@ -67,11 +68,11 @@ Use `references/00-reference-index.md` only when the intent table is not specifi
 ## Core rules
 
 - Import `MCPServer` and server APIs from `mcp-use` (root). `mcp-use/server` does not exist in v2.
-- Install the `beta` tag: `mcp-use@beta`, `@mcp-use/cli@beta`, scaffold with `create-mcp-use-app@beta`. Require Node >= 22.22.2 and ESM; install a `StandardSchemaWithJSON` library in the project (this skill's examples use zod v4).
+- Install stable v2: `npm install mcp-use` (or `mcp-use@latest`), `@mcp-use/cli@latest`, scaffold with `create-mcp-use-app@latest`. Require Node >= 22.22.2 and ESM; install a `StandardSchemaWithJSON` library in the project (this skill's examples use zod v4).
 - Return raw MCP result envelopes (`CallToolResult` etc.). The v1 helpers still exported are deprecated — only `references/05-responses/07-deprecated-v1-helpers.md` teaches them, for migration.
-- v2 is stateless per request: no session stores in the shipped beta, no post-response push, no `ctx.sample()`. Cross-request state goes through the `requestState` codec or your own store.
+- v2 is stateless per request: no session stores, no post-response push, no `ctx.sample()`. Cross-request state goes through the `requestState` codec or your own store.
 - Serve over Streamable HTTP only (`/mcp` by default). Strict stdio is a raw-SDK requirement — route out.
-- For views: `views/<name>/view.tsx`, tool-level `view` field, `outputSchema` required, props via `structuredContent`, hooks from `mcp-use/react`.
+- For views: `views/<name>/view.tsx`, tool-level `view` field, `outputSchema` required, props via `structuredContent`, hooks from `mcp-use/react`. One View may have at most one owning tool.
 - Work in the actual package or subdirectory the user named; prefer improving an existing server over replacing it.
 - Never claim the server is scaffolded, runnable, or verified in a read-only or plan-only run.
 - For version-sensitive claims, read `references/00-version-drift.md` before editing examples or migration guidance.
@@ -101,7 +102,7 @@ Summarize: target path, v1 vs v2, existing server vs none, tools-only vs views, 
 
 **Existing v2 server:** follow the intent row for the requested change, then audit nearby mechanics (tools/schemas, results, config, auth, views, deploy).
 
-**No server:** scaffold with `create-mcp-use-app@beta` (`scripts/scaffold-mcp-use-server.sh` automates it) or hand-build from `references/02-setup/04-manual-http-server.md`. For an existing app, add a side-car per `references/02-setup/05-add-to-existing-app.md`; for Next.js follow `references/19-nextjs-drop-in/`.
+**No server:** scaffold with `create-mcp-use-app@latest` (`scripts/scaffold-mcp-use-server.sh` automates it) or hand-build from `references/02-setup/04-manual-http-server.md`. For an existing app, add a side-car per `references/02-setup/05-add-to-existing-app.md`; for Next.js follow `references/19-nextjs-drop-in/`.
 
 **Underspecified:** infer from the existing project when possible; ask only for user-owned choices that block implementation (the exposed service/data, auth policy, tools-only vs. views, or deploy target).
 
@@ -138,13 +139,13 @@ For views, verify the text fallback (`content`) and, when possible, Inspector CS
 - Expected failures return `isError` envelopes; unexpected failures throw (`references/05-responses/05-error-handling.md`).
 - Guard the exact elicitation mode before returning `input_required`: check `ctx.client.capabilities().elicitation?.form` for `inputRequired.elicit(...)` and `.url` for `inputRequired.elicitUrl(...)` (`references/12-elicitation/01-overview.md`, `references/16-client-introspection/02-capabilities.md`).
 - Need model-side generation? The host generates, the tool validates — sampling is gone (`references/13-sampling/01-sampling-removed-in-v2.md`).
-- Views: `view.name` must match the one-level `views/<name>/view.tsx` folder; `outputSchema` is mandatory; declare domains in `view.csp`; use `useCallTool` for View → server and `useViewTool` for host/model → mounted View, never raw `fetch`.
+- Views: `view.name` must match the one-level `views/<name>/view.tsx` folder; `outputSchema` is mandatory; declare domains in `view.csp`; use `useCallTool` for View → server and `useViewTool` for host/model → mounted View, never raw `fetch`. Each View folder and resource name may have at most ONE owning tool (binding multiple tools to one view throws).
 - One server definition serves both MCP Apps and ChatGPT hosts — never hand-roll `window.openai` (`references/18-mcp-apps/chatgpt-apps/01-dual-protocol.md`).
 
 ## Guardrails
 
 - In an mcp-use server, do not mix in raw official SDK server primitives (`@modelcontextprotocol/sdk` v1 or `@modelcontextprotocol/{core,server}` v2); route a raw-SDK implementation to the matching sibling skill instead.
-- Never install bare `mcp-use` for a v2 project — that is v1; pin the `beta` tag.
+- Never install `mcp-use` v1 (`from 'mcp-use/server'`); bare `npm install mcp-use` installs stable v2.
 - Never use zod v3, CommonJS, or Node < 22 with v2.
 - Never use `z.any()`/`z.unknown()` where a concrete schema is possible; `.describe()` every model-filled field.
 - Never teach or write v1 response helpers in new code; raw envelopes only.

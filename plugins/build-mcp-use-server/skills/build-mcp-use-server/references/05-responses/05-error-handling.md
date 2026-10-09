@@ -83,27 +83,37 @@ return {
 
 ## Auth errors
 
-With OAuth configured, unauthenticated HTTP requests are rejected before a tool callback runs, so `ctx.auth` is required inside the callback. Check the authenticated caller's scopes, permissions, or typed user fields:
+On a default OAuth server without Mixed Auth, unauthenticated HTTP requests are rejected at the transport level before a tool callback runs, so `ctx.auth` is guaranteed defined.
+
+However, with **Mixed Authentication (`mixedAuth: true`)**, unauthenticated requests can reach public or optional tools:
+- **Public tools** (`securitySchemes: [{ type: "noauth" }]`): `ctx.auth` is `undefined`.
+- **Optional auth tools** (`securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: [] }]`): `ctx.auth` is `OAuthAuth<TUser> | undefined`. Branching on `if (ctx.auth)` is the canonical pattern to differentiate between signed-in and guest users.
+- **Sign-in tools** (`securitySchemes: [{ type: "oauth2", scopes: [...] }]`): the framework handles the auth challenge automatically:
+  - Standard spec clients (e.g. Claude) receive HTTP 401/403 with a `WWW-Authenticate` header.
+  - ChatGPT receives HTTP 200 with a JSON-RPC error envelope containing `isError: true` and `_meta["mcp/www_authenticate"]`.
 
 ```typescript
 import { MCPServer } from "mcp-use";
-import {
-  oauthClerkProvider,
-  type ClerkOAuthUser,
-} from "mcp-use/oauth/clerk";
+import { oauthClerkProvider, type ClerkOAuthUser } from "mcp-use/oauth/clerk";
 import { z } from "zod";
 
 const authServer = new MCPServer<ClerkOAuthUser>({
   name: "admin-tools",
   version: "1.0.0",
+  mixedAuth: true,
   oauth: oauthClerkProvider({
     frontendApiUrl: "https://example.clerk.accounts.dev",
   }),
 });
 
 authServer.tool(
-  { name: "admin-action", inputSchema: z.object({ id: z.string() }) },
+  {
+    name: "admin-action",
+    inputSchema: z.object({ id: z.string() }),
+    securitySchemes: [{ type: "oauth2", scopes: ["admin"] }],
+  },
   async ({ id }, ctx) => {
+    // Guaranteed defined for sign-in tools
     if (!ctx.auth.permissions.includes("admin")) {
       return {
         isError: true,
@@ -118,4 +128,4 @@ authServer.tool(
 );
 ```
 
-Return a tool-domain error for insufficient authorization. Do not add an impossible `if (!ctx.auth)` branch to an OAuth-authenticated callback.
+For custom permission checks inside a callback, return a tool-domain error (`isError: true`). Declarative scope requirements should be specified in `securitySchemes` so the host client can trigger step-up authentication.

@@ -96,11 +96,13 @@ for (let i = 0; i < total; i++) {
 
 ## `ctx.auth`
 
-Present and required only when OAuth is configured on the server. Without OAuth, its type is `never`.
+Present when OAuth is configured on the server. Without OAuth, its type is `never`. Under `mixedAuth: true`, `ctx.auth` is typed as `OAuthAuth<TUser> | undefined` for public or optional tools (`[{ type: "noauth" }]`), and guaranteed defined for sign-in tools.
 
 ```typescript
-const userId = ctx.auth.user.userId;
-const scopes = ctx.auth.permissions;
+// Stable user identifier across all providers is .id (not userId)
+const userId = ctx.auth?.user.id;
+const scopes = ctx.auth?.scopes; // OAuth scopes
+const permissions = ctx.auth?.permissions; // Provider-mapped permissions
 ```
 
 ## Availability matrix
@@ -109,6 +111,6 @@ const scopes = ctx.auth.permissions;
 |---|---|
 | `ctx.client.info()` | Request client metadata; legacy requests may return a partial object. |
 | `ctx.client.can(cap)` | Client declared capability. |
-| `ctx.auth` | OAuth configured. |
+| `ctx.auth` | OAuth configured (defined if tool requires sign-in, optional if mixedAuth). |
 | `ctx.reportProgress()` | Client sent a progress token; returns `false` otherwise. |
 | `ctx.sendNotification()` | Must be called before the callback returns. |

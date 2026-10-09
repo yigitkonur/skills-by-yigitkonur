@@ -2,16 +2,18 @@
 
 *Read this when your identity provider is not listed in `references/11-auth/01-overview.md` or doesn't support DCR.*
 
-Use `oauthCustomProvider` when your authorization server supports Dynamic Client Registration (DCR) but mcp-use has no built-in adapter for it. All six built-in factories (`oauthClerkProvider`, `oauthAuth0Provider`, `oauthWorkOSProvider`, `oauthSupabaseProvider`, `oauthKeycloakProvider`, `oauthBetterAuthProvider`) are themselves thin wrappers around `oauthCustomProvider` — reach for a built-in factory first if your provider is one of those six; use `oauthCustomProvider` directly only for a different DCR-capable authorization server.
+Use `oauthCustomProvider` when your authorization server supports Dynamic Client Registration (DCR) but mcp-use has no built-in adapter for it. All eight built-in factories (`oauthClerkProvider`, `oauthAuth0Provider`, `oauthWorkOSProvider`, `oauthSupabaseProvider`, `oauthKeycloakProvider`, `oauthBetterAuthProvider`, `oauthScalekitProvider`, `oauthConvexProvider`) are themselves thin wrappers around `oauthCustomProvider`.
+
+`mcp-use/oauth` also exports `createJwtVerifier`, allowing custom providers to reuse the framework's battle-tested token verification engine without pulling in third-party JWT dependencies like `jose`.
 
 ```typescript
 import { MCPServer } from "mcp-use";
 import {
   oauthCustomProvider,
+  createJwtVerifier,
   type OAuthAuthInfo,
   type OAuthMetadata,
 } from "mcp-use/oauth";
-import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const issuer = "https://auth.example.com";
 const jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));

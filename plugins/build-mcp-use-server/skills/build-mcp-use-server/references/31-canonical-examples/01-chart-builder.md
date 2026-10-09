@@ -60,7 +60,7 @@ import { useToolContext } from "mcp-use/react";
 
 export default function ChartDisplay() {
   const view = useToolContext<"create-chart">();
-  if (view.status !== "result") return null;
+  if (view.status !== "ready") return null;
   const chart = view.toolOutput; // typed by outputSchema
   return <svg>{/* render chart.data */}</svg>;
 }

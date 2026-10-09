@@ -30,7 +30,7 @@ server.resource(
     description: "Current application configuration",
     mimeType: "application/json",
   },
-  async (uri) => ({
+  async (uri, ctx) => ({
     contents: [
       {
         uri: uri.href,

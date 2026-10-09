@@ -4,7 +4,9 @@
 
 mcp-use v2 supports resource-server providers whose authorization server implements **Dynamic Client Registration (DCR)**. The MCP client registers itself with the upstream authorization server (Clerk, Auth0, Keycloak, Supabase, WorkOS, Better Auth, or any other DCR-capable AS) and performs the authorization flow directly with it — your MCP server never handles authorization codes or exchanges them for tokens. `MCPServer` protects the transport, publishes discovery metadata, verifies bearer tokens, and exposes the verified identity on `ctx.auth`.
 
-Discovery metadata (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) is published **publicly** — clients must be able to fetch it without a token to complete the OAuth discovery flow. Only the MCP transport route itself (`basePath`, default `/mcp`) requires a bearer token; unauthenticated requests to that route are rejected with 401 Unauthorized, but requests to the metadata endpoints are not.
+Discovery metadata (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) is published **publicly** — clients must be able to fetch it without a token to complete the OAuth discovery flow.
+
+By default, an OAuth-configured server rejects unauthenticated calls to the MCP transport route (`basePath`, default `/mcp`) with 401 Unauthorized. With **Mixed Authentication (`mixedAuth: true`)**, unauthenticated clients can connect and list tools, resources, and prompts, while individual tools declare access requirements via `securitySchemes` (`[{ type: "noauth" }]` vs `[{ type: "oauth2", scopes: [...] }]`).
 
 ## Provider Decision
 
@@ -16,8 +18,10 @@ Discovery metadata (`/.well-known/oauth-protected-resource`, `/.well-known/oauth
 | **Supabase** | Backend + PostgreSQL | Project ID or URL → JWT verification |
 | **Keycloak** | Self-hosted + fine-grained roles | Server URL + realm → DCR |
 | **Better Auth** | Full auth control | Better Auth issuer URL → DCR |
+| **Scalekit** | Enterprise SSO + CIMD | Environment URL + Client ID/Secret → DCR |
+| **Convex** | Convex backend data | Convex deployment URL → JWT verification |
 
-See `providers/` for each provider's setup, user fields, and gotchas.
+See `providers/` for each provider's setup, user fields, and gotchas. Custom providers can be created via `oauthCustomProvider` using the built-in `createJwtVerifier`.
 
 ## How It Works
 

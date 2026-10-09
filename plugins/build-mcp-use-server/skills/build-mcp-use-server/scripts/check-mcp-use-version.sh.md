@@ -17,7 +17,7 @@ bash scripts/check-mcp-use-version.sh
 ```
 ✓ mcp-use found at: ./node_modules/.bin/mcp-use
 ✓ mcp-use CLI: v2 (version 4.x or later)
-Local package.json mcp-use: ^2.0.0-beta.66
+Local package.json mcp-use: ^2.8.1
   → Detected v2 package (root MCPServer export, ESM only, no "./server")
 ```
 
@@ -33,9 +33,9 @@ Local package.json mcp-use: ^1.34.5
 
 ```
 mcp-use npm tags:
-  latest: 1.34.5 (v1 era)
-  beta: 2.0.0-beta.66 (v2)
-  legacy-v1: 1.x (v1 maintenance)
+  latest: 2.8.1 (v2 stable)
+  beta: 2.0.0-beta.68 (pre-release)
+  legacy-v1: 1.34.6 (v1 maintenance)
 ```
 
 ## What v1 vs v2 means
@@ -52,7 +52,7 @@ mcp-use npm tags:
 
 If v1:
 ```bash
-npm install mcp-use@beta  # mcp-use's package.json depends on @mcp-use/cli@4.0.0-beta.15; the CLI comes in transitively
+npm install mcp-use  # installs stable v2 from npm latest
 npx mcp-use typecheck  # generates mcp-env.d.ts; replaces v1's `generate-types` (not a v2 command)
 ```
 

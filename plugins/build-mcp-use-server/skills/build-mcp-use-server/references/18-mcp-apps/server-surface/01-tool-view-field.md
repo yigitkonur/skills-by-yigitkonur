@@ -54,6 +54,7 @@ export default server;
 | `permissions` | Requested sandbox capabilities emitted as resource `_meta.ui.permissions` |
 | `domain` | Dedicated sandbox-origin hint emitted as resource `_meta.ui.domain`; format and validation are host-dependent |
 | `prefersBorder` | Host rendering preference emitted as resource `_meta.ui.prefersBorder` |
+| `entrypoints` | Typed ChatGPT launch entrypoints (`"global"`, `"thread"`, `{ type: "file", supportedExtensions: [...] }`) emitted in `_meta["openai/ui"].entrypoints` |
 
 Do not assume `domain` is a URL or that one host's accepted format works in another host. Consult the target host's requirements. ChatGPT-specific submission rules belong in `../chatgpt-apps/01-dual-protocol.md`; keep this standard field host-neutral.
 
