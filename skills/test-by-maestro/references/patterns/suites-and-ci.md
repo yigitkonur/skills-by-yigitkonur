@@ -1,10 +1,12 @@
 # Test Suites, Tags, and CI/CD Automation
 
-Structuring mobile test suites cleanly enables modular test reuse, targeted tag filtering, and deterministic reporting in continuous integration pipelines.
+Structuring mobile and web test suites cleanly enables modular test reuse, targeted tag filtering, parallel sharding, and deterministic reporting in continuous integration pipelines.
+
+---
 
 ## Modular Workspace Layout
 
-Maintain a predictable workspace structure so that relative subflow and script references resolve portably across local and CI runner environments:
+Maintain a predictable workspace structure so that relative subflow and script references resolve portably across local workstations and CI runner environments:
 
 ```text
 .maestro/
@@ -22,15 +24,33 @@ Maintain a predictable workspace structure so that relative subflow and script r
 
 ### Workspace Configuration (`config.yaml`)
 
-Define shared workspace settings and lifecycle hooks:
+Define shared workspace settings, execution order, animation toggles, and lifecycle hooks:
 
 ```yaml
 # .maestro/config.yaml
-appId: com.example.demo
-env:
-  ENVIRONMENT: "staging"
-  BASE_URL: "https://staging.example.com"
+flows:
+  - "flows/*.yaml"
+includeTags:
+  - "smoke"
+excludeTags:
+  - "flaky"
+executionOrder:
+  continueOnFailure: false      # Stops workspace run immediately on first failure
+  flowsOrder:                   # Explicit sequence of execution
+    - "flows/01-onboarding.yaml"
+    - "flows/02-login.yaml"
+    - "flows/03-checkout.yaml"
+platform:
+  ios:
+    disableAnimations: true     # Disables UIView/CALayer animations in runner
+    snapshotKeyHonorModalViews: true
+  android:
+    disableAnimations: true     # Disables window and transition animations via ADB
+disableRetries: false
+testOutputDir: "artifacts"
 ```
+
+---
 
 ## Tag-Based Test Filtering
 
@@ -60,6 +80,8 @@ maestro test --exclude-tags wip,flaky .maestro/flows/
 # Combine multiple include tags
 maestro test --include-tags smoke,checkout .maestro/flows/
 ```
+
+---
 
 ## Reusable Subflows with Parameter Passing
 
@@ -94,20 +116,30 @@ appId: com.example.demo
 - assertVisible: "Dashboard"
 ```
 
+---
+
 ## CI Pipeline Integration and Gate Verification
 
-In CI environments, run Maestro with explicit output directories and JUnit report formatting:
+In CI environments, run Maestro with explicit output directories, JUnit report formatting, and flattened output:
 
 ```bash
 mkdir -p test-results
 
-# Execute test suite with JUnit output
+# Execute test suite with JUnit output and flattened artifact structure
 maestro test .maestro/flows/ \
   --test-output-dir test-results/telemetry \
+  --flatten-debug-output \
+  --test-suite-name "PR Regression Suite" \
   --format JUNIT \
   --output test-results/junit.xml \
   --include-tags pr-gate
 ```
+
+### Key CI Flags
+
+- `--flatten-debug-output`: Places execution artifacts flat into `--test-output-dir` without timestamped subdirectories, making CI artifact collector patterns simple and predictable.
+- `--test-suite-name=<name>`: Customizes the root `<testsuite name="...">` attribute in JUnit XML for clean test dashboard categorization.
+- `--analyze`: *(Beta)* Enhances test output analysis with AI-powered failure insights.
 
 ### CI Assertion Checks
 
@@ -124,13 +156,36 @@ if grep -q '<failure' test-results/junit.xml; then
 fi
 ```
 
-Always upload `test-results/telemetry` as a CI build artifact so failed runs include screenshots and driver console logs for rapid triage.
+Always upload `test-results/telemetry` as a CI build artifact so failed runs preserve screenshots, screen recordings, and driver console logs (`manifest.json`, `commands.json`, `logs/maestro.log`) for rapid triage.
 
-## Serial Device Scheduling and Concurrency
+---
 
-Maestro connects to native drivers (ADB on Android, XCUITest on iOS) that bind to exclusive device endpoints:
-- **Do not run parallel Maestro processes against the same simulator or emulator.** Port 22087 and system driver sessions will collide.
-- For parallel test execution, shard tests across distinct devices using `--shard-all` or distinct runner machines, coordinating device access with explicit leases.
+## Parallel Execution and Device Sharding
+
+Maestro 2.x supports two distinct multi-device sharding strategies:
+
+| Strategy | Flag | Behavior | Use Case |
+|---|---|---|---|
+| **Redundant Suite Run** | `--shard-all=<N>` | Executes the **entire test suite** redundantly across N devices simultaneously | Matrix testing across device models or OS versions |
+| **Partitioned Suite Run** | `--shard-split=<N>` | Partitions the test suite **evenly across N devices** for 1/N runtime | Accelerating long CI regression suites |
+
+> **Critical Rule**: `--shard-all` and `--shard-split` are **mutually exclusive**. Providing both flags causes an immediate failure: `CliError: Options --shard-split and --shard-all are mutually exclusive.`
+
+### Multi-Device Targeting Syntax
+Specify targets using a comma-separated list of device identifiers:
+```bash
+# Split suite across two booted emulators
+maestro test \
+  --device "emulator-5554,emulator-5556" \
+  --shard-split 2 \
+  .maestro/flows/
+```
+
+### Device Concurrency & Exclusive Driver Leases
+- Within a single Maestro process, Maestro manages separate device driver sessions and dynamic ephemeral ports (`SIMCTL_CHILD_PORT`).
+- **Across separate OS processes** (e.g. concurrent CI jobs on the same macOS host), XCUITest runners cannot share the same simulator UDID simultaneously. Use an atomic filesystem lease to prevent port 22087 and session collisions.
+
+---
 
 ## Bounded Retries for Network Glitches
 
@@ -145,8 +200,11 @@ Use Maestro's built-in `retry` block to isolate individual steps vulnerable to t
       - assertVisible: "Latest News"
 ```
 
+---
+
 ## Related References
 
 - [CLI and Artifacts](../commands/cli-and-artifacts.md) — Command flags and telemetry file outputs.
 - [Flows and Selectors](../commands/flows-and-selectors.md) — Subflow composition and parameter syntax.
 - [iOS over SSH](../guides/ios-over-ssh.md) — Remote CI execution over SSH.
+- [Android and Local iOS](../guides/android-and-local-ios.md) — Device discovery and toolchains.

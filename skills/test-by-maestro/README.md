@@ -1,6 +1,6 @@
 # test-by-maestro
 
-Author, run, and debug declarative Maestro mobile E2E tests on iOS Simulators and Android devices, locally or over SSH.
+Author, run, and debug declarative Maestro E2E tests on iOS Simulators, Android devices, and Web, locally, over SSH, or via MCP.
 
 **Category:** testing
 

@@ -1,12 +1,14 @@
 # Expo Dev Client Sessions and Mobile State Persistence
 
-Managing application state, authentication tokens, and development client runtimes requires distinct strategies depending on whether you test a static release build or an active Expo development session.
+Managing application state, authentication tokens, runtime permissions, and development client runtimes requires distinct strategies depending on whether you test a static release build or an active Expo development session.
+
+---
 
 ## Release Builds vs. Expo Dev Client Sessions
 
 | Target Environment | Launch Strategy | State Reset Strategy |
 |---|---|---|
-| **Production / Release Build** | Use `launchApp` with explicit configuration. | Use `clearState: true` or `clearKeychain`. |
+| **Production / Release Build** | Use `launchApp` with explicit configuration. | Use `clearState: true`, `clearKeychain: true`, or `setPermissions`. |
 | **Active Expo Dev Client** | **Omit `launchApp`**. The app is already running and connected to Metro. | Use app-defined deep links for soft resets. |
 
 ### The Dev Client Restart Trap
@@ -28,6 +30,8 @@ appId: com.example.demo
 - tapOn:
     id: "profile_tab"
 ```
+
+---
 
 ## The iOS Keychain Persistence Gotcha
 
@@ -55,7 +59,35 @@ Or execute the standalone command:
 - clearKeychain
 ```
 
-> **Warning**: `clearKeychain` purges credentials for the target application from the simulator. On shared host simulators, ensure other concurrent agents are not relying on saved credentials.
+> **Warning**: `clearKeychain` purges credentials for the target application from the simulator. On shared host simulators, ensure other concurrent runs are not relying on saved credentials.
+
+---
+
+## Dynamic Runtime Permissions (`setPermissions`)
+
+Instead of clicking through OS system permission sheets during tests, pre-configure or dynamically update permissions:
+
+### 1. Pre-Grant at App Launch
+```yaml
+- launchApp:
+    permissions:
+      all: allow
+      notifications: allow
+      camera: deny
+      photos: allow
+      location: in-use            # Options: allow, deny, unset, in-use, always
+```
+
+### 2. Dynamically Update During Flow
+```yaml
+- setPermissions:
+    appId: com.example.demo
+    permissions:
+      location: always
+      notifications: allow
+```
+
+---
 
 ## Soft Resets via App-Defined Deep Links
 
@@ -72,6 +104,8 @@ The most reliable pattern for resetting application state without destroying run
 
 This pattern allows the application's internal state management (Redux, Zustand, React Query) to re-initialize with clean mock data without cycling the native process.
 
+---
+
 ## Auth Pre-Flight Synchronization
 
 To avoid race conditions where Maestro attempts to tap UI elements while asynchronous authentication hydration is in progress, implement an auth-settling assertion:
@@ -87,12 +121,16 @@ To avoid race conditions where Maestro attempts to tap UI elements while asynchr
     id: "home_tab"
 ```
 
+---
+
 ## Metro Bundler Network Connectivity
 
 When running tests against a dev client:
 - Local simulator on macOS connects to Metro at `http://localhost:8081`.
 - Android emulators connect via ADB reverse proxy (`adb reverse tcp:8081 tcp:8081`) or `10.0.2.2:8081`.
 - Remote testing over SSH requires Metro to listen on all interfaces or provide a tunnel URL.
+
+---
 
 ## Related References
 
