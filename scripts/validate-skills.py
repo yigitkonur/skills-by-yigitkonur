@@ -232,6 +232,13 @@ def check_frontmatter(skill_name, skill_dir):
         errors.append("missing SKILL.md")
         return errors
 
+    with open(skill_md, encoding="utf-8") as fh:
+        head = fh.read().split("\n---", 2)[0]
+    if "\ndisable-model-invocation: true" not in head:
+        errors.append("frontmatter missing `disable-model-invocation: true` (skills are manual-only)")
+    if not os.path.isfile(os.path.join(skill_dir, "agents", "openai.yaml")):
+        errors.append("missing agents/openai.yaml (Codex manual-only policy)")
+
     name, description = parse_frontmatter(skill_md)
 
     if not name:
