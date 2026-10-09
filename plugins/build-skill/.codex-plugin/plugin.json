@@ -1,6 +1,6 @@
 {
   "name": "build-skill",
-  "version": "1.0.113",
+  "version": "1.0.114",
   "description": "Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows.",
   "author": {
     "name": "Yigit Konur",

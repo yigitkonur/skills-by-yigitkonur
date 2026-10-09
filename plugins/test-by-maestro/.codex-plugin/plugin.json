@@ -1,6 +1,6 @@
 {
   "name": "test-by-maestro",
-  "version": "1.0.113",
+  "version": "1.0.114",
   "description": "Use if writing, running, or debugging Maestro E2E test flows on iOS Simulators, Android, or Web, including MCP agent automation and CI suites.",
   "author": {
     "name": "Yigit Konur",
