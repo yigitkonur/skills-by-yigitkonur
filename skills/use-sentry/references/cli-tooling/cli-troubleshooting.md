@@ -20,7 +20,7 @@ Common errors encountered when running `sentry` or `sentry-cli` and their immedi
 ## 4. `DEPTH_ZERO_SELF_SIGNED_CERT` on Ingest
 - **Symptom:** SDK crashes or fails silently when reporting events.
 - **Cause:** ISP DNS interception on `*.ingest.*sentry.io`.
-- **Solution:** Configure `tunnel: https://sentry.io/api/<projectId>/envelope/` in SDK initialization.
+- **Solution:** Configure application reverse proxy route `tunnel: '/api/monitoring/tunnel'` in SDK initialization.
 
 ## 5. `sentry explore --sort` has no effect
 - **Symptom:** Sorting by `-count()` on `-d errors` does not change order.

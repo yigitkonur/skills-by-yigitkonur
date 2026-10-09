@@ -59,14 +59,18 @@ Based on research evidence, design the integration blueprint:
    project=your-project-slug
    ```
 
-## Step 5: Network Hardening — Envelope Tunnel
+## Step 5: Network Hardening — Application Reverse Proxy Tunnel
 
-Derive the direct envelope tunnel URL from the DSN to bypass ISP DNS sinkholes (e.g. TTNet `195.175.254.2` `DEPTH_ZERO_SELF_SIGNED_CERT`):
+Configure the client SDK to route envelopes through an internal application reverse proxy route (e.g. `/api/monitoring/tunnel`) to bypass ISP DNS sinkholes (e.g. TTNet `195.175.254.2` `DEPTH_ZERO_SELF_SIGNED_CERT`) and browser ad-blockers:
+
 ```typescript
-const projectId = dsn.trim().match(/\/(\d+)(?:$|[?#])/)?.[1];
-const tunnel = projectId ? `https://sentry.io/api/${projectId}/envelope/` : undefined;
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tunnel: '/api/monitoring/tunnel',
+  tracesSampleRate: 1.0,
+});
 ```
-See `references/network-tunneling/envelope-tunneling.md`.
+See `references/network-tunneling/envelope-tunneling.md` and `references/network-tunneling/application-proxy-routes.md`.
 
 ## Step 6: Install SDK, Redaction & Context Store
 

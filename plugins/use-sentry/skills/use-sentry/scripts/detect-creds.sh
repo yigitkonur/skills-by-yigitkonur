@@ -4,6 +4,19 @@ set -euo pipefail
 # Safe credential detector for Sentry
 # Inspects ~/.sentryclirc and environment variables without printing secret tokens.
 
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    echo "Usage: $0"
+    echo ""
+    echo "Safe credential detector for Sentry."
+    echo "Inspects ~/.sentryclirc and environment variables without printing secret tokens."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help  Show this help message and exit"
+    exit 0
+  fi
+done
+
 echo "=== Sentry Credential Pre-flight Check ==="
 
 TOKEN=""

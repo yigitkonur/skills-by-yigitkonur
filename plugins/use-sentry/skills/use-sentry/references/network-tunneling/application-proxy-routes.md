@@ -4,11 +4,11 @@ How to implement an internal tunnel proxy route in Fastify, Next.js, and Express
 
 ## Why Use an Internal Proxy Route?
 
-1. **Circumvents Client-Side Ad-Blockers:** UBlock Origin and Brave Shields block `*.sentry.io`. Forwarding through `/api/sentry-tunnel` looks like first-party traffic.
+1. **Circumvents Client-Side Ad-Blockers:** UBlock Origin and Brave Shields block `*.sentry.io`. Forwarding through `/api/monitoring/tunnel` looks like first-party traffic.
 2. **Defeats ISP Filtering:** Ensures browsers and backend workers send telemetry only to your trusted server domain.
 3. **Validates Project Destination:** Prevents malicious actors from using your proxy to send arbitrary envelopes to other Sentry projects.
 
-## 1. Next.js App Router Proxy Route (`app/api/sentry-tunnel/route.ts`)
+## 1. Next.js App Router Proxy Route (`app/api/monitoring/tunnel/route.ts`)
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
@@ -64,7 +64,7 @@ export const sentryTunnelPlugin: FastifyPluginAsync<{ allowedProjectIds: string[
     }
   );
 
-  fastify.post('/api/sentry-tunnel', async (request, reply) => {
+  fastify.post('/api/monitoring/tunnel', async (request, reply) => {
     const rawEnvelope = request.body as string;
     if (!rawEnvelope) {
       return reply.code(400).send({ error: 'Empty envelope' });

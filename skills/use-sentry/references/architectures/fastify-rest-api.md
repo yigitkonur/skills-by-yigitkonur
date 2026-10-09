@@ -13,15 +13,15 @@ How to integrate Sentry into Fastify applications with request context, error bo
 ```typescript
 import type { FastifyPluginAsync } from 'fastify';
 import { randomUUID } from 'node:crypto';
+import * as Sentry from '@sentry/node';
 import { withContext } from './context.js';
-import { addAppBreadcrumb } from './sentry.js';
 
 export const fastifyRequestContextPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('onRequest', (request, reply, done) => {
     const requestId = (request.headers['x-request-id'] as string) || randomUUID();
     reply.header('x-request-id', requestId);
 
-    addAppBreadcrumb({
+    Sentry.addBreadcrumb({
       category: 'http.request',
       message: `${request.method} ${request.url}`,
       data: {
@@ -37,7 +37,7 @@ export const fastifyRequestContextPlugin: FastifyPluginAsync = async (fastify) =
   });
 
   fastify.addHook('onResponse', (request, reply, done) => {
-    addAppBreadcrumb({
+    Sentry.addBreadcrumb({
       category: 'http.response',
       message: `${request.method} ${request.url} -> ${reply.statusCode}`,
       level: reply.statusCode >= 500 ? 'error' : reply.statusCode >= 400 ? 'warning' : 'info',
@@ -55,7 +55,7 @@ export const fastifyRequestContextPlugin: FastifyPluginAsync = async (fastify) =
 
 ```typescript
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
-import { captureAppException, addAppBreadcrumb } from './sentry.js';
+import * as Sentry from '@sentry/node';
 
 export function createFastifyErrorHandler() {
   return function errorHandler(error: FastifyError, request: FastifyRequest, reply: FastifyReply) {
@@ -63,7 +63,7 @@ export function createFastifyErrorHandler() {
 
     // 4xx errors: User / client mistakes — do NOT treat as Sentry issues
     if (statusCode < 500) {
-      addAppBreadcrumb({
+      Sentry.addBreadcrumb({
         category: 'http.client_error',
         message: `Client error: ${error.message} (${statusCode})`,
         level: 'warning',
@@ -78,11 +78,13 @@ export function createFastifyErrorHandler() {
     }
 
     // 5xx errors: Server faults or unexpected crashes — CAPTURE TO SENTRY
-    const eventId = captureAppException(error, {
-      url: request.url,
-      method: request.method,
-      statusCode,
-      headers: request.headers,
+    const eventId = Sentry.captureException(error, {
+      extra: {
+        url: request.url,
+        method: request.method,
+        statusCode,
+        headers: request.headers,
+      },
     });
 
     reply.status(statusCode).send({

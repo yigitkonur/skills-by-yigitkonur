@@ -350,7 +350,7 @@
     {
       "name": "convert-to-natural-writing",
       "source": "./",
-      "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
+      "description": "Use skill if you are auditing or converting synthetic, translationese, or AI-generated Turkish and multilingual text into natural, voice-driven prose with cadence and trust.",
       "version": "1.0.114",
       "category": "skills",
       "strict": false,
@@ -647,7 +647,7 @@
     {
       "name": "use-sentry",
       "source": "./",
-      "description": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
+      "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, or triaging production incidents using Seer AI and modern CLI recipes.",
       "version": "1.0.114",
       "category": "skills",
       "strict": false,

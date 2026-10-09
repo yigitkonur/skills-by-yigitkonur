@@ -17,16 +17,16 @@ LLM Client <--- JSON-RPC via stdin/stdout ---> MCP Server
 ```typescript
 import * as Sentry from '@sentry/node';
 
-export function initMcpSentry() {
+export function setupMcpSentry() {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn || !dsn.trim()) return; // Zero-network offline no-op
 
-  const projectId = dsn.trim().match(/\/(\d+)(?:$|[?#])/)?.[1];
-  const tunnel = projectId ? `https://sentry.io/api/${projectId}/envelope/` : undefined;
+  // Route telemetry through internal application reverse proxy if configured
+  const tunnel = process.env.SENTRY_TUNNEL_URL || undefined;
 
   Sentry.init({
     dsn,
-    tunnel, // Bypasses ISP DNS sinkholes
+    tunnel,
     debug: false, // CRITICAL: Never emit Sentry debug messages to stdout!
     tracesSampleRate: 1.0,
     beforeSend(event) {

@@ -5,8 +5,8 @@ How to write and run a dedicated verification script to trigger synthetic test e
 ## Complete Live Harness Example (`tools/verify-sentry-live.ts`)
 
 ```typescript
+import * as Sentry from '@sentry/node';
 import { buildServer } from '../src/core/server.js';
-import { flushSentry, isSentryInitialized } from '../src/core/obs/sentry.js';
 
 async function verifyLiveSentry() {
   console.log('[1/4] Booting test server...');
@@ -15,7 +15,8 @@ async function verifyLiveSentry() {
   const address = app.server.address() as { port: number };
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
-  console.log(`[2/4] Server listening on ${baseUrl}. Sentry Initialized: ${isSentryInitialized()}`);
+  const client = Sentry.getClient();
+  console.log(`[2/4] Server listening on ${baseUrl}. Sentry Client Active: ${Boolean(client)}`);
 
   console.log('[3/4] Sending request to trigger deliberate 500 error...');
   const res = await fetch(`${baseUrl}/api/v1/diagnostics/live-test-error`, {
@@ -33,7 +34,7 @@ async function verifyLiveSentry() {
   }
 
   console.log('[4/4] Flushing Sentry transport...');
-  await flushSentry(4000);
+  await Sentry.flush(4000);
   await app.close();
 
   console.log('Live verification event successfully sent to Sentry! Event ID:', body.eventId);
@@ -51,7 +52,7 @@ verifyLiveSentry().catch((err) => {
 # List recent issues to locate the synthetic error
 sentry-cli issues list
 
-# Or using the new CLI:
+# Or using the modern CLI:
 sentry issue list <org>/<project> -q 'is:unresolved' -t 1h
 
 # Resolve the test issue immediately

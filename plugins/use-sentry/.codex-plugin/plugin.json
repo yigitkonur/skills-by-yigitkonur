@@ -1,7 +1,7 @@
 {
   "name": "use-sentry",
   "version": "1.0.114",
-  "description": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
+  "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, or triaging production incidents using Seer AI and modern CLI recipes.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "use-sentry",
-    "shortDescription": "Use if initializing Sentry from scratch, auditing an existing setup across 4 pillars, or triaging production errors with token-efficient CLI recipes.",
+    "shortDescription": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, or triaging production incidents using Seer AI and modern CLI recipes.",
     "longDescription": "Install only the use-sentry workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

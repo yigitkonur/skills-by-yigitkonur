@@ -4,6 +4,24 @@ set -euo pipefail
 # Quick, token-efficient Sentry triage script
 # Automatically detects modern 'sentry' or legacy 'sentry-cli'
 
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    echo "Usage: $0 [<org>/<project> | <project>]"
+    echo ""
+    echo "Quick, token-efficient Sentry triage script."
+    echo "Automatically detects modern 'sentry' or legacy 'sentry-cli'."
+    echo ""
+    echo "Arguments:"
+    echo "  <org>/<project>  Sentry organization and project slug (or project slug for sentry-cli)"
+    echo "  -h, --help       Show this help message and exit"
+    echo ""
+    echo "Examples:"
+    echo "  $0 my-org/my-backend"
+    echo "  $0 frontend"
+    exit 0
+  fi
+done
+
 echo "=== Sentry Quick Triage ==="
 
 if command -v sentry >/dev/null 2>&1; then

@@ -47,12 +47,9 @@ depth=0 CN = *.turktelekom.com.tr (or self-signed root)
 verify error:num=18:self signed certificate
 ```
 
-## Solution: Sentry Envelope Tunneling
+## Solution: Application Reverse Proxy Tunneling
 
-Never disable TLS verification (`NODE_TLS_REJECT_UNAUTHORIZED=0`), as this compromises the security of the entire process.
+Instead of allowing client SDKs to query Sentry domains directly, route all client envelopes through your application's reverse proxy endpoint:
+`tunnel: '/api/monitoring/tunnel'`
 
-Instead, route all envelopes through Sentry's official envelope tunnel endpoint:
-`tunnel: https://sentry.io/api/${projectId}/envelope/`
-
-`sentry.io` is never sinkholed and resolves to valid Cloudflare edge IPs with standard trusted certificates.
-See `references/network-tunneling/envelope-tunneling.md`.
+See `references/network-tunneling/envelope-tunneling.md` and `references/network-tunneling/application-proxy-routes.md`.

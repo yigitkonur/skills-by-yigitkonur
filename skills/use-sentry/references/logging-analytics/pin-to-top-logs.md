@@ -1,35 +1,44 @@
-# Pin-to-Top Critical Logs in Issue Layouts
+# Highlighting Critical Diagnostics in Issue Layouts
 
-How to highlight mission-critical log lines directly at the top of Sentry issue detail layouts for instant contextual triage.
+How to highlight mission-critical log lines and diagnostic context directly at the top of Sentry issue detail layouts for instant contextual triage.
 
 ## The Concept
 
 When triaging an issue, an agent or engineer is often forced to dig through dozens of standard info-level breadcrumbs to find the one decisive line (e.g. `Payment gateway response code: 4002 - Expired Card`).
 
-By pinning critical log lines or fatal assertion messages, the key information is immediately visible at the top of the issue header.
+By structuring high-priority diagnostic context into custom Sentry contexts and tags, the key information is immediately rendered in a prominent card at the top of the issue header.
 
-## How to Pin Logs in Sentry
+## How to Surface Critical Diagnostics in Sentry
 
-1. **Tagging Critical Logs with High Severity:**
-   In Sentry Structured Logs, logs with `level: fatal` or with the tag `pinned: true` can be surfaced in custom issue layout rules:
+1. **Custom Context Blocks (Surfaced in Top-Level UI Cards):**
+   Attach decisive diagnostic state via `scope.setContext()` to render dedicated tables at the top of the Sentry issue page:
    ```typescript
-   Sentry.logger.error('CRITICAL ASSERTION FAILED: Database transaction rolled back due to dead-lock', {
-     pinned: 'true',
-     severity: 'critical',
-     subsystem: 'payment_engine',
+   import * as Sentry from '@sentry/node';
+
+   Sentry.withScope((scope) => {
+     scope.setLevel('fatal');
+     scope.setTag('critical_failure', 'true');
+     scope.setContext('fatal_assertion', {
+       message: 'Database transaction rolled back due to dead-lock',
+       subsystem: 'payment_engine',
+       timestamp: new Date().toISOString(),
+     });
+     Sentry.captureException(err);
    });
    ```
 
-2. **Using Top-Level Sentry Annotations:**
-   Attach the crucial message directly to the event's `message` or top-level `culprit`:
+2. **Top-Level Extra and Tags:**
+   Attach key triage markers as searchable tags and extra data:
    ```typescript
    Sentry.withScope((scope) => {
-     scope.setAnnotation('Critical Note', 'Lease terminated due to provider watchdog timeout');
+     scope.setTag('triage_priority', 'critical');
+     scope.setExtra('watchdog_note', 'Lease terminated due to provider watchdog timeout');
      Sentry.captureException(err);
    });
    ```
 
 3. **Configuring Issue Layout Rules (Sentry UI):**
-   Under `Organization Settings -> Issue Details Layout`, enable:
-   - **Show Pinned Logs:** Surfaces any log matching `pinned:true` or `severity:critical` above the stack trace.
-   - **Show User Feedback:** Displays user-submitted crash comments alongside pinned logs.
+   Under `Organization Settings -> Issue Details Layout`:
+   - Prioritize custom context cards (`fatal_assertion`) above breadcrumbs and stack traces.
+   - Configure Tag Highlights to pin key tags (`critical_failure`, `subsystem`, `triage_priority`) to the top summary bar.
+   - Show User Feedback cards alongside critical diagnostics.

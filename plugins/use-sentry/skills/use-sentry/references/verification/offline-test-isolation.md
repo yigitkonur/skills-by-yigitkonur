@@ -9,56 +9,57 @@ An offline test gate (e.g. `npm test`) must:
 2. **Never fail because an internet connection dropped or an API token expired.**
 3. **Never attempt to send mock test exceptions to production Sentry.**
 
-## Pattern 1: No-Op When DSN is Unset
+## Pattern 1: Native SDK v8 No-Op When DSN is Unset
 
-Design the Sentry initialization module so that an empty, missing, or whitespace-only DSN cleanly results in a no-op:
+Sentry SDK v8 natively operates in clean no-op mode when `dsn` is omitted, empty, or undefined:
 
 ```typescript
+import * as Sentry from '@sentry/node';
+
 // src/core/obs/sentry.ts
-let initialized = false;
-
-export function initSentry(options?: { dsn?: string }) {
-  if (initialized) return;
-
-  const dsn = options?.dsn || process.env.SENTRY_DSN;
+export function setupSentry(options?: { dsn?: string }) {
+  const dsn = options?.dsn ?? process.env.SENTRY_DSN;
   if (!dsn || !dsn.trim()) {
-    // Zero-network offline mode: Do not call Sentry.init()
+    // Zero-network offline mode: SDK natively no-ops if initialized with empty DSN,
+    // or you can cleanly return without initializing.
     return;
   }
 
-  Sentry.init({ dsn, ... });
-  initialized = true;
-}
-
-export function captureAppException(error: unknown): string | undefined {
-  if (!initialized) {
-    return undefined;
-  }
-  return Sentry.captureException(error);
+  Sentry.init({
+    dsn,
+    tracesSampleRate: 1.0,
+  });
 }
 ```
+
+When uninitialized or initialized without a DSN, `Sentry.captureException()` safely executes without making network requests.
 
 ## Pattern 2: Unit Test Suite Verification
 
 Create a dedicated assertion test verifying that when `SENTRY_DSN` is absent:
-1. `initSentry()` does not crash.
-2. `captureAppException()` returns `undefined` safely.
+1. Calling `Sentry.init` or setup function does not crash.
+2. `Sentry.captureException()` executes cleanly without throwing or making network calls.
 3. No uncaught rejections or network calls occur.
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { initSentry, isSentryInitialized, captureAppException } from '../../src/core/obs/sentry.js';
+import * as Sentry from '@sentry/node';
+import { setupSentry } from '../../src/core/obs/sentry.js';
 
 describe('Sentry Offline Isolation Gate', () => {
-  it('does not initialize when SENTRY_DSN is unset', () => {
+  it('does not transmit when SENTRY_DSN is unset', () => {
     delete process.env.SENTRY_DSN;
-    initSentry();
-    expect(isSentryInitialized()).toBe(false);
+    setupSentry();
+    
+    // Sentry.getClient() is undefined or has no active transport
+    const client = Sentry.getClient();
+    expect(client?.getOptions().dsn).toBeFalsy();
   });
 
-  it('safely handles captureAppException when offline', () => {
-    const result = captureAppException(new Error('Offline unit test error'));
-    expect(result).toBeUndefined();
+  it('safely handles Sentry.captureException when offline', () => {
+    expect(() => {
+      Sentry.captureException(new Error('Offline unit test error'));
+    }).not.toThrow();
   });
 });
 ```

@@ -45,22 +45,42 @@ export const sentryLogger = {
 
 ## 2. Pino & Winston Integration
 
-If using Pino, forward logs using the official Sentry transport:
+Forward Pino logs directly into Sentry via custom stream forwarding:
 
 ```typescript
 import pino from 'pino';
+import * as Sentry from '@sentry/node';
 
-export const logger = pino({
-  transport: {
-    target: '@sentry/pino-transport',
-    options: {
-      sentry: {
-        dsn: process.env.SENTRY_DSN,
-      },
-      minLevel: 30, // 30 = info, 40 = warn, 50 = error
-    },
+const sentryStream = {
+  write(msg: string) {
+    try {
+      const log = JSON.parse(msg);
+      if (log.level >= 50) { // Error / Fatal
+        Sentry.captureException(new Error(log.msg || 'Pino logged error'), {
+          extra: log,
+        });
+      } else if (log.level >= 40) { // Warn
+        Sentry.addBreadcrumb({
+          category: 'pino',
+          message: log.msg,
+          level: 'warning',
+          data: log,
+        });
+      } else { // Info / Debug
+        Sentry.addBreadcrumb({
+          category: 'pino',
+          message: log.msg,
+          level: 'info',
+          data: log,
+        });
+      }
+    } catch {
+      // Fallback for unparseable raw log lines
+    }
   },
-});
+};
+
+export const logger = pino({}, sentryStream);
 ```
 
 ## 3. Querying Structured Logs via Sentry CLI
