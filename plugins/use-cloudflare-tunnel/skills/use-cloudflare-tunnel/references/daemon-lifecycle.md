@@ -64,19 +64,24 @@ echo "Active Persistent Tunnel URL: $URL"
 `cloudflared` includes an embedded HTTP server for metrics and health checking, as well as an automated diagnostic suite.
 
 ### Diagnostic Command: `cloudflared tunnel diag`
-To inspect tunnel state, system info, goroutine/heap profiles, and automated connectivity pre-checks (port 7844 UDP/TCP reachability):
+To inspect tunnel state, system info, goroutine/heap profiles, and automated connectivity pre-checks (port 7844 UDP/TCP reachability), execute inside `/tmp` so the generated diagnostic zip archive does not pollute your workspace:
 ```bash
-cloudflared tunnel diag
+(cd /tmp && cloudflared tunnel diag)
 ```
 
-### Enabling Local Metrics:
-Pass `--metrics 127.0.0.1:20241` to bind a predictable local port:
+### Enabling Local Metrics & Native Ready Probe:
+Pass `--metrics 127.0.0.1:20241` to bind a predictable local port (if omitted, `cloudflared` attempts ports 20241–20245):
 ```bash
 cloudflared tunnel --metrics 127.0.0.1:20241 --url http://127.0.0.1:8080 ...
 ```
 
-### Health Endpoints:
-* **Ready Probe:** `curl -s http://127.0.0.1:20241/ready`
+### Health Probing:
+* **Native CLI Probe (Recommended for Scripts):**
+  ```bash
+  cloudflared tunnel ready
+  # Exits 0 if tunnel is registered and healthy at edge; non-zero if establishing or failing
+  ```
+* **Direct HTTP Ready Probe:** `curl -s http://127.0.0.1:20241/ready`
   * Returns HTTP 200 when the tunnel has successfully registered with Cloudflare edge data centers.
   * Returns HTTP 503 if still establishing or retrying connections.
 * **Prometheus Metrics:** `curl -s http://127.0.0.1:20241/metrics`
@@ -104,8 +109,8 @@ fi
 
 ### Complete Cleanup (Processes & Logs):
 ```bash
-# Terminate running quick tunnels
-pkill -f "cloudflared tunnel" || true
+# Safely terminate only ad-hoc quick tunnels (Preserves production named tunnels)
+pkill -f "cloudflared tunnel --url" || true
 
 # Free hung origin port portably across macOS and Linux
 if command -v lsof &>/dev/null; then

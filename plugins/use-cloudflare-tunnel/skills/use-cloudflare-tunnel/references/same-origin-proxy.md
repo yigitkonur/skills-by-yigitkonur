@@ -52,6 +52,13 @@ flowchart LR
 2. **Zero CORS Issues:** API requests and web pages share the exact same scheme, host, and port.
 3. **Single Tunnel Lifecycle:** Only one `cloudflared` process to launch, monitor, and tear down.
 
+### Architectural Decision: Unified Proxy vs Native Ingress
+
+| Architecture | Setup | Recommendation |
+|---|---|---|
+| **Quick Tunnels (`try.cloudflare.com`)** | Ad-hoc, ephemeral preview. `cloudflared tunnel --url` accepts only one origin. | **Use `unified-proxy.mjs`:** Mandatory to bundle SPA static files + local API backend under one port. |
+| **Named Tunnels (Production)** | Persistent custom domain with `config.yml`. | **Skip `unified-proxy.mjs`:** Native `config.yml` ingress rules route `/` and `/api` directly at Cloudflare connector level. |
+
 ---
 
 ## 3. Dynamic Bundle Origin Patching

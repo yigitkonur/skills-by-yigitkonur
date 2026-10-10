@@ -15,9 +15,15 @@ AI agents often develop applications inside isolated environments (Docker contai
 Cloudflare Tunnel establishes an outbound encrypted connection (QUIC or HTTP/2 over port 7844) from your local environment to Cloudflare's global edge network:
 
 1. **Quick Tunnels ([`try.cloudflare.com`](https://try.cloudflare.com/)):** Zero-configuration, ephemeral public HTTPS URLs. No Cloudflare account, API tokens, or DNS required. Features native agent support via `--output json`. Best for ad-hoc agent testing, webhooks, and remote browser validation.
-   * **Agent Trade-offs:** Zero secret leakage risk and instant one-command setup, but subdomains rotate on restart (`*.trycloudflare.com`) and lack Cloudflare Access Zero Trust policies.
-2. **Named Tunnels (Production):** Persistent, authenticated tunnels tied to custom domains and Cloudflare Zero Trust Access policies.
-3. **Same-Origin Unified Proxy Pattern:** When testing Single Page Applications (React, Expo Web, Vite) that consume local APIs (Supabase, Express, FastAPI), running a lightweight unified reverse proxy on one port eliminates browser **Mixed Content** (`https` -> `http`) and CORS blocks.
+   * **Protected Quick Tunnels (`--allowed-mail`):** Supported in `cloudflared >= 2026.10.0` (Cloudflare Birthday Week). Allows locking the tunnel behind email OTP authentication without an account or dashboard configuration.
+   * **Agent Trade-offs & Limitations:**
+     * *Pros:* Zero secret leakage risk and instant one-command setup.
+     * *Cons:* Subdomains rotate on restart (`*.trycloudflare.com`), capped at **200 concurrent in-flight requests** (returns `HTTP 429`), and **does not support Server-Sent Events (SSE)** (`text/event-stream` stalls or drops tokens).
+     * *Headless Wall:* `--allowed-mail` requires an interactive browser session to enter the OTP code; it blocks headless API clients, `curl`, and automated agent-to-agent interactions.
+2. **Named Tunnels (Production & Persistent):** Persistent, authenticated tunnels tied to custom domains and Cloudflare Zero Trust Access policies.
+   * **Agent Suitability:** Ideal for long-lived environments, automated agent-to-agent programmatic access via **Cloudflare Access Service Tokens**, high-concurrency workloads, and streaming SSE (LLM chat streaming).
+   * **Native Ingress:** Eliminates the need for a reverse proxy like `unified-proxy.mjs` by natively routing multiple services (e.g. `/` -> frontend, `/api` -> backend) in `config.yml`.
+3. **Same-Origin Unified Proxy Pattern:** When testing Single Page Applications (React, Expo Web, Vite) that consume local APIs (Supabase, Express, FastAPI) over **Quick Tunnels**, running a lightweight unified reverse proxy on one port eliminates browser **Mixed Content** (`https` -> `http`) and CORS blocks.
 
 ### The Mandatory 3-Gate Verification Rule
 
@@ -188,9 +194,10 @@ cloudflared tunnel --protocol http2 --url http://127.0.0.1:8080
 ```
 
 ### Pattern C: Clean Teardown (Preserving Named Tunnels)
-Never delete `~/.cloudflared/` during quick tunnel cleanup! That directory stores production named tunnel credentials. Clean only process instances and temporary logs:
+Never run a blunt `pkill -f "cloudflared tunnel"` or delete `~/.cloudflared/` during quick tunnel cleanup! That kills production named tunnels and destroys credentials. Clean only ad-hoc quick tunnel instances and temporary logs:
 ```bash
-pkill -f "cloudflared tunnel" || true
+# Safely kill only ad-hoc quick tunnels (Preserves named tunnels):
+pkill -f "cloudflared tunnel --url" || true
 rm -f /tmp/cloudflared*
 ```
 
@@ -200,7 +207,11 @@ rm -f /tmp/cloudflared*
 
 | Pitfall | Impact | Fix |
 |---|---|---|
+| **Blunt `pkill -f "cloudflared tunnel"`** | Kills production named tunnels running on the same host! | Use `pkill -f "cloudflared tunnel --url"` or kill by recorded PID. |
 | **Wiping `~/.cloudflared/`** | Destroys permanent named tunnel `cert.pem` and `<UUID>.json` keys! | Quick tunnels do NOT use `~/.cloudflared/`. Delete only `/tmp/cloudflared-*`. |
+| **Streaming SSE over Quick Tunnels** | LLM chat tokens or Vite HMR buffer indefinitely or drop. | Quick Tunnels do NOT support SSE. Use **Named Tunnels** for streaming. |
+| **Exceeding 200 in-flight requests** | Quick Tunnels return `HTTP 429 Too Many Requests`. | Quick Tunnels enforce a hard 200 concurrency cap. Use Named Tunnels for load. |
+| **Automating tests with `--allowed-mail`** | Headless `curl`, agents, and webhooks get blocked by interactive OTP redirect. | `--allowed-mail` requires an interactive browser. Use Named Tunnels + Service Tokens for agents. |
 | **Assuming HTTP/2 runs on port 443** | Firewall still blocks tunnel even with `--protocol http2`. | Open outbound destination **port 7844 TCP & UDP** (tunnel data plane). Port 443 is control plane only. |
 | **Hardcoding `setsid` on macOS** | Silent failure when `setsid` is absent, causing 20s script timeouts. | Use `if command -v setsid; then setsid ...; else nohup ...; fi`. |
 | **Hardcoding glob `path: /v2/*` in ingress** | Fails to match subpaths because `path` is evaluated as Go regex. | Use Go regex `path: /v2/.*` or `path: ^/v2/`. |

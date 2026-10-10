@@ -138,3 +138,6 @@ WEBHOOK_URL=$(grep -o 'https://[-a-z0-9.]*trycloudflare.com' /tmp/webhook-cf.log
 
 echo "Register this Webhook URL in dashboard: ${WEBHOOK_URL}/webhooks/stripe"
 ```
+
+> [!WARNING]
+> **Never use `--allowed-mail` for Webhook Tunnels:** Third-party webhook dispatchers (Stripe, GitHub, Shopify, Supabase) cannot solve interactive email OTP challenges. Webhook listeners must use standard unprotected quick tunnels or public routes on Named Tunnels.

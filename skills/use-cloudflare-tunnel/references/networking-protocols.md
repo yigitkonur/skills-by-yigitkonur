@@ -63,15 +63,43 @@ To verify edge connectivity, port 7844 reachability, and generate a diagnostic b
 
 ## 4. Post-Quantum Hybrid Key Exchange
 
-Modern `cloudflared` supports and automatically negotiates post-quantum hybrid key exchange (`X25519MLKEM768`) to future-proof encrypted tunnel connections against "harvest now, decrypt later" attacks. You can explicitly opt into experimental post-quantum tunnels with:
+Modern `cloudflared` over QUIC automatically negotiates post-quantum hybrid key exchange (`X25519MLKEM768`) by default to protect against "harvest now, decrypt later" attacks, gracefully falling back to classical cryptography if edge or middlebox negotiation fails.
+
+### Strict Post-Quantum Enforcement (`--post-quantum` / `--pq`):
+When you pass `--post-quantum` or `--pq`, `cloudflared` **strictly enforces** post-quantum cryptography and **refuses connection** if post-quantum key exchange cannot be established (disabling fallback to classical cryptography).
 
 ```bash
 cloudflared tunnel --post-quantum --url http://127.0.0.1:8080
 ```
 
+> [!NOTE]
+> Post-quantum cryptography is **only supported over QUIC (UDP port 7844)**. It is not supported over HTTP/2.
+
 ---
 
-## 5. ICMP Socket Warnings in Docker Containers
+## 5. Linux UDP Buffer Tuning (`net.core.rmem_max`)
+
+When operating QUIC tunnels on Linux hosts under moderate to high traffic, `cloudflared` may output a warning:
+```
+WRN failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+```
+
+### Remediation:
+QUIC requires a larger UDP socket receive buffer to prevent packet drops and maintain high throughput. Increase the kernel buffer limits:
+
+```bash
+# Temporary runtime application:
+sudo sysctl -w net.core.rmem_max=2500000
+sudo sysctl -w net.core.wmem_max=2500000
+
+# Permanent persistence (/etc/sysctl.d/99-cloudflared.conf):
+echo -e "net.core.rmem_max=2500000\nnet.core.wmem_max=2500000" | sudo tee /etc/sysctl.d/99-cloudflared.conf
+sudo sysctl --system
+```
+
+---
+
+## 6. ICMP Socket Warnings in Docker Containers
 
 When running `cloudflared` as the root user inside Docker containers, you may see this warning in logs:
 ```
@@ -86,12 +114,12 @@ WRN ICMP proxy feature is disabled error="cannot create ICMPv4 proxy: Group ID 0
 
 ---
 
-## 6. Firewall Egress Rules
+## 7. Firewall Egress Rules
 
-If running in a locked-down network or VPC, ensure outbound rules allow:
+If running in a locked-down network, enterprise VPC, or strict security group, ensure outbound rules allow:
 
 | Port | Protocol | Destination | Purpose |
 |---|---|---|---|
-| **7844** | UDP | `*.v2.argotunnel.com` | QUIC tunnel data transport |
-| **7844** | TCP | `*.v2.argotunnel.com` | HTTP/2 tunnel data transport |
-| **443** | TCP | `api.cloudflare.com` | Tunnel management, registration, and auth |
+| **7844** | UDP | `*.v2.argotunnel.com`<br>`region1.v2.argotunnel.com`<br>`region2.v2.argotunnel.com` | QUIC tunnel data transport (primary) |
+| **7844** | TCP | `*.v2.argotunnel.com`<br>`region1.v2.argotunnel.com`<br>`region2.v2.argotunnel.com` | HTTP/2 tunnel data transport (fallback) |
+| **443** | TCP | `api.cloudflare.com`<br>`update.argotunnel.com` | Tunnel management, registration, and auth |

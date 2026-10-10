@@ -16,6 +16,8 @@ VERIFY_DNS=true
 POST_QUANTUM=false
 NO_PRECHECKS=false
 HTTP_HOST_HEADER=""
+ALLOWED_MAILS=()
+METRICS=""
 
 print_usage() {
   cat <<HELP
@@ -25,7 +27,9 @@ Options:
   -p, --port <PORT>             Local port to expose (required, e.g. 3000, 8080, 8099)
   -h, --host <HOST>             Local host address (default: 127.0.0.1)
       --protocol <proto>        Protocol to use: auto, quic, or http2 (default: auto)
-      --pq                      Enable experimental post-quantum hybrid key exchange
+      --allowed-mail <email>    Require email OTP auth (cloudflared >= 2026.10.0). Can repeat.
+      --metrics <address>       Listen address for metrics and /ready health checks (e.g. 127.0.0.1:20241)
+      --pq                      Strictly enforce post-quantum hybrid key exchange (QUIC only)
       --no-prechecks            Bypass connectivity prechecks to reduce startup latency
       --http-host-header <host> Override Host header sent to local origin
   -l, --logfile <path>          Path for cloudflared log (default: /tmp/cloudflared-<PORT>.log)
@@ -46,6 +50,8 @@ while [[ $# -gt 0 ]]; do
     -p|--port) PORT="$2"; shift 2 ;;
     -h|--host) HOST="$2"; shift 2 ;;
     --protocol) PROTOCOL="$2"; shift 2 ;;
+    --allowed-mail) ALLOWED_MAILS+=("$2"); shift 2 ;;
+    --metrics) METRICS="$2"; shift 2 ;;
     --pq|--post-quantum) POST_QUANTUM=true; shift ;;
     --no-prechecks) NO_PRECHECKS=true; shift ;;
     --http-host-header) HTTP_HOST_HEADER="$2"; shift 2 ;;
@@ -98,6 +104,14 @@ fi
 if [[ -n "$HTTP_HOST_HEADER" ]]; then
   CF_ARGS+=("--http-host-header" "$HTTP_HOST_HEADER")
 fi
+
+if [[ -n "$METRICS" ]]; then
+  CF_ARGS+=("--metrics" "$METRICS")
+fi
+
+for mail in "${ALLOWED_MAILS[@]}"; do
+  CF_ARGS+=("--allowed-mail" "$mail")
+done
 
 # Launch cloudflared quick tunnel in background with process group isolation
 if command -v setsid &>/dev/null; then
@@ -177,6 +191,10 @@ if [[ -n "$OUTFILE" ]]; then
 fi
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
+  ALLOWED_JSON="[]"
+  if [[ ${#ALLOWED_MAILS[@]} -gt 0 ]]; then
+    ALLOWED_JSON=$(printf '%s\n' "${ALLOWED_MAILS[@]}" | jq -R . | jq -s . 2>/dev/null || echo "[\"${ALLOWED_MAILS[*]}\"]")
+  fi
   cat <<JSON
 {
   "ok": true,
@@ -186,6 +204,8 @@ if [[ "$JSON_OUTPUT" == "true" ]]; then
   "pidfile": "${PIDFILE}",
   "logfile": "${LOGFILE}",
   "protocol": "${PROTOCOL}",
+  "metrics": "${METRICS}",
+  "allowedMails": ${ALLOWED_JSON},
   "postQuantum": ${POST_QUANTUM},
   "dnsResolved": ${DNS_RESOLVED}
 }
@@ -197,6 +217,12 @@ else
   echo "  Local Origin : http://${HOST}:${PORT}"
   echo "  Daemon PID   : ${DAEMON_PID}"
   echo "  Protocol     : ${PROTOCOL}"
+  if [[ -n "$METRICS" ]]; then
+    echo "  Metrics / Rdy: http://${METRICS}"
+  fi
+  if [[ ${#ALLOWED_MAILS[@]} -gt 0 ]]; then
+    echo "  Allowed Mail : ${ALLOWED_MAILS[*]}"
+  fi
   echo "  Post-Quantum : ${POST_QUANTUM}"
   echo "  DNS Ready    : ${DNS_RESOLVED}"
   echo "  Log File     : ${LOGFILE}"
