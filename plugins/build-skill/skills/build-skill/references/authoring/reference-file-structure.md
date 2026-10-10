@@ -139,29 +139,17 @@ What goes wrong and how to fix it.
 
 ## Cross-referencing between files
 
-Reference files can link to other reference files when topics overlap.
+The canonical [Agent Skills Specification](https://agentskills.io/specification) mandates:
+> **"Keep file references one level deep from SKILL.md. Avoid deeply nested reference chains."**
 
-### Inline references
+Deep multi-hop chains (`SKILL.md` → `ref-A.md` → `ref-B.md` → `ref-C.md`) cause agents to lose track of the primary workflow and waste tokens on exploratory crawling.
 
-```markdown
-For authentication details, see `references/auth/oauth.md`.
-```
+### Rules for reference pointers
 
-### Contextual references
-
-```markdown
-## Related
-
-- Token refresh: `references/auth/token-refresh.md`
-- Error handling: `references/errors/auth-errors.md`
-```
-
-### Rules for cross-references
-
-1. Only reference files within the same skill
-2. Use relative paths from the skill root
-3. Don't create circular dependencies between files
-4. Cross-references are secondary — the decision tree is primary routing
+1. **One-level deep discipline**: The decision tree or routing table in `SKILL.md` is the primary and definitive router.
+2. **Contextual mentions only**: If reference files mention related topics, make them non-blocking contextual pointers rather than mandatory sequential hops.
+3. **No circular dependencies**: Never create circular loops between reference files.
+4. **Relative paths within skill**: Always use relative paths from the skill root (`references/category/file.md`).
 
 ## The routing contract
 
