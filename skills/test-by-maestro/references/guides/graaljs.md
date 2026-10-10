@@ -76,14 +76,19 @@ if (postResponse.ok) {
 ```
 
 #### POST with Multipart Form (File Upload):
+File parts must be passed as an object containing `filePath` (resolved relative to the executing script directory) and an optional `mediaType`. Non-file form fields are passed directly as strings:
+
 ```javascript
 var uploadResponse = http.post("https://api.example.com/v1/upload", {
   headers: {
     "Authorization": "Bearer " + output.AUTH_TOKEN
   },
   multipartForm: {
-    file: "fixtures/avatar.png",        // File path relative to workspace root
-    userId: "1042"
+    file: {
+      filePath: "fixtures/avatar.png",   // Resolved relative to current script directory
+      mediaType: "image/png"             // Optional MIME type
+    },
+    userId: "1042"                       // Standard string form field
   }
 });
 ```

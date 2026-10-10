@@ -22,10 +22,9 @@ maestro test --help
 maestro hierarchy --help
 maestro start-device --help
 maestro list-devices --help
-maestro mcp --help
 ```
 
-Note: `maestro check-syntax` does not accept `--help` or `-h`; it strictly takes `<file>` or `-` for stdin.
+Note: `maestro check-syntax` does not accept `--help` or `-h`; it strictly takes `<file>` or `-` for stdin. Similarly, `maestro mcp` does not support `--help` (exits 2 with `Unknown option: '--help'`); its flags (`--no-viewer`, `--viewer-port=<port>`, `--working-dir=<dir>`) must be specified directly.
 
 ### Global Options
 
@@ -162,7 +161,7 @@ maestro start-device --platform=ios --device-model=iPhone-16-Pro --device-os=iOS
 
 # Launch an Android Emulator with specific locale and full system image
 maestro start-device --platform=android \
-  --device-model=pixel_7 \
+  --device-model=pixel_6 \
   --device-os="system-images;android-34;google_apis_playstore;arm64-v8a" \
   --device-locale=en_US \
   --force-create
@@ -170,7 +169,7 @@ maestro start-device --platform=android \
 
 - **Options**:
   - `--platform=<android|ios|web>` (Required)
-  - `--device-model=<model>`: e.g. `iPhone-16-Pro`, `pixel_7`
+  - `--device-model=<model>`: e.g. `iPhone-16-Pro`, `pixel_6`, `pixel_9` (see `maestro list-cloud-devices`)
   - `--device-os=<os>`: e.g. `iOS-18-2`, `android-34`, `android-37` (Android 17 API 37 supported in 2.11.0), or full system image path
   - `--device-locale=<locale>`: Combination of ISO-639-1 language and ISO-3166-1 country (e.g. `de_DE`, `en_US`)
   - `--force-create`: Overwrites existing virtual device if already created
@@ -224,18 +223,18 @@ maestro mcp --viewer-port 8080 --working-dir /path/to/workspace
 
 ### The 10 MCP Tools Catalog
 
-In Maestro 2.5.0+, the server pruned granular per-action tools (`tap_on`, `input_text`) in favor of a declarative `run` tool accepting YAML. The complete 10-tool roster consists of:
+In Maestro 2.5.0+, `run_flow` and `run_flow_files` were consolidated into a single declarative `run` tool accepting YAML, while 8 redundant granular tools (`tap_on`, `input_text`, etc.) were dropped from the server. In 2.7.0, `describe_cloud_run` was added. The complete 10-tool roster consists of:
 
 | # | Tool Name | Scope | Description | Primary Parameters |
 |---|---|---|---|---|
-| 1 | `list_devices` | Local | Enumerates local Android emulators, iOS simulators, and Chromium web targets. | `platform` (optional) |
+| 1 | `list_devices` | Local | Enumerates local Android emulators/devices, iOS simulators, and Chromium web targets. | `platform` (optional: `android`, `ios`, `web`) |
 | 2 | `inspect_screen` | Local | Dumps active screen hierarchy as compact JSON for AI element selection. | `device_id` (string, required) |
 | 3 | `run` | Local | Executes declarative Maestro commands or Flow files. Accepts inline YAML, files list, or directory. | `device_id` (string, required)<br>`yaml` (string, optional)<br>`files` (array, optional)<br>`dir` (string, optional)<br>`include_tags`, `exclude_tags`, `env` |
-| 4 | `take_screenshot` | Local | Captures an immediate full-screen PNG screenshot of active display. | `device_id` (string, required) |
-| 5 | `open_maestro_viewer` | Local | Returns HTTP URL of embedded Server-Sent Events (SSE) live screen viewer. | *None* |
+| 4 | `take_screenshot` | Local | Captures an immediate full-screen PNG screenshot of active display (downscaled to 2000px). | `device_id` (string, required) |
+| 5 | `open_maestro_viewer` | Local | Returns the HTTP streaming URL (`$viewerUrl`) for embedded Maestro Viewer live screen/timeline. | *None* |
 | 6 | `cheat_sheet` | Local/Docs | Returns comprehensive syntax reference for flow commands, selectors, and assertions. | *None* |
 | 7 | `list_cloud_devices` | Cloud | Queries supported `{device_model, device_os}` combinations on Maestro Cloud. | *None* |
-| 8 | `run_on_cloud` | Cloud | Uploads app binary and flows to Maestro Cloud for remote execution. | `app_file`, `flows`, `device_model`, `device_os`, `env` |
+| 8 | `run_on_cloud` | Cloud | Uploads app binary and flows to Maestro Cloud for remote execution. | `app_file` (string, required)<br>`flows` (string/array, required)<br>`device_model`, `device_os`, `device_locale`, `env`, `async` |
 | 9 | `get_cloud_run_status` | Cloud | Polls execution status and flow results for a cloud `upload_id`. | `upload_id` (string, required)<br>`include_flow_results` (bool) |
 | 10 | `describe_cloud_run` | Cloud | Retrieves step metadata, artifact links, logs, or zip archive for a `run_id`. | `run_id` (string, required)<br>`include_archive` (bool) |
 
@@ -272,10 +271,10 @@ Or specify explicit environment paths if Java is not in non-interactive PATH:
 {
   "mcpServers": {
     "maestro": {
-      "command": "/Users/mac/.maestro/bin/maestro",
+      "command": "maestro",
       "args": ["mcp"],
       "env": {
-        "JAVA_HOME": "/opt/homebrew/opt/openjdk"
+        "JAVA_HOME": "/path/to/java17+"
       }
     }
   }

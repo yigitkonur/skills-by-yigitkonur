@@ -119,9 +119,9 @@ maestro start-device --platform=ios \
   --device-os=iOS-18-2
 
 # Create and boot an Android Emulator with specific locale and system image
-# Supports Android 17 (API 37) with 16 KB page-size system images
+# Supports Android 17 (API 37) with 16 KB page-size system images (models: pixel_6, pixel_9, etc.)
 maestro start-device --platform=android \
-  --device-model=pixel_7 \
+  --device-model=pixel_6 \
   --device-os="system-images;android-34;google_apis_playstore;arm64-v8a" \
   --device-locale=en_US \
   --force-create

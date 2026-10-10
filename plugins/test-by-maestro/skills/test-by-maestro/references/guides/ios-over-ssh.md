@@ -31,7 +31,7 @@ In this architecture, SSH transports workspace files, triggers execution, and re
 Non-interactive SSH commands (`ssh host '...'`) do not load user shell profiles (`.zprofile` or `.zshrc`). If Java 17+ is installed in `/opt/homebrew/opt/java`, Maestro will fail with "Unable to locate a Java Runtime" unless `JAVA_HOME` is exported. Every remote invocation must explicitly export required toolchain paths:
 
 ```bash
-export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"
+export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"
 export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 ```
@@ -121,7 +121,7 @@ for f in root.rglob('*'):
 PY
 
 # 2. Remote toolchain preflight
-"${SSH[@]}" 'export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"; export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"; export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"; command -v maestro; java -version; maestro --version; maestro test --help'
+"${SSH[@]}" 'export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"; export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"; export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"; command -v maestro; java -version; maestro --version; maestro test --help'
 
 # 3. Dynamic device resolution (test mode only)
 if [ "$MODE" = test ]; then
@@ -151,7 +151,7 @@ tar -C "$WORKSPACE" -cf - . | "${SSH[@]}" "tar -xf - -C $(shq "$RDIR/workspace")
 REMOTE_BODY=$(cat <<'SH'
 set -euo pipefail
 run=$1; flow=$2; udid=$3; mode=$4; ownership=$5
-export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"
+export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"
 export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 

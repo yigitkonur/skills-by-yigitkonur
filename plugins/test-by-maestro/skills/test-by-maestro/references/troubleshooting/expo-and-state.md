@@ -75,7 +75,7 @@ Instead of clicking through OS system permission sheets during tests, pre-config
       notifications: allow
       camera: deny
       photos: allow
-      location: in-use            # Options: allow, deny, unset, in-use, always
+      location: inuse             # Options: allow, deny, unset, always, inuse, never; photos: limited
 ```
 
 ### 2. Dynamically Update During Flow

@@ -36,16 +36,16 @@ excludeTags:
   - "flaky"
 executionOrder:
   continueOnFailure: false      # Stops workspace run immediately on first failure
-  flowsOrder:                   # Explicit sequence of execution
-    - "flows/01-onboarding.yaml"
-    - "flows/02-login.yaml"
-    - "flows/03-checkout.yaml"
+  flowsOrder:                   # Sequence of flow names or filenames (without .yaml)
+    - 01-onboarding
+    - 02-login
+    - 03-checkout
 platform:
   ios:
-    disableAnimations: true     # Disables UIView/CALayer animations in runner
+    disableAnimations: true     # (Cloud only) Enables Reduce Motion on cloud simulators
     snapshotKeyHonorModalViews: true
   android:
-    disableAnimations: true     # Disables window and transition animations via ADB
+    disableAnimations: true     # (Cloud only) Disables system animations on cloud emulators
 disableRetries: false
 testOutputDir: "artifacts"
 ```
@@ -145,10 +145,10 @@ tags:
 - openLink: "exampleapp://checkout?orderId=1042"
 - waitForAnimationToEnd:
     timeout: 3000
-# Pixel comparison against baseline reference
+# Pixel comparison against baseline reference (numeric similarity %, default 95.0)
 - assertScreenshot:
     path: baselines/checkout_screen
-    thresholdPercentage: 0.5%
+    thresholdPercentage: 98
 # Multimodal defect audit
 - assertNoDefectsWithAI:
     optional: true

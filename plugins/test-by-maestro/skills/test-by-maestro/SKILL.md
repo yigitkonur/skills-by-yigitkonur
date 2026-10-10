@@ -31,22 +31,22 @@ Author, validate, execute, and diagnose E2E tests with Maestro across iOS Simula
 ## Source of truth
 
 1. Confirm installed CLI: run `maestro --version` (install if missing: `curl -fsSL "https://get.maestro.mobile.dev" | bash`). Tested baseline is `2.11.0` / `2.10.0` (requires Java 17+ via `$JAVA_HOME`).
-2. Inspect scoped command options with `maestro --help`, `maestro test --help`, `maestro cloud --help`, `maestro hierarchy --help`, `maestro start-device --help`, `maestro list-devices --help`, and `maestro mcp --help`. Note that `check-syntax` takes only `<file>` or `-` (stdin) without `--help`.
-3. Maestro Studio & Viewer: in Maestro 2.6.0+, Studio was unbundled from the CLI into a standalone desktop application (`https://studio.maestro.dev/`). For coding agents, Maestro embeds the **Maestro Viewer** (`open_maestro_viewer` in MCP), enabling real-time visual streaming of the device screen and commands. Terminal inspection uses `maestro hierarchy` (default JSON, or `--compact` CSV) and `maestro test --continuous` (`-c`).
+2. Inspect scoped command options with `maestro --help`, `maestro test --help`, `maestro cloud --help`, `maestro hierarchy --help`, `maestro start-device --help`, and `maestro list-devices --help`. Note that `check-syntax` takes only `<file>` or `-` (stdin) without `--help`. The `maestro mcp` server takes options directly: `--no-viewer`, `--viewer-port=<port>`, and `--working-dir=<dir>` (`--help` is not supported on `maestro mcp`).
+3. Maestro Studio & Viewer: in Maestro 2.6.0+, Studio was unbundled from the CLI into a standalone desktop application (`https://studio.maestro.dev/`). For coding agents, Maestro embeds the **Maestro Viewer** (`open_maestro_viewer` in MCP), returning the live HTTP streaming URL for the device screen and commands. Terminal inspection uses `maestro hierarchy` (default JSON, or `--compact` CSV) and `maestro test --continuous` (`-c`).
 4. Platform boundaries:
    - **macOS Workstations**: Can run iOS Simulators (requires Xcode `xcode-select -p`), Android emulators/devices (requires ADB), and Web (Chromium). Maestro packages pinned `applesimutils` internally (`~/.maestro/deps/applesimutils`) for simulator permissions.
-   - **Linux Hosts**: Can run Android emulators (with `/dev/kvm`), physical Android devices, and Web locally. **Linux cannot run iOS Simulators locally**; for iOS testing on Linux, upload binaries to **Maestro Cloud** (`maestro cloud` / MCP `run_on_cloud`) or orchestrate remote runs over SSH to a macOS host.
-   - **Physical Devices**: Android physical devices are fully supported via ADB. Physical iOS devices are not supported locally in Maestro 2.11.0.
+   - **Linux Hosts**: Can run Android emulators (with `/dev/kvm`), physical Android devices, and Web (Chromium) locally. **Linux cannot run iOS Simulators locally**; for iOS testing on Linux, upload binaries to **Maestro Cloud** (`maestro cloud` / MCP `run_on_cloud`) or orchestrate remote runs over SSH to a macOS host.
+   - **Physical Devices**: Android physical devices are fully supported via ADB. Physical iOS devices are not supported locally in Maestro 2.11.0 (fails fast with `"Physical iOS devices are not yet supported"`).
 
 ## Load-bearing rules
 
 | # | Rule | Why |
 |---|---|---|
-| 1 | Individual actions via MCP `run` | In Maestro 2.5.0+, granular tool wrappers (`tap_on`, `input_text`) were consolidated into the declarative `run` tool. For single exploratory actions, pass inline YAML: `{ "device_id": "...", "yaml": "- tapOn: \"Log In\"" }`. |
+| 1 | Individual actions via MCP `run` | In Maestro 2.5.0+, `run_flow` and `run_flow_files` were consolidated into the declarative `run` tool while redundant granular tools (`tap_on`, `input_text`, etc.) were dropped. For single exploratory actions, pass inline YAML: `{ "device_id": "...", "yaml": "- tapOn: \"Log In\"" }`. |
 | 2 | Respect Linux vs macOS platform realities | iOS Simulators require Darwin/Xcode. When authoring on Linux, execute iOS tests via Maestro Cloud (`maestro cloud` / `run_on_cloud`) or remote macOS SSH; never attempt local `xcrun simctl` or local iOS boots on Linux. |
-| 3 | Export explicit remote/non-interactive environment | Non-interactive SSH and agent shells omit user profile paths; always export `JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"` and `PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"` alongside `DEVELOPER_DIR`. |
+| 3 | Export explicit remote/non-interactive environment | Non-interactive SSH and agent shells omit user profile paths; use portable `JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"` and export `PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"` alongside `DEVELOPER_DIR`. |
 | 4 | Uniquely select target device | Parse `xcrun simctl list devices --json` or `adb devices`; require exactly one booted match or explicit caller target (`--device <id>`). Multi-device parallel runs on macOS use dynamic ports (`SIMCTL_CHILD_PORT`) since Maestro 2.6.0. |
-| 5 | Design reusable subflows with parameterized `env` | Encapsulate repeated routines (auth, onboarding, teardown) into `subflows/`. Pass context via `runFlow.env`; access via `${VARIABLE}`. Use `onFlowStart` and `onFlowComplete` hooks to guarantee state hygiene. |
+| 5 | Design reusable subflows with parameterized `env` | Encapsulate repeated routines (auth, onboarding, teardown) into `subflows/`. Pass context via `runFlow.env`; access via `${VARIABLE}`. Variables are isolated between peer subflows. Use `onFlowStart` and `onFlowComplete` hooks to guarantee state hygiene. |
 | 6 | Hierarchy-backed selectors and regex wildcards | Inspect `maestro hierarchy` or MCP `inspect_screen` on failures; note `text:` performs a **full-string regex match** (`IGNORE_CASE`). Use `.*Text.*` for partial copy matching. Never pass `start:` or `end:` in element selectors (2.11.0 breaking rule). |
 | 7 | Choose reset strategy by runtime and session | Standalone builds use `clearState: true` and `clearKeychain: true` (iOS). Running Expo Dev Client sessions must omit `launchApp` to preserve Metro bundler connections and use deep links instead. |
 | 8 | Preserve exit status and full artifacts | Transport logs, JUnit XML, screenshots, and `manifest.json` (with `startedAtEpochMs`); never convert test failure into success. |
@@ -102,12 +102,35 @@ Coding agents should follow an exploratory iterative loop:
      "yaml": "- inputText: \"user@example.com\"\n- hideKeyboard: { optional: true }\n- tapOn: \"Continue\""
    }
    ```
-4. **Visual Stream**: Call `open_maestro_viewer` to launch the live embedded web viewer in browser/IDE.
-5. **Persist Test**: Once the flow passes interactively, save the commands into a permanent YAML flow file in `.maestro/flows/`.
+4. **Visual Stream**: Call `open_maestro_viewer` to obtain the live HTTP streaming URL (`$viewerUrl`) for real-time visual inspection (open in browser or embed into Claude Code desktop's `launch.json` preview pane).
+5. **Persist Test**: Once individual actions pass interactively, save the commands into a permanent YAML flow file in `.maestro/flows/`.
+
+## Cross-Platform Execution Architecture (Linux vs. macOS)
+
+When authoring and executing Maestro tests, respect the physical host platform boundaries:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            Host Machine (Agent / CI)                         │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+            ┌──────────────────────────┴──────────────────────────┐
+            ▼                                                     ▼
+    [macOS Workstation]                                     [Linux Host]
+    • Android Emulators (ADB)                               • Android Emulators (KVM / ADB)
+    • Android Physical Devices                              • Android Physical Devices
+    • iOS Simulators (local Xcode)                          • Web (Chromium)
+    • Web (Chromium)                                        ───────────────────────────────
+                                                            ⚠️ iOS Simulators CANNOT run locally:
+                                                            1. Route to Maestro Cloud:
+                                                               maestro cloud --app-file app.zip flows/
+                                                            2. Route over SSH to macOS Host:
+                                                               ssh mac-host 'maestro --device ... test'
+```
 
 ## Authoring Reusable and Ready-Made Tests
 
-Structure test workspaces to maximize modularity and regression stability:
+Structure test workspaces to maximize modularity, variable isolation, and regression stability:
 
 ```text
 .maestro/
@@ -115,7 +138,7 @@ Structure test workspaces to maximize modularity and regression stability:
 ├── flows/                    # Top-level end-to-end flows
 │   ├── 01-auth-smoke.yaml
 │   └── 02-checkout.yaml
-├── subflows/                 # Reusable building blocks
+├── subflows/                 # Reusable building blocks (login, cleanup, forms)
 │   ├── login-user.yaml
 │   └── clear-cart.yaml
 └── scripts/                  # Synchronous GraalJS helpers
@@ -123,6 +146,8 @@ Structure test workspaces to maximize modularity and regression stability:
 ```
 
 ### 1. Ready-Made Reusable Subflow (`subflows/login-user.yaml`)
+Subflows encapsulate repeatable routines. Parameters passed via `runFlow.env` are isolated between peer subflows and support default fallback syntax:
+
 ```yaml
 # subflows/login-user.yaml
 # Parameterized login subflow with fallback defaults
@@ -139,6 +164,8 @@ Structure test workspaces to maximize modularity and regression stability:
 ```
 
 ### 2. Main Test Flow with Hooks and Parameters (`flows/02-checkout.yaml`)
+Compose subflows, lifecycle hooks (`onFlowStart`, `onFlowComplete`), and environment overrides into clean regression journeys:
+
 ```yaml
 appId: com.example.shop
 tags:
@@ -164,6 +191,27 @@ onFlowComplete:
 - tapOn: "Proceed to Checkout"
 - assertVisible: "Order Confirmation"
 - takeScreenshot: artifacts/checkout_success
+```
+
+### 3. Platform-Conditioned Subflows
+When a single suite runs across Android, iOS, and Web, branch behavior cleanly using `when.platform`:
+
+```yaml
+# Platform-specific permission or onboarding handling
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Allow While Using App"
+          optional: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: "While using the app"
+          optional: true
 ```
 
 ## Minimal read sets

@@ -159,7 +159,7 @@ Maestro locators find elements within the accessibility tree exposed by XCUITest
       element:
         id: "terms_and_conditions"
       direction: DOWN               # Direction: DOWN, UP, LEFT, RIGHT
-      timeout: 15000                # Timeout in ms (default 15000)
+      timeout: 20000                # Timeout in ms (default 20000)
       speed: 40                     # Scroll fling speed percentage (0-100)
       visibilityPercentage: 100     # Required percentage visible (0-100)
       centerElement: true           # Centers target element in viewport
@@ -211,7 +211,7 @@ Generate and type realistic test data natively without external scripts:
         all: allow
         notifications: allow
         camera: deny
-        location: in-use            # Options: allow, deny, unset, in-use, always
+        location: inuse             # Options: allow, deny, unset, always, inuse, never; photos: limited
       arguments:
         test_mode: "mock"
   ```
@@ -302,11 +302,11 @@ Avoid arbitrary sleep statements. Use built-in synchronization:
   - assertTrue: ${output.status === 200}
   - assertTrue: ${output.items.length > 0}
   ```
-- **`assertScreenshot`**: Visual regression pixel comparison against baseline image:
+- **`assertScreenshot`**: Visual regression pixel comparison against baseline image (threshold is required similarity percentage 0-100, default 95.0, numeric without `%`):
   ```yaml
   - assertScreenshot:
       path: baselines/home_screen.png
-      thresholdPercentage: 0.5%
+      thresholdPercentage: 98
       cropOn:
         id: "hero_banner"
   ```

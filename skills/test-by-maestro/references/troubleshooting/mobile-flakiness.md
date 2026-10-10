@@ -23,7 +23,7 @@ maestro hierarchy --compact
 ### 2. Interactive AI Agent Inspection via MCP (`maestro mcp`)
 When automating via AI coding agents:
 - Use MCP `inspect_screen`: Returns compact hierarchy (`ui_schema` and `elements`) with token-efficient keys (`b`=bounds, `txt`=text, `rid`=id, `a11y`=accessibility label, `hint`=placeholder).
-- Use MCP `open_maestro_viewer`: Opens live Server-Sent Events (SSE) stream in browser to see the device screen and command execution in real-time.
+- Use MCP `open_maestro_viewer`: Returns the HTTP streaming URL (`$viewerUrl`) to open in a browser or embed in Claude Code desktop's `launch.json` preview pane for real-time visual streaming.
 
 ### What to Inspect in the Hierarchy Dump:
 1. **Identifiers**: Check whether `id` (`resource-id` on Android, `accessibilityIdentifier` on iOS) matches your locator exactly.
@@ -91,7 +91,14 @@ When screens animate in with slide or fade transitions, use `waitForAnimationToE
 
 ### 2. Disable Looping Animations in CI
 Continuous looping animations (such as unconstrained pulse effects or looping video banners) can prevent the iOS XCUITest driver from detecting that the application is idle.
-- In `.maestro/config.yaml`, set `platform.ios.disableAnimations: true` and `platform.android.disableAnimations: true`.
+- In `.maestro/config.yaml`, set `platform.ios.disableAnimations: true` and `platform.android.disableAnimations: true` (**Note: this setting is Cloud only**; it disables system animations on Maestro Cloud runners).
+- For **local Android execution**, disable animations via ADB:
+  ```bash
+  adb shell settings put global window_animation_scale 0
+  adb shell settings put global transition_animation_scale 0
+  adb shell settings put global animator_duration_scale 0
+  ```
+- For **local iOS Simulator**, enable "Reduce Motion" in Simulator Accessibility settings.
 - Or perform a settle swipe if cold boot accessibility tree needs stabilization:
   ```yaml
   - launchApp
@@ -132,7 +139,7 @@ Use `scrollUntilVisible` to locate off-screen items:
     element:
       id: "item_99"
     direction: DOWN
-    timeout: 15000
+    timeout: 20000
     speed: 40
 - tapOn:
     id: "item_99"
