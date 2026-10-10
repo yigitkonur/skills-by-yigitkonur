@@ -1,6 +1,6 @@
 # Mission Brief: CLS Layout Stability & 120 FPS Compositor Audit
 
-## 3.0 Skills / Tools: view_file, run_command, audit-ui-and-save-files.
+## 3.0 Skills / Tools: view_file, run_command, audit-ui-ux.
 
 ## 3.1 Context Block
 

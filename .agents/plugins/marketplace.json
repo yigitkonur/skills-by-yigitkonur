@@ -65,34 +65,10 @@
       "category": "Productivity"
     },
     {
-      "name": "audit-ui-and-save-files",
+      "name": "audit-ui-ux",
       "source": {
         "source": "local",
-        "path": "./plugins/audit-ui-and-save-files"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "audit-ux-and-save-files",
-      "source": {
-        "source": "local",
-        "path": "./plugins/audit-ux-and-save-files"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "audit-ux-laws",
-      "source": {
-        "source": "local",
-        "path": "./plugins/audit-ux-laws"
+        "path": "./plugins/audit-ui-ux"
       },
       "policy": {
         "installation": "AVAILABLE",

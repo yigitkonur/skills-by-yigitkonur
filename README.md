@@ -36,9 +36,7 @@ npx -y skills add yigitkonur/skills-by-yigitkonur -y -g -a universal      # glob
 | [audit-agentic-mcp](skills/audit-agentic-mcp/) | auditing or designing an MCP server for agent-readiness — framework, security, context. |
 | [audit-completion](skills/audit-completion/) | verifying claimed-done work or auditing session/plan/branch completion with evidence. |
 | [audit-skill-by-derailment](skills/audit-skill-by-derailment/) | testing a skill with an agent execution trace; never for ordinary code, PR, or workflow review. |
-| [audit-ui-and-save-files](skills/audit-ui-and-save-files/) | auditing a running web app UI across pages/viewports, saving per-bug findings to a tree. |
-| [audit-ux-and-save-files](skills/audit-ux-and-save-files/) | auditing a running app's usability via persona journeys, saving per-issue findings to a tree. |
-| [audit-ux-laws](skills/audit-ux-laws/) | building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load). |
+| [audit-ui-ux](skills/audit-ui-ux/) | auditing web or mobile UI/UX via vision-first screenshot evaluation across design precision, usability heuristics, and cognitive laws. |
 | [build-chrome-extension](skills/build-chrome-extension/) | building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts. |
 | [build-cloudflare-access-sso](skills/build-cloudflare-access-sso/) | protecting a subdomain with Cloudflare Access + Google SSO, or locking an origin against Access bypass. |
 | [build-cloudflare-email-sending](skills/build-cloudflare-email-sending/) | sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email. |

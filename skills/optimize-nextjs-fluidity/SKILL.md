@@ -30,7 +30,7 @@ Do **not** use for:
 - *A single known bug.* Fix it inline; this skill's recon and gating overhead pays back
   across many routes and domains, not one component.
 - *Generic code review.* Use `run-review`. This skill is performance/fluidity-specific.
-- *Visual/CSS bugs.* Use `audit-ui-and-save-files` — that one drives a real browser.
+- *Visual/CSS bugs.* Use `audit-ui-ux` — that one drives a vision-first evaluation.
 - *Non-Next.js projects, or Pages Router-only apps.* The corpus is App Router-shaped.
   Pages Router surfaces appear only as migration notes.
 

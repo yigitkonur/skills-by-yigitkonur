@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 53 skills. Every skill is manual-only (invoked by name).",
+      "description": "Every Claude-compatible skill — all 51 skills. Every skill is manual-only (invoked by name).",
       "version": "1.0.124",
       "category": "skills",
       "strict": false,
@@ -21,9 +21,7 @@
         "./skills/audit-agentic-mcp",
         "./skills/audit-completion",
         "./skills/audit-skill-by-derailment",
-        "./skills/audit-ui-and-save-files",
-        "./skills/audit-ux-and-save-files",
-        "./skills/audit-ux-laws",
+        "./skills/audit-ui-ux",
         "./skills/build-chrome-extension",
         "./skills/build-cloudflare-access-sso",
         "./skills/build-cloudflare-email-sending",
@@ -117,36 +115,14 @@
       ]
     },
     {
-      "name": "audit-ui-and-save-files",
+      "name": "audit-ui-ux",
       "source": "./",
-      "description": "Use if auditing a running web app UI across pages/viewports, saving per-bug findings to a tree.",
+      "description": "Use if auditing web or mobile UI/UX via vision-first screenshot evaluation across design precision, usability heuristics, and cognitive laws.",
       "version": "1.0.124",
       "category": "skills",
       "strict": false,
       "skills": [
-        "./skills/audit-ui-and-save-files"
-      ]
-    },
-    {
-      "name": "audit-ux-and-save-files",
-      "source": "./",
-      "description": "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree.",
-      "version": "1.0.124",
-      "category": "skills",
-      "strict": false,
-      "skills": [
-        "./skills/audit-ux-and-save-files"
-      ]
-    },
-    {
-      "name": "audit-ux-laws",
-      "source": "./",
-      "description": "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load).",
-      "version": "1.0.124",
-      "category": "skills",
-      "strict": false,
-      "skills": [
-        "./skills/audit-ux-laws"
+        "./skills/audit-ui-ux"
       ]
     },
     {
