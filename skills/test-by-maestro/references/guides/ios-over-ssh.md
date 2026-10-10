@@ -1,11 +1,16 @@
 # Remote iOS Simulator Testing (Maestro Cloud vs. SSH)
 
-Linux hosts cannot execute iOS Simulators locally because Apple's Simulator runtime strictly requires macOS Darwin and Xcode (`xcrun simctl`). When developing or running CI from Linux, you have two primary architectural paths:
+Linux hosts cannot run iOS Simulators: Maestro drives iOS through `xcrun simctl` and `xcodebuild test-without-building`, which need macOS with **full Xcode** (the Command Line Tools alone are not enough). Physical iPhones are not supported by Maestro 2.11.0 either. From a Linux authoring host there are two routes:
 
-1. **Maestro Cloud (`maestro cloud` / MCP `run_on_cloud`) — Recommended First-Party Path**:
-   Upload application binaries (`.app`, `.ipa`, or `.zip`) and test flows directly to Maestro Cloud. Runs across hosted cloud devices in parallel with automated video recordings, artifact retention, and zero self-hosted Apple hardware maintenance.
-2. **Remote macOS Host over SSH — Self-Hosted Infrastructure Path**:
-   Orchestrate execution from the Linux authoring host to an owned macOS runner (e.g. Mac mini / EC2 Mac) using SSH transport.
+1. **Maestro Cloud (`maestro cloud` / MCP `run_on_cloud`) — the official route.**
+   Upload a **simulator** build (an `.app` bundle, or a zipped `.app`) and the flows. Device-signed `.ipa` and App Store builds are rejected (`App build target ... not supported, set build target to 'iphonesimulator'`). Requirements:
+   - a Maestro Cloud plan or trial, plus `maestro login` or `MAESTRO_CLOUD_API_KEY`;
+   - the simulator `.app` itself must be built on a Mac or in a cloud builder (`xcodebuild ... -destination 'generic/platform=iOS Simulator'`; for Expo, an EAS profile with `ios.simulator: true`). A Linux-only pipeline cannot build it.
+   - Android uploads must be an APK containing `arm64-v8a`; `.aab` is not supported.
+2. **A Mac you control, driven over SSH — the skill's own construction.**
+   Maestro documents no "remote Mac" mode; the CLI simply runs on any Mac. Options: an owned Mac mini, a GitHub-hosted `macos-*` runner, or an EC2 Mac (bare metal on a Dedicated Host, 24-hour minimum allocation). Xcode must match the macOS version (Apple's Xcode requirements table). Maestro's own CI runs iOS on `macos-26` and Android on `ubuntu-latest` with KVM.
+
+Unofficial third-party routes exist (e.g. Software Mansion Argent `sim-remote`, DeviceLab `maestro-ios-device`); they are not Maestro features.
 
 ---
 
@@ -17,7 +22,7 @@ Linux hosts cannot execute iOS Simulators locally because Apple's Simulator runt
 │ (Test Runner / CI)     │                     │ (Xcode + Simulator)    │
 │                        │                     │                        │
 │ 1. Workspace tarball   │ ── tar transport ─▶ │ 1. Unique run root     │
-│ 2. Preflight & syntax  │ ── remote probe ──▶ │ 2. Host driver lease   │
+│ 2. Preflight & syntax  │ ── remote probe ──▶ │ 2. Host-wide lock      │
 │ 3. Execution trigger   │ ── bash script ───▶ │ 3. Maestro CLI test    │
 │ 4. Artifact collection │ ◀─ tar retrieve ─── │ 4. Output results tree │
 └────────────────────────┘                     └────────────────────────┘
@@ -28,12 +33,11 @@ In this architecture, SSH transports workspace files, triggers execution, and re
 ## Core Operational Invariants
 
 ### 1. Non-Interactive SSH Environment
-Non-interactive SSH commands (`ssh host '...'`) do not load user shell profiles (`.zprofile` or `.zshrc`). If Java 17+ is installed in `/opt/homebrew/opt/java`, Maestro will fail with "Unable to locate a Java Runtime" unless `JAVA_HOME` is exported. Every remote invocation must explicitly export required toolchain paths:
+Non-interactive SSH commands (`ssh host '...'`) do not load `.zprofile` or `.zshrc` (zsh reads only `.zshenv` for non-login, non-interactive shells), so Homebrew paths and `JAVA_HOME` are missing. Maestro needs Java 17+ and exits with `ERROR: Java 17 or higher is required.` otherwise. Export the toolchain explicitly on every remote invocation. `java_home -v 17+` avoids picking an older JDK; Homebrew's `openjdk` is keg-only, so `java_home` only sees it if it was symlinked into `/Library/Java/JavaVirtualMachines`, and the real JDK home is `libexec/openjdk.jdk/Contents/Home` inside the keg:
 
 ```bash
-export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"
+export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17+ 2>/dev/null || (for p in /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home; do [ -d "$p" ] && echo "$p" && break; done))}"
 export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"
-export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 ```
 
 ### 2. Dynamic Simulator Resolution
@@ -48,8 +52,8 @@ assert len(devices) == 1, 'Require exactly one booted available simulator'
 target_udid = devices[0]['udid']
 ```
 
-### 3. Coordinated Device-Specific Driver Lease
-Maestro runs an XCUITest runner (`dev.mobile.maestro-driver-iosUITests.xctrunner`) with an embedded Swift `FlyingFox` HTTP server. While Maestro 2.6.0+ supports parallel iOS simulator execution across different simulators using dynamic ephemeral ports passed via `SIMCTL_CHILD_PORT`, multiple concurrent OS processes on the same host targeting the **exact same simulator UDID** will collide and preempt each other's test sessions. Implement an atomic filesystem mutex per UDID using `mkdir` with parent directory creation, stale lock recovery, and clean signal exit codes:
+### 3. Host-Wide Driver Lock (this skill's convention, not a Maestro feature)
+Maestro runs an XCUITest runner (`dev.mobile.maestro-driver-iosUITests.xctrunner`) with an embedded Swift `FlyingFox` HTTP server. Since 2.6.0 each `maestro test` run asks the OS for a free port (passed to `xcodebuild` as `TEST_RUNNER_PORT`; `22087` is only the fallback), so parallel runs on **different** simulators work. Two processes on the **same** simulator do collide: `--reinstall-driver` defaults to true and uninstalling kills the runner of the other process. Maestro has no lock for this. The recipe below uses one host-wide lock directory (`driver.lock`, not per-UDID) because it is deliberately conservative: it serializes every run on the Mac. Key the lock path by UDID if you want parallel runs on different simulators. It uses `mkdir` atomicity, stale-lock recovery, and clean signal exit codes:
 
 ```bash
 lock="$HOME/.cache/test-by-maestro/driver.lock"
@@ -85,7 +89,7 @@ trap 'exit 143' TERM
 ```
 
 ### 4. Full Workspace Transfer
-Maestro tests often rely on modular subflows, JavaScript helpers, and configuration files. Transfer the entire workspace directory rather than a single YAML file, ensuring all relative paths remain valid.
+Transfer the entire workspace directory (subflows, scripts, fixtures) rather than a single YAML file so relative paths resolve. Note that for a **single flow file** Maestro reads a workspace config only when you pass `--config`; it never auto-discovers `config.yaml`. Either add `--config .maestro/config.yaml` to the `maestro test` line, or run the whole directory (`maestro test .maestro`), where `config.yaml` is read from the directory you pass.
 
 ### 5. Deterministic Artifact Retrieval
 Even when a test fails, execution artifacts (console logs, JUnit XML, screenshots) must be retrieved to the authoring host before reporting failure.
@@ -121,14 +125,14 @@ for f in root.rglob('*'):
 PY
 
 # 2. Remote toolchain preflight
-"${SSH[@]}" 'export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"; export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"; export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"; command -v maestro; java -version; maestro --version; maestro test --help'
+"${SSH[@]}" 'export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17+ 2>/dev/null || (for p in /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home; do [ -d "$p" ] && echo "$p" && break; done))}"; export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"; command -v maestro; java -version; maestro --version; maestro test --help'
 
 # 3. Dynamic device resolution (test mode only)
 if [ "$MODE" = test ]; then
   TARGET_UDID=$(python3 - "$HOST" "$TARGET_UDID" "$DEVICE_NAME" <<'PY'
 import json, subprocess, sys
 host, wanted, name = sys.argv[1:]
-cmd = 'export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"; xcrun simctl list devices --json'
+cmd = 'xcrun simctl list devices --json'
 raw = subprocess.check_output(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', host, cmd], text=True)
 devices = [d for group in json.loads(raw)['devices'].values() for d in group
            if d.get('isAvailable') and d.get('state') == 'Booted']
@@ -151,9 +155,8 @@ tar -C "$WORKSPACE" -cf - . | "${SSH[@]}" "tar -xf - -C $(shq "$RDIR/workspace")
 REMOTE_BODY=$(cat <<'SH'
 set -euo pipefail
 run=$1; flow=$2; udid=$3; mode=$4; ownership=$5
-export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || (for p in /opt/homebrew/opt/openjdk /opt/homebrew/opt/java /usr/local/opt/openjdk /usr/lib/jvm/default-java /usr/lib/jvm/java-17-openjdk-amd64; do [ -d "$p" ] && echo "$p" && break; done))}"
+export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17+ 2>/dev/null || (for p in /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home; do [ -d "$p" ] && echo "$p" && break; done))}"
 export PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"
-export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 
 if [ "$mode" = test ]; then
   test "$ownership" = confirmed || { printf 'Operator ownership unconfirmed\n' >&2; exit 75; }

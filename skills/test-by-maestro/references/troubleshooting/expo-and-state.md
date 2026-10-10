@@ -4,38 +4,34 @@ Managing application state, authentication tokens, runtime permissions, and deve
 
 ---
 
-## Release Builds vs. Expo Dev Client Sessions
+## Release Builds vs. Expo Go vs. Dev Client Builds
 
-| Target Environment | Launch Strategy | State Reset Strategy |
-|---|---|---|
-| **Production / Release Build** | Use `launchApp` with explicit configuration. | Use `clearState: true`, `clearKeychain: true`, or `setPermissions`. |
-| **Active Expo Dev Client** | **Omit `launchApp`**. The app is already running and connected to Metro. | Use app-defined deep links for soft resets. |
+| Target | Launch strategy |
+|---|---|
+| **Release / EAS / standalone build** | Normal `launchApp` (Maestro docs: "For EAS builds or standalone apps, use the standard `launchApp`"). Reset with `clearState`, `clearKeychain`, `setPermissions`. |
+| **Expo Go** | `launchApp` cannot be used with a custom `appId`; open the project with `openLink` (the `exp://` URL). |
+| **Expo Dev Client build** | It is a standalone app, so `launchApp` works, but it lands on the Dev Client launcher screen. Then either tap the listed dev server, or deep-link straight to it with `openLink: "exp+<scheme>://expo-development-client/?url=http%3A%2F%2F<host>:8081"`. |
 
-### The Dev Client Restart Trap
-
-Calling `launchApp` against an active Expo Dev Client running in development mode interrupts the Metro bundler connection. The app restarts into the Expo launcher rather than your active screen, forcing a slow JavaScript bundle recompilation.
-
-For running development clients:
-1. Ensure the app and Metro bundler are already running.
-2. Begin flow commands directly with element assertions or deep links.
-3. Do not invoke `launchApp` or `stopApp`.
+Maestro's own Expo development-build article starts its flow with `- launchApp` and then handles the launcher screen with a conditional `runFlow`. There is no Maestro or Expo source for the claim that `launchApp` severs Metro or forces a bundle recompile; if you observe that in your project, treat it as a local finding and prefer `openLink` to re-enter the app.
 
 ```yaml
-# Flow for running Expo Dev Client
+# Dev Client: launch, then enter the dev server if the launcher appears
 appId: com.example.demo
 ---
-# Omit launchApp to preserve active Metro connection
-- openLink: "exampleapp://dev-reset"
+- launchApp
+- runFlow:
+    when:
+      visible: "Development Build"      # launcher screen text varies by project
+    commands:
+      - openLink: "exp+exampleapp://expo-development-client/?url=http%3A%2F%2F192.168.1.10%3A8081"
 - assertVisible: "Dashboard"
-- tapOn:
-    id: "profile_tab"
 ```
 
 ---
 
 ## The iOS Keychain Persistence Gotcha
 
-A critical failure mode in iOS mobile testing involves auth token persistence:
+A common failure mode in iOS testing involves auth token persistence:
 
 > **Important**: `clearState: true` clears the app sandbox (UserDefaults, SQLite database, cached files), but **does NOT clear the iOS Keychain**.
 
@@ -59,7 +55,7 @@ Or execute the standalone command:
 - clearKeychain
 ```
 
-> **Warning**: `clearKeychain` purges credentials for the target application from the simulator. On shared host simulators, ensure other concurrent runs are not relying on saved credentials.
+> **Warning**: `clearKeychain` resets the **entire simulator keychain** (`xcrun simctl keychain <udid> reset`), not just the target app's credentials. On shared simulators, make sure other concurrent runs are not relying on saved credentials.
 
 ---
 
@@ -75,7 +71,7 @@ Instead of clicking through OS system permission sheets during tests, pre-config
       notifications: allow
       camera: deny
       photos: allow
-      location: inuse             # Options: allow, deny, unset, always, inuse, never; photos: limited
+      location: inuse             # iOS only; Android revokes unknown values (use allow/deny/unset cross-platform)
 ```
 
 ### 2. Dynamically Update During Flow
@@ -83,7 +79,7 @@ Instead of clicking through OS system permission sheets during tests, pre-config
 - setPermissions:
     appId: com.example.demo
     permissions:
-      location: always
+      location: allow                 # `always`/`inuse`/`never` and `photos: limited` are iOS only
       notifications: allow
 ```
 
@@ -128,7 +124,7 @@ To avoid race conditions where Maestro attempts to tap UI elements while asynchr
 When running tests against a dev client:
 - Local simulator on macOS connects to Metro at `http://localhost:8081`.
 - Android emulators connect via ADB reverse proxy (`adb reverse tcp:8081 tcp:8081`) or `10.0.2.2:8081`.
-- Remote testing over SSH requires Metro to listen on all interfaces or provide a tunnel URL.
+- Remote testing over SSH needs the Mac to reach Metro (a LAN address or tunnel URL in the dev-client deep link); this is common practice rather than a Maestro-documented requirement.
 
 ---
 

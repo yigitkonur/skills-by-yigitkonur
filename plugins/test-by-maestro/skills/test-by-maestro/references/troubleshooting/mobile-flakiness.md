@@ -22,14 +22,14 @@ maestro hierarchy --compact
 
 ### 2. Interactive AI Agent Inspection via MCP (`maestro mcp`)
 When automating via AI coding agents:
-- Use MCP `inspect_screen`: Returns compact hierarchy (`ui_schema` and `elements`) with token-efficient keys (`b`=bounds, `txt`=text, `rid`=id, `a11y`=accessibility label, `hint`=placeholder).
-- Use MCP `open_maestro_viewer`: Returns the HTTP streaming URL (`$viewerUrl`) to open in a browser or embed in Claude Code desktop's `launch.json` preview pane for real-time visual streaming.
+- Use MCP `inspect_screen`: Returns compact hierarchy (`ui_schema` and `elements`) with token-efficient keys (`b`=bounds string `[x1,y1][x2,y2]`, `txt`=text, `rid`=id, `a11y`=accessibility text, `hint`=placeholder). Copy `txt` verbatim into `text:` since it is matched as a case-insensitive full-string regex.
+- Use MCP `open_maestro_viewer`: Returns the local viewer URL (`Maestro Viewer is available at <url>.`) for live screen streaming. Surface the URL to the user; do not launch a browser yourself, and expect an error under `--no-viewer`.
 
 ### What to Inspect in the Hierarchy Dump:
 1. **Identifiers**: Check whether `id` (`resource-id` on Android, `accessibilityIdentifier` on iOS) matches your locator exactly.
 2. **Text Resolution & Regex Anchors**: Remember that Maestro's `text:` matcher is a **full-string regex match (case-insensitive)**. If the screen has `"Log In to Your Account"`, `text: "Log In"` will fail. Always use `text: ".*Log In.*"` for partial copy.
-3. **Element Coordinates & Bounds**: Verify that the element's frame is within the screen bounds (e.g. `frame: {{x, y}, {w, h}}`).
-4. **Accessibility Grouping**: In React Native and native containers, setting `accessible={true}` on a parent view collapses child elements into a single node, hiding individual child IDs.
+3. **Element Coordinates & Bounds**: Verify that the element's `bounds` (`[left,top][right,bottom]`) are inside the screen.
+4. **Accessibility Grouping**: In React Native and native containers, marking a parent view accessible commonly merges its children into one node, hiding child IDs (a common cause; Maestro's React Native docs describe a nested-component workaround). Confirm in the hierarchy dump.
 5. **Modal Scrims & Invisible Overlays**: Transparent backdrops can intercept touch events, preventing taps from reaching underlying buttons.
 
 ---
@@ -39,7 +39,7 @@ When automating via AI coding agents:
 1. **No Coordinates in Element Selectors**:
    In Maestro 2.11.0, passing `start:` or `end:` inside element selectors (e.g. `tapOn: { start: ... }`) is strictly rejected. `start` and `end` are valid exclusively for `swipe:`.
 2. **Scroll Speed Bounds**:
-   In `scrollUntilVisible`, `speed:` must be an integer between 0 and 100. Negative values or values exceeding 100 trigger deserialization errors.
+   In `scrollUntilVisible`, `speed:` is documented as 0-100 (default 40). The YAML layer does not validate it; an out-of-range value falls back to the default rather than erroring.
 
 ---
 
@@ -61,7 +61,7 @@ When typing into text inputs, the soft keyboard may push or obscure buttons at t
     id: "submit_button"
 ```
 
-Using `optional: true` ensures the step succeeds even if the keyboard has already dismissed automatically.
+`hideKeyboard` fails only when the keyboard is still visible after the attempt; `optional: true` downgrades that to a warning (it is not needed for an already-hidden keyboard). On Android it sends the Back key even with no keyboard, which can navigate away. Known iOS issues (official troubleshooting): `hideKeyboard` is flaky because it scrolls from the screen center; the documented workaround is a `tapOn` with `point` on a non-interactive area. `inputText` into secure/password fields can fail on simulators because of Password AutoFill.
 
 ### 2. Focus Before Input
 Always tap the input element to guarantee focus before typing:
@@ -77,7 +77,7 @@ Always tap the input element to guarantee focus before typing:
 
 ## Animations, Screen Transitions, and Rendering
 
-Maestro automatically retries locators for up to 7 seconds, but rapid screen transitions or layout animations can cause race conditions.
+Maestro automatically retries locators (docs say 7 seconds; the 2.11.0 source uses 17 s for non-optional lookups and 7 s for optional ones), but rapid screen transitions or layout animations can cause race conditions.
 
 ### 1. Wait for Animations to End
 When screens animate in with slide or fade transitions, use `waitForAnimationToEnd` before asserting elements:
@@ -90,7 +90,7 @@ When screens animate in with slide or fade transitions, use `waitForAnimationToE
 ```
 
 ### 2. Disable Looping Animations in CI
-Continuous looping animations (such as unconstrained pulse effects or looping video banners) can prevent the iOS XCUITest driver from detecting that the application is idle.
+Continuous looping animations (pulse effects, looping banners) can plausibly keep the app from settling, which delays Maestro's wait-for-idle (a common-sense cause, not documented by Maestro). Use `waitToSettleTimeoutMs` to cap the wait.
 - In `.maestro/config.yaml`, set `platform.ios.disableAnimations: true` and `platform.android.disableAnimations: true` (**Note: this setting is Cloud only**; it disables system animations on Maestro Cloud runners).
 - For **local Android execution**, disable animations via ADB:
   ```bash
@@ -98,14 +98,7 @@ Continuous looping animations (such as unconstrained pulse effects or looping vi
   adb shell settings put global transition_animation_scale 0
   adb shell settings put global animator_duration_scale 0
   ```
-- For **local iOS Simulator**, enable "Reduce Motion" in Simulator Accessibility settings.
-- Or perform a settle swipe if cold boot accessibility tree needs stabilization:
-  ```yaml
-  - launchApp
-  - swipe:
-      direction: DOWN
-      duration: 150
-  ```
+- For **local iOS Simulator**, enable "Reduce Motion" in the Settings app inside the simulated device (Accessibility > Motion); this is unverified against Maestro sources.
 
 ---
 

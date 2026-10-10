@@ -1,29 +1,31 @@
 # Flow YAML Structure and Selector Strategies
 
-Maestro flows are declarative YAML files specifying sequential test steps across mobile (iOS/Android) and web (Chromium) targets. The execution engine handles timing, element settling, and automatic polling without boilerplate sleep statements.
+Maestro flows are declarative YAML files specifying sequential test steps across mobile (iOS/Android) and web (Chromium) targets. The engine handles timing, element settling, and polling without boilerplate sleep statements.
+
+Verified against Maestro `2.11.0` source (`maestro-orchestra` YAML classes) and `docs.maestro.dev`. Run `maestro check-syntax` for structure, but remember it does **not** catch everything `runFlow` rejects (see the header rule below).
 
 ---
 
 ## Flow Header and Configuration
 
-A flow begins with an optional configuration block separated from commands by `---`. If a subflow contains no header metadata, the leading `---` can be omitted.
+**Every flow file, including subflows loaded by `runFlow`, must start with a configuration section** containing `appId` (mobile) or `url` (web), followed by `---`. A file that begins directly with `- tapOn: ...` fails at run time with `Config Section Required` (and a header holding only `name:` fails with `Config Field Required`) even though `maestro check-syntax` accepts the bare command list.
 
 ```yaml
 appId: com.example.demo         # Target mobile package ID or bundle ID
 # Or for web:
-# url: https://example.com      # Target web starting URL (CDP/Selenium)
+# url: https://example.com      # Target web starting URL
 name: "Checkout Smoke Flow"     # Human-readable flow title in reports
 tags:
   - smoke
   - checkout
 env:
   DEFAULT_USER: "testuser@example.com"
-  BASE_URL: "https://api.example.com"
+  BASE_URL: ${BASE_URL || "https://api.example.com"}   # overridable with -e BASE_URL=...
 onFlowStart:
   - clearState
   - clearKeychain
 onFlowComplete:
-  - runFlow: subflows/cleanup.yaml
+  - runFlow: ../subflows/cleanup.yaml
 ---
 - launchApp
 - assertVisible: "Welcome"
@@ -31,93 +33,89 @@ onFlowComplete:
 
 ### Configuration Keys
 
-- **`appId`**: Target application package ID (Android) or bundle identifier (iOS).
-  - *iOS Discovery*: Run `xcrun simctl listapps booted` (or for a specific device: `xcrun simctl listapps "$UDID"`). Alternatively inspect `Info.plist` (`CFBundleIdentifier`) or `app.json` (`expo.ios.bundleIdentifier`).
-  - *Android Discovery*: Run `adb shell pm list packages -3` (third-party installed apps). Alternatively inspect `app/build.gradle` (`applicationId`) or `app.json` (`expo.android.package`).
-- **`url`**: Target starting URL for Web automation via Chromium CDP/Selenium (mutually exclusive with `appId`).
-- **`name`**: Human-readable flow name rendered in CLI output and JUnit/HTML reports.
-- **`tags`**: List of categorization tags for filtering runs via `--include-tags` or `--exclude-tags`.
-- **`env`**: Map of environment variables accessible via `${VAR_NAME}` in commands (CLI `-e` overrides header values).
-- **`onFlowStart`**: Sequence of commands executed prior to the main flow. If any start command fails, the flow terminates immediately.
-- **`onFlowComplete`**: Sequence executed after the flow finishes, running even if steps failed.
-- **`properties`** / **`ext`**: Custom key-value metadata preserved in execution manifests.
+- **`appId`**: Android package ID or iOS bundle identifier.
+  - *iOS discovery*: `xcrun simctl listapps booted`, or `CFBundleIdentifier` in `Info.plist`, or `expo.ios.bundleIdentifier` in `app.json`.
+  - *Android discovery*: `adb shell pm list packages -3`, or `applicationId` in `app/build.gradle`, or `expo.android.package`.
+- **`url`**: Starting URL for Web flows. May coexist with `appId` (then `url` wins); it is an error only when both are missing.
+- **`name`**: Flow name in CLI output and reports; also the key used by `executionOrder.flowsOrder` (falls back to the file name without extension when absent).
+- **`tags`**: Categories for `--include-tags` / `--exclude-tags`.
+- **`env`**: String variables available as `${VAR}`. A plain header value **wins over** CLI `-e`; use the `KEY: ${KEY || "default"}` idiom to let `-e` override.
+- **`onFlowStart`**: Commands before the body. If one fails, the body is skipped but `onFlowComplete` still runs.
+- **`onFlowComplete`**: Commands after the flow; a failure here fails the flow.
+- **`properties`**: String map emitted as `<property>` elements on the JUnit `<testcase>` (`junitId` and `junitClassname` are reserved). Unknown header keys are collected silently in a catch-all `ext` and have no documented effect.
 
 ---
 
 ## Selector Hierarchy and Strategy
 
-Maestro locators find elements within the accessibility tree exposed by XCUITest (iOS), UIAutomator (Android), or Chrome CDP (Web). Always prioritize resilient identifiers over fragile visual coordinates:
+Maestro locators query the accessibility tree exposed by XCUITest (iOS), UIAutomator (Android), or Chrome (Web). Prefer resilient identifiers over coordinates:
 
 | Priority | Selector Type | Resilience | Usage Pattern |
 |---|---|---|---|
-| 1 | `id` | Highest | Accessibility identifier (`iOS`) or resource ID (`Android`). Immune to text copy changes and translations. |
-| 2 | `css` | High (Web) | Standard CSS selector for web elements (e.g. `button.submit`, `#login-btn`). |
-| 3 | `text` + Relational | High | Disambiguates duplicate labels by spatial relation (`below`, `above`, `childOf`, `containsChild`). |
-| 4 | Visible `text` / Regex | Medium | User-facing copy. **Full-string regex by default** with case insensitivity. |
-| 5 | `traits` & State Filters | Medium | Filters elements by trait (`TEXT`, `SQUARE`) or state (`enabled`, `selected`, `checked`, `focused`). |
-| 6 | `index` | Low | Zero-based screen order index (sorted top-to-bottom, left-to-right). |
-| 7 | `point` / `relativePoint` | Lowest | Fractional or percentage coordinate (`"50%,80%"`). Breaks across varying aspect ratios. |
+| 1 | `id` | Highest | `accessibilityIdentifier` (iOS) / resource ID (Android). Immune to copy changes and translations. Also a regex. |
+| 2 | `css` | High (Web only) | CSS selector, e.g. `button.submit`. |
+| 3 | `text` + relational | High | Disambiguate duplicates with `below`, `above`, `leftOf`, `rightOf`, `childOf`, `containsChild`. |
+| 4 | Visible `text` / regex | Medium | User-facing copy. **Full-string regex, case-insensitive.** |
+| 5 | `traits` and state filters | Medium | `traits` (`TEXT`, `SQUARE`, `LONG_TEXT`) or `enabled`/`selected`/`checked`/`focused`. |
+| 6 | `index` | Low | 0-based (top-to-bottom, then left-to-right); a negative index counts from the end. |
+| 7 | `point` | Lowest | `"50%,80%"` or absolute `"100,200"`; combined with a selector it is relative to that element. |
 
-### Critical Selector Semantics & Rules
+### Critical Selector Semantics
 
-1. **Full-String Regex Matching on `text:`**:
-   Maestro evaluates `text:` as a **full-string regex match with case insensitivity (`IGNORE_CASE`)**.
-   - `text: "Log In"` will **FAIL** on `"Log In to your Account"`.
-   - To match substrings or partial text, **always use regex wildcards**: `text: ".*Log In.*"`.
-   - Maestro normalizes embedded newline characters (`\n`) to single spaces (` `) before matching.
-2. **Text Resolution Priority**:
-   When resolving `text: "..."`, Maestro checks attributes in this order:
-   1. `text` (Android text attribute or iOS `value`/`label`)
-   2. `hintText` (placeholder / hint text)
-   3. `accessibilityText` (`content-description` on Android, accessibility text on iOS)
-   4. `error` (input field error validation message)
-3. **Android Resource ID Splitting**:
-   Matching `id: "btn_submit"` matches both short name `btn_submit` and fully-qualified `com.example.app:id/btn_submit`.
-4. **Invalid Selector Keys (2.11.0 Rule)**:
-   Do **not** place `start:` or `end:` inside element selectors (e.g. `tapOn: { start: ... }`). Those keys belong strictly to `swipe:`.
+1. **`text:` is a full-string regex with `IGNORE_CASE`** (also `DOT_MATCHES_ALL`/`MULTILINE`; a literal equal string also matches).
+   - `text: "Log In"` fails on `"Log In to your Account"`; use `text: ".*Log In.*"`.
+   - Escape regex metacharacters (`$ [ ( .`) in literal copy, e.g. `"Price: \\$10"`.
+   - Embedded newlines are retried with spaces.
+2. **What `text:` matches**: an element matches if **any** of its `text`, `hintText`, `accessibilityText`, or `error` (Android) values matches (a union; there is no priority order). On iOS, `text` includes the `accessibilityLabel`.
+3. **Android `id:`** matches the short name `btn_submit` and the qualified `com.example.app:id/btn_submit`.
+4. **`start:` / `end:` are rejected in element selectors** since 2.11.0 (`tapOn: {start: ...}`); they belong to `swipe:` only.
+5. **`label:` is not a matcher.** It renames the command in console output and reports (useful for masking secrets), on any command.
 
 ### Selector Property Inventory
 
 ```yaml
 - tapOn:
     id: "resource_or_accessibility_id"
-    text: ".*Regex Text.*"            # Full-string regex with IGNORE_CASE
-    label: "Accessibility Label"
-    css: "button.submit"              # Web automation CSS selector
-    traits: TEXT                      # Trait filter: TEXT, SQUARE, LONG_TEXT
-    width: 100                        # Dimension matching (px)
+    text: ".*Regex Text.*"            # Full-string regex, IGNORE_CASE
+    css: "button.submit"              # Web only
+    traits: TEXT                      # TEXT, SQUARE, LONG_TEXT
+    width: 100                        # Dimension match (px)
     height: 50
-    tolerance: 10                     # Dimension tolerance (+/- px)
-    enabled: true                     # State filter: enabled/disabled
-    selected: true                    # State filter: selected/unselected
-    checked: true                     # State filter: checked/unchecked
-    focused: true                     # State filter: focused/unfocused
-    below: "Anchor Heading"           # Spatial relation: below anchor
-    above: "Anchor Footer"            # Spatial relation: above anchor
-    leftOf: "Right Button"            # Spatial relation: left of anchor
-    rightOf: "Left Button"            # Spatial relation: right of anchor
-    childOf:                          # Hierarchical parent anchor
+    tolerance: 10                     # +/- px for width/height
+    enabled: true                     # State filters
+    selected: true
+    checked: true
+    focused: true
+    below: "Anchor Heading"           # Spatial relations (selector or text)
+    above: "Anchor Footer"
+    leftOf: "Right Button"
+    rightOf: "Left Button"
+    childOf:
       id: "card_container"
-    containsChild:                    # Direct child selector
+    containsChild:
       text: "Item Title"
-    containsDescendants:              # All descendant selectors must match
-      - text: "Price: $10"
+    containsDescendants:
+      - text: "Price: \\$10"
       - id: "buy_icon"
-    index: 0                          # 0-based coordinate index
-    relativePoint: "90%,10%"          # Relative tap offset inside element
-    retryTapIfNoChange: true          # Auto-retries tap if view hierarchy did not change
-    waitUntilVisible: true            # Waits for element to appear before tapping
-    waitToSettleTimeoutMs: 2000       # Wait for element to settle after scrolling
-    optional: true                    # Skips command without failing if element absent
+    index: 0
+    point: "90%,10%"                  # Tap offset inside the matched element
+    retryTapIfNoChange: true          # Re-tap if the hierarchy did not change
+    waitToSettleTimeoutMs: 2000       # Best-effort cap (max 30000) on settling before the next command
+    label: "Tap the pay button"       # Report label, not a selector
+    optional: true                    # Do not fail if the element is absent
 ```
+
+`waitUntilVisible: true` exists in source but is undocumented: after the tap, if the hierarchy did not change and the element is not visible, Maestro waits up to ~10 s and re-taps. `tapOn` already waits for the element to exist.
 
 ---
 
-## Comprehensive Command Inventory
+## Command Inventory
+
+Commands with platform limits are marked. Unsupported commands often "pass" without effect, which gives a false green.
 
 ### 1. Interaction Commands
 
-- **`tapOn`**: Taps matching element, coordinate point, or text:
+- **`tapOn`**: element, text, or coordinate.
   ```yaml
   - tapOn: "Log In"
   - tapOn:
@@ -126,21 +124,18 @@ Maestro locators find elements within the accessibility tree exposed by XCUITest
   - tapOn:
       point: "50%,80%"
       repeat: 2
-      delay: 200
+      delay: 200                    # ms between repeats (default 100)
   ```
-- **`doubleTapOn`** / **`longPressOn`**: Double-tap or press-and-hold gestures on elements or points.
-- **`inputText: "string"`**: Types text into the currently focused field:
-  ```yaml
-  - inputText: "user@example.com"
-  - inputText: ${output.generatedEmail}
-  ```
-- **`eraseText: N`**: Deletes `N` characters (or clears entire field if count omitted).
-- **`hideKeyboard`**: Dismisses soft keyboard (`hideKeyboard: { optional: true }` avoids failing if keyboard is not displayed).
-- **`pressKey: KeyCode`**: Emits hardware key event. Supported values:
-  - Common: `ENTER`, `BACKSPACE`, `BACK`, `HOME`, `ESCAPE`, `TAB`, `POWER`, `LOCK`, `VOLUME_UP`, `VOLUME_DOWN`
-  - Android TV / Media: `REMOTE_UP`, `REMOTE_DOWN`, `REMOTE_LEFT`, `REMOTE_RIGHT`, `REMOTE_CENTER`, `REMOTE_PLAY_PAUSE`, `REMOTE_STOP`, `REMOTE_NEXT`, `REMOTE_PREVIOUS`, `REMOTE_REWIND`, `REMOTE_FAST_FORWARD`, `REMOTE_MENU`, `TV_INPUT`
-- **`back`**: Dispatches platform back navigation (Android back button event or iOS navigation swipe).
-- **`copyTextFrom` & `pasteText`**: Extracts text from element into clipboard and updates `maestro.copiedText`, then pastes into focused field:
+- **`doubleTapOn`** / **`longPressOn`**: same selectors; `doubleTapOn` accepts `delay`.
+- **`inputText: "string"`**: types into the focused field (tap the field first). Also `inputRandomText`/`inputRandomNumber` (take `length`), `inputRandomEmail`, `inputRandomPersonName`, `inputRandomCityName`, `inputRandomCountryName`, `inputRandomColorName`.
+- **`eraseText: N`**: deletes up to `N` characters; **omitted = 50 characters** (documented max 100). For longer fields, repeat the step or pass an explicit count.
+- **`hideKeyboard`**: fails only if the keyboard is **still visible** after the attempt, never because it was absent. `optional: true` downgrades that failure to a warning. On Android it always sends the Back key (like `back`), even with no keyboard, which can navigate away. On web it is a no-op.
+- **`pressKey: <name>`**: names are the **descriptions**, case-insensitive, with spaces. Underscored enum names are rejected (`Unknown key name`).
+  - Single word: `Enter`, `Backspace`, `Back`, `Home`, `Lock`, `Escape`, `Power`, `Tab` (`Back`, `Power`, `Tab` are Android-only per docs).
+  - Volume: `Volume Up`, `Volume Down`.
+  - TV remote: `Remote Dpad Up|Down|Left|Right|Center`, `Remote Media Play Pause|Stop|Next|Previous|Rewind|Fast Forward`, `Remote System Navigation Up|Down`, `Remote Button A|B`, `Remote Menu`, `TV Input`, `TV Input HDMI 1|2|3`.
+- **`back`**: Android and Web only. **On iOS it is a no-op** (no edge swipe is emitted); use a visible Back button selector or a swipe.
+- **`copyTextFrom` / `pasteText` / `setClipboard`**: these use Maestro's **in-memory** `maestro.copiedText`, not the device clipboard. `pasteText` types `copiedText` into the focused field.
   ```yaml
   - copyTextFrom:
       id: "otp_code"
@@ -148,161 +143,105 @@ Maestro locators find elements within the accessibility tree exposed by XCUITest
       id: "otp_input"
   - pasteText
   ```
-- **`setClipboard: "string"`**: Directly populates device clipboard and sets `maestro.copiedText`.
 
-### 2. Navigation, Scrolling & Gestures
+### 2. Navigation, Scrolling and Gestures
 
-- **`scroll`**: Standard vertical downward scroll gesture.
-- **`scrollUntilVisible`**: Continuously scrolls a scrollable container until the target element appears:
+- **`scroll`**: vertical downward scroll.
+- **`scrollUntilVisible`**: swipes from the screen center toward the edge until the element appears. It is **not** container-aware (it can miss bottom sheets or nested scroll views).
   ```yaml
   - scrollUntilVisible:
       element:
         id: "terms_and_conditions"
-      direction: DOWN               # Direction: DOWN, UP, LEFT, RIGHT
-      timeout: 20000                # Timeout in ms (default 20000)
-      speed: 40                     # Scroll fling speed percentage (0-100)
-      visibilityPercentage: 100     # Required percentage visible (0-100)
-      centerElement: true           # Centers target element in viewport
+      direction: DOWN               # DOWN, UP, LEFT, RIGHT
+      timeout: 20000                # default 20000 ms
+      speed: 40                     # 0-100, default 40
+      visibilityPercentage: 100
+      centerElement: true           # keep scrolling until the element is >30% away from the viewport edge (a few attempts)
   ```
-- **`swipe`**: Performs gesture in 4 modes:
+- **`swipe`**: four forms; default `duration` 400 ms.
   ```yaml
-  # 1. Directional
-  - swipe:
-      direction: LEFT
-      duration: 400
-
-  # 2. Element-anchored
-  - swipe:
-      from:
-        id: "carousel_card"
-      direction: UP
-
-  # 3. Coordinate percentage
-  - swipe:
-      start: "50%,80%"
-      end: "50%,20%"
-      duration: 350
+  - swipe: { direction: LEFT, duration: 400 }            # 1. direction
+  - swipe: { from: { id: "carousel_card" }, direction: UP }   # 2. anchored to an element (optional `point`)
+  - swipe: { start: "50%,80%", end: "50%,20%" }          # 3. relative percentages
+  - swipe: { start: "200,1600", end: "200,400" }         # 4. absolute pixels
   ```
 
-### 3. Synthetic Random Data Input Commands
+### 3. Device Control, Environment and App State
 
-Generate and type realistic test data natively without external scripts:
-
-```yaml
-- inputRandomText: { length: 12 }    # Types random alphanumeric string
-- inputRandomNumber: { length: 6 }   # Types random numeric digits (e.g. OTP)
-- inputRandomEmail                   # Types realistic synthetic email
-- inputRandomPersonName              # Types full person name
-- inputRandomCityName                # Types realistic city name
-- inputRandomCountryName             # Types country name
-- inputRandomColorName               # Types color string
-```
-
-### 4. Device Control, Environment & Application State
-
-- **`launchApp`**: Launches application with clean state, keychain, permissions, and extra arguments:
+- **`launchApp`**:
   ```yaml
   - launchApp:
       appId: com.example.demo
-      clearState: true              # Wipes app storage / cache
-      clearKeychain: true           # Wipes iOS Keychain
-      stopApp: true                 # Terminates existing instance before launch
-      permissions:
+      clearState: true              # wipes app storage
+      clearKeychain: true           # iOS: wipes the ENTIRE simulator keychain
+      stopApp: true                 # default true; false brings a backgrounded app forward
+      permissions:                  # omitted block = all permissions allowed
         all: allow
         notifications: allow
         camera: deny
-        location: inuse             # Options: allow, deny, unset, always, inuse, never; photos: limited
       arguments:
-        test_mode: "mock"
+        test_mode: "mock"           # string/bool/int/double
   ```
-- **`stopApp` & `killApp`**:
-  - `stopApp`: Graceful background termination.
-  - `killApp`: Immediate SIGKILL process termination.
-- **`clearState` & `clearKeychain`**: Standalone state purge commands.
-- **`setPermissions`**: Modifies runtime permissions dynamically during test execution:
+  Permission values: `allow`, `deny`, `unset` work on both platforms. `always`, `inuse`, `never` (location) and `photos: limited` are **iOS only**; on Android any other value silently **revokes** the permission. For cross-platform flows branch: `location: ${maestro.platform == "android" ? "allow" : "always"}`.
+- **`stopApp`**: force-stops the app (`am force-stop` on Android).
+- **`killApp`**: Android only, `am kill` (system-style process death for a *backgrounded* app); an alias of `stopApp` on iOS; no effect on Web.
+- **`clearState`**, **`clearKeychain`** (iOS): standalone purge commands.
+- **`setPermissions`**: `allow`/`deny` are the documented values; `always` and similar iOS-only values revoke on Android.
   ```yaml
   - setPermissions:
       appId: com.example.demo
       permissions:
-        location: always
         notifications: allow
   ```
-- **`setLocation` & `travel`**:
+- **`setLocation`** / **`travel`**:
   ```yaml
-  - setLocation:
-      latitude: "37.7749"
-      longitude: "-122.4194"
-
+  - setLocation: { latitude: "37.7749", longitude: "-122.4194" }
   - travel:
-      points:
-        - "37.7749,-122.4194"
-        - "37.7752,-122.4178"
-      speed: 15.0                   # Meters per second
+      points: ["37.7749,-122.4194", "37.7752,-122.4178"]
+      speed: 15.0                   # meters per second
   ```
-- **`setOrientation`**: Rotates display (`PORTRAIT`, `LANDSCAPE_LEFT`, `LANDSCAPE_RIGHT`, `UPSIDE_DOWN`).
-- **`setDarkMode` & `toggleDarkMode`**:
-  ```yaml
-  - setDarkMode: enabled            # Strictly lowercase 'enabled' or 'disabled'
-  - toggleDarkMode
-  ```
-- **`setAirplaneMode` & `toggleAirplaneMode`**:
-  ```yaml
-  - setAirplaneMode: enabled        # Strictly lowercase 'enabled' or 'disabled'
-  - toggleAirplaneMode
-  ```
-- **`addMedia`**: Pushes image or video files from host into simulator/emulator gallery:
+- **`setOrientation`**: `PORTRAIT`, `LANDSCAPE_LEFT`, `LANDSCAPE_RIGHT`, `UPSIDE_DOWN` (not Web).
+- **`setDarkMode: enabled|disabled`**, **`toggleDarkMode`**, **`assertDarkMode`**, **`assertLightMode`** (2.9.0+).
+- **`setAirplaneMode: enabled|disabled`**, **`toggleAirplaneMode`**: **Android only**; on iOS and Web the command passes with no effect.
+- **`addMedia`**: PNG, JPEG, JPG, GIF, MP4; paths relative to the flow.
   ```yaml
   - addMedia:
       - fixtures/avatar.jpg
-      - fixtures/receipt.png
   ```
-- **`openLink`**: Opens standard URLs, deep links, or app schemes in browser or app:
+- **`openLink`**:
   ```yaml
-  # Simple deep link
   - openLink: "myapp://order/12345"
-
-  # Open URL in external browser with optional auto-verification
   - openLink:
       link: "https://example.com/verify"
-      browser: true                 # Opens in external browser rather than app
-      autoVerify: true              # Handles Android App Links / iOS Universal Links verification
+      browser: true                 # Android only: force Google Chrome
+      autoVerify: true              # Android only: skip the app-chooser dialog
   ```
 
-### 5. Media & Telemetry Capture
+### 4. Media Capture
 
-- **`takeScreenshot: <path>`**: Captures viewport image saved relative to `--test-output-dir` or current directory.
-- **`startRecording: <path>` & `stopRecording`**: Renders full MP4 video of flow execution.
+- **`takeScreenshot: <path>`**: written to `<flow artifact bundle>/takeScreenshot/<path>.png` (`.png` is appended; with no bundle, relative to the current directory). `artifacts/checkout` therefore lands in `<test-output-dir>/<session>/<flow>/takeScreenshot/artifacts/checkout.png`. `cropOn` is supported. An undefined variable in the path silently becomes `undefined.png`.
+- **`startRecording: <path>`** / **`stopRecording`**: records only between the two commands to `<bundle>/startRecording/<path>.mp4`; `stopRecording` is required to finalize the file.
 
-### 6. Synchronization Primitives
-
-Avoid arbitrary sleep statements. Use built-in synchronization:
+### 5. Synchronization
 
 ```yaml
-# Wait for animations and layout reflows to settle
 - waitForAnimationToEnd:
     timeout: 5000
-
-# Wait up to custom timeout for appearance or disappearance
 - extendedWaitUntil:
     visible:
       id: "payment_complete_banner"
     timeout: 15000
-
 - extendedWaitUntil:
     notVisible:
       id: "loading_spinner"
     timeout: 20000
 ```
 
-### 7. Assertions Reference
+### 6. Assertions
 
-- **`assertVisible` & `assertNotVisible`**: Polls for element presence or absence (default poll timeout ~7000ms).
-- **`assertTrue: ${expression}`**: Evaluates JavaScript boolean expression; fails if false, null, or undefined:
-  ```yaml
-  - assertTrue: ${output.status === 200}
-  - assertTrue: ${output.items.length > 0}
-  ```
-- **`assertScreenshot`**: Visual regression pixel comparison against baseline image (threshold is required similarity percentage 0-100, default 95.0, numeric without `%`):
+- **`assertVisible`** / **`assertNotVisible`**: poll for the element. Docs say 7 s; source uses 17 s for non-optional lookups and 7 s for optional ones.
+- **`assertTrue: ${expression}`**: JavaScript truthiness; `false`, `0`, `""`, `null`, `undefined`, `NaN` all fail.
+- **`assertScreenshot`**: baseline comparison; `thresholdPercentage` is a number 0-100 (default 95). The baseline is found next to the flow first, then under `<artifacts>/takeScreenshot/`.
   ```yaml
   - assertScreenshot:
       path: baselines/home_screen.png
@@ -310,51 +249,48 @@ Avoid arbitrary sleep statements. Use built-in synchronization:
       cropOn:
         id: "hero_banner"
   ```
-- **`assertDarkMode` & `assertLightMode`**: Asserts device appearance mode.
 
-#### AI-Powered Multimodal Assertions
+#### AI Commands (experimental)
 
-Maestro 2.x supports multimodal vision models for semantic visual verification without accessibility locators:
+`assertWithAI`, `assertNoDefectsWithAI`, and `extractTextWithAI` need a Maestro Cloud login (`maestro login` or `MAESTRO_CLOUD_API_KEY`) because screenshots are analysed by Maestro's backend. **They default to `optional: true`, so a failed AI assertion does not fail the run** unless you write `optional: false`; a failed `extractTextWithAI` leaves the variable unset and the flow continues.
 
-- **`assertWithAI`**: Natural language visual check:
-  ```yaml
-  - assertWithAI: "The shopping cart contains 3 distinct items and total matches $45.00"
-  ```
-- **`assertNoDefectsWithAI`**: Automatically checks for overlapping text, broken image icons, or clipped layout defects:
-  ```yaml
-  - assertNoDefectsWithAI
-  ```
-- **`extractTextWithAI`**: Extracts unstructured visual text from screen and assigns it to an environment variable:
-  ```yaml
-  - extractTextWithAI:
-      query: "Extract the 6-digit confirmation code"
-      outputVariable: CONFIRMATION_CODE
-  - inputText: ${CONFIRMATION_CODE}
-  ```
+```yaml
+- assertWithAI:
+    assertion: "The cart shows 3 items"
+    optional: false
+- assertNoDefectsWithAI:             # flags text that is cut off, overlapping, or not centered
+    optional: false
+- extractTextWithAI:
+    query: "The 6-digit confirmation code"
+    outputVariable: CONFIRMATION_CODE   # default variable name is aiOutput
+- inputText: ${CONFIRMATION_CODE}
+```
 
 ---
 
-## Flow Control, Loops & Conditional Execution
+## Flow Control, Loops and Conditions
 
-### 1. Conditional Execution (`runFlow: when:`)
+### 1. `runFlow`
 
-Universal branching primitive supporting platform, visibility, and JS expressions:
+Takes exactly one of `file` or `commands`, plus optional `when`, `env`, `label`, `optional`. Paths are relative to the declaring flow. The target file needs its own `appId` header and may declare its own `env`, `onFlowStart`, and `onFlowComplete`, which run inside the subflow.
 
 ```yaml
-# Platform-specific subflow
 - runFlow:
-    when:
-      platform: Android            # Values: Android, iOS, Web
-    file: subflows/android_setup.yaml
+    file: ../subflows/login-user.yaml
+    env:
+      USER_EMAIL: ${ADMIN_EMAIL}
 
-# Conditional on element visibility
 - runFlow:
     when:
-      visible: "Rate our App"
+      platform: Android              # Android, iOS, Web (case-insensitive)
     commands:
       - tapOn: "Not Now"
 
-# Conditional on JavaScript expression
+- runFlow:
+    when:
+      visible: "Rate our App"
+    file: ../subflows/dismiss-rating.yaml
+
 - runFlow:
     when:
       true: ${output.hasPromoCode === true}
@@ -362,17 +298,14 @@ Universal branching primitive supporting platform, visibility, and JS expression
       - tapOn: "Apply Promo"
 ```
 
-### 2. Loops (`repeat: times:` & `repeat: while:`)
+### 2. Loops
 
 ```yaml
-# Fixed iteration count
 - repeat:
-    times: 5                       # Accepts integer or ${expression}
+    times: 5                         # integer or ${expression}
     commands:
-      - swipe:
-          direction: LEFT
+      - swipe: { direction: LEFT }
 
-# While condition remains true
 - repeat:
     while:
       visible: "Load More"
@@ -380,36 +313,37 @@ Universal branching primitive supporting platform, visibility, and JS expression
       - tapOn: "Load More"
 ```
 
-### 3. Bounded Retries (`retry: maxRetries:`)
+`times` and `while` may be combined; with neither, `times` is effectively unbounded.
 
-Retries a sequence of commands up to `maxRetries` times if an assertion or step within fails:
+### 3. Bounded Retries
+
+`maxRetries` is capped at 3 (default 1); `maxRetries: 2` means up to 3 attempts. Only Maestro command failures are retried, and retry also accepts `file`/`env`. Retries can hide real flakiness; do not use them to paper over bad selectors.
 
 ```yaml
 - retry:
-    maxRetries: 3
+    maxRetries: 2
     commands:
       - tapOn: "Refresh Feed"
       - assertVisible: "Latest News"
 ```
 
-### 4. Scripts & Scoped Variables
+### 4. Scripts and Variables
 
-- **`defineVariables`**: Defines scoped flow variables inline:
-  ```yaml
-  - defineVariables:
-      BASE_URL: "https://staging.example.com"
-  ```
-- **`evalScript`**: Evaluates single JavaScript expression inline:
-  ```yaml
-  - evalScript: ${output.timestamp = Date.now()}
-  ```
-- **`runScript`**: Executes modular `.js` files located relative to calling flow:
-  ```yaml
-  - runScript:
-      file: scripts/auth.js
-      env:
-        ROLE: "admin"
-  ```
+There is **no `defineVariables` YAML command**. Set variables with the header `env:`, `runFlow.env`, `runScript.env`, or `evalScript`:
+
+```yaml
+- evalScript: ${output.timestamp = Date.now()}
+- runScript:
+    file: scripts/auth.js            # relative to this flow
+    env:
+      ROLE: "admin"
+```
+
+Built-in variables: `MAESTRO_FILENAME` (file stem, no extension), `MAESTRO_DEVICE_UDID`, `MAESTRO_SHARD_ID`/`MAESTRO_SHARD_INDEX` when sharding, and any `MAESTRO_*` shell variable. All env values are strings.
+
+### 5. Labels and Optional Steps
+
+Every command accepts `label:` (shown in console and reports; use it to mask secrets) and `optional: true`.
 
 ---
 

@@ -11,7 +11,7 @@ The embedded GraalJS runtime differs significantly from standard browser or Node
 | Capability | Supported? | Details / Alternative |
 |---|---|---|
 | Synchronous Execution | **Yes** | All script statements execute sequentially and synchronously. |
-| `async` / `await` | **No** | Asynchronous keywords, Promises, and event-loop scheduling are unsupported. |
+| `async` / `await` | **Avoid** | GraalJS 24.2 itself supports Promises and `async`/`await`, but Maestro runs each script synchronously and no doc or source shows it draining the microtask queue. Treat async code as unreliable and use the blocking `http` client. |
 | `fetch()` | **No** | Use the built-in synchronous `http` client (`http.get`, `http.post`, etc.). |
 | Node.js APIs (`fs`, `path`, `require`) | **No** | No file system, process, or Node module resolution. |
 | Browser DOM (`window`, `document`) | **No** | No web DOM or browser window globals. |
@@ -46,15 +46,15 @@ output.USER_EMAIL = payload.user.email;
 
 ### Critical HTTP Method Signatures
 
-All HTTP mutation methods strictly take **at most two arguments** `(url, options)`:
+Every method takes `(url, options)`:
 
 - `http.get(url, options)`
 - `http.post(url, options)`
 - `http.put(url, options)`
 - `http.delete(url, options)`
-- `http.request(url, options)`
+- `http.request(url, { method: "PATCH", ... })`: `request` defaults to `GET` unless `options.method` is set.
 
-> **Warning**: Do not pass separate `body` and `headers` positional arguments (e.g. `http.post(url, body, headers)`). Passing three arguments causes runtime errors. `body`, `headers`, and `multipartForm` must be keys inside the `options` map.
+> **Warning**: Do not pass separate `body` and `headers` positional arguments (e.g. `http.post(url, body, headers)`); the Java signature is `(url, params?)`, so a third argument is not a supported form (not executed). `body` (a string), `headers`, and `multipartForm` are keys inside the `options` map.
 
 #### POST Request with JSON Body:
 ```javascript
@@ -76,7 +76,7 @@ if (postResponse.ok) {
 ```
 
 #### POST with Multipart Form (File Upload):
-File parts must be passed as an object containing `filePath` (resolved relative to the executing script directory) and an optional `mediaType`. Non-file form fields are passed directly as strings:
+File parts must be passed as an object containing `filePath` and an optional `mediaType`. `filePath` is resolved relative to the script's directory only when the code runs from `runScript`; from `evalScript` or an inline `${...}` the script directory is unset and the path is relative to the process working directory. Non-file form fields are passed directly as strings:
 
 ```javascript
 var uploadResponse = http.post("https://api.example.com/v1/upload", {
@@ -151,7 +151,7 @@ In your flow YAML:
 
 ### 2. Built-in Parsing and Coordinate Helpers
 - **`json(string)`**: Built-in JSON parser wrapper for `JSON.parse(string)`.
-- **`relativePoint(x, y)`**: Formats fractional coordinates (0.0 to 1.0) into percentage strings:
+- **`relativePoint(x, y)`**: Formats fractional coordinates (0.0 to 1.0) into percentage strings using `Math.ceil(x * 100)`, so floating-point noise rounds up (`relativePoint(0.07, 0.5)` returns `"8%,50%"`):
   ```javascript
   var pt = relativePoint(0.5, 0.8); // Returns "50%,80%"
   ```
@@ -195,7 +195,9 @@ Use `evalScript` to compute or transform values inline without an external scrip
 - inputText: ${output.randomCode}
 ```
 
-> **Caution**: Do not use template literals (backticks) inside `evalScript`, as `evalScript` itself wraps the expression in `${}`. Use string concatenation instead.
+> **Caution**: Maestro extracts `${...}` expressions with the pattern `\$\{([^$]*)}`, so the expression body must not contain any `$` character. That rules out template literals with `${}` and also regexes that use `$`. Backticks without `${}` are fine. Move such code into a `runScript` file.
+
+`output` is one global object that persists across the whole flow, including across subflows; only `env` bindings are scoped per `runFlow`/`runScript`. Use namespaced keys (`output.auth = {...}`) to avoid collisions between subflows. `console.log` takes a single argument and writes to `maestro.log`.
 
 ---
 

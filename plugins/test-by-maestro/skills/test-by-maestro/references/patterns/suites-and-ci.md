@@ -1,108 +1,92 @@
 # Test Suites, Tags, and CI/CD Automation
 
-Structuring mobile and web test suites cleanly enables modular test reuse, targeted tag filtering, parallel sharding, and deterministic reporting in continuous integration pipelines.
+Structuring suites cleanly enables modular reuse, tag filtering, sharding, and deterministic reporting in CI. Facts verified against Maestro `2.11.0` source and `docs.maestro.dev`.
 
 ---
 
 ## Modular Workspace Layout
 
-Maintain a predictable workspace structure so that relative subflow and script references resolve portably across local workstations and CI runner environments:
+Maestro finds `config.yaml` (or `config.yml`) **only in the directory you pass to `maestro test`**, and the default `flows` glob is `*` (top-level files of that directory only). The layout below therefore sets `flows:` explicitly and is run as `maestro test .maestro`:
 
 ```text
 .maestro/
-├── config.yaml           # Global workspace configuration
-├── flows/                # Top-level entry flows (smoke, regression)
+├── config.yaml           # read because you run `maestro test .maestro`
+├── flows/                # entry flows (smoke, regression)
 │   ├── 01-onboarding.yaml
-│   ├── 02-login.yaml
-│   └── 03-checkout.yaml
-├── subflows/             # Reusable step sequences
+│   └── 02-login.yaml
+├── subflows/             # reusable step sequences (NOT run as tests)
 │   ├── auth-setup.yaml
 │   └── dismiss-dialogs.yaml
-└── scripts/              # Synchronous GraalJS data helpers
+└── scripts/              # synchronous GraalJS helpers
     └── generate-user.js
 ```
 
-### Workspace Configuration (`config.yaml`)
+Running `maestro test .maestro/flows/` ignores `.maestro/config.yaml` (and silently drops `includeTags`, `executionOrder`, `testOutputDir`, `platform.*`) unless you add `--config .maestro/config.yaml`. Running `maestro test .maestro` without a `flows:` key fails with `Top-level directories do not contain any Flows`.
 
-Define shared workspace settings, execution order, animation toggles, and lifecycle hooks:
+### Workspace Configuration (`config.yaml`)
 
 ```yaml
 # .maestro/config.yaml
 flows:
-  - "flows/*.yaml"
+  - "flows/*"
+  - "!flows/wip-*"              # negation globs since 2.9.0; need at least one positive glob
 includeTags:
-  - "smoke"
+  - smoke
 excludeTags:
-  - "flaky"
+  - flaky
 executionOrder:
-  continueOnFailure: false      # Stops workspace run immediately on first failure
-  flowsOrder:                   # Sequence of flow names or filenames (without .yaml)
+  continueOnFailure: false      # applies only to the flowsOrder sequence, not the whole workspace
+  flowsOrder:                   # flow `name:` header, or file name without extension
     - 01-onboarding
     - 02-login
-    - 03-checkout
 platform:
   ios:
-    disableAnimations: true     # (Cloud only) Enables Reduce Motion on cloud simulators
+    disableAnimations: true     # Cloud only
     snapshotKeyHonorModalViews: true
   android:
-    disableAnimations: true     # (Cloud only) Disables system animations on cloud emulators
-disableRetries: false
+    disableAnimations: true     # Cloud only
 testOutputDir: "artifacts"
 ```
 
+Other workspace keys: `notifications` (email/Slack) and `baselineBranch`. `disableRetries` is deprecated (Cloud uses Smart Retries) and absent from the documented reference.
+
+**Sharding vs `executionOrder`**: a workspace with `executionOrder` cannot be sharded; the run aborts with `Cannot run sharded tests with sequential execution`.
+
 ---
 
-## Tag-Based Test Filtering
+## Tag-Based Filtering
 
-Tag flows to control execution subsets across different CI pipelines (e.g. quick pull-request smoke checks vs. nightly regression sweeps):
-
-```yaml
-# flows/01-onboarding.yaml
-appId: com.example.demo
-tags:
-  - smoke
-  - onboarding
-  - pr-gate
----
-- launchApp
-- assertVisible: "Welcome"
-```
-
-### Running Tagged Subsets
+Tag flows in their headers (`tags:`); filter with `--include-tags` / `--exclude-tags` or the config keys `includeTags` / `excludeTags` (tags are not a config key).
 
 ```bash
-# Run only flows tagged 'smoke'
-maestro test --include-tags smoke .maestro/flows/
-
-# Exclude work-in-progress or known flaky tests
-maestro test --exclude-tags wip,flaky .maestro/flows/
-
-# Combine multiple include tags
-maestro test --include-tags smoke,checkout .maestro/flows/
+maestro test --include-tags smoke .maestro/        # flows tagged smoke
+maestro test --exclude-tags wip,flaky .maestro/
+maestro test --include-tags smoke,checkout .maestro/   # smoke OR checkout
 ```
+
+Semantics from source: a comma list is **OR** (there is no AND), and CLI tags are **concatenated** with config tags, not overriding them. With config `includeTags: [smoke]` plus `--include-tags pr-gate`, flows tagged `pr-gate` **or** `smoke` run. The docs claim CLI flags "always take precedence"; the source does not behave that way.
+
+Quarantine pattern: tag unstable flows `flaky`, put `flaky` in `excludeTags` for the gating job, and run them in a separate non-blocking job.
 
 ---
 
 ## Ready-Made Test Flow Templates
 
-Build robust test suites quickly by composing these battle-tested template flows:
+Subflows need their own header (`appId` plus `---`); without it `runFlow` fails with `Config Section Required` even though `check-syntax` passes.
 
-### 1. Robust Authentication & Session Reset (`subflows/auth-setup.yaml`)
+### 1. Authentication and Session Reset (`subflows/auth-setup.yaml`)
 ```yaml
-# subflows/auth-setup.yaml
 appId: com.example.demo
-env:
-  USER_EMAIL: ${USER_EMAIL || "testuser@example.com"}
-  USER_PASS: ${USER_PASS || "Password123!"}
 ---
-# Guarantee clean launch without stale keychain auth
 - launchApp:
     clearState: true
-    clearKeychain: true
+    clearKeychain: true            # iOS: clears the whole simulator keychain
 - assertVisible: "Welcome"
 - tapOn:
     id: "login_button"
-- inputText: ${USER_EMAIL}
+- tapOn:
+    id: "email_input"
+- inputText: ${USER_EMAIL}        # pass from the caller via runFlow.env or -e; do not hardcode
 - tapOn:
     id: "password_input"
 - inputText: ${USER_PASS}
@@ -111,8 +95,9 @@ env:
 - tapOn: "Sign In"
 - assertVisible: "Dashboard"
 ```
+Caller: `- runFlow: { file: ../subflows/auth-setup.yaml, env: { USER_EMAIL: ${TEST_EMAIL}, USER_PASS: ${TEST_PASS} } }` with `TEST_EMAIL`/`TEST_PASS` supplied as `-e` or CI secrets.
 
-### 2. Form Entry with Synthetic Test Data (`flows/profile-update.yaml`)
+### 2. Form Entry with Synthetic Data (`flows/profile-update.yaml`)
 ```yaml
 appId: com.example.demo
 tags:
@@ -124,7 +109,6 @@ tags:
 - tapOn:
     id: "edit_name"
 - eraseText
-# Native synthetic data typing
 - inputRandomPersonName
 - tapOn:
     id: "edit_email"
@@ -135,63 +119,50 @@ tags:
 - assertVisible: "Profile updated successfully"
 ```
 
-### 3. Visual Regression & AI Defect Guard (`flows/checkout-visual.yaml`)
+### 3. Visual Regression (`flows/checkout-visual.yaml`)
 ```yaml
 appId: com.example.demo
 tags:
   - visual
-  - smoke
 ---
 - openLink: "exampleapp://checkout?orderId=1042"
 - waitForAnimationToEnd:
     timeout: 3000
-# Pixel comparison against baseline reference (numeric similarity %, default 95.0)
-- assertScreenshot:
+- assertScreenshot:                # numeric similarity %, default 95
     path: baselines/checkout_screen
     thresholdPercentage: 98
-# Multimodal defect audit
-- assertNoDefectsWithAI:
-    optional: true
 ```
+AI checks (`assertNoDefectsWithAI`, `assertWithAI`) need a Maestro Cloud login and **default to `optional: true`**, meaning they never fail CI unless you set `optional: false`.
 
 ---
 
 ## Continuous Test Creation with AI Agents
 
-When authoring new flows, follow the continuous exploratory cycle via Maestro MCP (`maestro mcp`):
+Grow the suite from interactive exploration through Maestro MCP (`maestro mcp`):
 
 ```text
-┌─────────────────┐       inspect_screen       ┌─────────────────┐
-│ AI Coding Agent │ ─────────────────────────▶ │  Live Emulator  │
-│ (Cursor/Claude) │ ◀───────────────────────── │   or Simulator  │
-└─────────────────┘       view hierarchy       └─────────────────┘
-         │
-         ▼
-[Execute Action via MCP `run` (inline YAML)]
-         │
-         ▼
-[Verify UI Result via `inspect_screen` or `take_screenshot`]
-         │
-         ▼
-[Export Passing Steps into `.maestro/flows/<flow>.yaml`]
-         │
-         ▼
-[Run Full Suite via `maestro test` with JUnit Artifacts in CI]
+boot device ─▶ list_devices (connected:true) ─▶ inspect_screen
+      │                                              │
+      ▼                                              ▼
+run inline YAML (one step or a short chain) ─▶ verify via inspect_screen / take_screenshot
+      │
+      ▼
+append passing steps to .maestro/flows/<flow>.yaml (appId header + `---`)
+      │
+      ▼
+extract repeated step sequences into .maestro/subflows/ ─▶ tag ─▶ run `maestro test .maestro` in CI
 ```
 
 ---
 
 ## CI Pipeline Integration and Gate Verification
 
-In CI environments, run Maestro with explicit output directories, JUnit report formatting, and flattened output:
+Reports (`--output`, default `report.xml`) are written **outside** `--test-output-dir`, so upload both:
 
 ```bash
 mkdir -p test-results
-
-# Execute test suite with JUnit output and flattened artifact structure
-maestro test .maestro/flows/ \
+maestro test .maestro \
   --test-output-dir test-results/telemetry \
-  --flatten-debug-output \
   --test-suite-name "PR Regression Suite" \
   --format JUNIT \
   --output test-results/junit.xml \
@@ -199,63 +170,80 @@ maestro test .maestro/flows/ \
 ```
 
 ### Key CI Flags
-
-- `--flatten-debug-output`: Places execution artifacts flat into `--test-output-dir` without timestamped subdirectories, making CI artifact collector patterns simple and predictable.
-- `--test-suite-name=<name>`: Customizes the root `<testsuite name="...">` attribute in JUnit XML for clean test dashboard categorization.
-- `--analyze`: *(Beta)* Enhances test output analysis with AI-powered failure insights.
+- `--flatten-debug-output`: **ignores `--test-output-dir`**; output goes to `--debug-output` or, if omitted, to `$HOME`. Use it only together with `--debug-output=<dir>` (Maestro's own e2e does).
+- `--test-suite-name`: sets `<testsuite name>` in JUnit XML (default `Test Suite`).
+- `--analyze`: Insights report with AI analysis; requires Maestro Cloud login.
+- Environment: `MAESTRO_CLOUD_API_KEY`, `MAESTRO_CLI_NO_ANALYTICS`, `MAESTRO_DISABLE_UPDATE_CHECK`.
 
 ### CI Assertion Checks
-
-Ensure your CI workflow validates both the exit code and generated reports:
-
 ```bash
-# Verify non-empty JUnit report
 test -s test-results/junit.xml
+grep -q '<failure' test-results/junit.xml && { echo "failures in JUnit"; exit 1; }
+```
+Never swallow the `maestro` exit code. Upload `test-results/` as a build artifact. A normal run captures only the failing step's screenshot; screen recordings exist only with `startRecording` or `--analyze`.
 
-# Check for failure indications in JUnit XML
-if grep -q '<failure' test-results/junit.xml; then
-  echo "Test failures detected in JUnit report"
-  exit 1
-fi
+---
+
+## GitHub Actions Skeletons
+
+### Android on a Linux runner (KVM)
+```yaml
+jobs:
+  e2e-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - run: curl -fsSL "https://get.maestro.mobile.dev" | bash && echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          script: maestro test .maestro --format JUNIT --output report.xml --test-output-dir test-results
 ```
 
-Always upload `test-results/telemetry` as a CI build artifact so failed runs preserve screenshots, screen recordings, and driver console logs (`manifest.json`, `commands.json`, `logs/maestro.log`) for rapid triage.
+### iOS from a Linux pipeline: Maestro Cloud
+```bash
+# simulator .app (zipped) must come from a Mac or cloud builder
+export MAESTRO_CLOUD_API_KEY=...        # CI secret
+maestro cloud --app-file build/DemoApp.zip --flows .maestro/flows
+```
+A blocking `maestro cloud` returns `0` on success and `1` if any flow fails. With `--async` (or the GitHub Action's `async: true`) it returns immediately and does **not** fail on test failures, so exit code `0` then proves nothing.
 
 ---
 
 ## Parallel Execution and Device Sharding
 
-Maestro 2.x supports two distinct multi-device sharding strategies:
-
 | Strategy | Flag | Behavior | Use Case |
 |---|---|---|---|
-| **Redundant Suite Run** | `--shard-all=<N>` | Executes the **entire test suite** redundantly across N devices simultaneously | Matrix testing across device models or OS versions |
-| **Partitioned Suite Run** | `--shard-split=<N>` | Partitions the test suite **evenly across N devices** for 1/N runtime | Accelerating long CI regression suites |
+| Redundant run | `--shard-all=<N>` | Entire suite on N devices | Device/OS matrix, flake detection |
+| Partitioned run | `--shard-split=<N>` | Suite split across N devices | Faster regression runs |
 
-> **Critical Rule**: `--shard-all` and `--shard-split` are **mutually exclusive**. Providing both flags causes an immediate failure: `CliError: Options --shard-split and --shard-all are mutually exclusive.`
+- The two flags are mutually exclusive (`Options --shard-split and --shard-all are mutually exclusive.`).
+- N devices must already be connected, otherwise `Not enough devices connected`. Pass them with `--device "id1,id2"`.
+- Not compatible with `executionOrder`; `--shards` is deprecated.
+- Shards share the workspace, so put `${MAESTRO_SHARD_INDEX}` or `${MAESTRO_DEVICE_UDID}` in screenshot names to avoid collisions.
+- On Maestro Cloud, parallelism is managed for you; sharding flags are for local runners.
 
-### Multi-Device Targeting Syntax
-Specify targets using a comma-separated list of device identifiers:
 ```bash
-# Split suite across two booted emulators
-maestro test \
-  --device "emulator-5554,emulator-5556" \
-  --shard-split 2 \
-  .maestro/flows/
+maestro test --device "emulator-5554,emulator-5556" --shard-split 2 .maestro
 ```
 
-### Device Concurrency & Exclusive Driver Leases
-- Within a single Maestro process, Maestro manages separate device driver sessions and dynamic ephemeral ports (`SIMCTL_CHILD_PORT`).
-- **Across separate OS processes** (e.g. concurrent CI jobs on the same macOS host), XCUITest runners cannot share the same simulator UDID simultaneously. Use an atomic filesystem lease to prevent port 22087 and session collisions.
+### Concurrency on One Host
+Each `maestro test` run on iOS picks its own free driver port, so the collision risk is two processes driving the **same simulator** (reinstalling the driver kills the other run's runner), not port `22087`. Give each CI job its own simulator, or serialize with a host lock (see [iOS over SSH](../guides/ios-over-ssh.md)).
 
 ---
 
-## Bounded Retries for Network Glitches
+## Bounded Retries and Flaky Handling
 
-Use Maestro's built-in `retry` block to isolate individual steps vulnerable to transient backend latency, avoiding whole-suite re-runs:
+`retry` is capped at 3 (`maxRetries: 2` means up to 3 attempts) and only retries Maestro command failures. It hides real flakiness; prefer fixing selectors and waits. Maestro Cloud has Smart Retries and a 20-minute soft limit per flow. The CLI has no "rerun failed flows" flag.
 
 ```yaml
-# Bounded retry on transient network operation (max 3 attempts)
 - retry:
     maxRetries: 2
     commands:
@@ -267,7 +255,7 @@ Use Maestro's built-in `retry` block to isolate individual steps vulnerable to t
 
 ## Related References
 
-- [CLI and Artifacts](../commands/cli-and-artifacts.md) — Command flags and telemetry file outputs.
+- [CLI and Artifacts](../commands/cli-and-artifacts.md) — Command flags and artifact layout.
 - [Flows and Selectors](../commands/flows-and-selectors.md) — Subflow composition and parameter syntax.
-- [iOS over SSH](../guides/ios-over-ssh.md) — Remote CI execution over SSH.
-- [Android and Local iOS](../guides/android-and-local-ios.md) — Device discovery and toolchains.
+- [iOS over SSH](../guides/ios-over-ssh.md) — iOS from Linux hosts.
+- [Android and Local iOS](../guides/android-and-local-ios.md) — Device discovery, toolchains, and Linux emulators.
