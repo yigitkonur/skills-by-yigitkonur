@@ -24,7 +24,7 @@ await kernel.browsers.create({
 
 `save_changes: true` snapshots the profile's state on `deleteByID` or browser timeout. `browser.close()` only closes the local CDP connection and does not persist profile state. Subsequent `browsers.create({ profile: { name: 'user-123' } })` (without `save_changes`) loads that snapshot read-only.
 
-Only one parallel browser should write to a profile with `save_changes: true` at a time. Multiple parallel writers can corrupt the saved profile or produce unpredictable final state. Parallel readers are fine when `save_changes` is omitted.
+Only one parallel browser should write to a profile with `save_changes: true` at a time. Kernel replaces the entire profile snapshot on session termination (no merging; the last session to close overwrites earlier saves). Parallel readers are fine when `save_changes` is omitted. Furthermore, browser responses include `profile_save_changes: boolean`, enabling programmatic detection of active writers via `kernel.browsers.list({ status: 'active', query: profileId })`.
 
 Direct profile API:
 
@@ -45,7 +45,7 @@ A single profile can carry login state for **multiple domains** when paired with
 
 ## Browser pools (Reserved Browsers)
 
-Pre-configure a fixed set of browsers ready for instant acquire. Browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pools can be created or updated with `memory: '16GiB'` (or default `'8GiB'`). Concurrency limits are unified under `max_concurrent_sessions` (`max_pooled_sessions` is `@deprecated`). Pricing docs and the changelog confirm idle pool storage charges were removed. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
+Pre-configure a fixed set of browsers ready for instant acquire. Browser pools refill at a rate of 25% of pool size per minute (fill rate 25%). Pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pools can be created or updated with `memory: '16GiB'` (or default `'8GiB'`), `auto_standby?: boolean` (putting idle microVMs into low-power standby), and enterprise `chrome_policy?: Record<string, unknown>`. Concurrency limits are unified under `max_concurrent_sessions` (`max_pooled_sessions` is `@deprecated`). Pricing docs and the changelog confirm idle pool storage charges were removed. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
 
 ```ts
 const pool = await kernel.browserPools.create({
@@ -231,16 +231,11 @@ Kernel executes paced fill automatically, writing character-by-character with ra
 
 ### 4. Machine Payments Protocol (MPP) Browser Purchases
 
-Agents can purchase stealth, headful browser sessions through the Machine Payments Protocol without pre-funding an account or providing API keys:
+Agents can purchase stealth, headful browser sessions through the Machine Payments Protocol (MPP) via HTTP 402 payment challenges without pre-funding an account or providing API keys. A standard `fetch()` call does NOT automatically handle the HTTP 402 challenge flow; MPP purchases require the Stripe Link CLI (`link-cli mpp pay`):
 
-```ts
-// Request purchase through 402 challenge flow
-const buyResponse = await fetch('https://api.onkernel.com/mpp/browsers', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email: 'user@example.com' }), // optional receipt email; purchase is fixed $0.50/30-min stealth
-});
-// Handles 402 payment challenge via MPP wallet
+```bash
+# Purchase a 30-minute stealth session via Stripe Link CLI
+link-cli mpp pay https://api.onkernel.com/mpp/browsers --method POST --data '{"email":"user@example.com"}'
 ```
 
 ## Composition guide
@@ -251,7 +246,7 @@ const buyResponse = await fetch('https://api.onkernel.com/mpp/browsers', {
 | Bulk warm-start automation, no auth | Browser pool with `stealth: true` |
 | Many users, same upstream SaaS | Profile-per-user + 1Password provider + auto-match |
 | Pool of pre-authenticated browsers (read-only baseline) | Pool created with `profile: { name }` + `refresh_on_profile_update: true` |
-| Durable per-user pool sessions | Empty pool + `acquire({ profile: { name, save_changes: true } })` + `release({ reuse: false })` |
+| Durable per-user pool sessions | Empty pool + `acquire({ profile: { name, save_changes: true } })` + `release()` (Kernel unconditionally destroys & replaces microVM on release) |
 | Headless re-auth without prompting | Pre-stored credential + `auth.connections.create({ credential: { name } })` then submit |
 | Credential & Card Autofill | Link vaults on `browsers.create({ vaults: [{ id }] })` + paced fill |
 

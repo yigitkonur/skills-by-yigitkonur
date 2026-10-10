@@ -46,9 +46,9 @@ const conn = await kernel.auth.connections.create({ domain, profile_name });
 **Fix:**
 
 1. `kernel.auth.connections.retrieve(id)` and check `status` directly — if `NEEDS_AUTH`, re-run the flow.
-2. Switch to a residential proxy: `const p = await kernel.proxies.create({ type: 'residential', name: 'res-1' })` then pass `proxy: { id: p.id }` on `browsers.create` (the flat `proxy_id` is `@deprecated` in v0.92.0).
+2. Switch to a residential proxy: `const p = await kernel.proxies.create({ type: 'residential', name: 'res-1' })` then pass `proxy: { id: p.id }` on `browsers.create` (the flat `proxy_id` was deprecated in `@onkernel/sdk@0.88.0`).
 3. Use a long-lived profile so the next attempt builds on prior browsing history.
-4. Consider Programmatic flow if Hosted UI is being blocked by anti-iframe policies.
+4. Check whether bot-detection challenged the session. Note that `<KernelManagedAuth />` renders native DOM directly on the host origin, never an iframe, so anti-iframe policies (`X-Frame-Options` or CSP `frame-ancestors`) never apply.
 
 ## Hosted-page handoff `code` expired
 
@@ -99,7 +99,7 @@ The `rewrites()` block in `node_modules/@onkernel/managed-auth-react/README.md` 
 | Cause | Fix |
 |---|---|
 | Profile was never created | Either `kernel.profiles.create({ name: 'foo' })` first, or rely on `auth.connections.create({ profile_name: 'foo' })` to create it implicitly. |
-| Profile name typo / case mismatch | Profile names are case-sensitive. Echo the exact string from `profiles.list()`. |
+| Profile name typo | Profile names are case-insensitive and accent-insensitive in Kernel database collation (e.g. `foo` and `FOO` collide). Queries and exact matches resolve regardless of case. |
 | Connection completed, but `status === 'NEEDS_AUTH'` | The profile exists but has no auth state. Re-run the auth flow. |
 | Profile was deleted | `kernel.profiles.list()` to confirm; recreate and re-auth. |
 

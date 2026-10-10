@@ -230,7 +230,7 @@ ctx.authorization.credential_scope.project_id;  // null = organization-wide
 ctx.authorization.effective_scope.project_id;   // scope selected for this request
 ```
 
-The CLI supports project scoping via the `--project <project_id_or_name>` flag or the `KERNEL_PROJECT` environment variable.
+In the CLI, the global `--project <project_id>` flag and `KERNEL_PROJECT` environment variable strictly accept a project ID (`proj_...`), NOT a project name. Project names are only accepted by project-management commands that take `<id-or-name>` arguments (e.g. `kernel projects get`).
 
 > **REST Routing Note:** Project endpoints are routed under `/org/projects/*` (e.g. `GET /org/projects`, `POST /org/projects`, `GET /org/projects/{id}`). The legacy `/projects/*` routes are `@deprecated`.
 
@@ -257,10 +257,30 @@ Provision and rotate API keys under `/org/api_keys`:
 
 ```ts
 // Rotate an active key (issues replacement, sets expiration on old key)
+// Invariant: days_to_expire (lifetime of new key) must be >= expire_in_days (grace period of old key)
 const rotated = await kernel.apiKeys.rotate('key_123', {
-  expire_in_days: 7, // grace period before old key revokes
+  days_to_expire: 30, // lifetime of new key (must be >= expire_in_days)
+  expire_in_days: 7,  // grace period before old key revokes
 });
 console.log('New key:', rotated.key);
+
+// Delete an old key (cannot delete authenticating key -> HTTP 400 cannot_delete_current_key)
+await kernel.apiKeys.delete('key_old');
+```
+
+## Audit Logs & Export Destinations
+
+Download audit logs or configure continuous S3 streaming:
+
+```ts
+// Helper with SHA-256 chunk checksum verification:
+await kernel.auditLogs.download({
+  start: '2026-10-01T00:00:00Z',
+  end: '2026-10-09T00:00:00Z',
+}, './audit-logs.jsonl.gz');
+
+// Continuous S3 export destinations CRUD:
+// kernel.auditLogs.exportDestinations.{create,retrieve,list,update,delete,pause,resume,test}
 ```
 
 ## Web Search API

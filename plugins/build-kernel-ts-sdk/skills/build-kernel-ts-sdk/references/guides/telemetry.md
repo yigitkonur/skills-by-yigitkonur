@@ -9,17 +9,17 @@ Kernel's Browser Telemetry subsystem is a high-fidelity observability pipeline p
 Telemetry events are grouped into operational and opt-in categories:
 
 1. **Operational Categories (Default Enabled when telemetry is on):**
-   - `control` — Commands that drive the browser (`api_call`, `cdp_command`, screenshots, clipboard).
+   - `control` — Commands that drive the browser (`api_call`, `cdp_command`, screenshots, clipboard). For Playwright executions, submitted code is captured in `BrowserAPICallEvent.Data.code` (clipped to 8192 bytes / 8KB).
    - `connection` — CDP, WebSocket, and Live View client connections and disconnections.
-   - `system` — MicroVM resource metrics (CPU, RAM, container pressure) and Chromium crash events.
-   - `captcha` — Solver detection and progress (`captcha_solve_started`, `captcha_solve_result`, `captcha_challenge_result`). Uses `captcha_provider` and `task_kind` (`captcha_type` is deprecated).
-   - `monitor` — Supervisor heartbeat and microVM health checks.
-   - `platform` — VM management actions (recording lifecycle, filesystem operations, process execution).
+   - `system` — VM-level failure events (`system_oom_kill`, `service_crashed`). (Does not report CPU/RAM metrics).
+   - `captcha` — Solver detection and progress (`captcha_solve_started`, `captcha_solve_result`, `captcha_challenge_result`). Tasks correlate on `task_id` with `captcha_provider` and `task_kind` (`captcha_type` is deprecated); visible challenge episodes correlate on `challenge_id`.
+   *(Note: `monitor` is not user-configurable; it emits CDP collector health like `monitor_disconnected` and flows automatically whenever browser-activity categories are captured).*
 
 2. **Opt-in Categories (Off by default; must be explicitly enabled):**
+   - `platform` — VM management actions performed by Kernel on your behalf (`platform_api_call`: profile saves, replays, recorder polling).
    - `network` — HTTP request/response headers, status codes, timing, and proxy errors (`proxy_error`).
    - `console` — Chromium `console.log`, `warn`, `error`.
-   - `page` — DOM lifecycle (`navigation`, `dom_content_loaded`, `load`, and computed readiness events).
+   - `page` — DOM lifecycle (`navigation`, `dom_content_loaded`, `load`, and computed readiness events `network_idle`, `page_layout_settled`).
    - `interaction` — Dispatched mouse clicks, keypresses, scrolls, and drag gestures.
    - `screenshot` — Periodic visual viewport frames.
 
@@ -38,6 +38,7 @@ const session = await kernel.browsers.create({
   telemetry: {
     browser: {
       // Opt into specific categories:
+      platform: { enabled: true },
       network: { enabled: true },
       console: { enabled: true },
       page: { enabled: true },
@@ -50,7 +51,7 @@ const session = await kernel.browsers.create({
     },
     // Optional: Zero Data Retention (ZDR) — suppress Kernel storage
     // Requires an OTLP export destination to be configured
-    storage: { enabled: true },
+    storage: { enabled: false },
   },
 });
 ```
@@ -75,8 +76,8 @@ Stream live session events over Server-Sent Events (SSE). Streams yield envelope
 
 ```ts
 const stream = await kernel.browsers.telemetry.stream(session.session_id, {
-  // replay: 'all',          // optionally replay events from session start
-  // type: 'proxy_error',    // filter stream by specific event type
+  // replay: 'all',            // optionally replay events from session start
+  // type: ['proxy_error'],    // filter stream by specific event type(s)
 });
 
 for await (const { seq, event } of stream) {
@@ -140,7 +141,7 @@ kernel browsers telemetry events <session_id> --category network --type proxy_er
 Export session telemetry directly to Datadog, Honeycomb, New Relic, or OTLP collectors.
 
 ### 1. Register Org-Scoped Destination
-Register the destination under `/org/telemetry/destinations`. The parameter is `endpoint` **without signal paths** (Kernel appends `/v1/logs` automatically):
+Register the destination via `POST /telemetry/destinations` (or manage via `kernel.telemetry.destinations.{create,retrieve,update,list,delete}`). The parameter is `endpoint` **without signal paths** (Kernel appends `/v1/logs` automatically):
 
 ```ts
 const dest = await kernel.telemetry.destinations.create({
@@ -150,6 +151,10 @@ const dest = await kernel.telemetry.destinations.create({
     'DD-API-KEY': process.env.DD_API_KEY!,
   },
 });
+
+// Inspect export delivery health
+const info = await kernel.telemetry.destinations.retrieve(dest.id);
+console.log(`Failures: ${info.consecutive_failures}, Last export: ${info.last_export_at}`);
 ```
 
 CLI equivalent:
@@ -177,5 +182,20 @@ const session = await kernel.browsers.create({
       },
     },
   },
+});
+```
+
+---
+
+## 6. Replays: MP4 Chapter Markers & Audio Capture
+
+Kernel session replays support named markers embedded directly into the MP4 container metadata as chapters, allowing video players to jump between distinct test phases without having to split the session into multiple disconnected recordings.
+
+Replays can also capture system audio in headful sessions:
+
+```ts
+// Start recording with audio capture
+const replay = await kernel.browsers.replays.start(session.session_id, {
+  record_audio: true, // capture tab audio (headful sessions)
 });
 ```

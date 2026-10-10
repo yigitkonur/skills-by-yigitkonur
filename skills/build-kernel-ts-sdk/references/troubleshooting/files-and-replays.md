@@ -112,7 +112,9 @@ await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), { path: '/tmp/data.j
 ## Replays
 
 ```ts
-const r = await kernel.browsers.replays.start(session.session_id);
+const r = await kernel.browsers.replays.start(session.session_id, {
+  record_audio: true, // optional: capture audio in headful sessions
+});
 // … session work …
 await kernel.browsers.replays.stop(r.replay_id, { id_or_name: session.session_id });
 
@@ -149,9 +151,9 @@ async function waitForReplay(sessionId: string, replayId: string, timeoutMs = 60
 }
 ```
 
-### Multiple replays per session
+### Multiple replays per session and MP4 Chapter Markers
 
-You can `start`/`stop` multiple times in a single session — each call returns a fresh `replay_id`. Useful for chaptering a long session into named segments. Use `replays.list(session_id)` to enumerate.
+You can `start`/`stop` multiple times in a single session — each call returns a fresh `replay_id`. Use `replays.list(session_id)` to enumerate. Furthermore, Kernel natively stamps named markers into replay recordings as MP4 container chapters, allowing standard video players to jump directly to key milestones inside a single continuous recording without fragmenting into multiple files.
 
 ### Replay file handles after browser delete
 

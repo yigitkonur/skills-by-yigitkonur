@@ -149,4 +149,57 @@ kernel browsers webmcp list <session-id> --exclude-custom
 kernel browsers webmcp invoke <session-id> \
   --tool-ref <tool_ref> \
   --input '{"sku": "ABC-123", "quantity": 1}'
+
+# Custom tools management
+kernel browsers webmcp custom-tools list <session-id>
+kernel browsers webmcp custom-tools add <session-id> --namespace scraper --source-file ./tools.js
+kernel browsers webmcp custom-tools remove <session-id> <tool-id>
+```
+
+---
+
+## 6. Custom WebMCP Tools Registration (`customTools`)
+
+Inject user-defined MCP tools into the browser context:
+
+```ts
+// Add custom tools in a namespace:
+await kernel.browsers.webmcp.customTools.add(sessionId, {
+  namespace: 'scraper',
+  source: `
+    export const tools = [
+      {
+        name: 'extractMeta',
+        description: 'Extract document meta tags',
+        inputSchema: { type: 'object', properties: {} },
+        handler: async () => ({ title: document.title })
+      }
+    ];
+  `,
+  force_overwrite_namespace: true,
+});
+
+// Enumerate and delete custom tools:
+const customList = await kernel.browsers.webmcp.customTools.list(sessionId);
+await kernel.browsers.webmcp.customTools.remove(customList.tools[0].id, {
+  id_or_name: sessionId,
+});
+```
+
+---
+
+## 7. Vault-Bound WebMCP Invocation (`webmcp_invoke`)
+
+For tools requiring authentication secrets, invoke them via Kernel Vaults (`type: 'webmcp_invoke'`) so secret tokens are injected directly into the tool input without appearing in agent prompt traces:
+
+```ts
+await kernel.vaults.items.performOperation('vault-key', {
+  id_or_name: 'checkout-vault',
+  type: 'webmcp_invoke',
+  browser_id: sessionId,
+  page_url: 'https://store.example.com',
+  tool_ref: checkoutTool.tool_ref,
+  input: { cart_id: 'cart_123' },
+  bindings: [{ field: 'apiKey', input_path: 'auth_token' }],
+});
 ```

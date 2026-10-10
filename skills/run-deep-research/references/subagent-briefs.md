@@ -49,25 +49,27 @@ non-negotiable for this brief.
    completion standard (every numeric/versioned/priced claim carries a
    verified quotation).
 
-2. **Toolkit shape**: 4 tools — a planner, a discovery tool, an
-   evidence tool, and an advisory review. Each has one fixed contract.
+2. **Toolkit shape**: 3 tools — a research planner, an authoritative web searcher,
+   and an evidence extraction engine. Each has one fixed contract:
    - `plan-research`: one `objective` string in; clusters, checkable
      evidence requirements, query ideas (≤100 global / ≤25 per
      cluster — ceilings, not quotas), a first wave of ≤12 queries,
      source signals, gaps, and stop conditions out. Call it first,
      once per mission.
    - `web-search`: `queries` only (1-50 complete retrieval queries).
+     Uses cross-query consensus scoring to eliminate SEO spam.
      Returns ranked, canonicalized sources with query lineage;
      `evidence_status` is always `leads-only`. Use it for every
      reconnaissance round, including Reddit discovery via explicit
      `site:reddit.com/r/.../comments` queries fed into the same tool.
    - `extract-evidence`: `urls` (≤20) plus `evidence_requirements`
-     (≤20 checkable questions). Returns per-requirement status
-     (`answered` / `partial` / `not-found` / `conflicting`) with exact
-     quotations and code-derived locators, plus coverage,
-     contradictions, and continuation state. Reddit permalinks
-     auto-route through the Reddit API (full threaded post + comments)
-     — put attribution in the requirement itself for sentiment work.
+     (≤20 checkable questions). Enforces anti-slop quotation verification
+     (`Warning: unverified citations rejected`) and returns exact
+     verbatim quotations with line locators (e.g. `lines 37-37`),
+     per-requirement status (`answered` / `partial` / `not-found` / `conflicting`),
+     contradictions, and schema-v3 retry payloads (`retry.sources` or
+     `retry.evidence_requirements`). Reddit permalinks auto-route
+     through the Reddit API (full threaded post + comments).
 
 3. **Parallel dispatch**: fire two `web-search` calls in one
    turn when scopes differ (e.g. open web + a `site:reddit.com/
@@ -342,20 +344,16 @@ practitioner channels worth searching.
 
 [MISSION OBJECTIVE]
 
-Produce a complete evidence pack for <entity> at `<entity-slug>/`.
+Produce a consolidated evidence dossier and sources ledger for <entity> at `<entity-slug>/`.
 Every axis in the catalog is addressed — with content OR with a
 one-paragraph "insufficient evidence" entry naming the data gap.
 
 Hard constraints:
 - Owned write scope: `<entity-slug>/` ONLY.
-- MAX 15 files in this folder.
-- File naming: `<NN>-<axis-slug>.md`. NN scheme: 00 = overview,
-  01-08 = axis content, 09 = sources/ledger. Pick axis-slug per
-  your evidence (don't copy slugs verbatim from the template —
-  your evidence shapes the slug).
-- Every numeric / versioned / priced claim cites a verbatim quote
-  with URL and scrape date.
-- Every axis from `_meta/03-axes.md` is addressed in this pack.
+- MAX 3 files in this folder (`dossier.md`, `sources.md`, optional deep dive).
+- `dossier.md` must start with structured YAML frontmatter (entity name, slug, tier, capture date, pricing overview, compliance list, and normalized scores).
+- Every numeric / versioned / priced claim cites a verbatim quote with URL and scrape date in `sources.md`.
+- Every axis from `_meta/03-axes.md` is addressed in `dossier.md`.
 
 Priority signal: evidence-grounded depth on every axis the decider
 weighs > breadth of marketing-page facts.
@@ -379,30 +377,25 @@ Adapt the `objective` paragraph for `plan-research`:
   cites a verbatim scraped quote.
 
 Tool steering: parallel `web-search` calls (open web + explicit
-`site:reddit.com/r/.../comments` queries) for reconnaissance;
+`site:reddit.com/r/.../comments` queries) with consensus scoring for reconnaissance;
 `extract-evidence` on docs/changelog/pricing pages with one checkable
-requirement per axis; `extract-evidence` on Reddit threads with
-attribution requirements for sentiment. Finish every required
-continuation before reporting back.
+requirement per axis; `extract-evidence` on community threads with
+attribution requirements for sentiment. Verify quotations and handle
+schema-v3 retry payloads before reporting back.
 
 [DEFINITION OF DONE]
 
 - Folder `<entity-slug>/` exists.
-- File `00-overview.md` exists with: entity description, vendor /
-  maintainer, headline framing, capture date.
-- Every axis in `_meta/03-axes.md` is addressed:
-  - Either with a content file `<NN>-<axis-slug>.md`, OR
-  - With a one-paragraph "insufficient evidence" entry inside an
-    existing file in the same folder, naming the data gap
-    explicitly.
-- File `09-sources.md` exists with the claims ledger (each claim:
-  type, evidence URL, scrape date, confidence).
-- ≤15 total files in `<entity-slug>/`.
-- Every numeric / versioned / priced claim has a verbatim quote
-  with URL and date.
+- File `dossier.md` exists with:
+  - Valid YAML frontmatter containing metadata, pricing model, and scores
+  - Entity description, vendor / maintainer, headline framing, capture date
+  - Every axis from `_meta/03-axes.md` covered with substantive evidence or an explicit "insufficient evidence" gap note.
+- File `sources.md` exists with the verified claims ledger (each claim:
+  type, evidence URL, verbatim quote, line locator, capture date, confidence).
+- ≤3 total files in `<entity-slug>/`.
+- Every numeric / versioned / priced claim has a verbatim quote with URL and date.
 - Zero placeholder strings (`TODO`, `TBD`, `fill later`).
-- Zero claims sourced from search snippets — every URL was actually
-  scraped.
+- Zero claims sourced from search snippets — every URL was actually scraped.
 
 100% completion required — partial = failure. Do not return until
 every criterion is met. If a criterion is impossible, report with
@@ -410,16 +403,15 @@ evidence — do not silently skip.
 
 [VERIFICATION]
 
-- `find <entity-slug>/ -type f -name '*.md' | wc -l` — must be ≤15.
-- `grep -rEn '\b(TODO|TBD|fill later)\b' <entity-slug>/` — must
-  return 0.
-- For each axis, confirm presence: either a file with the axis-slug,
-  or an "insufficient evidence" entry in another file.
+- `find <entity-slug>/ -type f -name '*.md' | wc -l` — must be ≤3.
+- `grep -rEn '\b(TODO|TBD|fill later)\b' <entity-slug>/` — must return 0.
+- `head -n 1 <entity-slug>/dossier.md | grep -q '^---$'` — frontmatter valid.
+- Confirm both `dossier.md` and `sources.md` exist.
 
 [FAILURE PROTOCOL]
 
-If blocked on a specific axis: log the gap in `09-sources.md` as
-an "insufficient evidence" entry naming the data gap. Don't skip
+If blocked on a specific axis: log the gap in `sources.md` and in
+`dossier.md` as an "insufficient evidence" entry naming the data gap. Don't skip
 silently.
 
 If blocked overall: report what was attempted, what was discovered
@@ -431,10 +423,8 @@ nothing on an axis after two attempts, log the gap and move on.
 [HANDBACK]
 
 1. Summary — one paragraph: what was done.
-2. Files modified: list with one-line note each.
-3. Evidence: file count; axis-coverage map (which axis is in which
-   file or "insufficient evidence" entry); verification command
-   outputs.
+2. Files modified: `dossier.md` and `sources.md`.
+3. Evidence: file count (≤3); axis-coverage map (which axes have full evidence vs gap notes); verification command outputs.
 4. Observations: surprises, ground for tier promotion or demotion,
    axes where the entity was particularly strong or weak.
 ```
@@ -447,22 +437,22 @@ nothing on an axis after two attempts, log the gap and move on.
 [CONTEXT BLOCK]
 
 You are a per-axis cross-entity synthesizer in a deep-corpus-research
-session. Wave 2 has completed. Every `core` entity has an evidence
-pack at `<entity-slug>/`. Your job is to compare entities along ONE
+session. Wave 2 has completed. Every `core` entity has a consolidated evidence
+dossier at `<entity-slug>/dossier.md` and `sources.md`. Your job is to compare entities along ONE
 axis: <axis name from _meta/03-axes.md>.
 
 Read these paths:
 - `_meta/01-charter.md` — decider, use case.
 - `_meta/03-axes.md` — the axis catalog (focus on YOUR axis).
+- `_meta/manifest.json` — entity registry and status.
 - `_meta/05-axis-templates.md` (or the specific axis template) —
   comparison axes, matrix columns, ranking dimensions for YOUR
   axis.
 - For every `core` entity in `_meta/02-entities.md`:
-  - `<entity-slug>/<NN>-<your-axis-slug>.md` — their evidence on
-    this axis.
-  - `<entity-slug>/09-sources.md` — for citation resolution.
+  - `<entity-slug>/dossier.md` — their evidence on this axis and frontmatter scores.
+  - `<entity-slug>/sources.md` — for citation resolution.
 
-You do NOT use web tools. Your evidence is the per-entity files.
+You do NOT use web tools. Your evidence is the per-entity dossiers.
 If they are insufficient, log the gap; do not search the web from
 here.
 
@@ -473,21 +463,20 @@ across entities.
 [MISSION OBJECTIVE]
 
 Produce the cross-entity comparison for <axis name> at
-`_cross/<axis-slug>/`. The minimum: a `00-overall-comparison.md`
-plus granular comparison files per scenario.
+`_cross/<axis-slug>/`. The deliverable is `synthesis.md` starting with
+an **Executive Digest**, followed by the comparative matrix and conditional rankings.
 
 Hard constraints:
 - Owned write scope: `_cross/<axis-slug>/` ONLY.
-- MAX 12 files in this folder.
-- File naming: `<NN>-<topic-slug>.md`; pick topic-slug per evidence.
-- `00-overall-comparison.md` includes: matrix (entity ×
-  comparison-column), ranking, recommendation, evidence confidence
-  per row, scenario-specific guidance, what unknown would change
-  the answer.
+- MAX 3 files in this folder (`synthesis.md`, optional `scenarios.md`).
+- `synthesis.md` MUST start with an **Executive Digest** (2-3 paragraphs:
+  standings, trade-offs, and critical decision-flippers for this axis).
+- `synthesis.md` includes: matrix (entity × comparison-column), ranking,
+  recommendation, evidence confidence per row, scenario-specific guidance,
+  what unknown would change the answer.
 - Every cell in the matrix has a value or an explicit "no evidence"
   marker; never silently empty.
-- Every claim cites the source file (e.g.,
-  `<entity-slug>/<NN>-<axis>.md`).
+- Every claim cites the source dossier (e.g., `<entity-slug>/dossier.md`).
 - Surface every contradiction — do not silently pick.
 
 Priority signal: ranking with conditions > flat ranking. The
@@ -498,25 +487,25 @@ conditionally.
 [DEFINITION OF DONE]
 
 - Folder `_cross/<axis-slug>/` exists.
-- `00-overall-comparison.md` exists with matrix, ranking, evidence
+- `synthesis.md` exists with Executive Digest, matrix, ranking, evidence
   confidence, contradictions section, scenario-specific guidance,
-  source citations to per-entity files.
-- ≤12 total files; granular files address scenarios named in the
-  axis template.
+  source citations to per-entity dossiers.
+- ≤3 total files in `_cross/<axis-slug>/`.
 - Every entity in `_meta/02-entities.md` (`core` tier) appears in
   the matrix.
 - Every contradiction across entities is surfaced — silent picking
   is a failure.
-- Every claim cites a per-entity file path.
+- Every claim cites a per-entity dossier path.
 
 100% completion required — partial = failure.
 
 [VERIFICATION]
 
-- `find _cross/<axis-slug>/ -type f -name '*.md' | wc -l` — ≤12.
+- `find _cross/<axis-slug>/ -type f -name '*.md' | wc -l` — ≤3.
 - Spot-check matrix: every `core` entity has a row; every
   comparison column has a value or "no evidence" marker.
-- Spot-check 3 claims: each cites a per-entity file path.
+- Spot-check 3 claims: each cites a per-entity dossier path.
+- Verify Executive Digest appears at the top of `synthesis.md`.
 
 [FAILURE PROTOCOL]
 

@@ -194,7 +194,7 @@ const out = JSON.parse(inv.output ?? 'null');
 
 Sync invocations block on the HTTP request. The hard cap is around 100 seconds — anything that may hit that ceiling must be `async: true`.
 
-CLI note: `kernel invoke <app> <action>` initiates an asynchronous invocation and follows the SSE stream until completion by default. Use `--sync` for HTTP synchronous execution, or `--no-follow` to return immediately after queueing.
+CLI note: `kernel invoke <app> <action>` queues an asynchronous invocation and returns immediately by default. Pass `--sync` (or `-s`) to follow execution logs until completion.
 
 ## CI deploy snippet
 

@@ -224,9 +224,8 @@ console.log(inv.status, inv.status_reason);
 ## CLI vs SDK invocation behavior
 
 - SDK `kernel.invocations.create({...})` is synchronous by default and returns the final invocation response unless `async: true` queues it.
-- SDK async mode returns queued status and should be followed with `kernel.invocations.follow(id)` or polling.
-- CLI `kernel invoke <app> <action>` initiates an asynchronous invocation and **immediately opens an SSE stream to follow the execution until completion**, printing log events and output. Pass `--no-follow` to return immediately after queueing.
-- CLI `kernel invoke --sync` executes synchronously on the HTTP request with a 60-second client timeout (best for sub-minute actions).
+- CLI `kernel invoke <app> <action>` queues an asynchronous invocation and **returns immediately by default**.
+- CLI `kernel invoke --sync` (or `-s`) follows the execution, streams log events, and waits until completion.
 - CLI `--output json` emits JSONL invocation events; consume it as a stream, not one JSON object.
 
 ## Apps surface

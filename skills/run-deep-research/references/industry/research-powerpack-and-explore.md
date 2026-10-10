@@ -37,9 +37,9 @@ When the MCP is unavailable:
 
 | Lost capability | Fallback |
 |---|---|
-| `plan-research` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
-| `web-search` | `WebSearch` direct |
-| `extract-evidence` | `WebFetch` to the page + manual quoting, OR `curl` — and record that quotations are no longer server-verified |
+| `plan-research` | Web-capable research agents, one per sub-question, running `search_web` + `read_url_content` |
+| `web-search` | `search_web` direct |
+| `extract-evidence` | `read_url_content` to the page + manual quoting, OR `curl` — and record that quotations are no longer server-verified |
 
 State the fallback explicitly in the workflow. Do not silently degrade.
 
@@ -60,11 +60,11 @@ Need: research one entity in depth (Phase 4)
     └── One web-capable research agent per entity, dispatched in waves
 
 Need: cross-reference inside the growing corpus
-└── Always: local-corpus Explore (read-only inside the corpus folder)
+└── Always: local-corpus inspection (read-only inside the corpus folder)
 
 Need: extract a candidate list from a category review page
 ├── Have: extract-evidence → use directly
-└── Have: only base tools → WebFetch + parse
+└── Have: only base tools → read_url_content + parse
 ```
 
 ## Pattern A: discovery via plan-research
@@ -111,13 +111,13 @@ candidates with `extract-evidence`, and capture the result into
 Dispatch N agents in parallel (one per sub-question):
 
 Agent 1 — sub-question 1
-  - Use WebSearch with keywords: "[category name] best 2025", "[category] alternatives"
+  - Use search_web with queries: "[category name] best 2026", "[category] alternatives"
   - Run 5-8 queries with varied phrasing
-  - For each candidate: WebFetch the homepage, check status (last update, pricing visible)
+  - For each candidate: read_url_content on the homepage, check status (last update, pricing visible)
   - Return: candidate list with status notes
 
 Agent 2 — sub-question 2 (challengers)
-  - Use WebSearch: "[category] vs [incumbent]", "switched from [incumbent]"
+  - Use search_web: "[category] vs [incumbent]", "switched from [incumbent]"
   - Reddit/HN search for migration stories
   - Return: candidate list with migration-story URLs
 
@@ -132,15 +132,15 @@ Each research agent's prompt should be self-contained (it has no conversation co
 Discover candidates in the [topic] category that match this sub-question:
 "[sub-question text]"
 
-Use WebSearch with these keyword shapes (run ≥5 queries, varying phrasing):
-- "[category] best 2025"
+Use search_web with these query shapes (run ≥5 queries, varying phrasing):
+- "[category] best 2026"
 - "[category] alternatives"
 - "[category] open-source"
 - "[category] vs [known competitor]"
 - "[category] reddit"
 
 For each candidate found:
-- WebFetch the homepage
+- read_url_content on the homepage
 - Capture: name, URL, vendor/maintainer, one-line description, last public update date,
   visible pricing presence, status (active/dead/waitlist/acquired)
 
@@ -249,7 +249,7 @@ extract-evidence:
     - "How does the README describe each project in one line?"
 ```
 
-Filter the returned links for plausible entity homepages, then status-check each via WebFetch.
+Filter the returned links for plausible entity homepages, then status-check each via read_url_content.
 
 ## Parallel-wave dispatch rules
 
@@ -274,7 +274,7 @@ A typical Phase 4 sequence for one entity:
 4. finish any continuation.next_call exactly, then read what came back and name the gaps
 5. web-search + extract-evidence → fill specific gaps (pricing scenario, Reddit signal)
 6. evaluate coverage against stop conditions
-7. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
+7. Local inspection → cross-reference inside the corpus to avoid duplicating cross-product files
 8. Write or refine the entity-pack files
 ```
 
@@ -284,7 +284,7 @@ Before Phase 1, run a one-line probe:
 
 ```
 # Check MCP availability
-Probe: which Research Power Pack tools are available (`plan-research`, `web-search`, `extract-evidence`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
+Probe: which Research Power Pack tools are available (`plan-research`, `web-search`, `extract-evidence`), and which fallbacks are available (`search_web`, `read_url_content`, `curl`)?
 ```
 
 Capture the result in `_meta/methodology-and-source-policy.md` so the corpus records which tools were used (and which fallbacks).
@@ -307,7 +307,7 @@ The cloud-browsers corpus (293 files, 12 entities) used:
 
 - **Phase 1:** 1 planning call for category discovery, plus 5 `web-search` follow-ups per gap → 25 candidates → tiered to 12 core
 - **Phase 4:** 12 parallel planning calls (2 waves of 6 each), 1 per `core` entity. Average ~30 follow-up `web-search` calls across all entities for gap-filling, each promising lead verified with `extract-evidence`
-- **Phase 5:** 10 cross-criterion comparison agents (one per criterion folder), each a parallel Explore run reading completed entity packs locally
+- **Phase 5:** 10 cross-criterion comparison agents (one per criterion folder), each a parallel inspection run reading completed entity packs locally
 - **Phase 6:** 12 profile pages written by orchestrator personally (no agent delegation)
 
-Total tool calls: ~60 MCP calls + ~40 fallback WebSearch when MCP rate-limited + ~150 local Explore reads.
+Total tool calls: ~60 MCP calls + ~40 fallback search_web calls when MCP rate-limited + local corpus reads.

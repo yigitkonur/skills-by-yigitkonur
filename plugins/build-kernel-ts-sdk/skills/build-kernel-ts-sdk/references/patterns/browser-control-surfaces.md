@@ -17,7 +17,7 @@ What are you doing?
 ├── WebDriver BiDi client (Vibium etc.)
 │   └─► Pass `session.webdriver_ws_url` instead of CDP
 ├── Persistent interactive Node.js scripting in VM across calls
-│   └─► Browser REPL via `kernel.browsers.repl.*` or `kernel browsers repl`
+│   └─► Browser REPL via `kernel.browsers.repl(id, ...)` or `kernel browsers repl`
 ├── Page-declared or custom Model Context Protocol tools
 │   └─► WebMCP via `kernel.browsers.webmcp.*` or `kernel browsers webmcp`
 └── Direct OS-level commands, PTY, or local tooling inside VM
@@ -55,13 +55,16 @@ const res = await kernel.browsers.playwright.execute(session.session_id, {
     return { title, links };
   `,
   timeout_sec: 60,                            // default 60, max 300
+  executor: 'worker-1',                       // named persistent executor (up to 8 processes)
 });
 
-// Response is { success, error?, result, stderr, stdout } — always check `success`
-// before using `result`. `stderr` / `stdout` are captured from the script's logs.
+// Response is { success, error?, result, stderr, stdout, tab?: { target_id, created } }
 if (!res.success) throw new Error(`playwright.execute failed: ${res.error}`);
-// `res.result` is typed `unknown` and may be undefined — assert the runtime shape.
 const { title, links } = res.result as { title: string; links: string[] };
+
+// Manage named executors (CLI: kernel browsers playwright executors list|delete <id>)
+const execList = await kernel.browsers.playwright.executors.list(session.session_id);
+await kernel.browsers.playwright.executors.delete('worker-1', { id_or_name: session.session_id });
 ```
 
 When to use:
@@ -235,6 +238,7 @@ if (toolToInvoke) {
 }
 ```
 
+```ts
 // List or remove custom tools:
 const customList = await kernel.browsers.webmcp.customTools.list(session.session_id);
 // Note: remove takes tool ID as 1st arg, browser id_or_name in params:
@@ -277,10 +281,12 @@ console.log('stdout:', stdout);
 const proc = await kernel.browsers.process.spawn(session.session_id, {
   command: 'node',
   args: ['-e', 'console.log("running...")'],
-  pty: false,
+  allocate_tty: false,                        // allocate pseudo-terminal
 });
-const status = await kernel.browsers.process.status(proc.process_id, { id_or_name: session.session_id });
-await kernel.browsers.process.kill(proc.process_id, { id_or_name: session.session_id });
+if (proc.process_id) {
+  const status = await kernel.browsers.process.status(proc.process_id, { id_or_name: session.session_id });
+  await kernel.browsers.process.kill(proc.process_id, { id_or_name: session.session_id, signal: 'TERM' });
+}
 ```
 
 CLI counterpart: `kernel browsers process <session_id> --command "uname -a"`.

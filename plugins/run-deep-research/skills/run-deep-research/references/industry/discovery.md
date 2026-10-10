@@ -119,9 +119,9 @@ extract-evidence:
 
 ### Fallback path (no MCP)
 
-Dispatch web-capable research agents — one per sub-question — to run `WebSearch`/`WebFetch` rounds and report back a candidate list. See `references/industry/research-powerpack-and-explore.md` for the dispatch recipe.
+Dispatch web-capable research agents — one per sub-question — to run `search_web`/`read_url_content` rounds and report back a candidate list. See `references/industry/research-powerpack-and-explore.md` for the dispatch recipe.
 
-If web-capable agents are unavailable, run sequential `WebSearch` queries against each sub-question. Reserve local-corpus Explore for searching the generated corpus, not open-web discovery.
+If web-capable agents are unavailable, run sequential `search_web` queries against each sub-question. Reserve local file inspection for searching the generated corpus, not open-web discovery.
 
 ## Search keyword templates
 

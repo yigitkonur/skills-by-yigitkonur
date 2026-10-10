@@ -24,8 +24,13 @@ const session = await kernel.browsers.create({
   memory: '8GiB',                   // '8GiB' | '16GiB'; headful non-GPU only, defaults 8GiB
   gpu: false,                       // headful only; Start-Up/Enterprise plan; us-east only
   video_memory: '4GiB',             // '2GiB' | '4GiB' (when gpu: true)
-  auto_record: false,               // automatically start session recording on boot
   kiosk_mode: false,                // hide address bar and tabs in live view
+  chrome_policy: {                  // Chrome Enterprise Policies
+    DefaultPopupsSetting: 1,        // allow popups
+    DownloadRestrictions: 0,        // allow downloads
+    PrintingEnabled: true,
+    PrintPdfAsImageDefault: false,
+  },
   extensions: [{ name: 'my-ext' }], // pre-installed extensions; each by id or name
   vaults: [{ id: 'vlt_123' }],       // project-scoped credential or payment vaults linked at create (immutable)
   network: {
@@ -35,7 +40,6 @@ const session = await kernel.browsers.create({
       { hosts: ['*.auth.site.com'], proxy: { name: 'dedicated-isp' } }
     ],
   },
-  headers: { 'X-Custom-Client': 'KernelAgent/1.0' }, // custom HTTP headers injected into browser requests
   telemetry: {
     browser: {
       network: { enabled: true },
@@ -48,7 +52,7 @@ const session = await kernel.browsers.create({
 
 ### Parameter Reference & Invariants
 - `stealth`: Anti-detection browser fingerprinting + automated CAPTCHA solver.
-- `headless`: Headless Chromium image. Headful sessions play audio by default; headless sessions mute audio by default.
+- `headless`: Headless Chromium image. Headful sessions play audio by default and include standard Ubuntu desktop fonts; headless sessions mute audio by default.
 - `timeout_seconds`: Inactivity seconds before termination (10 to 259,200 = 72h).
 - `viewport`: `{ width, height, refresh_rate? }` window dimensions.
 - `memory`: `'8GiB'` (default) or `'16GiB'` for headful non-GPU sessions.
@@ -56,20 +60,21 @@ const session = await kernel.browsers.create({
 - `profile`: `{ name, id, save_changes? }` profile snapshot binding.
 - `proxy`: `{ mode: 'direct' | 'default', id?: string, name?: string }` typed proxy config.
 - `network`:
-  - `allowed_hosts`: Destinations not matching an entry are rejected with 403 `X-Kernel-Proxy-Error: network_policy_denied`. Can be modified on running sessions.
-  - `private_hosts`: Route directly through VM network (e.g. Tailscale/VPN). Defaults to RFC1918, CGNAT `100.64.0.0/10`, and IPv6 ULA; `[]` disables direct routing.
+  - `allowed_hosts`: Destinations not matching an entry are rejected with 403 `X-Kernel-Proxy-Error: network_policy_denied`. Only an allowlist the browser was created with can be changed at runtime; a browser created without one cannot be given one later, and an allowlist removed with `null` cannot be added back. An empty list `[]` is invalid.
+  - `private_hosts`: Route directly through VM network (e.g. Tailscale/VPN). Defaults to RFC1918, CGNAT `100.64.0.0/10`, and IPv6 ULA; `[]` disables direct routing. Immutable at create.
   - `proxy_routes`: Per-host proxy routing. Create-time only for individual sessions.
+- `chrome_policy`: Chrome Enterprise Policies (e.g. `DefaultPopupsSetting`, `DownloadRestrictions`, `PrintingEnabled`, `HomepageLocation`).
 - `telemetry`: Category toggles nested under `telemetry.browser.<category>.enabled`.
 - `kiosk_mode`: Hide address bar and tabs in live view.
-- `extensions`: Pre-installed extensions by ID or name.
-- `vaults`: Project-scoped credential or payment vaults linked at create (immutable).
+- `extensions`: Pre-installed extensions by ID or name (immutable at create; live extensions loaded via `kernel.browsers.loadExtensions`).
+- `vaults`: Project-scoped credential or payment vaults linked at create (immutable; up to 20 references).
 - `invocation_id`: Tag with parent invocation for automatic cleanup.
-- `start_url`: Initial navigation (can also be passed to `browsers.update` to navigate or collapse restored tabs).
-- `@deprecated proxy_id`: Deprecated in v0.92.0 in favor of typed `proxy` object. Cannot be combined with `proxy`.
+- `start_url`: Initial navigation. When passed to `browsers.update` with a profile load, it navigates and collapses all restored tabs onto a single page.
+- `@deprecated proxy_id`: Deprecated in `@onkernel/sdk@0.88.0` (August 10/14, 2026) in favor of typed `proxy` object. Cannot be combined with `proxy`.
 - `@deprecated disable_default_proxy`: Deprecated in favor of `proxy: { mode: 'direct' }`.
-- `@deprecated pool_id`: Deprecated in favor of `pool: { id, name }`.
+- *(Note on browser pools: Neither `pool_id` nor `pool` is a creation parameter on `kernel.browsers.create()`. `pool?: BrowserPoolRef` is strictly an output response property indicating which pool the browser was leased from. Browsers are acquired from a pool via `kernel.browserPools.acquire()`.)*
 
-**Immutable Parameters**: `region`, `vaults`, `headless`, `gpu`, `video_memory`, `memory`, `stealth`, `kiosk_mode`, and `timeout_seconds` are fixed at creation time.
+**Immutable Parameters**: `region`, `vaults`, `headless`, `gpu`, `video_memory`, `memory`, `stealth`, `kiosk_mode`, `timeout_seconds`, initial `extensions`, `network.private_hosts`, `network.proxy_routes`, and `chrome_policy` are fixed at creation time.
 
 Returns `BrowserCreateResponse`:
 - `session_id`: Unique identifier for all operations (`deleteByID`, `fs`, `replays`, `repl`, etc.).
@@ -84,8 +89,13 @@ Returns `BrowserCreateResponse`:
 ## 2. Inspect and Update a Live Session
 
 - `kernel.browsers.retrieve(idOrName)` — Retrieve session details (`region`, `memory`, `usage`, `pool`, `profile`, `tags`, `telemetry`, URLs). Accepts either `session_id` or `name`.
-- `kernel.browsers.update(idOrName, { name?, tags?, profile?, proxy?, viewport?, telemetry?, start_url?, network? })` — Mutate a live session.
-- `kernel.browsers.list({ status?, region?, tags?, query? })` — Auto-paginating session listing (`status` defaults to `'active'`).
+- `kernel.browsers.update(idOrName, { name?, tags?, profile?, proxy?, viewport?, telemetry?, start_url?, network? })` — Mutate a live session:
+  - `start_url`: Navigates the live session. When accompanied by loading a profile, it collapses all restored tabs onto a single page.
+  - `tags`: Replaces the entire tag set (not a shallow merge). Passing `{}` clears all tags.
+  - `viewport`: `{ width, height, force?: boolean }`. Pass `force: true` (CLI `--force`) to force resizing even if active live views or recordings are attached.
+  - `network`: `allowed_hosts: string[] | null`. Only editable if the session was created with an allowlist; set to `null` to remove and return to unfiltered egress.
+- `kernel.browsers.list({ status?, region?, tags?, query? })` — Auto-paginating session listing (`status` defaults to `'active'`). Filter by `region` (`'us-east' | 'us-west' | 'eu-west' | 'ap-southeast'`), `tags`, or search `query` (matches session ID, name, or profile name).
+- `kernel.browsers.loadExtensions(idOrName, { extensions: [{ name, zip_file }] })` — Live ad-hoc extension loading into a running browser instance.
 
 ---
 
@@ -124,14 +134,15 @@ try {
 ## 5. Control Surfaces & Subresources
 
 Each browser session provides multiple subresources:
-- `kernel.browsers.playwright.execute(id, { code, timeout_sec? })` — In-VM Playwright execution with zero network latency.
+- `kernel.browsers.playwright.execute(id, { code, timeout_sec?, executor? })` — In-VM Playwright execution with zero network latency. Pass `executor: 'name'` to target one of up to 8 dedicated executor processes for multi-tab concurrency. Submitted code (up to 8 KB) is captured in `control` telemetry.
+- `kernel.browsers.playwright.executors.list(id)` / `delete(name, { id_or_name })` — Manage named in-VM Playwright executors.
 - `kernel.browsers.computer.*` — Computer use primitives (`captureScreenshot`, `clickMouse`, `moveMouse`, `dragMouse`, `typeText`, `pressKey`, `scroll`, `batch`).
 - `kernel.browsers.repl(id, { code, reset?, timeout_sec? })` — In-VM stateful Node.js REPL and Code Mode.
-- `kernel.browsers.webmcp.*` — Discovery and invocation of WebMCP page tools (`listTools`, `invokeTool`).
+- `kernel.browsers.webmcp.*` — Discovery and invocation of WebMCP page tools (`listTools`, `invokeTool`), custom tools (`customTools.add/list/remove`), and `navigator.modelContext` polyfills.
 - `kernel.browsers.curl(id, { url, ... })` — HTTP requests exiting through Chromium's TLS fingerprint and proxy.
 - `kernel.browsers.fs.*` — MicroVM filesystem operations (`readFile`, `writeFile`, `uploadZip`, `watch`).
-- `kernel.browsers.process.*` — In-VM shell process execution (`exec`, `spawn`).
-- `kernel.browsers.replays.*` — Video screen recordings (`start`, `stop`, `list`, `download`).
+- `kernel.browsers.process.*` — In-VM shell process execution (`exec`, `spawn` with `allocate_tty`).
+- `kernel.browsers.replays.*` — Video screen recordings (`start`, `stop`, `list`, `download`). Replays support `record_audio: boolean` and named MP4 chapter markers.
 - `kernel.browsers.telemetry.*` — Streaming and historical telemetry (`stream`, `events`).
 
 ---

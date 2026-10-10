@@ -17,7 +17,7 @@ Available across all `kernel` subcommands:
 
 | Flag | Description |
 |---|---|
-| `--project <project-id-or-name>` | Scope command to a project ID or name (also reads `KERNEL_PROJECT` env var). |
+| `--project <project-id>` | Scope command to a project ID (`proj_...`; also reads `KERNEL_PROJECT` env var). Project names are accepted only by commands whose arguments explicitly say `<id-or-name>`. |
 | `--output json`, `-o json` | Output machine-readable JSON or streaming JSONL. |
 | `--log-level <level>` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `print`. |
 | `--no-color` | Disable ANSI color formatting. |
@@ -86,7 +86,7 @@ kernel browsers create \
   --tag env=prod \
   --start-url "https://example.com" \
   --proxy-name us-east-isp \
-  --proxy-route "api.example.com=res-proxy" \
+  --proxy-route "api.example.com=name:res-proxy" \
   --telemetry=all
 
 # Create GPU session with video memory selection
@@ -238,8 +238,8 @@ kernel deploy get <deployment_id>
 kernel deploy delete <deployment_id> --yes
 
 # Invoke actions
-# Note: CLI initiates asynchronous execution and automatically follows the SSE stream until completion
-kernel invoke my-app analyze --payload '{"url":"https://example.com"}'
+# Note: CLI returns immediately upon queueing by default; pass --sync (-s) to wait and stream logs until completion
+kernel invoke my-app analyze --payload '{"url":"https://example.com"}' --sync
 kernel invoke my-app analyze --payload-file ./payload.json
 kernel invoke get <invocation_id>
 kernel invoke history
@@ -324,7 +324,7 @@ kernel search contents srch_01jsearch12345 --limit 3 --content-source browser --
 
 ---
 
-## 11. Vaults: `kernel vaults`
+## 11. Vaults: `kernel vaults` & `kernel vault-provider-configs`
 
 Manage secure credential and payment vaults, Link wallets, and AgentCards.
 
@@ -335,8 +335,17 @@ kernel vaults get checkout-vault
 kernel vaults items list checkout-vault
 kernel vaults credentials create checkout-vault user-login --spec-file ./creds.json
 kernel vaults wallets create checkout-vault wallet-1 --provider link --spec '{"authorization":{"method":"oauth","client":{"type":"kernel_managed"}}}'
-kernel vaults cards create checkout-vault card-1 --provider agentcard --spec '{"wallet":"wallet-1","merchant":"Example Shop","amount":1234,"currency":"usd"}'
-kernel vaults items invoke checkout-vault user-login fill --params '{"browser_id":"<browser_id>","fields":[{"field":"username","selector":"input#user"}]}'
+kernel vaults cards create checkout-vault card-1 --provider agentcard --spec '{"wallet":"wallet-1","merchant":"Example Shop","amount":1234,"currency":"usd","checkout_origin":"https://store.example.com"}'
+# Invocations use --spec or --spec-file:
+kernel vaults items invoke checkout-vault user-login fill --spec-file ./fill-spec.json
+kernel vaults items invoke checkout-vault card-1 prepare_checkout --spec '{"browser_id":"<id>","environment":"production","merchant_origin":"https://store.example.com","psp":"square"}'
+
+# Organization-scoped Vault Provider Configurations (Link & AgentCard)
+kernel vault-provider-configs list
+kernel vault-provider-configs get <id-or-name>
+kernel vault-provider-configs create --name link-prod --provider link --credentials-file ./link-creds.json
+kernel vault-provider-configs update <id-or-name> --credentials-file ./updated.json
+kernel vault-provider-configs delete <id-or-name>
 ```
 
 ---
@@ -356,7 +365,9 @@ kernel projects limits get <id-or-name>
 kernel api-keys list
 kernel api-keys get <id>
 kernel api-keys create --name ci-key [--project-id <proj_id>]
-kernel api-keys rotate <id> --expire-in-days 7
+# Rotation requires days_to_expire >= expire_in_days:
+kernel api-keys rotate <id> --days-to-expire 30 --expire-in-days 7
+# Deleting current authenticating key is prohibited (HTTP 400 cannot_delete_current_key):
 kernel api-keys delete <id>
 ```
 
@@ -368,7 +379,16 @@ kernel api-keys delete <id>
 kernel org entitlements
 kernel org limits get
 kernel audit-logs search --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --search 403
-kernel audit-logs download --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --to ./audit.jsonl
+# Download outputs a gzip-compressed archive (.jsonl.gz):
+kernel audit-logs download --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --to ./audit-logs.jsonl.gz
+
+# Continuous S3 Export Destinations
+kernel audit-logs export list
+kernel audit-logs export create --name s3-stream --bucket my-bucket --prefix audit/
+kernel audit-logs export test <id>
+kernel audit-logs export pause <id>
+kernel audit-logs export resume <id>
+kernel audit-logs export delete <id>
 ```
 
 ---

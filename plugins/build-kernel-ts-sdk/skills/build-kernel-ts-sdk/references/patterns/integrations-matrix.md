@@ -16,7 +16,12 @@ Most third-party agent libraries connect to a Kernel browser via the **CDP WebSo
 | **Val Town** | TS | Run a Val that calls `@onkernel/sdk` directly; CDP from the Val to the Kernel browser. |
 | **Vercel Agent Browser** | TS | `agent-browser -p kernel open <url>` reads `KERNEL_API_KEY`, `KERNEL_HEADLESS`, `KERNEL_STEALTH`, `KERNEL_TIMEOUT_SECONDS`, `KERNEL_PROFILE_NAME`. Programmatic: spawn `agent-browser connect "${session.cdp_ws_url}"`. |
 | **1Password** | TS | Credential provider — register via *Integrations → Connect 1Password* in the Kernel dashboard (recommended) or `kernel.credentialProviders.create({ name, provider_type: 'onepassword', token })`. Reference in `auth.connections.create({ credential: { provider: '<name>', auto: true } })`. See `references/patterns/profiles-pools-credentials.md`. |
+| **Vercel Connect Registry** | Any | Auto-sync `KERNEL_API_KEY` to Vercel projects via `vercel integration add kernel` or Vercel Marketplace connector. |
+| **Terraform Provider** (`kernel/kernel`) | HCL | Official infrastructure provider on Terraform Registry (`registry.terraform.io/providers/kernel/kernel/latest`) for declarative provisioning of projects, browser pools, proxies, and OTLP destinations. |
+| **Claude Managed Agents (Swarms)** | TS / Python | Parallel multi-agent browser swarm coordination with per-agent egress policy allowlists. See official cookbook at `https://github.com/kernel/cookbooks/tree/main/integrations/claude-managed-agents`. |
+| **CUA Framework 0.10.0** (`@onkernel/cua-agent`) | TS | Computer Use Agent framework with action-plane modes and browser execution (`@onkernel/cua-ai`, CLI `cua run`). |
 | **Computer Use** (Anthropic, OpenAI, custom VLM) | Any | Skip CDP entirely. Use `kernel.browsers.computer.captureScreenshot/clickMouse/typeText/scroll/dragMouse`. |
+| **Hypeman v1.16.1** | Infrastructure | Firecracker microVM hypervisor underpinning Kernel browser virtualization on port 4973. |
 
 ## Patterns common to most CDP integrations
 

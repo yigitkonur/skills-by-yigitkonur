@@ -18,9 +18,9 @@ Source note: Verified against `@onkernel/sdk@0.123.0` types, `@onkernel/managed-
 | Method | Purpose |
 |---|---|
 | `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential?, health_checks?, health_check_interval?, auto_reauth?, record_session?, browser? })` | Create a connection scoping a `domain` to a browser `profile_name`. See the cost note below — `health_checks` and `auto_reauth` both default to **true**. |
-| `kernel.auth.connections.login(id, { mode?, timeout_seconds? })` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, and `flow_expires_at`. |
-| `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, `can_reauth` / `can_reauth_reason`, and (in programmatic mode) the canonical `choices` and `fields` plus their legacy counterparts `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
-| `kernel.auth.connections.submit(id, { field_values?, selected_choice_id?, fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. **Prefer the canonical pair** — `field_values` (keyed by `Field.id`) and `selected_choice_id` (a `Choice.id`). Fall back to the legacy params (`fields` keyed by field name, `sso_provider`/`sso_button_selector`, `mfa_option_id`, `sign_in_option_id`) only when `choices`/`fields` are absent; pick the one matching the current `flow_step`. |
+| `kernel.auth.connections.login(id, { browser?, record_session?, skill_mode?, browser_telemetry?, proxy? })` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, `flow_expires_at`, and `live_view_url`. |
+| `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, `interaction_id`, `can_reauth` / `can_reauth_reason`, and (in programmatic mode) the canonical `choices` and `fields` plus their legacy counterparts `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
+| `kernel.auth.connections.submit(id, { interaction_id, field_values?, selected_choice_id?, fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. **Requires `interaction_id`** from current connection state (SDK v0.93.0+). **Prefer the canonical pair** — `field_values` (keyed by `Field.id`) and `selected_choice_id` (a `Choice.id`). Fall back to legacy params only when `choices`/`fields` are absent. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
 | `kernel.auth.connections.list()` / `delete(id)` / `follow(id)` | Standard list/delete plus an SSE feed for state. |
 | `kernel.auth.connections.timeline(id, { type?: 'login' \| 'reauth' \| 'health_check' })` | Paginated, newest-first history of login attempts, automatic re-auths, and health checks. First stop when a connection keeps flipping to `NEEDS_AUTH`. |
@@ -83,12 +83,14 @@ window.location.href = hostedUrl;           // simplest: redirect away
 ```
 
 ```ts
-// 3. Backend — poll until terminal, then launch a browser
-let state = await kernel.auth.connections.retrieve(conn.id);
-while (state.flow_status === 'IN_PROGRESS') {
-  await new Promise(r => setTimeout(r, 2000));
-  state = await kernel.auth.connections.retrieve(conn.id);
+// 3. Backend — stream events until terminal, then launch a browser
+const events = await kernel.auth.connections.follow(conn.id);
+for await (const event of events) {
+  if (event.flow_status !== 'IN_PROGRESS') {
+    break;
+  }
 }
+const state = await kernel.auth.connections.retrieve(conn.id);
 if (state.status !== 'AUTHENTICATED') {
   throw new Error(`auth ${state.flow_status}`);
 }
@@ -100,13 +102,13 @@ const session = await kernel.browsers.create({
 });
 ```
 
-For long-running waits, prefer `kernel.auth.connections.follow(id)` SSE over a polling loop.
+Using `kernel.auth.connections.follow(id)` SSE avoids wasteful and rate-limited HTTP polling loops.
 
 Security and lifecycle rules:
 
 - Never expose `KERNEL_API_KEY` to the browser or React component.
 - Treat `handoff_code` as short-lived and single-use; request a fresh login session instead of caching it.
-- Distinguish the auth connection id (`conn.id`) from login-session fields (`hosted_url`, `handoff_code`, `flow_expires_at`).
+- Distinguish the auth connection id (`conn.id`) from login-session fields (`hosted_url`, `handoff_code`, `flow_expires_at`, `live_view_url`).
 - Store only stable ids needed later: auth connection id and profile name. Do not persist handoff codes or raw credentials.
 - Finish reports must include auth connection id, profile name, final `flow_status`/`status`, and any browser `session_id` launched from the profile.
 
@@ -127,9 +129,14 @@ while (state.flow_status === 'IN_PROGRESS') {
   // types ('auth_method', 'identifier_method', 'account', 'other').
   if (state.fields?.length) {
     // Field: { id, ref, type: 'identifier'|'password'|'code'|'totp_code'|'totp_secret'|'text',
-    //          label?, hint?, required?, observed_selector?, replace_existing? }
+    //          label?, hint?, required?, observed_selector?, reason?: 'missing'|'rejected',
+    //          input_mode?: 'text'|'email'|'tel'|'numeric' }
+    // If field.reason === 'rejected', notify user to correct their input before retrying.
     const field_values = await collectFromUser(state.fields);   // Field.id -> value
-    await kernel.auth.connections.submit(conn.id, { field_values });
+    await kernel.auth.connections.submit(conn.id, {
+      interaction_id: state.interaction_id!,
+      field_values,
+    });
   } else if (state.flow_step === 'AWAITING_INPUT' && state.discovered_fields?.length) {
     // Legacy fallback — keyed by field *name*, not id.
     const fields = await collectLegacyFromUser(state.discovered_fields);
@@ -140,7 +147,10 @@ while (state.flow_status === 'IN_PROGRESS') {
     // Choice: { id, label, type, mfa_type?, masked_destination?, description?, observed_selector? }
     // Use `id` — two options can share a `type` (e.g. two SMS destinations).
     const choice = await pickChoice(state.choices);
-    await kernel.auth.connections.submit(conn.id, { selected_choice_id: choice.id });
+    await kernel.auth.connections.submit(conn.id, {
+      interaction_id: state.interaction_id!,
+      selected_choice_id: choice.id,
+    });
   } else {
     // Legacy fallbacks, used only when `choices` is absent.
     if (state.pending_sso_buttons?.length) {

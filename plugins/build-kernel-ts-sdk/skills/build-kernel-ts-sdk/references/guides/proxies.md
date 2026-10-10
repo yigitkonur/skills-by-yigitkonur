@@ -6,7 +6,7 @@ Kernel's proxy infrastructure provides an enterprise-grade egress subsystem desi
 
 ## 1. Core Architecture & Invariants
 
-Historically, Kernel accepted flat parameters (`proxy_id: string`, `disable_default_proxy: boolean`). As of `@onkernel/sdk@0.123.0`, proxy configuration is strictly modeled as a typed, nested object:
+Historically, Kernel accepted flat parameters (`proxy_id: string`, `disable_default_proxy: boolean`). As of `@onkernel/sdk@0.88.0` (August 10/14, 2026), proxy configuration is strictly modeled as a typed, nested object:
 
 ```ts
 export interface BrowserProxyConfig {
@@ -31,9 +31,11 @@ export interface BrowserProxyConfig {
    - `proxy: { mode: 'default' }` → Restores the browser default (stealth ISP proxy for stealth sessions, direct for non-stealth).
    - `proxy: { mode: 'direct' }` → Drops proxy routing and exits directly to the internet.
    - `proxy: { id }` or `proxy: { name }` → Hot-swaps egress to the new proxy synchronously within 2–3 seconds.
-5. **Deprecations**:
-   - `proxy_id` is `@deprecated` across `BrowserCreateParams`, `BrowserUpdateParams`, `BrowserPoolCreateParams`, and `ManagedAuthConnection`.
+5. **Deprecations & Active Exceptions**:
+   - `proxy_id` was deprecated in `@onkernel/sdk@0.88.0` (August 10/14, 2026) across single-session APIs (`BrowserCreateParams`, `BrowserUpdateParams`) and `ManagedAuthConnection`.
+   - `proxy_id?: string` remains **active** on `BrowserPoolCreateParams` and `BrowserPoolUpdateParams` (browser pool definitions do not accept a nested `proxy` object).
    - `disable_default_proxy` is `@deprecated` in favor of `proxy: { mode: 'direct' }`.
+   - Datacenter (`datacenter`) proxy tier is `@deprecated` in favor of `isp`.
 
 ---
 
@@ -80,8 +82,8 @@ Kernel supports four primary proxy tiers:
 
 | Tier | Infrastructure | IP Persistence | Anti-Bot Strength | Targeting Options | .gov Support | Best Used For |
 |---|---|---|---|---|---|---|
-| **ISP** | Datacenter hosts with residential ISP ASNs | **Static IP** across sessions | Good | Country (`US`, `SG`, `GB`, `FR`, `DE`) | ❌ No auto-routing | Default stealth mode; IP allowlists; high throughput |
-| **Residential** | Consumer residential devices | **Rotating IP** per connection | Very High | `country`, `state` (US), `city` (lowercase no spaces), `zip` (US), `asn` | ✅ Yes (no targeting or state) | Hardened anti-bot sites; localized scraping; CAPTCHA evasion |
+| **ISP** | Datacenter hosts with residential ISP ASNs | **Static IP** across sessions | Good | Country (`US`, `SG`, `GB`, `FR`, `DE`, `KR`) | ❌ No auto-routing | Default stealth mode; IP allowlists; high throughput |
+| **Residential** | Consumer residential devices | **Rotating IP** per connection | Very High | `country`, `state` (US), `city` (lowercase no spaces), `zip` (US), `asn` (note: `os` is deprecated; `zip` is US-only and conflicts with city/state; `asn` conflicts with city/state; `city` requires `country`) | ✅ Yes (no targeting or state) | Hardened anti-bot sites; localized scraping; CAPTCHA evasion |
 | **Mobile** | Cellular 4G/5G carrier networks | **Dynamic carrier IP** | Maximum | `country`, `state` (US only), `city` | ❌ Restricted | Mobile-specific web targets; highest-friction fraud walls |
 | **Custom** | Customer HTTP/HTTPS proxy server | Managed by customer | Customer IP dependent | Custom `host`, `port`, `username`, `password`, `ca_bundle` | Network dependent | Corporate egress; internal compliance proxies; BYO Bright Data / Oxylabs |
 
@@ -93,6 +95,10 @@ For custom proxies requiring TLS interception/decryption:
 - Injected directly into Chromium's root trust store inside the microVM.
 - `ca_bundle` contents are write-only; API responses return `has_ca_bundle: true`.
 - **Creation-Only Invariant**: Custom proxies with `ca_bundle` must be assigned at session creation; Chromium cannot reload root certificates dynamically without restarting.
+
+### Lifecycle Policies & Referential Protection
+- **Automatic Cleanup**: Kernel automatically deletes proxy configurations unused for 14 days in organizations with >100 active configurations. Configurations attached to active sessions, pools, or managed auth connections are preserved.
+- **Referential Deletion Protection**: `DELETE /proxies/{id}` returns HTTP 400 `resource_in_use` if the proxy is referenced by an active managed auth connection. Remove or repoint those connections before deleting.
 
 ---
 
@@ -127,15 +133,22 @@ HTTP/1.1 502 Bad Gateway
 X-Kernel-Proxy-Error: upstream_timeout
 ```
 
-### Typed Error Taxonomy
+### Official 12-Code `X-Kernel-Proxy-Error` Taxonomy (HTTP 502)
 - `upstream_timeout`: Upstream provider connection timed out (retryable).
 - `provider_unreachable`: Gateway host or port unreachable (retryable).
-- `auth_failed`: Upstream credentials rejected (non-retryable; check credentials).
-- `insufficient_balance`: Bandwidth/credit exhausted with provider (non-retryable).
-- `target_blocked`: Upstream proxy blocked access to the destination host.
-- `ssl_handshake_failed`: TLS negotiation failure with upstream proxy.
+- `upstream_connect_failed`: TCP connection to upstream proxy failed (retryable).
+- `upstream_dns_failure`: DNS resolution of upstream proxy host failed.
+- `origin_tls_timeout`: TLS handshake with origin server timed out.
+- `restricted_route_unavailable`: Restricted destination route could not be established.
 - `destination_route_unavailable`: Target matched a route whose proxy is deleted or broken (non-retryable; fail-closed).
-- `network_policy_denied`: Request rejected by security or egress policy (HTTP 403).
+- `proxy_unavailable`: Upstream proxy temporarily unavailable.
+- `origin_response_incomplete`: Origin server closed response stream prematurely.
+- `provider_rejected`: Upstream proxy provider rejected the connection.
+- `provider_blacklisted`: Destination host blocked by upstream proxy provider.
+- `destination_blocked`: Destination host blocked by proxy network filter.
+
+### Egress Policy Denial (HTTP 403)
+- `network_policy_denied`: Request rejected by security or egress policy (e.g. `network.allowed_hosts` destination mismatch).
 
 In Browser Telemetry, proxy errors emit under the `network` category as `proxy_error` events.
 
@@ -150,8 +163,8 @@ kernel proxies list
 # Inspect proxy details
 kernel proxies get prx_isp_01
 
-# Create an ISP proxy
-kernel proxies create --type isp --name us-east-isp --country US
+# Create an ISP proxy (supports US, SG, GB, FR, DE, KR)
+kernel proxies create --type isp --name kr-isp --country KR
 
 # Create a Residential proxy with location targeting
 kernel proxies create --type residential --name ny-res --country US --state NY --city newyork
@@ -166,15 +179,16 @@ kernel proxies create --type custom --name corp-mitm \
 kernel proxies check prx_isp_01
 kernel proxies check prx_isp_01 --url https://www.example.com
 
-# Launch browser with explicit proxy
-kernel browsers create --proxy prx_isp_01 --stealth
+# Launch browser with explicit proxy by ID or name
+kernel browsers create --proxy-id prx_isp_01 --stealth
+kernel browsers create --proxy-name us-east-isp --stealth
 
-# Launch browser with per-host routing (repeatable flag)
+# Launch browser with per-host routing (repeatable flag; name: prefix required for proxy names)
 kernel browsers create \
   --proxy-route "api.example.com,*.api.example.com=prx_isp_01" \
-  --proxy-route "*.corp.internal=corp-mitm" \
+  --proxy-route "*.corp.internal=name:corp-mitm" \
   --stealth
 
 # Launch browser with direct internet egress
-kernel browsers create --direct-egress --stealth
+kernel browsers create --proxy-mode direct --stealth
 ```

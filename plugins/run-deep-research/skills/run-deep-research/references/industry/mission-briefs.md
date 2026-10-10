@@ -17,7 +17,7 @@ Every mission brief should contain:
 Include this fallback chain in every brief:
 
 ```text
-If MCP tools fail, use WebFetch/WebSearch. If those fail, use curl from the shell. Do not stop because one tool is unavailable.
+If MCP tools fail, use read_url_content/search_web. If those fail, use curl from the shell. Do not stop because one tool is unavailable.
 ```
 
 ## Product Or Vendor Evidence Pack Agent
@@ -65,7 +65,7 @@ Do not edit other entity folders. Do not rewrite root synthesis or profile pages
 
 Use official docs, pricing pages, changelogs, status pages, SDK repos, legal/security pages, review sites, Reddit, HN, GitHub issues, forums, and practitioner blogs. Run sub-question decomposition (3-5 questions per template section). At least 25% of searches should target negative signal: complaints, migrations, alternatives, pricing pain, reliability failures, abandoned project, license risk, "switched from".
 
-If MCP tools fail, fall back to WebSearch/WebFetch. Do not stop because one tool is unavailable.
+If MCP tools fail, fall back to search_web/read_url_content. Do not stop because one tool is unavailable.
 
 ## Definition Of Done
 
@@ -173,15 +173,15 @@ Sub-questions are designed to surface different candidate clusters. Other agents
 
 ## Search Approach
 
-Run at least 5 distinct WebSearch queries with varied phrasing. Pattern shapes to use:
-- "[category] best 2025"
+Run at least 5 distinct search_web queries with varied phrasing. Pattern shapes to use:
+- "[category] best 2026"
 - "[category] alternatives to [known incumbent]"
 - "[category] open source"
 - "[category] vs [known competitor]"
 - "[category] reddit"
-- "[category] launched 2024" / "Show HN [category]" for recency
+- "[category] launched 2025" / "Show HN [category]" for recency
 
-For each candidate found, WebFetch the homepage to verify:
+For each candidate found, use read_url_content on the homepage to verify:
 - Status: active (last update <6 months) / dead (>18 months) / waitlist (gated, no public docs) / acquired
 - One-line description in their own words
 - Apparent positioning (incumbent / challenger / niche / adjacent)
@@ -193,7 +193,7 @@ You own only:
 
 ## Definition Of Done
 
-- [ ] At least 5 distinct WebSearch queries run with varied phrasing
+- [ ] At least 5 distinct search_web queries run with varied phrasing
 - [ ] At least 3 distinct candidates returned (or explicit "no further candidates" with rationale)
 - [ ] Each candidate has: name, vendor URL, one-line, status (active/dead/waitlist/acquired), apparent tier
 - [ ] No marketing-only candidate included without a status check

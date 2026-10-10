@@ -5,22 +5,25 @@ usage() {
   cat <<'USAGE'
 Usage: init-corpus.sh <topic-slug> [entity-slug ...]
 
-Create deterministic run-deep-research corpus scaffolding:
+Create deterministic run-deep-research corpus scaffolding (Dual-Layer Architecture):
   <topic-slug>/
     README.md
-    _meta/research-plan.md
-    _meta/methodology-and-source-policy.md
-    _meta/discovered-entities.md
-    _meta/file-budget.md
-    _meta/_PRODUCT_TEMPLATE.md
-    _meta/_COMPARISON_TEMPLATE.md
-    _cross-product/09-sources/
+    _meta/manifest.json
+    _meta/claims.jsonl
+    _meta/01-charter.md
+    _meta/02-entities.md
+    _meta/03-axes.md
+    _meta/04-product-template.md
+    _meta/05-axis-templates.md
+    _meta/06-file-budget.md
+    _meta/07-dispatch-log.md
+    _cross/
 
 Optional entity slugs create directories only:
   <topic-slug>/<entity-slug>/
-  <topic-slug>/<entity-slug>/09-sources/
 
-No entity evidence files are created.
+Entity research produces consolidated dossiers (<entity-slug>/dossier.md and sources.md).
+No premature stub files are created.
 USAGE
 }
 
@@ -64,42 +67,61 @@ for entity_slug in "$@"; do
   fi
 done
 
-mkdir -p "$topic_slug/_meta" "$topic_slug/_cross-product/09-sources"
+mkdir -p "$topic_slug/_meta" "$topic_slug/_cross"
 
 write_if_missing "$topic_slug/README.md" "# ${topic_slug}
 
 Start here after Phase 3. Record the corpus scope, capture date, highest-signal entry points, core entity index, cross-comparison index, caveats, and unresolved gaps."
 
-write_if_missing "$topic_slug/_meta/research-plan.md" "# Research Plan
+write_if_missing "$topic_slug/_meta/manifest.json" "{
+  \"topic\": \"${topic_slug}\",
+  \"version\": \"1.0.0\",
+  \"entities\": {},
+  \"axes\": [],
+  \"cross_axes\": []
+}"
+
+if [[ ! -e "$topic_slug/_meta/claims.jsonl" ]]; then
+  touch "$topic_slug/_meta/claims.jsonl"
+  printf 'created: %s\n' "$topic_slug/_meta/claims.jsonl"
+else
+  printf 'exists: %s\n' "$topic_slug/_meta/claims.jsonl"
+fi
+
+write_if_missing "$topic_slug/_meta/01-charter.md" "# Research Charter
 
 Record the Phase 0 scope statement, audience, geography, decision type, scale, entity tiers, and Phase 1 category-understanding note before Phase 2."
 
-write_if_missing "$topic_slug/_meta/methodology-and-source-policy.md" "# Methodology And Source Policy
-
-Record the available research tools, fallback path, source hierarchy, capture-date convention, quote discipline, and how confirmed facts, vendor claims, practitioner reports, inference, contradictions, and unverified claims are separated."
-
-write_if_missing "$topic_slug/_meta/discovered-entities.md" "# Discovered Entities
+write_if_missing "$topic_slug/_meta/02-entities.md" "# Discovered Entities
 
 Record Phase 1 candidates in this shape:
 
 | Slug | Name | Vendor | URL | Tier | Status | Surfaced by | Notes |
 |---|---|---|---|---|---|---|---|"
 
-write_if_missing "$topic_slug/_meta/file-budget.md" "# File Budget
+write_if_missing "$topic_slug/_meta/03-axes.md" "# Evaluation Axes
 
-Record the Phase 3 tree plan, template-derived file-count expectation, entity tiers, profile-page decision, and the final reconciled file count after verification."
+Record the Phase 1B derived axis catalog, decision-flipping primitives, and practitioner channel list."
 
-write_if_missing "$topic_slug/_meta/_PRODUCT_TEMPLATE.md" "# Product Template
+write_if_missing "$topic_slug/_meta/04-product-template.md" "# Product Dossier Template
 
-Record the Phase 2 per-entity comprehensiveness contract here before Phase 4. Include every numbered section, the buyer question each section answers, insufficient-evidence handling, evidence header expectations, and source-ledger requirements."
+Record the Phase 2 per-entity comprehensiveness contract here before Phase 4. Include frontmatter field definitions, required dossier sections, insufficient-evidence handling, and source-ledger expectations."
 
-write_if_missing "$topic_slug/_meta/_COMPARISON_TEMPLATE.md" "# Comparison Template
+write_if_missing "$topic_slug/_meta/05-axis-templates.md" "# Axis Comparison Templates
 
-Record the Phase 2 compact comparison contract here, or replace this file with per-criterion _COMPARISON_TEMPLATE_<criterion>.md files for standard, deep, or tiered corpora. Include the base matrix columns and criterion-specific additions."
+Record the Phase 2 cross-comparison contracts here. Include matrix columns, ranking dimensions, and the required Executive Digest shape."
+
+write_if_missing "$topic_slug/_meta/06-file-budget.md" "# File Budget
+
+Record the Phase 3 tree plan, consolidated dossier expectations (MAX 3 per entity, MAX 3 per cross, MAX 8 in _meta), entity tiers, and the final reconciled file count."
+
+write_if_missing "$topic_slug/_meta/07-dispatch-log.md" "# Dispatch Log
+
+Running log tracking wave dispatches, subagent IDs, completion status, and evaluation gate results."
 
 for entity_slug in "$@"; do
-  mkdir -p "$topic_slug/$entity_slug/09-sources"
-  printf 'created directories: %s/%s and %s/%s/09-sources\n' "$topic_slug" "$entity_slug" "$topic_slug" "$entity_slug"
+  mkdir -p "$topic_slug/$entity_slug"
+  printf 'created directory: %s/%s\n' "$topic_slug" "$entity_slug"
 done
 
 printf 'initialized corpus scaffold: %s\n' "$topic_slug"

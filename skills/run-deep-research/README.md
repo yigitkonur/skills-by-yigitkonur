@@ -1,12 +1,13 @@
 # run-deep-research
 
 Orchestrate a multi-file evidence corpus on disk over a population of 5+
-entities or a market / vendor category — per-entity packs, cross-axis
-comparison rollups, source ledgers, optional profile pages, master summary.
-Opens with a batched `AskUserQuestion` intake (scale / framing / scope /
-concurrency), then wave-dispatches research to parallel background subagents
-invoking the `run-research` discipline for web calls. Filesystem is the context
-channel between waves.
+entities or a market / vendor category — structured via a **Dual-Layer Architecture**
+(consolidated entity dossiers, YAML frontmatter, `manifest.json`, and `claims.jsonl`),
+cross-axis comparison rollups with Executive Digests, source ledgers, optional profile
+pages, and an actionable master summary. Opens with a batched `ask_question` intake
+(scale / framing / scope / concurrency), then wave-dispatches research to parallel
+background subagents invoking the `run-research` discipline for web calls. Filesystem is
+the context channel between waves.
 
 The skill itself lives at `skills/run-deep-research/SKILL.md`.
 

@@ -11,18 +11,21 @@ bash scripts/init-corpus.sh ai-native-cloud-browsers browserbase anchor-browser
 Creates:
 
 - the corpus root directory
-- `_meta/`
 - root `README.md`
-- `_meta/research-plan.md`
-- `_meta/methodology-and-source-policy.md`
-- `_meta/discovered-entities.md`
-- `_meta/file-budget.md`
-- `_meta/_PRODUCT_TEMPLATE.md`
-- `_meta/_COMPARISON_TEMPLATE.md`
-- `_cross-product/09-sources/`
-- optional entity directories and their `09-sources/` directories
+- `_meta/`
+- `_meta/manifest.json` (Machine index catalog)
+- `_meta/claims.jsonl` (Machine-readable claims ledger)
+- `_meta/01-charter.md`
+- `_meta/02-entities.md`
+- `_meta/03-axes.md`
+- `_meta/04-product-template.md`
+- `_meta/05-axis-templates.md`
+- `_meta/06-file-budget.md`
+- `_meta/07-dispatch-log.md`
+- `_cross/`
+- optional entity directories (`<topic-slug>/<entity-slug>/`)
 
-The script does not create entity evidence files, cross-comparison content files, claims ledgers, source maps, or profile pages. Those require source-backed research in later phases.
+The script follows the **Dual-Layer Architecture**: it creates directory scaffolding and machine metadata without creating premature evidence files, cross-comparison files, or stub files. Those are populated via wave subagents into consolidated dossiers (`dossier.md` and `sources.md`).
 
 ## Slug Rules
 
@@ -44,6 +47,6 @@ browserbase/
 
 ## Starter File Policy
 
-Starter files are non-empty and contain phase-specific prompts. They are allowed only under the corpus root and `_meta/` because they guide the workflow. Do not copy this pattern into entity packs or `_cross-*` comparison folders; those files must be source-backed and independently useful.
+Starter files are non-empty and contain phase-specific prompts. They are allowed only under the corpus root and `_meta/` because they guide the workflow. Do not copy this pattern into entity packs or `_cross/` comparison folders; those files must be source-backed and independently useful.
 
 If a starter file already exists, the script leaves it untouched and prints `exists: <path>`.

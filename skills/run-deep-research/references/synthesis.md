@@ -5,50 +5,43 @@ decision-grade master summary, profile pages, and cross-entity
 comparisons. Read this in **Phase 7** before the master summary;
 also consulted across Wave 3 for cross-entity discipline.
 
-## The orchestrator's personal-read gate
+## The Hierarchical Synthesis Gate
 
-Before writing the master summary, read every `<entity-slug>/` core
-pack in full and every `_cross/<axis-slug>/` folder in full. No
-delegation. No subagent-of-subagent for synthesis.
+The historical "Hero Orchestrator" model required the top-level agent to read 500+
+micro-files personally before writing the master summary. Across 20–50 entities,
+this created catastrophic token thrashing, blew past context windows, and led to
+superficial, stitched summaries.
 
-Master summaries written without personal reading have a
-recognizable texture: one paragraph per agent file stitched
-together with transitions. They lack cross-domain insight. The
-decider can read the files; the master summary's job is to add
-what the agent files cannot — emergent recommendations,
-contradictions across files, the conditions under which the
-recommendation flips.
+This skill governs synthesis **hierarchically**:
 
-### The personal-read gate procedure
+1. **Wave 3 Executive Digests**: Each Wave 3 cross-axis subagent condenses its axis
+   into a standardized **Executive Digest** (2-3 paragraphs: top contenders,
+   trade-offs, and critical decision-flippers) at the top of `_cross/<axis-slug>/synthesis.md`.
+2. **Machine Manifest Registry**: `_meta/manifest.json` tracks entity statuses,
+   scores, and coverage across the entire corpus.
+3. **Consolidated Dossiers**: The orchestrator reviews the Executive Digests,
+   consults `manifest.json`, and reads the consolidated `<entity-slug>/dossier.md` files
+   for core entities (drilling into `sources.md` or cross `scenarios.md` only to resolve
+   disputed claims or contradictions).
 
-Before writing the master summary, run this procedure:
+### The hierarchical synthesis procedure
 
-1. **Read every `<entity-slug>/` core pack in full.** Per entity,
-   this is ~10-15 files. Total reading: roughly 30-60 minutes for
-   5-8 core entities.
-2. **Read every `_cross/<axis-slug>/` folder in full.** Per axis,
-   ~5-12 files.
-3. **Note recurring patterns across entities.** Things mentioned in
-   3+ entity packs are usually load-bearing for the master summary
-   (e.g., "every entity I read has reliability gaps in the same
-   region — this is a category-wide finding, not entity-specific").
-4. **Note disagreements across files.** When entity A's pack claims
-   X and the cross-axis comparison claims not-X, the disagreement
-   is decision-relevant; surface it.
-5. **Note `## Not found` patterns.** If multiple entities have
-   "insufficient evidence" entries on the same axis, the axis
-   itself may not be supportable from public sources — surface this
-   as a methodology limitation in the master summary.
-6. **Note unanswered questions.** If during reading you find
-   yourself thinking "the decider would want to know X", and X is
-   not answered anywhere, X is an open gap.
-7. **Note tier-promotion candidates.** If a `secondary` entity's
-   pack reveals decision-flipping evidence, log it in
-   `_meta/07-dispatch-log.md` and consider a Wave 4 mission.
+Before writing the master summary, the orchestrator executes this procedure:
 
-The reading IS the synthesis. The master summary writes the
-emergent insights surfaced during the read; it does not regenerate
-them.
+1. **Read all Executive Digests** from `_cross/<axis-slug>/synthesis.md`.
+   This provides instant cross-category perspective across all axes.
+2. **Consult `_meta/manifest.json`** to evaluate normalized scores, pricing models,
+   and compliance tiers.
+3. **Read core entity `dossier.md` files** in full to grasp per-entity depth and nuances.
+4. **Note recurring patterns across entities.** Category-wide phenomena mentioned
+   across multiple dossiers (e.g. "every vendor relies on the same upstream provider")
+   become core findings in the master summary.
+5. **Surface disagreements and contradictions.** Contrast differing vendor claims
+   and document the conditions where rankings flip.
+6. **Note data gap patterns.** If multiple entities have "insufficient evidence"
+   entries on the same axis, surface this as an industry-wide data gap.
+7. **Formulate executive recommendations.** Synthesize actionable guidance tailored
+   specifically to the decider and use case locked in `_meta/01-charter.md`.
 
 ## Source credibility
 
@@ -339,8 +332,8 @@ Before declaring the corpus complete:
       all 7 required sections.
 - [ ] Every `core` entity has a profile page at corpus root with
       the 10-section template.
-- [ ] Every `_cross/<axis-slug>/` has a `00-overall-comparison.md`
-      with matrix, ranking, evidence confidence, contradictions.
+- [ ] Every `_cross/<axis-slug>/` has a `synthesis.md`
+      starting with an Executive Digest, matrix, ranking, evidence confidence, contradictions.
 - [ ] Key claims confirmed by 2+ independent sources.
 - [ ] No unresolved contradictions (resolved, surfaced, or
       explicitly flagged as unresolvable).

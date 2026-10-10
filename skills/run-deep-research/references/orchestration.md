@@ -168,16 +168,14 @@ folder skeleton. After templates lock.
 
 Procedure:
 
-1. **Compute expected file counts** per entity (≈ axis count + 2
-   for overview and sources) and per axis (≈ 4-6 for overall +
-   scenarios + contradictions).
-2. **Verify expected counts fit MAX-N ceilings** (15 / 12 / 8). If
-   any folder would exceed cap, adjust template structure (split a
-   busy axis into multiple sub-axes; combine related thin sections).
+1. **Compute expected file counts** per entity (2 files: `dossier.md`
+   and `sources.md`) and per axis (1-2 files: `synthesis.md` and optional
+   `scenarios.md`).
+2. **Verify expected counts fit MAX-N ceilings** (3 / 3 / 8). The consolidated
+   dossier model prevents token bloat and context fragmentation.
 3. **Lay out the wave dispatch plan**: Wave 2 sub-waves needed,
    Wave 3 sub-waves needed, optional Wave 4 missions, retry budget.
-4. **Write `_meta/06-file-budget.md`** per the format in
-   `templates.md`.
+4. **Write `_meta/06-file-budget.md`** and scaffold `_meta/manifest.json`.
 5. **Pre-create empty folders** per the script in `templates.md`
    ("Pre-creating folders before Wave 2"). Empty folders are
    commitments.
@@ -200,12 +198,12 @@ Wave 2 dispatches **N parallel subagents, ≤8 per wave**, one per
 - **Read scope**: `_meta/01-charter.md`, `_meta/03-axes.md`,
   `_meta/04-product-template.md`. Not other `<entity-slug>/`
   folders; not other agents' work.
-- **DoD**: every axis in the charter is addressed in this entity's
-  pack — content OR an explicit "insufficient evidence" entry
+- **DoD**: produces `<entity-slug>/dossier.md` with structured YAML
+  frontmatter covering all axes, plus `<entity-slug>/sources.md` with
+  verbatim quotations and line locators. Every axis in the charter is
+  addressed — content OR an explicit "insufficient evidence" entry
   naming the data gap.
-- **MAX-N**: 15 files per `<entity-slug>/` folder.
-- **File-naming protocol**: `<NN>-<axis-slug>.md`; agent picks
-  axis-slug per their evidence.
+- **MAX-N**: 3 files per `<entity-slug>/` folder (`dossier.md`, `sources.md`, optional deep-dive).
 
 ### Sub-waves when N > 8
 
@@ -224,15 +222,15 @@ Each Wave 2 subagent's run-research session:
   charter axes to cover, the decider use case, and the completion
   standard ("every numeric/versioned/priced claim carries a verified
   quotation").
-- Wave 2 reconnaissance: parallel `web-search` calls — open-web
-  queries plus explicit `site:reddit.com/r/.../comments` queries —
-  different scopes, one turn.
+- Wave 2 reconnaissance: parallel `web-search` calls with consensus
+  scoring — open-web queries plus explicit `site:reddit.com/r/.../comments`
+  queries — different scopes, one turn.
 - Per-axis evidence capture: `extract-evidence` on docs, changelog,
   and pricing pages with one checkable requirement per axis (≤20 URLs
   and ≤20 requirements per call); `extract-evidence` on Reddit threads
   with attribution requirements for sentiment work.
-- Finish any `continuation.required` result by invoking its exact
-  `continuation.next_call` before writing files.
+- Handle anti-slop rejections and schema-v3 retry payloads (`retry.sources`
+  or `retry.evidence_requirements` / `continuation.next_call`) before writing files.
 - Round 2: read `follow_up_signals` and unresolved requirements; fire
   refined `web-search` queries, then evaluate against stop conditions to decide
   whether another round is worth it.
@@ -252,31 +250,29 @@ their work is local-files synthesis, not web research.
 
 Each Wave 3 brief includes:
 
-- **Read scope**: every `<entity-slug>/<NN>-<axis-slug>.md` file for
-  this axis across all `core` entities, plus the corresponding
-  `09-sources.md` (or equivalent) per entity for citation
-  resolution.
+- **Read scope**: `<entity-slug>/dossier.md` for this axis across all
+  `core` entities, `_meta/manifest.json`, plus the corresponding
+  `sources.md` per entity for citation resolution.
 - **Write scope**: `_cross/<axis-slug>/` — and only that folder.
 - **Per-axis comparison template**: from `_meta/05-axis-templates.md`
   — what comparison axes, matrix columns, ranking dimensions to use.
 - **DoD**: every entity is read; every contradiction is surfaced;
   the matrix has a value per (entity, comparison-column) cell or an
   explicit "no evidence" marker; ranking is source-backed with cited
-  evidence.
-- **MAX-N**: 12 files per `_cross/<axis-slug>/` folder.
-- **File-naming protocol**: `<NN>-<topic-slug>.md`; agent picks
-  topic-slug.
+  evidence; and an **Executive Digest** is written at the top of
+  `synthesis.md` for the orchestrator's Phase 7 rollup.
+- **MAX-N**: 3 files per `_cross/<axis-slug>/` folder (`synthesis.md`, optional `scenarios.md`).
 
 ### What Wave 3 produces
 
-For each axis, the minimum:
+For each axis, the deliverables:
 
-- `00-overall-comparison.md` — the matrix, ranking, recommendation,
-  evidence confidence, scenario-specific guidance, what would change
-  the answer.
-- Granular comparison files per scenario (e.g., `01-by-scale.md`,
-  `02-contradictions.md`, `03-decision-flippers.md`) up to the MAX
-  12 cap.
+- `synthesis.md` — starts with an **Executive Digest** (2-3 paragraphs:
+  standings, key trade-offs, and critical decision-flippers for this axis),
+  followed by the full comparative matrix, ranking, evidence confidence,
+  scenario-specific guidance, and what would change the answer.
+- Optional granular scenario files (e.g., `scenarios.md` or `edge-cases.md`)
+  up to the MAX 3 cap.
 
 ### Why no run-research in Wave 3
 
@@ -367,10 +363,9 @@ changed.
   Two subagents writing to the same folder produces conflicts.
 - **Self-contained briefs.** Subagents do not see the orchestrator's
   conversation. Every brief carries all context the agent needs.
-- **No subagent-of-subagent for the orchestration layer.** The
-  run-research skill internally may spawn read-only Explore
-  subagents for triage of large persisted outputs — that is bounded
-  inside the subagent's own session and acceptable.
+- **No recursive subagent delegation.** Two-level orchestration only.
+  Subagents execute their focused research or local synthesis directly
+  without spawning nested subagents, preserving API quotas and clarity.
 - **Process completed agents as they return.** Do not gate on the
   slowest. Start integrating early-returners' outputs while
   late-returners finish.
@@ -383,12 +378,10 @@ changed.
 |---|---|---|
 | Find entities (Wave 1A) | 1 | Parallel `web-search` per sub-question (open web + explicit `site:reddit.com/r/.../comments` queries); `extract-evidence` on category indexes |
 | Map axes (Wave 1B) | 1 | `web-search` queries for decision axes; `extract-evidence` on 2-3 authoritative analyses with one requirement per axis question |
-| Per-entity overview (Wave 2) | 2 | `plan-research` per entity → parallel `web-search` (open web + reddit-scoped queries) → `extract-evidence` on docs and Reddit threads with one requirement per template section |
-| Per-entity sentiment (Wave 2) | 2 | `extract-evidence` on Reddit thread permalinks with attribution requirements; the Reddit API fetches the full threaded post + comments automatically |
-| Per-entity pricing/security (Wave 2) | 2 | `extract-evidence` with page-type-aware requirements per run-research's prompting guide |
-| Cross-entity synthesis (Wave 3) | 3 | LOCAL-ONLY: read files; no web tools |
-| Profile pages (Wave 4 / orch) | 4/7 | LOCAL-ONLY: read pack files, write profile |
-| Master summary (Phase 7) | 7 | LOCAL-ONLY: orchestrator reads everything, writes |
+| Per-entity dossier (Wave 2) | 2 | `plan-research` per entity → parallel `web-search` with consensus scoring → `extract-evidence` on docs and community threads. Writes `<entity-slug>/dossier.md` and `sources.md`. |
+| Cross-entity synthesis (Wave 3) | 3 | LOCAL-ONLY: read entity dossiers; write `_cross/<axis-slug>/synthesis.md` starting with an Executive Digest. |
+| Profile pages (Wave 4 / orch) | 4/7 | LOCAL-ONLY: read dossier files, write standalone `<entity-slug>.md` profiles. |
+| Master summary (Phase 7) | 7 | LOCAL-ONLY: orchestrator reads Executive Digests, `manifest.json`, and dossiers; writes master summary. |
 
 The orchestrator's job is to choose the right tool for the right
 step in the brief; the subagent then executes via its run-research
@@ -400,13 +393,11 @@ which exact keywords to use) but should set the dispatch shape
 
 - **Does not search the web.** Subagents search.
 - **Does not scrape pages.** Subagents scrape.
-- **Does not delegate synthesis.** The orchestrator personally reads
-  every `<entity-slug>/` core pack and every `_cross/<axis-slug>/`
-  folder before writing the master summary. Subagents may write
-  per-axis cross syntheses, but the master summary is the
-  orchestrator's signature artifact.
-- **Does not let subagents recurse.** Two-level orchestration only,
-  with the bounded-internal exception for run-research's own triage.
+- **Does not delegate final master synthesis.** The orchestrator
+  personally reads the Executive Digests across each `_cross/<axis-slug>/synthesis.md`,
+  consults `_meta/manifest.json`, and evaluates the entity `dossier.md` files
+  before authoring the master summary.
+- **Does not let subagents recurse.** Strict two-level hierarchy prevents quota exhaustion and state fragmentation.
 
 ## When a wave fails
 
@@ -439,7 +430,8 @@ references it).
 
 ```
 PHASE 0 (orchestrator interactive):
-  Write _meta/01-charter.md (initial)
+  Intake via ask_question
+  Write _meta/01-charter.md
 
 WAVE 1 (parallel, 2 subagents — both invoke run-research):
   → _meta/02-entities.md
@@ -447,24 +439,28 @@ WAVE 1 (parallel, 2 subagents — both invoke run-research):
   Orchestrator reads and locks charter.
 
 PHASE 2 (orchestrator):
-  Write _meta/04-product-template.md
-  Write _meta/05-axis-templates.md
+  Write _meta/04-product-template.md (dossier schema + frontmatter)
+  Write _meta/05-axis-templates.md (cross-axis comparison schema)
 
 PHASE 3 (orchestrator):
-  Write _meta/06-file-budget.md
+  Write _meta/06-file-budget.md & scaffold _meta/manifest.json
+  Run scripts/init-corpus.sh <topic-slug> [entities...]
 
 WAVE 2 (parallel ≤8, possibly multiple sub-waves — invoke run-research):
-  → <entity-slug>/<NN>-<axis>.md per core entity
+  → <entity-slug>/dossier.md (YAML frontmatter + evidence)
+  → <entity-slug>/sources.md (verified claims ledger)
+  MAX 3 files per entity
 
 WAVE 3 (parallel ≤8, possibly multiple sub-waves — local-only):
-  → _cross/<axis-slug>/<NN>-<topic>.md per axis
+  → _cross/<axis-slug>/synthesis.md (Executive Digest + matrix + rankings)
+  MAX 3 files per axis
 
 WAVE 4 (optional):
   → <entity-slug>.md profiles (local-only) OR
-  → additional <entity-slug>/ packs (invoke run-research)
+  → additional <entity-slug>/ dossiers (invoke run-research)
 
 PHASE 7 (orchestrator):
-  Read everything personally
-  Write _meta/00-master-summary.md
-  Run verification commands
+  Read Executive Digests, manifest.json, and dossiers
+  Write _meta/00-master-summary.md and README.md
+  Run bash scripts/verify-corpus.sh --final <corpus-path>
 ```

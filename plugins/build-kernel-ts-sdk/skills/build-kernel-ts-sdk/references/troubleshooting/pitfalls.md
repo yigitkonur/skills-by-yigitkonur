@@ -40,7 +40,7 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Cause:** Stealth adds a default ISP proxy and an automatic CAPTCHA solver. It does not defeat every detector — sophisticated sites combine IP reputation, fingerprinting, and behavioral heuristics. Note that stealth mode's default proxy is an ISP proxy with a residential ASN providing a static IP across sessions, not a dynamic residential rotating proxy.
 
-**Fix:** Layer signals — pair stealth with a dedicated residential proxy (`proxy: { id: p.id }` or `{ name: p.name }` on `browsers.create`; the flat `proxy_id` is `@deprecated` in v0.92.0, and `disable_default_proxy` is `@deprecated` in favor of `proxy: { mode: 'direct' }`), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
+**Fix:** Layer signals — pair stealth with a dedicated residential proxy (`proxy: { id: p.id }` or `{ name: p.name }` on `browsers.create`; the flat `proxy_id` is `@deprecated` in v0.88.0, and `disable_default_proxy` is `@deprecated` in favor of `proxy: { mode: 'direct' }`), a long-lived profile (browsing history builds trust), and human-like input via `kernel.browsers.computer.*` instead of raw CDP clicks.
 
 ## 6. CDP latency vs `playwright.execute`
 
@@ -78,9 +78,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** An org-wide API key sees browsers / apps from other projects.
 
-**Cause:** Org-wide API keys are not project-scoped by default unless configured. In the CLI, requests can be scoped with `--project <project_id_or_name>` or by setting `KERNEL_PROJECT=<project_id_or_name>`. Note that REST endpoints for projects moved under `/org/projects/*` (old `/projects/*` paths are deprecated).
+**Cause:** Org-wide API keys are not project-scoped by default unless configured. In the CLI, the global `--project` flag and `KERNEL_PROJECT` environment variable strictly accept a project ID (`proj_...`), NOT a project name (names are accepted only by commands taking `<id-or-name>`). Note that REST endpoints for projects moved under `/org/projects/*` (old `/projects/*` paths are deprecated).
 
-**Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override. In the CLI, pass `--project <project_id_or_name>` or export `KERNEL_PROJECT`.
+**Fix:** Use the client's first-class options — `new Kernel({ projectID: process.env.KERNEL_PROJECT })` (or `project: '<name>'`). The SDK then sends `X-Kernel-Project-Id` / `X-Kernel-Project` on every request. Neither option reads an env var automatically, so you must pass the value in yourself; `KERNEL_PROJECT` is the spelling the `kernel` CLI's `--project` flag reads, so reusing it keeps SDK and CLI consistent. `defaultHeaders` / per-request `headers` still work as an override. In the CLI, pass `--project <project-id>` or export `KERNEL_PROJECT=<project-id>`.
 
 ## 11. `invocations.create` without `version` does not compile
 
@@ -144,9 +144,9 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Symptom:** Calling `performOperation('card-key', { type: 'fill' })` fails or card number is rejected.
 
-**Cause:** AgentCard does not use DOM autofill. It uses an **alias-based egress interception flow** (`card.state.aliases`), where the agent types non-sensitive Luhn-valid stand-in details into the checkout DOM and Kernel's egress network swaps and authorizes the real card upon payment gateway dispatch.
+**Cause:** AgentCard does not use DOM autofill. It uses an **alias-based egress interception flow** (`card.state.aliases`), where the agent types non-sensitive Luhn-valid stand-in details into the checkout DOM and Kernel's egress network swaps and authorizes the real card upon payment gateway dispatch. Furthermore, for processors requiring prepared single-use checkouts (Square, Braintree, Worldpay, Bambora, Mercado Pago, and Adyen), the card item must execute `prepare_checkout` (`type: 'prepare_checkout'`) before native submission. In the current Kernel deployment, prepared checkout is enabled, so Square checkouts must use `prepare_checkout`.
 
-**Fix:** Type the alias card details into the DOM. See `references/patterns/vaults-and-payments.md`.
+**Fix:** For standard checkouts, type the alias card details into the DOM. For Square, Braintree, Adyen, and other prepared processors, invoke `prepare_checkout` on the card before submitting the checkout form. See `references/patterns/vaults-and-payments.md`.
 
 ## 19. OTLP endpoints must omit signal paths
 

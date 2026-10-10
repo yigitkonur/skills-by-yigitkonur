@@ -7,17 +7,19 @@ disable-model-invocation: true
 # Run Deep Research
 
 This skill orchestrates a **multi-file evidence corpus on disk**, never a single chat reply.
-Per-entity evidence packs, cross-axis comparison rollups, source ledgers, optional
-profile pages, and a master summary — all written into a navigable folder tree the
-user can read, edit, link from, and re-enter later. The filesystem is the deliverable.
+Structured via a **Dual-Layer Architecture** (consolidated entity dossiers, YAML frontmatter,
+`manifest.json`, and `claims.jsonl`), cross-axis comparison rollups with Executive Digests,
+source ledgers, optional profile pages, and an actionable master summary — all written into a
+navigable folder tree the user can read, edit, link from, and re-enter later.
+The filesystem is the deliverable.
 
 The orchestrator operates as the system architect, delegator, gatekeeper, and synthesizer.
 The orchestrator does not search the web personally; instead, it decomposes the research
 domain, structures the folder tree, dispatches focused research to **parallel background
 subagents in orchestrated waves**, gates and audits between waves, and personally synthesizes
 the final decision artifacts. Every research subagent inherits the `run-research` discipline
-(3-tool research surface, `## Not found` harvesting, verified verbatim quotation citations,
-and multi-round scope refinement).
+(authoritative 3-tool research surface: `plan-research`, `web-search`, and `extract-evidence`,
+cross-query consensus scoring, verbatim quotation anti-slop verification, and schema-v3 retry payloads).
 
 The **filesystem is the context channel** between waves. Subagents do not see each other's
 in-flight context; they read only the specific files named in their brief and write only to
@@ -52,21 +54,21 @@ this skill answers **N questions across N entities** and returns a **multi-file
 corpus**. If the deliverable is a folder, you are in this skill. If it's a chat
 reply or a single Markdown file, you are in `run-research`.
 
-## Intake — always ask first (AskUserQuestion)
+## Intake — always ask first (ask_question)
 
 Before any decomposition, template authoring, or subagent dispatch, run **one batched
-`AskUserQuestion` call** to lock the run's shape. This is mandatory — never start a
+`ask_question` call** to lock the run's shape. This is mandatory — never start a
 heavy pass on assumptions. Batch the discrete decisions into a single call so the user
 answers once; make the recommended default the first option of each:
 
-1. **Scale** — standard (10-40 entities, ~150-500 files) · compact (5-10 entities, ~80-200 files) · deep (40-100 entities) · tiered (100+ entities).
+1. **Scale** — standard (10-40 entities, ~30-100 files + manifest) · compact (5-10 entities, ~15-30 files) · deep (40-100 entities) · tiered (100+ entities).
 2. **Framing** — industry / vendor category (market analysis, pricing, profile pages) · domain-agnostic corpus (OSS projects, papers, architectures).
 3. **Scope & Discovery** — discover entities vs use user's named list; confirm `<topic-slug>/` output folder and whether profile pages are wanted.
 4. **Concurrency** — standard (6-8 parallel subagents per wave) · conservative (3-4 subagents) · high throughput (10-15 subagents).
 
 Capture the **decider** and **use case** from the conversation (or free-text notes) —
 these anchor `_meta/01-charter.md`; without them "good" and "bad" are undefined.
-If `AskUserQuestion` is unavailable (non-interactive run), fall back to the stated
+If `ask_question` is unavailable (non-interactive run), fall back to the stated
 defaults and record the assumption in the charter. Full question wording, option sets,
 recommended defaults, and the headless fallback: `references/intake.md`.
 
@@ -84,7 +86,7 @@ The research executes across a modular, 2-level multi-agent hierarchy:
                   ▼                       ▼                       ▼
        ┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
        │   WAVE 1 SUBAGENTS  │ │   WAVE 2 SUBAGENTS  │ │   WAVE 3 SUBAGENTS  │
-       │ Discovery & Axes    │ │ Per-Entity Packs    │ │ Cross-Axis Rollups  │
+       │ Discovery & Axes    │ │ Per-Entity Dossiers │ │ Cross-Axis Rollups  │
        │ (run-research web)  │ │ (run-research web)  │ │ (local-only corpus) │
        └─────────────────────┘ └─────────────────────┘ └─────────────────────┘
 ```
@@ -103,11 +105,11 @@ Eight structured phases, each protected by an artifact gate:
 | **0 — Charter** | Apply intake answers; clarify decider, use case, scale, framing, concurrency | `_meta/01-charter.md` scope statement + scale + framing + decider profile |
 | **Wave 1 — Discovery & Scope** | Parallel dispatch of 2 subagents: 1A discovers/tiers entities; 1B derives axis catalog & native primitives. | `_meta/02-entities.md` (or `discovered-entities.md`) + `_meta/03-axes.md` + practitioner channel list |
 | **2 — Template Authoring** | Orchestrator personally writes maximalist product & per-axis comparison templates. Target ~30+ vertical-specific sections. | `_meta/04-product-template.md` + `_meta/05-axis-templates.md` (or `_meta/_PRODUCT_TEMPLATE.md` + per-criterion templates) |
-| **3 — Corpus Architecture** | Design tree shape, calculate file budgets, enforce MAX-N ceilings. Scaffold folders via `scripts/init-corpus.sh`. | `_meta/06-file-budget.md` + pre-created folder skeleton |
-| **Wave 2 — Per-Entity Packs** | Fill `<entity-slug>/` for every `core` entity (parallel, ≤8 per sub-wave). Disjoint write scopes. Each covers all charter axes. | Populated `<entity-slug>/` packs; every section covered with evidence or specific "insufficient evidence" gap note |
-| **Wave 3 — Cross-Axis Synthesis** | Compare entities along each axis. LOCAL-ONLY (no web tools). Each subagent owns one cross folder. | Populated `_cross/<axis-slug>/` or `_cross-<scope>/` with rankings + matrix + decision-flippers |
+| **3 — Corpus Architecture** | Design tree shape, calculate file budgets, enforce MAX-N ceilings. Scaffold folders via `scripts/init-corpus.sh`. | `_meta/06-file-budget.md` + `_meta/manifest.json` + pre-created folder skeleton |
+| **Wave 2 — Per-Entity Dossiers** | Fill `<entity-slug>/` for every `core` entity (parallel, ≤8 per sub-wave). Consolidated `dossier.md` + `sources.md`. | Populated `<entity-slug>/` dossiers; every section covered with evidence or specific "insufficient evidence" gap note |
+| **Wave 3 — Cross-Axis Synthesis** | Compare entities along each axis. LOCAL-ONLY (no web tools). Each subagent owns one cross folder. | Populated `_cross/<axis-slug>/synthesis.md` starting with Executive Digest + matrix + decision-flippers |
 | **Wave 4 (Optional) — Profiles / Deepening** | Standalone `<entity-slug>.md` decision pages at corpus root (LOCAL-ONLY) OR research packs for promoted entities. | Profile pages OR new entity packs |
-| **7 — Verification & Master Summary** | Orchestrator personally reads every file, resolves contradictions, writes master summary, and executes quality audit. | `_meta/00-master-summary.md` + passing 6-dimension evaluation audit |
+| **7 — Verification & Master Summary** | Orchestrator reads Executive Digests, manifest, and dossiers; resolves contradictions; writes master summary and README.md. | `_meta/00-master-summary.md` + passing 6-dimension evaluation audit (`verify-corpus.sh --final`) |
 
 ## Output Architecture Contract
 
@@ -115,25 +117,26 @@ Domain-agnostic framing tree:
 
 ```
 <corpus-root>/
-├── README.md                                       (entry point)
+├── README.md                                       (entry point & navigation map)
 ├── _meta/                                           (MAX 8 files)
-│   ├── 00-master-summary.md                        (Phase 7)
+│   ├── manifest.json                               (Machine catalog & entity registry)
+│   ├── claims.jsonl                                (Machine-readable claims ledger)
+│   ├── 00-master-summary.md                        (Phase 7 master rollup)
 │   ├── 01-charter.md                               (Phase 0; Wave 1 resolves)
 │   ├── 02-entities.md                              (Wave 1A output)
 │   ├── 03-axes.md                                  (Wave 1B output)
-│   ├── 04-product-template.md                      (Phase 2)
-│   ├── 05-axis-templates.md                        (Phase 2)
+│   ├── 04-product-template.md                      (Phase 2 dossier schema)
+│   ├── 05-axis-templates.md                        (Phase 2 comparison schema)
 │   ├── 06-file-budget.md                           (Phase 3)
-│   └── 07-dispatch-log.md                           (running log)
-├── <entity-slug>/                                   (one per core entity; MAX 15 files)
-│   ├── 00-overview.md
-│   ├── 01-<axis-1>.md ... 0N-<axis-N>.md
-│   └── 09-sources.md
-├── <entity-slug>.md                                 (optional profile page at root)
-└── _cross/
-    └── <axis-slug>/                                (MAX 12 files)
-        ├── 00-overall-comparison.md
-        └── 01-<scenario>.md ...
+│   └── 07-dispatch-log.md                          (running log across waves)
+├── <entity-slug>/                                   (one per core entity; MAX 3 files)
+│   ├── dossier.md                                  (Consolidated evidence dossier + frontmatter)
+│   └── sources.md                                  (Claims ledger & citations)
+├── <entity-slug>.md                                 (optional profile page at root for core entities)
+└── _cross/                                          (one folder per axis; MAX 3 files each)
+    └── <axis-slug>/
+        ├── synthesis.md                            (Executive Digest + comparative matrix + rankings)
+        └── scenarios.md                            (optional scenario / edge-case deep-dives)
 ```
 
 Industry framing tree:
@@ -142,6 +145,8 @@ Industry framing tree:
 <topic-slug>/
 ├── README.md
 ├── _meta/
+│   ├── manifest.json
+│   ├── claims.jsonl
 │   ├── research-plan.md
 │   ├── _PRODUCT_TEMPLATE.md                        (Phase 2 maximalist template)
 │   ├── _COMPARISON_TEMPLATE_<criterion>.md         (Phase 2 per-criterion)
@@ -169,8 +174,8 @@ Category taxonomy archetypes: `references/industry/category-taxonomies.md`.
 Every deep research deliverable must pass the **6-Dimension Evaluation Audit** before completion:
 
 1. **Structural & Budget Integrity**:
-   - Strictly adhere to MAX-N caps (≤15 files/entity, ≤12 files/cross, ≤8 files/meta).
-   - Zero temporary files, empty stubs, or placeholder strings (`TODO`, `TBD`, `fill later`).
+   - Strictly adhere to MAX-N caps (≤3 files/entity, ≤3 files/cross, ≤8 files/meta).
+   - Zero temporary files, empty stubs, or placeholder strings (`TODO`, `TBD`, `fill later`, `???`).
    - All internal relative markdown links resolve correctly.
 2. **Template Coverage & Gap Specificity (The 100% Rule)**:
    - Every `core` entity folder must address 100% of the axes locked in `_meta/03-axes.md`.
@@ -190,13 +195,13 @@ Every deep research deliverable must pass the **6-Dimension Evaluation Audit** b
    - The master summary (`_meta/00-master-summary.md`) must be self-contained and immediately actionable for a decider with zero prior context.
    - Must contain all 7 required sections: Document index, Critical findings, Cross-domain insights, Action items, Coverage scope, Open gaps, Recommendation.
 
-Full evaluation rubric and automated audit commands: `references/evaluation.md` and `references/verification.md`.
+Full evaluation rubric and automated audit commands: `references/evaluation.md`, `references/verification.md`, and `scripts/verify-corpus.md`.
 
 ## Hard Rules (Load-Bearing)
 
-1. **Run the intake AskUserQuestion batch before any wave.** Scale, framing, and scope are locked at intake and recorded in the charter.
+1. **Run the intake ask_question batch before any wave.** Scale, framing, and scope are locked at intake and recorded in the charter.
 2. **The orchestrator does not search the web.** Web search is delegated to research subagents using the `run-research` discipline.
-3. **The orchestrator does not delegate final synthesis.** The orchestrator personally reads every entity pack and cross file before writing the master summary.
+3. **The orchestrator does not delegate final master synthesis.** The orchestrator reads Executive Digests, manifest, and dossiers personally before authoring the master summary.
 4. **Templates first, files second.** Phase 2 (template authoring) MUST complete before any entity pack or cross file is written.
 5. **Maximalist templates, not generic skeletons.** Target ~30+ vertical-specific sections.
 6. **MAX 8 subagents per wave (domain-agnostic) / MAX 20 per wave (industry).** Split larger batches into sequential sub-waves.
@@ -215,8 +220,8 @@ Full evaluation rubric and automated audit commands: `references/evaluation.md` 
 - **Letting a subagent silently omit a template section** → STOP. Every section requires evidence or a specific data-gap entry.
 - **Summarizing Reddit as "consensus" without attribution** → STOP. Require username, date, score, quote, and permalink.
 - **Searching the web yourself as orchestrator** → STOP. Dispatch a research subagent.
-- **Delegating master summary synthesis** → STOP. Read all packs and cross folders personally.
-- **Skipping the verification and evaluation gate** → STOP. Execute the audit checks in `references/evaluation.md` and `references/verification.md`.
+- **Delegating master summary synthesis** → STOP. Read Executive Digests, manifest, and dossiers personally.
+- **Skipping the verification and evaluation gate** → STOP. Execute `scripts/verify-corpus.sh` and the audit checks in `references/evaluation.md`.
 
 ## Reference Routing
 
@@ -224,7 +229,7 @@ Load only the reference whose phase is active:
 
 | Reference | Read when |
 |---|---|
-| `references/intake.md` | Before Phase 0 — mandatory AskUserQuestion batch: scale, framing, scope, concurrency |
+| `references/intake.md` | Before Phase 0 — mandatory ask_question batch: scale, framing, scope, concurrency |
 | `references/thinking.md` | Phase 0 — 7-question decomposition protocol, entities vs axes vs primitives |
 | `references/templates.md` | Phase 0, 2, 3 — formats for charter, product templates, axis templates, file budgets |
 | `references/orchestration.md` | Waves 1-4 — subagent wave choreography, parallel dispatch rules, between-wave gating |
@@ -244,13 +249,14 @@ Load only the reference whose phase is active:
 | `references/industry/research-powerpack-and-explore.md` | Waves 1-3 (industry framing) — Research Power Pack API shapes (`plan-research`, `web-search`, `extract-evidence`) |
 | `references/industry/worked-example-cloud-browsers.md` | Any phase (industry framing) — complete annotated walkthrough of a reference research corpus |
 | `scripts/init-corpus.sh` + `scripts/init-corpus.md` | Phase 0 or 3 — deterministic corpus directory scaffolding |
+| `scripts/verify-corpus.sh` + `scripts/verify-corpus.md` | Waves 2-3 & Phase 7 — automated 6-dimension corpus verification |
 
 ## Quick Start (First 5 Minutes)
 
-1. **Intake** — run the batched `AskUserQuestion` call (scale / framing / scope / concurrency). See `references/intake.md`.
+1. **Intake** — run the batched `ask_question` call (scale / framing / scope / concurrency). See `references/intake.md`.
 2. **Phase 0** — write `_meta/01-charter.md` from intake answers + decider/use-case. See `references/thinking.md` and `references/templates.md`.
 3. **Wave 1** — dispatch parallel discovery (1A) and scope-mapping (1B) subagents. Both invoke `run-research`. Read outputs personally upon return.
-4. **Phase 2 & 3** — write maximalist templates (`references/templates.md` or `references/industry/template-authoring.md`); plan file budget (`references/filesystem.md`); optionally run `scripts/init-corpus.sh <topic-slug>`.
-5. **Wave 2** — dispatch parallel per-entity subagents (≤8 per sub-wave) to fill `<entity-slug>/` packs.
-6. **Wave 3** — dispatch parallel local-only subagents to build cross-axis comparisons in `_cross/`.
-7. **Phase 7** — personally read all packs and cross files; write `_meta/00-master-summary.md`; run the 6-dimension evaluation audit in `references/evaluation.md` and `references/verification.md`.
+4. **Phase 2 & 3** — write maximalist templates (`references/templates.md` or `references/industry/template-authoring.md`); plan file budget (`references/filesystem.md`); run `scripts/init-corpus.sh <topic-slug>`.
+5. **Wave 2** — dispatch parallel per-entity subagents (≤8 per sub-wave) to fill `<entity-slug>/dossier.md` and `sources.md`.
+6. **Wave 3** — dispatch parallel local-only subagents to build cross-axis comparisons in `_cross/<axis-slug>/synthesis.md` with Executive Digests.
+7. **Phase 7** — read Executive Digests, manifest.json, and dossiers; write `_meta/00-master-summary.md` and `README.md`; run `bash scripts/verify-corpus.sh --final <corpus-path>`.

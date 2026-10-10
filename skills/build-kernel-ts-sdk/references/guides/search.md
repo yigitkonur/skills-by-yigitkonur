@@ -22,10 +22,12 @@ When submitting a search request, configure how Kernel routes the query:
 
 - **`auto` (Recommended)**: Automatically selects the optimal provider based on parameter support, real-time availability, and latency. Supports automatic fallback:
   ```ts
-  strategy: {
-    type: 'auto',
-    fallback_on: ['error', 'timeout', 'empty'],
-  }
+  const searchConfig = {
+    strategy: {
+      type: 'auto',
+      fallback_on: ['error', 'timeout', 'empty'],
+    },
+  };
   ```
 - **`pinned`**: Forces execution through a specific provider (e.g. `provider: 'exa'`). Fails immediately if the provider errors or does not support requested filters.
 - **`fallback`**: Attempts an ordered array of providers sequentially, moving to the next provider when conditions in `fallback_on` are met.
@@ -116,10 +118,11 @@ const details = await kernel.search.contents.fetch(search.id, {
 
 ```ts
 // Search resource methods on client
-kernel.search.create(params: SearchCreateParams): APIPromise<Search>
-kernel.search.retrieve(id: string): APIPromise<Search>
-kernel.search.providers.list(query?: ProviderListParams): APIPromise<ProviderListResponse>
-kernel.search.contents.fetch(id: string, params: ContentFetchParams): APIPromise<ContentsAPI.Response>
+const id = 'srch_01jsearch12345';
+await kernel.search.create(params);                         // returns APIPromise<Search>
+await kernel.search.retrieve(id);                           // returns APIPromise<Search>
+await kernel.search.providers.list();                       // returns APIPromise<ProviderListResponse>
+await kernel.search.contents.fetch(id, params);             // returns APIPromise<ContentsAPI.Response>
 ```
 
 ---
