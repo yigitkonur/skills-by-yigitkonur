@@ -1,13 +1,13 @@
 # Kernel CLI Reference
 
-Complete reference for `@onkernel/cli` (`kernel`). The CLI surfaces the same underlying API as the TypeScript SDK (`@onkernel/sdk`).
+Complete reference for `@onkernel/cli@0.47.0` (`kernel`). The CLI surfaces the exact same underlying API as the TypeScript SDK (`@onkernel/sdk@0.123.0`).
 
 Install or upgrade:
 
 ```bash
-npm install -g @onkernel/cli
+npm install -g @onkernel/cli@0.47.0
 # or brew install kernel/tap/kernel
-# or pnpm install -g @onkernel/cli
+# or pnpm install -g @onkernel/cli@0.47.0
 kernel upgrade
 ```
 
@@ -33,25 +33,23 @@ Scaffold a new Kernel project from a curated template.
 # Interactive mode:
 kernel create
 
-# Non-interactive / scripted (all three flags required; no --yes flag exists):
-kernel create --name my-app --language typescript --template sample-app
-kernel create -n my-agent -l ts -t stagehand
+# Non-interactive / scripted (pass -y, --yes to overwrite existing directory without prompt):
+kernel create --name my-app --language typescript --template sample-app --yes
+kernel create -n my-agent -l ts -t stagehand -y
 ```
 
-### TypeScript Templates
-- `sample-app` — Minimal Kernel app with Playwright integration
-- `captcha-solver` — Auto-CAPTCHA solving demonstration
-- `anthropic-computer-use` — Anthropic Computer Use agent
-- `openai-computer-use` — OpenAI Computer Using Agent (CUA)
-- `gemini-computer-use` — Google Gemini computer use agent
-- `claude-agent-sdk` — Claude Agent SDK browser automation agent
-- `stagehand` — Stagehand v4 SDK integration (`@browserbasehq/stagehand^4`)
-- `magnitude` — Magnitude SDK integration
-- `tzafon` — Tzafon Northstar CUA Fast computer use agent
-- `yutori` — Yutori n1.5 computer use agent
-
-### Python Templates
-- `sample-app`, `captcha-solver`, `anthropic-computer-use`, `openai-computer-use`, `gemini-computer-use`, `claude-agent-sdk`, `openagi-computer-use`, `browser-use`, `tzafon`, `yutori`
+### Supported Templates
+- `sample-app` — Minimal Kernel app with Playwright integration [ts, py]
+- `stagehand` — Stagehand v4 SDK integration (`@browserbasehq/stagehand^4`) [ts]
+- `magnitude` — Magnitude SDK integration [ts]
+- `claude-agent-sdk` — Claude Agent SDK browser automation agent [ts, py]
+- `anthropic-computer-use` — Anthropic Computer Use agent [ts, py]
+- `openai-computer-use` — OpenAI Computer Using Agent [ts, py]
+- `gemini-computer-use` — Google Gemini computer use agent [ts, py]
+- `tzafon` — Tzafon Northstar CUA Fast computer use agent [ts, py]
+- `yutori` — Yutori n1.5 computer use agent [ts, py]
+- `captcha-solver` — Auto-CAPTCHA solving demonstration [ts, py]
+- `browser-use` — Browser Use SDK [py]
 
 ---
 
@@ -87,9 +85,18 @@ kernel browsers create \
   --name my-session \
   --tag env=prod \
   --start-url "https://example.com" \
-  --proxy-route "*.example.com=res-proxy" \
-  --private-host "10.0.0.0/8" \
+  --proxy-name us-east-isp \
+  --proxy-route "api.example.com=res-proxy" \
   --telemetry=all
+
+# Create GPU session with video memory selection
+kernel browsers create --gpu --video-memory 4GiB
+
+# Direct internet egress (bypass default stealth proxy)
+kernel browsers create --proxy-mode direct --stealth
+
+# Zero Data Retention with OTLP export
+kernel browsers create --telemetry-storage off --telemetry-export-otlp prod-datadog
 
 # Update a running browser session
 kernel browsers update <id-or-name> \
@@ -100,24 +107,20 @@ kernel browsers update <id-or-name> \
 # Delete a session
 kernel browsers delete <id-or-name>
 
-# In-VM Browser REPL (requires CLI v0.38.2+)
+# In-VM Browser REPL (code passed as positional argument or piped via stdin)
 kernel browsers repl <id-or-name>
+kernel browsers repl <id-or-name> "await gotoUrl('https://example.com'); repl.write(await pageInfo());"
 
 # WebMCP Tool Discovery & Invocation
-kernel browsers webmcp list <id-or-name>
-kernel browsers webmcp invoke <id-or-name> --tool-ref <ref> --input '{"query":"laptop"}'
-
-# Custom WebMCP Tools (v0.118.0+)
-kernel browsers webmcp custom-tools list <id-or-name>
-kernel browsers webmcp custom-tools add <id-or-name> --namespace mytools --source-file ./tools.js [--force-overwrite]
-kernel browsers webmcp custom-tools remove <id-or-name> <custom_tool_id>
+kernel browsers webmcp list <id-or-name> [--exclude-custom]
+kernel browsers webmcp invoke <id-or-name> --tool-ref <tool_ref> --input '{"sku":"ABC-123"}'
 
 # In-VM Process Execution
-kernel browsers process <id-or-name> --command "uname -a"
+kernel browsers process exec <id-or-name> -- uname -a
 
 # Browser Telemetry
-kernel browsers telemetry stream <id-or-name> [--last-event-id <id>]
-kernel browsers telemetry events <id-or-name> [--category control,captcha] [--type proxy_error]
+kernel browsers telemetry stream <id-or-name>
+kernel browsers telemetry events <id-or-name> --category network --type proxy_error
 ```
 
 ---
@@ -144,8 +147,6 @@ kernel browser-pools create my-pool \
 # Update pool configuration
 kernel browser-pools update my-pool \
   --size 20 \
-  --fill-rate 50 \
-  --memory 16GiB \
   --discard-all-idle \
   --clear-start-url
 
@@ -173,8 +174,7 @@ kernel profiles list [--query <text>]
 kernel profiles get <id-or-name>
 kernel profiles create --name user-42
 kernel profiles update <id-or-name> --name new-name
-kernel profiles download <id-or-name> --format tar.zst --output ./profile.tar.zst
-kernel profiles upload --name restored-user --file ./profile.tar.zst
+kernel profiles download <id-or-name> --to ./extracted-profile-dir
 kernel profiles delete <id-or-name>
 ```
 
@@ -187,10 +187,11 @@ Manage dedicated ISP, residential, mobile, and custom proxy configurations.
 ```bash
 kernel proxies list
 kernel proxies get <id>
-kernel proxies create --name my-proxy --type residential --country US --state CA
-kernel proxies update <id> --name new-name
+kernel proxies create --name my-isp --type isp --country US
+kernel proxies create --name my-res --type residential --country US --state CA --city losangeles
+kernel proxies create --name corp-mitm --type custom --host proxy.corp.net --port 8080 --ca-bundle ./ca.pem
 kernel proxies check <id> [--url https://target.com]   # test reachability
-kernel proxies delete <id>
+kernel proxies delete <id> [--yes]
 ```
 
 ---
@@ -202,9 +203,9 @@ Pre-install unpacked or packed Chrome extensions into sessions.
 ```bash
 kernel extensions list
 kernel extensions get <id-or-name>
-kernel extensions upload --name adblock --file ./adblock.zip
-kernel extensions download <id-or-name> --output ./ext.zip
-kernel extensions build ./src --output ./dist.zip
+kernel extensions upload ./adblock-dir-or-zip --name adblock
+kernel extensions download <id-or-name> --to ./downloaded-ext
+kernel extensions build-web-bot-auth --to ./built-ext [--upload web-bot-auth-v1]
 kernel extensions delete <id-or-name>
 ```
 
@@ -228,20 +229,18 @@ kernel deploy github \
   --url https://github.com/org/repo \
   --ref main \
   --entrypoint app.ts \
-  --path services/worker \
-  --github-token $GITHUB_TOKEN \
   --region aws.us-east-1a
 
 # Stream build/runtime logs
-kernel deploy logs <deployment_id> --follow --since 5m --with-timestamps
+kernel deploy logs <deployment_id> --follow
 kernel deploy history [app_name]
 kernel deploy get <deployment_id>
 kernel deploy delete <deployment_id> --yes
 
 # Invoke actions
-# Note: CLI defaults to async queueing unless --sync is passed!
+# Note: CLI initiates asynchronous execution and automatically follows the SSE stream until completion
 kernel invoke my-app analyze --payload '{"url":"https://example.com"}'
-kernel invoke my-app analyze --payload-file ./payload.json --sync
+kernel invoke my-app analyze --payload-file ./payload.json
 kernel invoke get <invocation_id>
 kernel invoke history
 kernel invoke update <invocation_id> --status failed
@@ -256,133 +255,125 @@ kernel logs <app_name> --follow
 
 ---
 
-## 9. Managed Auth: `kernel managed-auth`
+## 9. Managed Auth, Credentials & Providers
 
-Manage end-user authentication into upstream SaaS applications.
+Manage end-user authentication into upstream SaaS applications, encrypted credentials, and external credential providers.
 
 ```bash
-# Connections
-kernel managed-auth connections list
-kernel managed-auth connections get <id>
-kernel managed-auth connections create \
+# Authentication Connections
+kernel auth connections list
+kernel auth connections get <id>
+kernel auth connections create \
   --domain netflix.com \
   --profile-name netflix-user-1 \
-  --save-credentials \
-  --health-checks \
-  --auto-reauth \
   --health-check-interval 3600
-kernel managed-auth connections login <id>
-kernel managed-auth connections timeline <id> --type login|reauth|health_check
-kernel managed-auth connections delete <id>
+kernel auth connections login <id>
+kernel auth connections follow <id>
+kernel auth connections timeline <id>
+kernel auth connections delete <id>
 
 # Stored Credentials
-kernel managed-auth credentials list
-kernel managed-auth credentials get <name>
-kernel managed-auth credentials create \
+kernel credentials list
+kernel credentials get <name>
+kernel credentials create \
   --name netflix-creds \
   --domain netflix.com \
-  --username user@example.com \
-  --password "secret" \
+  --value username=user@example.com \
+  --value password="secret" \
   --totp-secret "JBSWY3DPEHPK3PXP"
-kernel managed-auth credentials delete <name>
+kernel credentials totp-code <name>
+kernel credentials delete <name>
 
 # Credential Providers (1Password)
-kernel managed-auth providers list
-kernel managed-auth providers get <id-or-name>
-kernel managed-auth providers connect 1password --token $OP_TOKEN
-kernel managed-auth providers delete <id-or-name>
+kernel credential-providers list
+kernel credential-providers get <id>
+kernel credential-providers create \
+  --name onepassword \
+  --provider-type onepassword \
+  --token $OP_TOKEN
+kernel credential-providers list-items <id>
+kernel credential-providers test <id>
+kernel credential-providers delete <id>
 ```
 
 ---
 
-## 10. Projects: `kernel projects`
+## 10. Web Search: `kernel search`
 
-Manage project environments. All project routes operate under `/org/projects`.
-
-```bash
-kernel projects list
-kernel projects get <id-or-name>
-kernel projects create --name production
-kernel projects update <id-or-name> --name prod-v2
-kernel projects delete <id-or-name>
-
-# Per-Project Limits
-kernel projects limits get <id-or-name>
-kernel projects limits update <id-or-name> --max-concurrent-sessions 20
-```
-
----
-
-## 11. API Keys: `kernel api-keys`
-
-Provision, inspect, rotate, and revoke API keys under `/org/api_keys`.
+Perform multi-provider search queries and page content extraction.
 
 ```bash
-kernel api-keys list
-kernel api-keys get <id>
-kernel api-keys create --name ci-key [--project-id <proj_id>]
-kernel api-keys update <id> --name new-name
-kernel api-keys rotate <id> --expire-in-days 7   # issues replacement key, sets grace period
-kernel api-keys delete <id>                     # returns 400 cannot_delete_current_key if self
-```
-
----
-
-## 12. Organization: `kernel org`
-
-Inspect plan entitlements and concurrency limits.
-
-```bash
-# View active plan features, regional permissions, and add-ons
-kernel org entitlements
-
-# Concurrency & usage limits (unified on-demand + pool concurrency)
-kernel org limits get
-kernel org limits set --default-project-concurrency 10
-```
-
----
-
-## 13. Audit Logs: `kernel audit-logs`
-
-Search and export organization security audit logs.
-
-```bash
-kernel audit-logs search --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --status 403
-kernel audit-logs download --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --output ./audit.jsonl
-kernel audit-logs export --destination s3://my-bucket/audit/
-```
-
----
-
-## 14. Web Search: `kernel search`
-
-Search the web and retrieve ranked results or contents.
-
-```bash
-kernel search "kernel unikernel browser"
-kernel search get <search_id>
+# Discover active search providers
 kernel search providers
+
+# Auto-routed search
+kernel search "kernel browser sdk tutorial" --max-results 5
+
+# Search pinned to Exa provider
+kernel search "deep web research agents" --provider exa --max-results 5
+
+# Advanced search with domain filter and content using --request JSON
+kernel search --request '{"query":"deep web research agents","strategy":{"provider":"exa"},"include_domains":["github.com","arxiv.org"],"content":{"format":"markdown"}}'
+
+# Inspect retained search without incurring provider cost
+kernel search get srch_01jsearch12345
+
+# Deferred browser rendering of top search results
+kernel search contents srch_01jsearch12345 --limit 3 --content-source browser --content-browser-mode render
 ```
 
 ---
 
-## 15. Vaults: `kernel vaults`
+## 11. Vaults: `kernel vaults`
 
-Manage secure credential and payment vaults, Link/AgentCard wallets, and autofill.
+Manage secure credential and payment vaults, Link wallets, and AgentCards.
 
 ```bash
 kernel vaults list
 kernel vaults create --name checkout-vault
-kernel vaults wallets connect --vault checkout-vault --provider link
-kernel vaults cards request --vault checkout-vault --amount 5000 --currency USD
-kernel vaults items list --vault checkout-vault
-kernel vaults items fill --vault checkout-vault --item <item_id> --browser <session_id>
+kernel vaults get checkout-vault
+kernel vaults items list checkout-vault
+kernel vaults credentials create checkout-vault user-login --spec-file ./creds.json
+kernel vaults wallets create checkout-vault wallet-1 --provider link --spec '{"authorization":{"method":"oauth","client":{"type":"kernel_managed"}}}'
+kernel vaults cards create checkout-vault card-1 --provider agentcard --spec '{"wallet":"wallet-1","merchant":"Example Shop","amount":1234,"currency":"usd"}'
+kernel vaults items invoke checkout-vault user-login fill --params '{"browser_id":"<browser_id>","fields":[{"field":"username","selector":"input#user"}]}'
 ```
 
 ---
 
-## 16. MCP Server & Utility: `kernel mcp` / `status`
+## 12. Projects & API Keys: `kernel projects` / `kernel api-keys`
+
+```bash
+# Projects (all routed under /org/projects)
+kernel projects list
+kernel projects get <id-or-name>
+kernel projects create production
+kernel projects update <id-or-name> --name prod-v2
+kernel projects delete <id-or-name>
+kernel projects limits get <id-or-name>
+
+# API Keys
+kernel api-keys list
+kernel api-keys get <id>
+kernel api-keys create --name ci-key [--project-id <proj_id>]
+kernel api-keys rotate <id> --expire-in-days 7
+kernel api-keys delete <id>
+```
+
+---
+
+## 13. Organization & Audit Logs: `kernel org` / `kernel audit-logs`
+
+```bash
+kernel org entitlements
+kernel org limits get
+kernel audit-logs search --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --search 403
+kernel audit-logs download --start "2026-10-01T00:00:00Z" --end "2026-10-08T00:00:00Z" --to ./audit.jsonl
+```
+
+---
+
+## 14. MCP Server & Utility: `kernel mcp` / `status`
 
 ```bash
 # Install Kernel MCP configuration into client environments

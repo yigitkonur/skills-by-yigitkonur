@@ -171,17 +171,15 @@ When to use:
 
 ## Surface 5 — Persistent Browser REPL
 
-A long-lived Node.js runtime inside the browser VM where top-level variables, bindings, closures, and imports persist across calls until explicitly reset.
+A long-lived Node.js runtime inside the browser VM where top-level variables, bindings, closures, and imports persist across calls until explicitly reset. In-scope helpers (`gotoUrl`, `pageInfo`, `click`, `fillInput`, `js`) are pre-injected into the global scope. See `references/patterns/browser-repl.md`.
 
 ```ts
-// Initial call sets up state, imports libraries, or navigates
+// Initial call navigates using in-scope REPL helpers or pre-installed patchright
 const initRes = await kernel.browsers.repl(session.session_id, {
   code: `
-    const { chromium } = require('playwright');
-    globalThis.browser = await chromium.connectOverCDP('http://localhost:9222');
-    globalThis.page = (await globalThis.browser.contexts())[0].pages()[0];
-    await globalThis.page.goto('https://example.com');
-    repl.write('Page loaded: ' + (await globalThis.page.title()));
+    await gotoUrl('https://example.com');
+    const info = await pageInfo();
+    repl.write('Page loaded: ' + info.title);
   `,
   timeout_sec: 60,
 });
@@ -194,60 +192,48 @@ for (const item of initRes.content ?? []) {
     // item.channel: 'write' (from repl.write) | 'stdout' | 'stderr'
     console.log(`[${item.channel}] ${item.text}`);
   } else if (item.type === 'image') {
-    console.log(`Image: ${item.format} (${item.data.length} b64 chars)`);
+    console.log(`Image: ${item.mime_type} (${item.data_b64.length} b64 chars)`);
   }
 }
 
-// Subsequent call reuses the existing `page` and variables!
+// Subsequent call reuses existing state and variables!
 const extractRes = await kernel.browsers.repl(session.session_id, {
   code: `
-    const links = await globalThis.page.$$eval('a', els => els.map(a => a.href));
+    const links = await js(() => Array.from(document.querySelectorAll('a')).map(a => a.href));
     repl.write('Found ' + links.length + ' links');
   `,
 });
 ```
 
-CLI counterpart: `kernel browsers repl <session_id>` drives an interactive terminal directly into the VM (requires `@onkernel/cli` v0.38.2+).
+CLI counterpart: `kernel browsers repl <session_id>` executes code in the VM REPL.
 
 When to use:
-- Multi-step interactive workflows where initializing Playwright or downloading libraries on every step is prohibitive
+- Multi-step interactive workflows where initializing Playwright on every step is prohibitive
 - Co-located coding agents running inside the browser VM
 - Inspecting page state dynamically with in-VM `repl` helpers (`repl.write()`, `repl.emitImage()`, `repl.help()`)
 
 ## Surface 6 — WebMCP (Model Context Protocol)
 
-WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally. Page-declared tools, polyfills (`navigator.modelContext`), and custom CDP-backed tools are automatically discovered.
+WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally. Page-declared tools, polyfills (`navigator.modelContext`), and custom tools are automatically discovered. See `references/patterns/webmcp.md`.
 
 ```ts
 // 1. Discover tools (query: { exclude_custom?: boolean })
-const tools = await kernel.browsers.webmcp.listTools(session.session_id);
-for (const item of tools.tools) {
-  // item: { tool_ref: string, source: 'page' | 'custom', tool: ToolMetadata }
+const { tools } = await kernel.browsers.webmcp.listTools(session.session_id);
+for (const item of tools) {
   console.log('Tool:', item.tool.name, item.tool.description, item.tool.inputSchema);
 }
 
-// 2. Invoke a discovered tool
-const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
-  tool_ref: tools.tools[0].tool_ref,
-  input: { query: 'laptop' },
-  timeout_sec: 30,
-});
-console.log('Result:', result.output, result.error_text);
-
-// 3. Register custom tools (backed by page evaluations or CDP)
-const registered = await kernel.browsers.webmcp.customTools.add(session.session_id, {
-  namespace: 'custom',
-  force_overwrite_namespace: true,
-  source: `[{
-    match: { url_patterns: ['*'] },
-    tool: {
-      name: 'get_cart_total',
-      description: 'Reads current cart total from DOM',
-      inputSchema: { type: 'object', properties: {} },
-    },
-    execute: async () => ({ total: document.querySelector('#cart-total')?.textContent })
-  }]`,
-});
+// 2. Invoke a discovered tool by tool_ref
+const toolToInvoke = tools.find(t => t.tool.name === 'searchProducts');
+if (toolToInvoke) {
+  const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
+    tool_ref: toolToInvoke.tool_ref,
+    input: { query: 'laptop' },
+    timeout_sec: 30,
+  });
+  console.log('Status:', result.status, 'Output:', result.output);
+}
+```
 
 // List or remove custom tools:
 const customList = await kernel.browsers.webmcp.customTools.list(session.session_id);

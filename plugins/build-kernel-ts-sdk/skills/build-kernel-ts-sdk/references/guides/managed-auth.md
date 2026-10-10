@@ -2,7 +2,7 @@
 
 Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on behalf of an end-user. Two flow shapes share the same `kernel.auth.connections.*` SDK surface; pick one early.
 
-Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-auth-react@0.4.1` types (peer deps react/react-dom >= 18), and Kernel docs on 2026-08-19.
+Source note: Verified against `@onkernel/sdk@0.123.0` types, `@onkernel/managed-auth-react@0.5.5` types (peer deps react/react-dom >= 18), and Kernel docs in October 2026.
 
 ## Flow shapes
 
@@ -18,7 +18,7 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 | Method | Purpose |
 |---|---|
 | `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential?, health_checks?, health_check_interval?, auto_reauth?, record_session?, browser? })` | Create a connection scoping a `domain` to a browser `profile_name`. See the cost note below — `health_checks` and `auto_reauth` both default to **true**. |
-| `kernel.auth.connections.login(id)` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, and `flow_expires_at`. |
+| `kernel.auth.connections.login(id, { mode?, timeout_seconds? })` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, and `flow_expires_at`. |
 | `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, `can_reauth` / `can_reauth_reason`, and (in programmatic mode) the canonical `choices` and `fields` plus their legacy counterparts `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
 | `kernel.auth.connections.submit(id, { field_values?, selected_choice_id?, fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. **Prefer the canonical pair** — `field_values` (keyed by `Field.id`) and `selected_choice_id` (a `Choice.id`). Fall back to the legacy params (`fields` keyed by field name, `sso_provider`/`sso_button_selector`, `mfa_option_id`, `sign_in_option_id`) only when `choices`/`fields` are absent; pick the one matching the current `flow_step`. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
@@ -37,7 +37,7 @@ Source note: Verified against `@onkernel/sdk@0.92.0` types, `@onkernel/managed-a
 
 **`flow_step`** (programmatic): `DISCOVERING`, `AWAITING_INPUT`, `SUBMITTING`, `AWAITING_EXTERNAL_ACTION` (push approval / hardware key), `COMPLETED`. The flow can move between these in any order — `AWAITING_EXTERNAL_ACTION` can precede `SUBMITTING` for SSO, and the loop may revisit `AWAITING_INPUT` multiple times. Branch on the current `flow_step`, do not assume a fixed sequence.
 
-**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required). In the SDK, inspect `conn.status`, `conn.can_reauth`, and `conn.can_reauth_reason` (typed enum with 14 values: `requires_totp_without_secret`, `requires_email_code`, `requires_sms_code`, `requires_push_approval`, `requires_security_key`, `requires_password_change`, `no_credential`, `invalid_credential`, `account_locked`, `session_expired`, `no_viable_plans`, `health_check_failed`, `unknown`).
+**Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required). In the SDK, inspect `conn.status`, `conn.can_reauth`, and `conn.can_reauth_reason` (typed enum with exact 17 values from `@onkernel/sdk`: 8 affirmative reasons: `'external_credential'`, `'cua_has_credential'`, `'has_credential'`, `'viable_plans_found'`, `'no_requirements_recorded'`, `'totp_reauth_allowed'`, `'optimistic_totp_attempt'`, `'requirements_satisfiable'`; 9 negative blockers: `'no_prior_successful_login'`, `'no_credential'`, `'no_viable_plans'`, `'viable_plans_require_external_action'`, `'requires_external_action'`, `'requires_totp_without_secret'`, `'requires_sms_code'`, `'requires_email_code'`, `'requires_customer_input'`).
 
 **Dashboard reauthentication status tiers:**
 - `Auto`: Fully automated re-auth (stored credentials + automated 2FA/TOTP secret available).

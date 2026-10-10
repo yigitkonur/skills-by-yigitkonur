@@ -2,7 +2,7 @@
 
 Full walk-through: write an action, deploy it, invoke it from another TypeScript service, stream logs, handle the result.
 
-Source note: Verified against Kernel app develop/invoke docs and CLI docs on 2026-05-09. Payload-size docs conflict; use file/object-storage paths for large artifacts.
+Source note: Verified against Kernel app develop/invoke docs and CLI docs in October 2026 (@onkernel/sdk@0.123.0, @onkernel/cli@0.47.0). Payload-size docs conflict; use file/object-storage paths for large artifacts.
 
 ## The app (`app.ts`)
 
@@ -194,7 +194,7 @@ const out = JSON.parse(inv.output ?? 'null');
 
 Sync invocations block on the HTTP request. The hard cap is around 100 seconds — anything that may hit that ceiling must be `async: true`.
 
-CLI note: `kernel invoke <app> <action>` queues asynchronously by default. Use `--sync` only for short actions; current CLI docs list its wait timeout as 60 seconds.
+CLI note: `kernel invoke <app> <action>` initiates an asynchronous invocation and follows the SSE stream until completion by default. Use `--sync` for HTTP synchronous execution, or `--no-follow` to return immediately after queueing.
 
 ## CI deploy snippet
 

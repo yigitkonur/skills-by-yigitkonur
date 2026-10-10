@@ -1,23 +1,23 @@
-# Vaults and Payments
+# Vaults and Payments: Credentials, Wallets & Agent Purchases
 
-Kernel Vaults provide project-scoped, encrypted storage and autofill for sensitive credentials, Stripe Link wallets, AgentCard payment instruments, and Machine Payments Protocol (MPP) browser purchases.
+Kernel Vaults provide project-scoped, KMS-encrypted storage for sensitive credentials, Stripe Link wallets, and AgentCard payment instruments.
 
-Vault secrets and payment cards are injected directly into the browser DOM at human typing speed and are **never exposed to agent LLM context, prompt traces, or plain logs**.
-
-## Core Concepts
-
-1. **Vaults:** Project-scoped encrypted containers (`kernel.vaults.*`).
-2. **Credential Items:** Logins, passwords, API tokens, and arbitrary form fields stored within a vault. Each field has a stable `name` and an optional human-readable `label` (up to 128 bytes UTF-8).
-3. **Paced Fill:** Character-by-character typing with randomized human delays into DOM selectors via `kernel.vaults.items.performOperation(key, { type: 'fill', ... })`.
-4. **Payment Instruments:** Stripe Link wallets and AgentCard virtual cards for autonomous checkouts.
-5. **1Password Agentic Autofill (Preview):** End users authorize an agent to access logins from their personal 1Password account without exporting secrets.
-6. **MPP Browser Purchases:** Autonomous agents purchase stealth, headful browser sessions through the Machine Payments Protocol via HTTP 402 without a Kernel account or API key.
+Vault secrets and payment cards are kept isolated from agent LLM contexts, prompt traces, session recordings, and plain logs while automating human-paced DOM autofill and egress payment authorization.
 
 ---
 
-## 1. Vault Lifecycle & Browser Attachment
+## 1. Core Architecture & Concepts
 
-Vaults are bound to a browser session at creation and are **immutable** for the life of that session.
+1. **Vaults:** Project-scoped encrypted containers (`kernel.vaults.*`). Bound to a browser session at creation time via `vaults: [{ id }]` and are **immutable** for the life of that session.
+2. **Credential Items:** Logins, passwords, API tokens, and arbitrary form fields. Supports TOTP generation. Each field has a stable `name` and an optional human-readable `label` (up to 128 bytes UTF-8).
+3. **Paced Fill:** Character-by-character typing with randomized human delays into DOM selectors via `kernel.vaults.items.performOperation(key, { type: 'fill', ... })`. Reserved for Link cards and general credentials.
+4. **AgentCard Payment Instruments:** Virtual cards with autopilot authorization rules. Uses **alias-based egress interception**, NOT DOM fill.
+5. **1Password Agentic Autofill (Preview):** End users authorize an agent to access logins from their personal 1Password account without exporting secrets. The 1Password extension detects fields autonomously (zero DOM selectors required) and locks the browser VM (`423 Locked`) during completion.
+6. **Machine Payments Protocol (MPP):** Out-of-band HTTP 402 protocol allowing autonomous agents to purchase browser sessions with Stripe Link without a Kernel account. (Not a vault storage item).
+
+---
+
+## 2. Vault Lifecycle & Session Attachment
 
 ```ts
 import Kernel from '@onkernel/sdk';
@@ -26,7 +26,7 @@ const kernel = new Kernel();
 // 1. Create or retrieve a project-scoped vault
 const vault = await kernel.vaults.upsert({ name: 'checkout-vault' });
 
-// 2. Link vault to browser on creation
+// 2. Link vault to browser at creation (immutable after boot)
 const session = await kernel.browsers.create({
   stealth: true,
   vaults: [{ id: vault.id }],
@@ -36,167 +36,145 @@ const session = await kernel.browsers.create({
 
 ---
 
-## 2. General Credential Items & Paced Fill
+## 3. General Credential Items & Paced DOM Fill
 
-### Storing Credential Items
-
-Credential fields have stable identifiers (`name`) and optional human-readable UI labels (`label`):
-
+### Creating a Credential Item
 ```ts
-await kernel.vaults.items.upsert('netflix-account', {
+await kernel.vaults.items.upsert('user-login', {
   id_or_name: 'checkout-vault',
   type: 'credential',
   spec: {
-    provider: 'managed_auth', // or direct values
+    provider: 'kernel',
+    fields: [
+      { name: 'username', type: 'email', value: 'agent@example.com' },
+      { name: 'password', type: 'password', value: process.env.SERVICE_PASSWORD! },
+      { name: 'totp', type: 'totp', value: 'JBSWY3DPEHPK3PXP' },
+    ],
   },
 });
 ```
 
 ### Performing Paced Autofill
-
-When performing fill, Kernel types character-by-character into the targeted DOM selectors. The agent never sees the secret text.
+Paced fill types secrets into targeted DOM selectors at human speed. The calling agent never sees the secret plaintext:
 
 ```ts
-const fillRes = await kernel.vaults.items.performOperation('netflix-account', {
+const fillRes = await kernel.vaults.items.performOperation('user-login', {
   id_or_name: 'checkout-vault',
   type: 'fill',
   browser_id: session.session_id,
-  page_url: 'https://www.netflix.com/login', // exact URL must match open tab
+  page_url: 'https://www.example.com/login', // exact URL must match active tab
   timeout_ms: 15_000,
   fields: [
-    { field: 'username', selector: 'input#id_userLoginId' },
-    { field: 'password', selector: 'input#id_password' },
+    { field: 'username', selector: 'input#email' },
+    { field: 'password', selector: 'input#password' },
+    { field: 'totp', selector: 'input#two-factor-code' },
   ],
 });
 
-// Inspect fill status per field
-for (const f of fillRes.fields) {
-  // f.status: 'filled' | 'failed' | 'not_attempted' | 'unknown'
-  // f.error_code: 'target_changed' | 'element_not_found' | 'ambiguous_selector' | 'element_not_editable' | 'timeout'
-  console.log(`Field #${f.index}: ${f.status} (${f.error_code ?? 'ok'})`);
+if (fillRes.type === 'fill') {
+  for (const field of fillRes.fields) {
+    // field.index is 0-based index into request fields array
+    // field.status: 'filled' | 'failed' | 'not_attempted' | 'unknown'
+    console.log(`Field index ${field.index}: ${field.status}`);
+  }
 }
 ```
 
 ---
 
-## 3. 1Password Agentic Autofill (Preview)
-
-Allows end-users to approve logins located in their personal 1Password accounts. Once the organization has preview access, operations are executed through `kernel.vaults.items.performOperation`:
-
-```ts
-// 1. Create access request
-const req = await kernel.vaults.items.performOperation('user-login-key', {
-  id_or_name: 'checkout-vault',
-  type: '1pw_create_access_request',
-  // params: title, message, url
-});
-
-// 2. Poll access request status until approved
-const status = await kernel.vaults.items.performOperation('user-login-key', {
-  id_or_name: 'checkout-vault',
-  type: '1pw_access_request_status',
-});
-
-// 3. Fill approved credentials into page
-await kernel.vaults.items.performOperation('user-login-key', {
-  id_or_name: 'checkout-vault',
-  type: '1pw_fill',
-  browser_id: session.session_id,
-  fields: [
-    { field: 'username', selector: 'input[name="email"]' },
-    { field: 'password', selector: 'input[name="password"]' },
-  ],
-});
-```
-
----
-
-## 4. Payment Cards & Wallets (Link and AgentCard)
-
-Complete autonomous purchases while isolating card data from the agent.
+## 4. Payment Cards & Wallets
 
 ### Stripe Link
+Stripe Link wallets allow agents to inject saved payment methods during checkout. Provider configurations store the Link publishable key.
 
-Vault provider configs include the Link publishable key. Agents inject saved cards directly into Link authentication flows.
+### AgentCard: Egress Interception Architecture
+AgentCard provides virtual payment cards with automated rule matching and spend controls.
 
-### AgentCard
-
-AgentCard provides virtual cards with autopilot authorization rules and spending limits:
-
-- **Autopilot Rule Matching:** Uses `checkout_origin` in the card spec to match allowed merchant domains.
-- **Preparing Checkout:**
-  ```ts
-  await kernel.vaults.items.performOperation('card-item-key', {
-    id_or_name: 'checkout-vault',
-    type: 'prepare_checkout',
-    checkout: {
-      amount_cents: 2999,
-      currency: 'USD',
-      merchant: 'Example Store',
-    },
-  });
-  ```
-- **Filling Card Elements:**
-  ```ts
-  await kernel.vaults.items.performOperation('card-item-key', {
-    id_or_name: 'checkout-vault',
-    type: 'fill',
-    browser_id: session.session_id,
-    fields: [
-      { field: 'card_number', selector: 'input#card-number' },
-      { field: 'expiration', selector: 'input#expiry', format: 'MM/YY' },
-      { field: 'cvc', selector: 'input#cvc' },
-    ],
-  });
-  ```
-- **Authorizing Payment:**
-  ```ts
-  const authRes = await kernel.vaults.items.performOperation('card-item-key', {
-    id_or_name: 'checkout-vault',
-    type: 'authorize',
-  });
-  ```
-
----
-
-## 5. Machine Payments Protocol (MPP) Browser Purchases
-
-Autonomous external agents can purchase stealth, headful browser sessions directly via the Machine Payments Protocol (MPP) through an HTTP 402 challenge flow without possessing a Kernel account or API key:
+**Critical Architectural Difference**: AgentCard does **NOT** use DOM fill or `authorize` operations! Instead, it uses an **alias-based egress interception flow**:
+1. When an AgentCard is provisioned, Kernel generates a Luhn-valid stand-in alias card (`card.state.aliases`).
+2. The agent types the non-sensitive alias card details into the checkout form like standard text.
+3. When the merchant processes the charge, Kernel's egress network intercepts the payment gateway request, matches the autopilot rules against `checkout_origin`, swaps the alias for the real card token, and authorizes the transaction.
 
 ```ts
-// 1. Send purchase request to MPP endpoint
-const buyRes = await fetch('https://api.onkernel.com/mpp/browsers', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    stealth: true,
-    timeout_seconds: 300,
-  }),
+// Provision an AgentCard in the vault
+const card = await kernel.vaults.items.upsert('corp-procurement-card', {
+  id_or_name: 'checkout-vault',
+  type: 'card',
+  spec: {
+    provider: 'agentcard',
+    wallet: 'wallet-1',
+    merchant: 'Example Shop',
+    amount: 5000,
+    currency: 'USD',
+    checkout_origin: 'https://store.example.com',
+  },
 });
 
-if (buyRes.status === 402) {
-  // Extract payment challenge (lightning invoice or wallet address)
-  const challenge = buyRes.headers.get('Payment-Required');
-  // Complete payment via MPP wallet, then re-issue with payment proof
+// Access Luhn-valid stand-in aliases for typing
+if (card.type === 'card' && card.state.provider === 'agentcard' && card.state.aliases) {
+  const { number, exp_month, exp_year, cvc } = card.state.aliases;
+  console.log('Alias Card to enter in DOM:', number, `${exp_month}/${exp_year}`, cvc);
 }
 ```
 
 ---
 
-## 6. Client UI: `@onkernel/vault-react`
+## 5. 1Password Agentic Autofill (Preview)
 
-When building credential-collection UI in React apps, use `@onkernel/vault-react` (v0.2.0+):
+Allows end-users to grant temporary access to specific logins in their 1Password vaults without exporting passwords:
+
+1. **Create Access Request**:
+   ```ts
+   const req = await kernel.vaults.items.performOperation('user-1password-account', {
+     id_or_name: 'checkout-vault',
+     type: '1pw_create_access_request',
+     goal: 'Log into supplier portal to download invoice',
+     reason: 'Monthly procurement reconciliation',
+   });
+   ```
+2. **Poll Status**: Wait until the user approves in their 1Password client.
+3. **Trigger Fill**:
+   ```ts
+   await kernel.vaults.items.performOperation('user-1password-account', {
+     id_or_name: 'checkout-vault',
+     type: '1pw_fill',
+     browser_id: session.session_id,
+     page_url: 'https://portal.supplier.com/login',
+   });
+   ```
+   *Note*: `1pw_fill` requires **zero DOM selectors**. The 1Password browser extension detects fields natively, submits the form, and locks the browser microVM (`423 Locked`) while autofill is in progress.
+
+---
+
+## 6. Machine Payments Protocol (MPP) Browser Purchases
+
+The Machine Payments Protocol allows autonomous agents without a Kernel account or API key to acquire an isolated browser session:
+
+- **Endpoint**: `POST https://api.onkernel.com/mpp/browsers`
+- **Pricing**: Fixed \$0.50 per 30-minute browser session.
+- **Protocol Flow**:
+  1. Agent submits request without credentials.
+  2. Kernel returns HTTP `402 Payment Required` with header `WWW-Authenticate: Payment`.
+  3. Agent completes payment using Stripe Link shared payment token via `link-cli mpp pay`.
+  4. Agent replays request with payment proof and receives browser connection URLs (`cdp_ws_url`, `browser_live_view_url`).
+
+---
+
+## 7. Client UI: `@onkernel/vault-react` (v0.2.0)
+
+For secure credential capture in React web applications:
 
 ```tsx
 'use client';
-import { VaultFieldCollector } from '@onkernel/vault-react';
+import { CredentialForm } from '@onkernel/vault-react';
 
-export function CredentialInput() {
+export function AddCredentialModal({ vaultId }: { vaultId: string }) {
   return (
-    <VaultFieldCollector
-      vaultId="vlt_checkout_prod"
-      showVisibilityToggle={true} // show/hide control for password fields
-      onSuccess={(itemKey) => console.log('Stored item:', itemKey)}
+    <CredentialForm
+      vaultId={vaultId}
+      safeCredentialItem="user-login"
+      onSuccess={(item) => console.log('Credential stored securely:', item.id)}
+      onError={(err) => console.error('Storage error:', err)}
     />
   );
 }

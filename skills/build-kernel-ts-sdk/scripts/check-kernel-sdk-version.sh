@@ -4,6 +4,7 @@ set -u
 packages=(
   "@onkernel/sdk"
   "@onkernel/managed-auth-react"
+  "@onkernel/vault-react"
   "@onkernel/cli"
 )
 

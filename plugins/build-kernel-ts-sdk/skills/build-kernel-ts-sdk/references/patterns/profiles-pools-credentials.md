@@ -6,7 +6,7 @@ Three persistence and reuse mechanisms. They compose:
 - **Browser pools** — pre-warmed browsers ready for instant acquire.
 - **Credentials and credential providers** — encrypted credential storage; native or 1Password-backed.
 
-Source note: Verified against Kernel pricing, profiles, browser-pools, and changelog docs on 2026-05-09. Re-check live docs before changing billing or plan-gate claims.
+Source note: Verified against Kernel pricing, profiles, browser-pools, and changelog docs in October 2026 (@onkernel/sdk@0.123.0, @onkernel/cli@0.47.0). Re-check live docs before changing billing or plan-gate claims.
 
 ## Profiles
 
@@ -45,7 +45,7 @@ A single profile can carry login state for **multiple domains** when paired with
 
 ## Browser pools (Reserved Browsers)
 
-Pre-configure a fixed set of browsers ready for instant acquire. Browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pools can be created or updated with `memory: '16GiB'` (or default `'8GiB'`). Pricing docs and the April 10 changelog both confirm idle pool storage charges were removed for Start-Up too. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
+Pre-configure a fixed set of browsers ready for instant acquire. Browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pools can be created or updated with `memory: '16GiB'` (or default `'8GiB'`). Concurrency limits are unified under `max_concurrent_sessions` (`max_pooled_sessions` is `@deprecated`). Pricing docs and the changelog confirm idle pool storage charges were removed. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
 
 ```ts
 const pool = await kernel.browserPools.create({
@@ -79,8 +79,7 @@ try {
 } finally {
   await kernel.browserPools.release('my-pool', {
     session_id: session.session_id,
-    reuse: true,                           // default; reuse the instance
-    // reuse: false                        // destroy and rebuild — use after sensitive flows
+    reuse: true,                           // Note: browsers acquired with dynamic profiles are unconditionally destroyed and replaced on release even with reuse: true to prevent cross-tenant credential/session leaks.
   });
 }
 ```
@@ -89,10 +88,11 @@ Operations:
 
 - `kernel.browserPools.create({ name, size, memory?, … })` — define a pool with browser-create params baked in.
 - `kernel.browserPools.retrieve(name)` — current `available_count`, `acquired_count`, etc.
-- `kernel.browserPools.acquire(name, { profile?, acquire_timeout_seconds?, … })` — long-poll for a browser. Can dynamically bind a profile (`profile: { name }` or `{ id }`) to the acquired session. Returns `204 No Content` (an empty response, not a throw) when the poll window elapses; **the client must retry** until your own outer deadline.
-- `kernel.browserPools.release(name, { session_id, reuse })` — return a browser to the pool. `reuse: false` destroys and rebuilds (useful after credential changes or sensitive flows).
+- `kernel.browserPools.acquire(name, { profile?, acquire_timeout_seconds?, start_url?, name?, tags?, telemetry? })` — long-poll for a browser. Can dynamically bind a profile (`profile: { name }` or `{ id }`) and supply acquire-time overrides. Returns `204 No Content` (an empty response, not a throw) when the poll window elapses; **the client must retry** until your own outer deadline.
+- `kernel.browserPools.release(name, { session_id, reuse })` — return a browser to the pool. When an acquire-time profile is used, Kernel unconditionally destroys and rebuilds it regardless of `reuse`. When using baseline profile, `reuse: false` destroys and rebuilds.
 - `kernel.browserPools.flush(name)` — destroy all idle browsers; the pool refills automatically.
-- `kernel.browserPools.update / delete / list` — standard.
+- `kernel.browserPools.update(name, { ..., discard_all_idle?: boolean })` — update pool configuration. Pass `discard_all_idle: true` to purge all existing idle instances immediately so the pool refills with the updated memory, profile, or policy.
+- `kernel.browserPools.delete / list` — standard.
 
 Pools and profiles:
 
@@ -101,9 +101,9 @@ Pools and profiles:
 - **Per-user durable state with browser pools:**
   1. Create the pool without a profile.
   2. Call `browserPools.acquire(name, { profile: { name, save_changes: true } })`.
-  3. Release the browser with `reuse: false` so the user's saved state persists but does not leak to the next acquirer.
+  3. On release, Kernel unconditionally destroys and replaces the browser instance to prevent session leaks, while the user's profile changes are safely saved to their persistent profile.
 - `refresh_on_profile_update` flushes idle browsers when the pool's baseline profile is updated so they pick up the latest data. It defaults to `true` when a profile is given at create, and requires a profile on the pool.
-- `browserPools.acquire` supports dynamic **profile binding**: pass `profile: { name }` (or `id`) to bind a specific user profile to the acquired browser for that lease. When released back with `reuse: true`, the browser returns to the pool baseline. Omit `profile` to use the pool's baseline profile.
+- **Acquire-Time Profile Binding and Safety Invariant:** `browserPools.acquire` supports dynamic **profile binding**: pass `profile: { name }` (or `id`) to bind a specific user profile to the acquired browser for that lease. When an acquire-time profile is bound, Kernel **unconditionally destroys and replaces the browser upon release**, even if `reuse: true` is explicitly passed. This single-tenant isolation invariant guarantees that user cookies, tokens, and storage cannot leak into subsequent leases. The `reuse: true` parameter returns a browser to the pool baseline only when the browser was using the pool's baseline profile without an acquire-time override. Omit `profile` to use the pool's baseline profile.
 
 Acquired browsers are exempt from `flush`. Use `flush` to roll the pool after a config change or to invalidate session state across all idle instances.
 
@@ -238,7 +238,7 @@ Agents can purchase stealth, headful browser sessions through the Machine Paymen
 const buyResponse = await fetch('https://api.onkernel.com/mpp/browsers', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ stealth: true }),
+  body: JSON.stringify({ email: 'user@example.com' }), // optional receipt email; purchase is fixed $0.50/30-min stealth
 });
 // Handles 402 payment challenge via MPP wallet
 ```

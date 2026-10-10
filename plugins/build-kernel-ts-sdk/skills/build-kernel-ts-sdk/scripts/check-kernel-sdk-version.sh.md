@@ -15,7 +15,7 @@ bash scripts/check-kernel-sdk-version.sh
 ## What it checks
 
 - Node and npm availability.
-- Local `./node_modules` versions for `@onkernel/sdk`, `@onkernel/managed-auth-react`, and `@onkernel/cli` when installed.
+- Local `./node_modules` versions for `@onkernel/sdk`, `@onkernel/managed-auth-react`, `@onkernel/vault-react`, and `@onkernel/cli` when installed.
 - Current npm latest versions for those packages.
 - Whether `node_modules/@onkernel/sdk/client.d.ts` exists, and prints the top-level resources plus the `browsers` method list read straight out of the shipped declarations. These are the authoritative generated surface; `@onkernel/sdk` does **not** ship `api.md` in its npm tarball, despite the relative link in the SDK's own README.
 - Whether `KERNEL_API_KEY` is set, without printing the value.

@@ -112,8 +112,8 @@ The `rewrites()` block in `node_modules/@onkernel/managed-auth-react/README.md` 
 | Cause | Fix |
 |---|---|
 | `domain` mismatch | Credentials are matched on `domain` — check it matches the auth-flow domain exactly. |
-| Field names don't match the form | `discovered_fields` in the programmatic flow shows what the site actually wants; rename your `values` keys to match. |
-| Wrong `sso_provider` or no `totp_secret` for 2FA-protected accounts | `discovered_fields` will reveal what's missing; fill it in. |
+| Field names don't match the form | `fields` (`ManagedAuthField`) in the programmatic flow shows what the site actually wants; rename your `values` keys to match. |
+| Wrong `sso_provider` or no `totp_secret` for 2FA-protected accounts | `fields` returned by `auth.connections.retrieve` will reveal what's missing; fill it in. |
 
 ## 1Password provider returns no items
 

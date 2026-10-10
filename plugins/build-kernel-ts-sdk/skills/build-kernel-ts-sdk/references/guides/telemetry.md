@@ -1,27 +1,33 @@
-# Browser Telemetry
+# Browser Telemetry: Streaming, Retention & OTLP Export
 
-Kernel allows real-time streaming, historical querying, and OpenTelemetry (OTLP) export of browser session events, network requests, console output, and security challenges.
-
-## Telemetry Architecture
-
-1. **Operational Categories (Default On):** When telemetry is active on a session, these categories capture events automatically:
-   - `control` — Session lifecycle, resizing, and supervisor actions.
-   - `connection` — CDP, WebSocket, and Live View connection/disconnection events.
-   - `system` — VM-level resource health, memory pressure, and browser crashes.
-   - `captcha` — Detection and solving progress (`captcha_solve_started`, `captcha_solved`, `captcha_failed`), including `challenge_id` and `captcha_type`.
-2. **CDP & Opt-in Categories:** Off by default; must be explicitly enabled:
-   - `console` — Chromium `console.log`, `warn`, `error`.
-   - `network` — HTTP request/response metadata, headers, status codes, and timing.
-   - `page` — DOM lifecycle events, navigation starts, DOMContentLoaded.
-   - `interaction` — Mouse, keyboard, and touch events dispatched to Chromium.
-   - `screenshot` — Periodic visual frames.
-   - `platform` — Kernel virtualization platform events.
+Kernel's Browser Telemetry subsystem is a high-fidelity observability pipeline providing real-time streaming, historical retrieval, and OpenTelemetry (OTLP/HTTP) export of browser execution, DOM events, CDP commands, network traffic, and security challenges.
 
 ---
 
-## 1. Enabling Telemetry on Session Creation or Update
+## 1. Telemetry Architecture & Categories
 
-Pass the `telemetry` object on `browsers.create` or `browsers.update`:
+Telemetry events are grouped into operational and opt-in categories:
+
+1. **Operational Categories (Default Enabled when telemetry is on):**
+   - `control` — Commands that drive the browser (`api_call`, `cdp_command`, screenshots, clipboard).
+   - `connection` — CDP, WebSocket, and Live View client connections and disconnections.
+   - `system` — MicroVM resource metrics (CPU, RAM, container pressure) and Chromium crash events.
+   - `captcha` — Solver detection and progress (`captcha_solve_started`, `captcha_solve_result`, `captcha_challenge_result`). Uses `captcha_provider` and `task_kind` (`captcha_type` is deprecated).
+   - `monitor` — Supervisor heartbeat and microVM health checks.
+   - `platform` — VM management actions (recording lifecycle, filesystem operations, process execution).
+
+2. **Opt-in Categories (Off by default; must be explicitly enabled):**
+   - `network` — HTTP request/response headers, status codes, timing, and proxy errors (`proxy_error`).
+   - `console` — Chromium `console.log`, `warn`, `error`.
+   - `page` — DOM lifecycle (`navigation`, `dom_content_loaded`, `load`, and computed readiness events).
+   - `interaction` — Dispatched mouse clicks, keypresses, scrolls, and drag gestures.
+   - `screenshot` — Periodic visual viewport frames.
+
+---
+
+## 2. Enabling Telemetry on Session Creation
+
+Category toggles are strictly nested under `telemetry.browser.<category>.enabled`:
 
 ```ts
 import Kernel from '@onkernel/sdk';
@@ -30,99 +36,116 @@ const kernel = new Kernel();
 const session = await kernel.browsers.create({
   stealth: true,
   telemetry: {
-    enabled: true,
-    // Opt into specific non-operational categories:
-    network: true,
-    console: true,
-    page: true,
+    browser: {
+      // Opt into specific categories:
+      network: { enabled: true },
+      console: { enabled: true },
+      page: { enabled: true },
+      // Optional: Filter out high-volume CDP commands
+      control: {
+        cdp: {
+          excluded_methods: ['Input.dispatchMouseEvent', 'Page.captureScreenshot'],
+        },
+      },
+    },
+    // Optional: Zero Data Retention (ZDR) — suppress Kernel storage
+    // Requires an OTLP export destination to be configured
+    storage: { enabled: true },
   },
 });
 ```
 
 CLI equivalent:
-
 ```bash
 # Enable all categories:
 kernel browsers create --telemetry=all
 
 # Enable specific list:
 kernel browsers create --telemetry=control,connection,system,captcha,network,console
+
+# Zero Data Retention with OTLP export:
+kernel browsers create --telemetry-storage off --telemetry-export-otlp prod-datadog
 ```
 
 ---
 
-## 2. Real-Time Streaming (`telemetry.stream`)
+## 3. Real-Time Streaming (`telemetry.stream`)
 
-Stream live session events over Server-Sent Events (SSE):
+Stream live session events over Server-Sent Events (SSE). Streams yield envelopes `{ seq: number, event: BrowserTelemetryEvent }`, where `event.ts` is in Unix microseconds:
 
 ```ts
 const stream = await kernel.browsers.telemetry.stream(session.session_id, {
   // replay: 'all',          // optionally replay events from session start
-  // 'Last-Event-ID': 'evt_123',
+  // type: 'proxy_error',    // filter stream by specific event type
 });
 
-for await (const event of stream) {
-  console.log(`[${event.timestamp}] ${event.category}/${event.type}:`, event.data);
+for await (const { seq, event } of stream) {
+  const time = new Date(Math.floor(event.ts / 1000)).toISOString();
+  console.log(`[#${seq} ${time}] ${event.category}/${event.type}`);
 
-  // First-class proxy error correlation:
-  if (event.type === 'proxy_error') {
-    console.error('Proxy failed:', event.data.error_code, event.data.details);
+  // Proxy error correlation:
+  if (event.type === 'proxy_error' && event.data) {
+    console.error('Proxy failure:', event.data.code, event.data.status);
   }
 
-  // First-class CAPTCHA solving events:
+  // CAPTCHA solving progress:
   if (event.type === 'captcha_solve_started') {
-    console.log(`Solving ${event.data.captcha_type}, challenge: ${event.data.challenge_id}`);
+    console.log(`Solving ${event.data.task_kind} via ${event.data.captcha_provider}`);
+  }
+  if (event.type === 'captcha_solve_result' && event.data) {
+    console.log(`Solver result: ${event.data.status}`); // 'success' | 'failure' | 'timeout' | 'abandoned'
+  }
+
+  // Computed page readiness events:
+  if (event.type === 'network_idle' || event.type === 'page_layout_settled') {
+    console.log('Page ready for interaction:', event.type);
   }
 }
 ```
 
 CLI equivalent:
-
 ```bash
 kernel browsers telemetry stream <session_id>
 ```
 
 ---
 
-## 3. Historical Events Querying (`telemetry.events`)
+## 4. Historical Events Querying (`telemetry.events`)
 
-Archived session telemetry is retained for **30 days** and can be queried with filtering:
+Archived session telemetry is retained for **30 days** (unless ZDR is enabled). Query parameters support array filters for `category` and `type`, along with `since` and `until` time windows:
 
 ```ts
 const history = await kernel.browsers.telemetry.events(session.session_id, {
-  categories: ['captcha', 'control'],
-  types: ['captcha_solve_started', 'proxy_error'],
-  start_time: '2026-10-01T00:00:00Z',
-  end_time: '2026-10-09T00:00:00Z',
+  category: ['network'],
+  type: ['proxy_error'],
+  since: '2026-10-01T00:00:00Z',
+  until: '2026-10-09T00:00:00Z',
   limit: 100,
 });
 
-for (const event of history.events) {
-  console.log(event.id, event.type, event.timestamp);
+for await (const { seq, event } of history) {
+  console.log(`Seq #${seq} ts=${event.ts} type=${event.type}`);
 }
 ```
 
 CLI equivalent:
-
 ```bash
-kernel browsers telemetry events <session_id> --category captcha,control --type proxy_error
+kernel browsers telemetry events <session_id> --category network --type proxy_error
 ```
 
 ---
 
-## 4. Exporting to OpenTelemetry Backends (OTLP)
+## 5. Exporting to OpenTelemetry Backends (OTLP)
 
-Export session telemetry directly to Datadog, Honeycomb, New Relic, or self-hosted OpenTelemetry collectors.
+Export session telemetry directly to Datadog, Honeycomb, New Relic, or OTLP collectors.
 
 ### 1. Register Org-Scoped Destination
-
-OTLP destinations are managed at the organization level (`POST /org/telemetry/destinations`):
+Register the destination under `/org/telemetry/destinations`. The parameter is `endpoint` **without signal paths** (Kernel appends `/v1/logs` automatically):
 
 ```ts
 const dest = await kernel.telemetry.destinations.create({
   name: 'prod-datadog',
-  url: 'https://otlp-http.datadoghq.com/v1/traces',
-  protocol: 'http_protobuf', // or 'http_json'
+  endpoint: 'https://otlp-http.datadoghq.com', // DO NOT append /v1/logs or /v1/traces
   headers: {
     'DD-API-KEY': process.env.DD_API_KEY!,
   },
@@ -130,28 +153,27 @@ const dest = await kernel.telemetry.destinations.create({
 ```
 
 CLI equivalent:
-
 ```bash
 kernel telemetry destinations create \
   --name prod-datadog \
-  --url https://otlp-http.datadoghq.com/v1/traces \
-  --protocol http_protobuf \
+  --endpoint https://otlp-http.datadoghq.com \
   --header "DD-API-KEY=$DD_API_KEY"
 ```
 
 ### 2. Bind Destination to Browser Session
-
-Route session telemetry to the configured destination at creation time:
+Bind the destination at session creation via `export.otlp.destination`:
 
 ```ts
 const session = await kernel.browsers.create({
   stealth: true,
   telemetry: {
-    enabled: true,
-    network: true,
+    browser: {
+      network: { enabled: true },
+      console: { enabled: true },
+    },
     export: {
       otlp: {
-        destination_id: dest.id,
+        destination: { id: dest.id }, // or { name: 'prod-datadog' }
       },
     },
   },

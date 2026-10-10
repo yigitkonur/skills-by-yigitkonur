@@ -132,11 +132,47 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Tag every `browsers.create` inside an action with `invocation_id: ctx.invocation_id`. From outside an action, wrap `create` with a `try/finally` calling `deleteByID`. For belt-and-suspenders: a periodic cleanup job that lists `browsers.list()` and deletes anything older than expected.
 
+## 17. Telemetry category toggles must be nested
+
+**Symptom:** TypeScript compilation error or unhandled category when setting `telemetry: { network: true }`.
+
+**Cause:** In `@onkernel/sdk`, category toggles are strictly nested under `telemetry.browser.<category>.enabled` (e.g. `telemetry: { browser: { network: { enabled: true } } }`).
+
+**Fix:** Use the nested object structure. See `references/guides/telemetry.md`.
+
+## 18. AgentCard uses egress interception, NOT DOM autofill
+
+**Symptom:** Calling `performOperation('card-key', { type: 'fill' })` fails or card number is rejected.
+
+**Cause:** AgentCard does not use DOM autofill. It uses an **alias-based egress interception flow** (`card.state.aliases`), where the agent types non-sensitive Luhn-valid stand-in details into the checkout DOM and Kernel's egress network swaps and authorizes the real card upon payment gateway dispatch.
+
+**Fix:** Type the alias card details into the DOM. See `references/patterns/vaults-and-payments.md`.
+
+## 19. OTLP endpoints must omit signal paths
+
+**Symptom:** OTLP export destination returns 400 Bad Request or connection failed.
+
+**Cause:** Kernel automatically appends `/v1/logs` to configured OTLP endpoints. Specifying URLs ending in `/v1/logs` or `/v1/traces` causes double-pathing (`/v1/logs/v1/logs`).
+
+**Fix:** Pass base endpoints only (e.g. `endpoint: 'https://otlp-http.datadoghq.com'`).
+
+## 20. Proxy routes fail closed
+
+**Symptom:** Target site returns 502 with `X-Kernel-Proxy-Error: destination_route_unavailable`.
+
+**Cause:** When a domain matches an entry in `network.proxy_routes` and that proxy is unavailable or deleted, Kernel intentionally fails closed to prevent sensitive traffic leaking via default or direct egress.
+
+**Fix:** Ensure route proxies are active and valid before running sessions. See `references/guides/proxies.md`.
+
 ## Where to look next
 
+- Dedicated Proxy Guide: `references/guides/proxies.md`
+- Multi-Provider Web Search: `references/guides/search.md`
+- In-VM Browser REPL & Code Mode: `references/patterns/browser-repl.md`
+- WebMCP Page Tool Discovery: `references/patterns/webmcp.md`
 - Dedicated CLI Reference: `references/guides/cli-reference.md`
 - Vaults and Payments: `references/patterns/vaults-and-payments.md`
 - Telemetry and OTLP Export: `references/guides/telemetry.md`
 - File I/O and replay-specific issues: `references/troubleshooting/files-and-replays.md`
 - Auth state and profile errors: `references/troubleshooting/auth-and-profile-errors.md`
-- Picking the right control surface to avoid latency: `references/patterns/browser-control-surfaces.md`
+- Picking the right control surface: `references/patterns/browser-control-surfaces.md`

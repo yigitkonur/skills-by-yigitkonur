@@ -1,8 +1,8 @@
 # Apps: deploy and invoke
 
-A Kernel **App** is a deployed codebase exposing one or more **Actions**. Each **Invocation** runs an action with a `payload`, and the action runs on a unikernel co-located with its browser VMs — no CDP latency.
+A Kernel **App** is a deployed codebase exposing one or more **Actions**. Each **Invocation** runs an action with a `payload`, dynamically load-balanced across multiple cluster hosts for high availability and throughput while preserving co-location with its browser VMs to eliminate CDP latency.
 
-Source note: Verified against Kernel app develop/invoke docs, CLI docs, and invocation API reference on 2026-05-09. Payload-size docs currently conflict; verify live limits before shipping large-payload code.
+Source note: Verified against Kernel app develop/invoke docs, CLI docs, and invocation API reference in October 2026 (@onkernel/sdk@0.123.0, @onkernel/cli@0.47.0). Payload-size docs currently conflict; verify live limits before shipping large-payload code.
 
 ## When to deploy an app vs embed the SDK
 
@@ -225,8 +225,8 @@ console.log(inv.status, inv.status_reason);
 
 - SDK `kernel.invocations.create({...})` is synchronous by default and returns the final invocation response unless `async: true` queues it.
 - SDK async mode returns queued status and should be followed with `kernel.invocations.follow(id)` or polling.
-- CLI `kernel invoke <app> <action>` defaults to queued/asynchronous and returns immediately after queueing.
-- CLI `kernel invoke --sync` waits for completion with its own CLI timeout. As of the 2026-05-09 CLI docs check, that timeout is 60 seconds.
+- CLI `kernel invoke <app> <action>` initiates an asynchronous invocation and **immediately opens an SSE stream to follow the execution until completion**, printing log events and output. Pass `--no-follow` to return immediately after queueing.
+- CLI `kernel invoke --sync` executes synchronously on the HTTP request with a 60-second client timeout (best for sub-minute actions).
 - CLI `--output json` emits JSONL invocation events; consume it as a stream, not one JSON object.
 
 ## Apps surface
@@ -271,5 +271,6 @@ For VM-level logs (everything inside the browser VM, not just your action's `con
 ## Where to look next
 
 - Full end-to-end deploy + invoke walk-through: `references/examples/deploy-and-invoke-app.md`
+- Multi-provider web search and content extraction: `references/guides/search.md`
 - Why your invocation hangs at exactly 100s: `references/troubleshooting/pitfalls.md`
 - Pulling large invocation artifacts as files: `references/troubleshooting/files-and-replays.md`

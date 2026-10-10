@@ -4,7 +4,7 @@ End-to-end Hosted UI with the embedded `@onkernel/managed-auth-react` component,
 
 Stack assumptions: Next.js 15+ App Router, TypeScript, `@onkernel/sdk`, `@onkernel/managed-auth-react`. Route-handler `params` is a `Promise` from Next 15 onward and must be awaited; on Next 14 use the synchronous `{ params }: { params: { connectionId: string } }` form instead.
 
-Source note: Verified against Kernel docs, `@onkernel/sdk@0.92.0`, and `@onkernel/managed-auth-react@0.4.1` package types on 2026-08-19.
+Source note: Verified against Kernel docs, `@onkernel/sdk@0.123.0`, and `@onkernel/managed-auth-react@0.5.5` package types in October 2026.
 
 ## Backend route — start a connection
 

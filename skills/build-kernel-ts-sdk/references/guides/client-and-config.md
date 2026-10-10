@@ -5,14 +5,14 @@ Constructing the `Kernel` client, configuring environment, retries, pagination, 
 ## Install
 
 ```bash
-npm install @onkernel/sdk
-# Optional: managed-auth React component
-npm install @onkernel/managed-auth-react
+npm install @onkernel/sdk@0.123.0
+# Optional: managed-auth and vault React components
+npm install @onkernel/managed-auth-react@0.5.5 @onkernel/vault-react@0.2.0
 # Common pairings:
 npm install playwright @browserbasehq/stagehand
 ```
 
-Pin to a minor range — the SDK is auto-generated from Kernel's OpenAPI spec by Stainless and rev's frequently.
+Pin to `@onkernel/sdk@0.123.0` — the SDK is auto-generated from Kernel's OpenAPI spec by Stainless and rev's frequently.
 
 ## Construct the client
 
@@ -104,7 +104,7 @@ await kernel.browsers.create(
 );
 ```
 
-`idempotencyKey` is accepted by `RequestOptions`, but **the Kernel client never sends an idempotency header**. `buildHeaders` emits one only when `this.idempotencyHeader` is set, and `Kernel` declares `protected idempotencyHeader?: string` without ever assigning it (verified in v0.92.0) — so the key you pass is dropped, and the `stainless-node-retry-${uuid4()}` value from `defaultIdempotencyKey()` is never used either. The guard is `method !== 'get'`, not a retry check, so none of this is retry-specific.
+`idempotencyKey` is accepted by `RequestOptions`, but **the Kernel client never sends an idempotency header**. `buildHeaders` emits one only when `this.idempotencyHeader` is set, and `Kernel` declares `protected idempotencyHeader?: string` without ever assigning it (verified in v0.92.0 through v0.123.0) — so the key you pass is dropped, and the `stainless-node-retry-${uuid4()}` value from `defaultIdempotencyKey()` is never used either. The guard is `method !== 'get'`, not a retry check, so none of this is retry-specific.
 
 Consequence: automatic retries (`maxRetries`, default 2) of non-GET calls are **not** de-duplicated by the client. Treat `browsers.create` and `invocations.create` as at-least-once and reconcile yourself instead of assuming server-side de-dup:
 
@@ -260,7 +260,7 @@ Provision and rotate API keys under `/org/api_keys`:
 const rotated = await kernel.apiKeys.rotate('key_123', {
   expire_in_days: 7, // grace period before old key revokes
 });
-console.log('New key:', rotated.api_key);
+console.log('New key:', rotated.key);
 ```
 
 ## Web Search API
@@ -287,8 +287,13 @@ for (const item of search.results) {
 ## Where to look next
 
 - For browser create/use/terminate: `references/guides/browsers-lifecycle.md`
+- For proxy subsystem, routing, and tiers: `references/guides/proxies.md`
+- For multi-provider web search and extraction: `references/guides/search.md`
+- For in-VM REPL and Code Mode: `references/patterns/browser-repl.md`
+- For WebMCP page tool discovery: `references/patterns/webmcp.md`
 - For dedicated CLI reference: `references/guides/cli-reference.md`
 - For vaults, autofill, and payments: `references/patterns/vaults-and-payments.md`
 - For session telemetry and OTLP: `references/guides/telemetry.md`
 - For `deployments.*` / `invocations.*`: `references/guides/apps-deploy-invoke.md`
 - For typical errors and root causes: `references/troubleshooting/pitfalls.md`
+
