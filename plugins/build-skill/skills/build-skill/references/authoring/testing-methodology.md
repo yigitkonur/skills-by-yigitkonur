@@ -89,12 +89,13 @@ For scripted testing (Tier 2), write a test file with one query per line and run
 
 ### Debugging trigger failures
 
-Ask Claude directly:
-```
-"When would you use the [skill-name] skill?"
-```
+Do NOT ask the model directly what it thinks of your description (e.g. "When would you use this skill?"). Official research from `agentskills.io` demonstrates that conversational self-reports are unreliable; models will rationalize and quote descriptions back without reflecting real routing dynamics.
 
-Claude quotes the description back. Compare what Claude says with what you intended. Adjust the description to close gaps.
+Instead, debug using an empirical query matrix:
+1. Identify the failing query type (direct request, paraphrased intent, or edge case).
+2. Inspect whether missing keywords, overly narrow scope verbs, or missing synonyms caused under-triggering.
+3. If over-triggering, add explicit negative trigger boundaries ("Do NOT use for...").
+4. Re-run the query matrix across 3 iterations to confirm the fix empirically.
 
 ## Test category 2: Functional tests
 
@@ -193,22 +194,16 @@ Before building, write down what success looks like. These are aspirational targ
 - A new user can accomplish the task on first try
 ```
 
-## Using skill-creator for review
+## Using skill-creator for evaluation and optimization
 
-The skill-creator skill (built into Claude.ai) can review your skill:
+Anthropic's official `skill-creator` (`anthropics/skills/skills/skill-creator`) provides an end-to-end evaluation harness, contrary to the misconception that it only does qualitative chat reviews.
 
-```
-"Review this skill and suggest improvements"
-```
-
-It can flag:
-- Vague descriptions
-- Missing triggers
-- Structural problems
-- Over/under-triggering risks
-- Missing test cases
-
-It cannot run automated test suites or produce quantitative results.
+Key automated capabilities:
+- **Eval suite generation**: Generates 20 realistic test queries divided into train and test splits (direct queries, paraphrased intents, near-miss should-not-triggers).
+- **Automated multi-turn evaluation loops**: Runs scripts like `run_eval.py` and `run_loop.py` to test triggering and task execution across models.
+- **Subagent-based review and grading**: Employs analyzer and grader subagents to assess output quality against predefined assertions.
+- **Empirical trigger benchmarking**: Computes quantitative trigger rates and pass rates across iterations, enabling automated optimization loops (up to 5 iterations).
+- **Interactive review generation**: Generates HTML review viewers (`eval-viewer/generate_review.py`) to inspect side-by-side run comparisons.
 
 ## Iteration after testing
 
@@ -243,7 +238,7 @@ Before shipping, verify all of the following:
 - [ ] 5+ should-trigger queries tested
 - [ ] 5+ should-NOT-trigger queries tested
 - [ ] 3+ paraphrased variants tested
-- [ ] Claude correctly describes when to use the skill
+- [ ] Empirical trigger rate meets target (≥90% on should-trigger, 0% on should-not-trigger) across test query set
 - [ ] Primary workflow completes without error
 - [ ] Error handling works for at least one failure case
 - [ ] Results are consistent across 3+ runs

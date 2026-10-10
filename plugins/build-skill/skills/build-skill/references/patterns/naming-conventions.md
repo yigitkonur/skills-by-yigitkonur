@@ -77,15 +77,21 @@ description: Use skill if...
 
 ## Frontmatter `description` field
 
-### Formula
+### Formulas
 
+1. **Repository Convention (`AGENTS.md`)**:
 ```
-Use skill if you are [doing what action] and need [what outcome] [optional: before/after/including what].
+Use if [action/context] [and outcome] (concise trigger, ≤30 words).
+```
+
+2. **Open Specification Standard (`agentskills.io`)**:
+```
+[What it does] + [When to use it] (1-1024 characters, non-empty, imperative user-intent).
 ```
 
 ### Checklist
 
-- [ ] Starts with "Use skill if you are"
+- [ ] Starts with "Use if" (for repo skills) or clearly states WHAT and WHEN (for open spec skills)
 - [ ] States the action (building, reviewing, deploying, etc.)
 - [ ] States the outcome or context
 - [ ] Includes technology keywords users would naturally say
@@ -98,17 +104,17 @@ Use skill if you are [doing what action] and need [what outcome] [optional: befo
 
 **Excellent** — specific action, clear trigger, technology keywords:
 ```yaml
-description: Use skill if you are building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK.
+description: Use if building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK.
 ```
 
 **Good** — clear action and outcome:
 ```yaml
-description: Use skill if you are reviewing a GitHub pull request with a systematic, evidence-based workflow that clusters files, correlates existing comments, validates goals, and produces actionable findings.
+description: Use if reviewing a GitHub pull request with a systematic, evidence-based workflow that clusters files, correlates existing comments, validates goals, and produces actionable findings.
 ```
 
 **Adequate** — functional but could be more specific:
 ```yaml
-description: Use skill if you are setting up automated npm publishing via GitHub Actions.
+description: Use if setting up automated npm publishing via GitHub Actions.
 ```
 
 **Poor** — too vague, no trigger phrases:
@@ -182,7 +188,7 @@ Before shipping, verify naming consistency across all artifacts:
 | Artifact | Should match |
 |---|---|
 | Directory name | Kebab-case, verb-noun |
-| Frontmatter `name` | Directory name (usually identical) |
+| Frontmatter `name` | Directory name (**strictly identical per spec**) |
 | SKILL.md `# Title` | Human-readable version of the name |
 | README label (if in a pack) | Same as frontmatter `name` |
 | Cross-skill references | Frontmatter `name` of the target |

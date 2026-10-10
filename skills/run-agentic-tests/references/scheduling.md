@@ -6,7 +6,7 @@ records reservations; the host provides actual worker lifecycle controls.
 ## Capacity, model sizing, and independence
 
 - **Concurrency**: Use `min(campaign max_active, actual host capacity)` active role workers. Default to realistic local concurrency (2–4 workers) to prevent OOM and port collisions.
-- **Model Economy**: Configure workers per provider. Anthropic: `sonnet-5.5` or `haiku-5.5` (or newer; no reasoning level needed, split by family; never Opus). Codex: `gpt-6-luna` with `xhigh` reasoning for simple ops; `gpt-6.1-sol` with `medium` reasoning for evidence checks. Gemini: `gemini-3.8-flash` with `medium` reasoning for simple ops, `high` for everything else.
+- **Model Economy**: Configure workers per provider to balance speed, cost, and accuracy. Anthropic: `sonnet-5.5` or `haiku-5.5` (or newer, e.g. `claude-3.7-sonnet`); never Opus. Set reasoning effort to `low` or `medium` (cap extended thinking budget to 1,024–2,048 tokens; disable for routine steps). Codex: `gpt-6-luna` with `low` reasoning for simple ops; `gpt-6.1-sol` with `medium` reasoning for evidence checks. Gemini: `gemini-3.8-flash` with `low` reasoning for simple ops, `medium` for verification, reserving `high` for root-cause diagnosis.
 - **Independence**: Enforce author != executor, executor != verifier, distinct blind verifiers, and implementer != independent retest executor/verifier. Workers do not dispatch other workers.
 
 Sequence each launch: `task create` -> `task dispatch` -> host launch -> `task bind`.

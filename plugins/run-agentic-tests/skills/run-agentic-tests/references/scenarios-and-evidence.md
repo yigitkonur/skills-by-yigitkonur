@@ -73,6 +73,18 @@ When a scenario contains branching or fallback user journeys:
 5. **Session Expiration Guard**:
    Check for HTTP 401/403 responses or URL redirection to a login screen before evaluating
    branch conditions to prevent misclassifying auth expiration as UI absence.
+6. **Non-Idempotent Side Effects & Transactional Integrity**:
+   If Branch A mutates application state (creates an account, charges a payment method, submits a form)
+   before encountering a failure, taking Branch B without rollback causes duplicate mutations,
+   409 Conflict errors, or financial discrepancies. Any branch with side effects must be strictly
+   idempotent or execute an explicit transactional cleanup/rollback step before Branch B starts.
+7. **Observable Fallback Recording (No Silent Concealment)**:
+   Taking a fallback branch must never result in an invisible `PASS` that conceals primary flow
+   regressions. The execution observation must record `FALLBACK_TAKEN` with evidence detailing why
+   Branch A was bypassed.
+8. **Branch Oracle & Verification Clarity**:
+   The executor must explicitly record branch decision points, entry conditions, and selected paths
+   so that independent blind verifiers know exactly which contract was evaluated.
 
 ## Capture an auditable observation
 

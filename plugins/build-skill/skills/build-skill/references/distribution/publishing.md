@@ -124,9 +124,9 @@ For programmatic use cases — applications, agents, and automated workflows.
 Note: Skills in the API require the Code Execution Tool beta.
 
 **Documentation**:
-- [Skills API Quickstart](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/quickstart)
-- [Create Custom Skills](https://docs.claude.com/en/api/skills/create-skill)
-- [Skills in the Agent SDK](https://docs.claude.com/en/docs/agent-sdk/skills)
+- [Anthropic Agent Skills Documentation](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
+- [Agent Skills Open Specification](https://agentskills.io/specification)
+- [Anthropic Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview)
 
 ### Channel 5: Organization deployment
 
@@ -137,7 +137,7 @@ Admins can deploy skills workspace-wide:
 
 ### Open standard: AgentSkills.io
 
-Anthropic has published [Agent Skills](https://agentskills.io/home) as an open standard. Skills are designed to be portable across tools and platforms — the same skill should work whether using Claude or other AI platforms. Authors can note platform-specific requirements in the `compatibility` field.
+Anthropic and the broader AI ecosystem publish [Agent Skills](https://agentskills.io/home) as an open standard. Skills are designed to be portable across tools and platforms — the same skill should work whether using Claude Code, Cursor, Codex, Antigravity, or Windsurf. Authors can note platform-specific requirements in the `compatibility` field.
 
 ## Publishing checklist
 
@@ -145,8 +145,8 @@ Before publishing a skill:
 
 ### Content quality
 
-- [ ] SKILL.md has valid frontmatter with `name` and `description`
-- [ ] Description follows the "Use skill if you are..." formula
+- [ ] SKILL.md has valid frontmatter conforming to `agentskills.io`
+- [ ] Description follows repo convention ("Use if <trigger>" ≤30 words) and open spec standard (WHAT it does + WHEN to invoke)
 - [ ] Decision tree routes to all reference files
 - [ ] No orphaned reference files
 - [ ] All examples are tested and working
@@ -206,12 +206,12 @@ MAJOR.MINOR.PATCH
 
 | Method | Pros | Cons |
 |---|---|---|
-| Frontmatter `version` field | Visible in SKILL.md | Manual update required |
+| Frontmatter `metadata.version` | Spec-compliant, visible in `SKILL.md` | Manual update required |
 | Git tags (`v1.0.0`) | Standard, automatable | Requires git workflow |
 | Changelog file | Detailed history | Extra maintenance |
 | Git commit messages | Zero overhead | Hard to scan for versions |
 
-Recommended: Use frontmatter `version` + git tags for published skills.
+Recommended: Use `metadata.version` in frontmatter + git tags for published skills. (Note: Putting `version` at the root of frontmatter violates the `agentskills.io` specification and fails validator checks; it must be inside `metadata:`).
 
 ## Community standards
 
@@ -231,7 +231,7 @@ The skill community values:
 |---|---|
 | Include working code examples | Include untested examples |
 | Cite sources for best practices | Present opinions as facts |
-| Version your frontmatter | Ship without version tracking |
+| Version inside `metadata.version` | Put non-spec `version` at root frontmatter |
 | Keep reference files focused | Create monolithic reference dumps |
 | Test with the target agent | Assume it works without testing |
 

@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: MIT
 metadata:
   author: yigitkonur
-  version: "3.0.0"
+  version: "3.1.0"
 ---
 
 # Build Agent Skills
@@ -18,7 +18,7 @@ High-quality skills cannot be built in a vacuum or from stale model memory. Skil
 - **Prerequisite skill**: [`skills/run-research`](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/run-research)
 - **Install command**: `npx -y skills add yigitkonur/skills-by-yigitkonur/skills/run-research -y`
 
-> **Standing Invariant**: Never draft a skill based on assumptions, unverified library contracts, or generic training weights. When non-trivial APIs, frameworks, or domain workflows are involved, invoke `run-research` first to gather authoritative documentation, verifiable quotes, and real code patterns. If `run-research` is not available, install it before proceeding.
+> **Standing Invariant**: Never draft a skill based on assumptions, unverified library contracts, or generic training weights. When non-trivial APIs, frameworks, or domain workflows are involved, invoke `run-research` first to gather authoritative documentation, verifiable quotes, and real code patterns. **If `run-research` is not installed or available, refuse to run and prompt the user to install it before proceeding.** Quality skills cannot exist without quality context.
 
 ## When to Use
 
@@ -37,11 +37,11 @@ Do NOT use this skill for:
 
 ## Core Non-Negotiable Rules
 
-1. **Specification compliance first**: Frontmatter strictly adheres to `agentskills.io/specification` (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`).
-2. **Context grounding before drafting**: Invoke `run-research` for all non-trivial domains. Refuse to hallucinate APIs or edge cases.
-3. **Progressive disclosure architecture**: Keep `SKILL.md` under 500 lines (<5,000 tokens). Offload bulky documentation to `references/` and deterministic operations to `scripts/`.
+1. **Specification compliance first**: Frontmatter strictly adheres to `agentskills.io/specification` (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`). No arbitrary top-level fields.
+2. **Context grounding before drafting**: Invoke `run-research` for all non-trivial domains. Refuse to run without verified research and refuse to hallucinate APIs or edge cases.
+3. **Progressive disclosure architecture**: Keep `SKILL.md` under 500 lines (<5,000 tokens). Offload bulky documentation to `references/` (1-level deep) and deterministic operations to `scripts/`.
 4. **Deterministic scripting**: Write bundled scripts in portable JavaScript (`.mjs` ES Modules) or Python (`.py`). Avoid fragile shell scripts (`.sh`).
-5. **Reproduce and test**: Always test scripts and verify execution infrastructure before declaring done.
+5. **Reproduce, test, and verify**: Always test scripts and verify execution infrastructure before declaring done.
 6. **Comparison before combination**: When researching remote skills, build a structured comparison table with explicit inherit/avoid decisions.
 
 ## Available Scripts
@@ -60,53 +60,45 @@ Scripts live in `scripts/` and run directly via Node.js or Python without extern
 ## Four Operational Modes
 
 ### Mode 1: Discovery Mode (Registry & Consortium Sweep)
-Use when researching existing patterns on `skills.sh`, GitHub, and external repositories.
-
+Use when researching existing patterns on `skills.sh`, GitHub, and external repositories before writing code.
 1. **Registry Discovery**: Run `node scripts/skill-dl.mjs search` across 3–10 orthogonal keywords to find top candidate skills with consensus scoring.
-2. **Subagent Consortium**: Deploy up to 3–5 parallel sub-agents to analyze candidates across distinct lenses:
-   - *Lens A*: Architecture & Progressive Disclosure (how `references/` and line counts are structured).
-   - *Lens B*: Script & Tool Automation (what logic is scripted in `scripts/` vs left in prose).
-   - *Lens C*: Triggers & Description Calibrations (negative triggers, precision, over-triggering guards).
-3. **Corpus Inspection**: Download shortlisted skills to `./research-corpus` and run `node scripts/skill-dl.mjs inspect <dir>` to verify spec compliance.
-4. **Comparison Table**: Draft a markdown comparison table summarizing Focus, Strengths, Gaps, and Inherit/Avoid decisions before writing code.
+2. **Subagent Consortium**: Deploy up to 3–5 parallel sub-agents to summarize each candidate skill across distinct lenses:
+   - *Architecture & Progressive Disclosure*: How `references/` and line counts are structured.
+   - *Script & Tool Automation*: What logic is scripted in `scripts/` vs left in prose.
+   - *Triggers & Description Calibrations*: Negative triggers, precision, over-triggering guards.
+3. **Individual Skill Visits & Plan Presentation**: After forming the consortium, visit each candidate skill individually. Analyze how its references and scripts affect its execution. Plan the approach, synthesize the comparison table, and present it to the user before code authoring.
 
 ### Mode 2: Creation & Distillation Mode (Synthesis & Repo-Fit)
-Use when drafting a new skill or major refactor from discovered knowledge.
-
-1. **Synthesize into Target Idioms**: Translate raw external patterns into your repository's native conventions and vocabulary.
-2. **Draft the Plan**: Establish the directory layout (`SKILL.md`, `references/`, `scripts/`, `assets/`) and decision gates before authoring.
-3. **Progressive Disclosure Boundary**:
+Use after discovery to draft a new skill or perform a major refactor from discovered knowledge.
+1. **Distillation via Sub-Agents**: Hand refined discovery data to sub-agents to produce distilled outputs, combining everything into the repository's native conventions and vocabulary.
+2. **Draft Plan First**: Draft a structural plan (`SKILL.md`, `references/`, `scripts/`) before writing code so the skill reflects original design rather than being passively biased by external templates.
+3. **Iterative Revisitation**: Revisit candidate skills repeatedly as needed to refine edge cases, while preserving strict progressive disclosure boundaries:
    - `SKILL.md`: High-level workflow, decision trees, prerequisites, script summaries, reference routing.
-   - `references/`: Deep technical documentation, API tables, and domain-specific checklists.
-   - `scripts/`: Executable verification, parsing, and scaffolding tools.
+   - `references/`: Deep technical documentation, API tables, and domain-specific checklists (kept 1-level deep).
+   - `scripts/`: Deterministic verification, parsing, and scaffolding tools.
 4. **Specification Audit**: Verify frontmatter contains only allowed fields and line count stays under 500 lines.
 
 ### Mode 3: Conversation-Driven Mode (High-Token Session Distillation)
-Use when turning an extensive in-flight conversation (e.g. 200k–400k tokens) into a reusable skill.
-
-1. **Mental Model & Research Alignment**: Ingest the chat context and invoke `run-research` to ground any ambiguous domain tools or commands used during the session.
+Use when converting an extensive in-flight conversation (e.g. 200k–400k tokens) into a reusable skill.
+1. **Mental Model & Research Alignment**: Ingest the chat context and invoke `run-research` on the fly to ground any ambiguous domain tools or commands used during the session.
 2. **Step-by-Step Confession (Up to 5-Level Nested List)**:
-   Extract and reconstruct the exact progression of actions, corrections, and discoveries:
+   Reconstruct the exact progression of actions, corrections, and discoveries to link back to agent memory:
    - Level 1: Primary Milestone (e.g. Setting up authentication)
      - Level 2: Sub-workflow Phase (e.g. OAuth token exchange debugging)
        - Level 3: Concrete Step Executed (e.g. Inspecting headers and callback payload)
          - Level 4: Error Encountered & Correction (e.g. Fixed state mismatch via Redis PKCE store)
            - Level 5: Deterministic Insight or Invariant (e.g. Token TTL must be ≥300s to avoid refresh race)
-3. **Transfer Planning**: Classify each confessed step:
-   - Transfer to `SKILL.md` body (core decision tree and workflow gates).
-   - Transfer to `references/` (deep configuration examples and error catalogs).
-   - Script-ify (turn repetitive terminal commands into clean `.mjs` or `.py` scripts).
-4. **Script Scaffolding**: Implement deterministic steps as executable scripts in `scripts/`.
+3. **Transfer Planning**: Plan which confessed steps transfer into:
+   - `SKILL.md` body (core decision trees and non-negotiable gates).
+   - `references/` (deep configuration guides and edge case catalogs).
+   - Script-ification (convert any repetitive terminal commands into deterministic `.mjs` or `.py` scripts).
+4. **Script Scaffolding & Verification**: Implement and test scripts in `scripts/`.
 
 ### Mode 4: Pure Research / Documentation-Driven Mode
-Use when the user wants a skill for a specific repo, library, or framework.
-
+Use when authoring a skill for a specific repository, library, or framework from scratch.
 1. **Exhaustive Extraction via `run-research`**: Query official docs, source code, migration guides, and GitHub issue trackers.
-2. **Structured Reference Modularization**: Decompose the domain into structured, atomic reference files under `references/`:
-   - Quick-reference decision trees
-   - Configuration recipes and gotchas
-   - Concrete "do this, not that" comparative guides
-3. **Actionable Block Formatting**: Write instructions in direct, imperative language ("Run...", "Configure...", "Verify...").
+2. **Deep Reference Blocks**: Build detailed, reusable reference files under `references/` containing hundreds of verified references organized into atomic blocks.
+3. **Actionable "Do This, Not That" Guidance**: Break instructions down into explicit, imperative steps ("Run...", "Configure...", "Verify...") with clear failure modes and counters.
 
 ## Step-by-Step Authoring Workflow
 

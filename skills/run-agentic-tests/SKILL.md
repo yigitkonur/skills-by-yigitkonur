@@ -13,15 +13,17 @@ integrating directly with specialized test runners.
 
 ## Model selection & reasoning configuration per provider
 
-Models are configured strictly per provider to balance execution speed, assertion accuracy, and token economics. **Core architectural rule:** Anthropic splits models by family (no reasoning level needed), while Codex and Gemini split capabilities primarily by reasoning effort.
+Models are configured strictly per provider to balance execution speed, assertion accuracy, and token economics. **Core architectural rule:** Never use heavy flagship models like Opus for automated test loops—they are 5x more expensive, introduce severe multi-turn tool latency, and do not improve assertion accuracy. Set reasoning effort to **low or medium** (cap thinking budget to 1,024–2,048 tokens; disable for routine deterministic steps) to prevent timeout bottlenecks and runaway token burn.
 
 | Provider | Task category | Model | Reasoning effort | Operational rule |
 |---|---|---|---|---|
-| **Anthropic** | All operations (execution, verification, diagnosis) | `sonnet-5.5` or `haiku-5.5` (use newer version if released) | *None* | Anthropic sorts models by family; reasoning level is omitted (if runtime extended thinking is enabled, cap thinking budget to low/medium). Never use heavy flagship family models like Opus for automated loops. |
-| **Codex** | Simple ops (routine execution, CLI commands, basic steps) | `gpt-6-luna` | `xhigh` | `luna` is a compact model; `xhigh` reasoning effort keeps tool calls and deterministic steps rock-solid. |
+| **Anthropic** | Simple ops (routine execution, CLI commands, navigation) | `sonnet-5.5` or `haiku-5.5` (or newer) | `low` / minimal | Fast turnaround and low token usage for multi-step browser/CLI flows. Extended thinking is disabled or capped to ≤1,024 tokens. |
+| **Anthropic** | Evidence checks (verifiers, assertion checks, diagnosis) | `sonnet-5.5` (or newer) | `medium` | Balanced reasoning (capped at 1,024–2,048 tokens) ensures rigorous evaluation of screenshots, logs, and state evidence without timeouts. **NEVER use Opus** for automated loops. |
+| **Codex** | Simple ops (routine execution, CLI commands, basic steps) | `gpt-6-luna` | `low` | `luna` is a compact model; `low` reasoning effort keeps tool calls fast and economical without burning tokens on mundane commands. |
 | **Codex** | Evidence checks (verifiers, assertion checks, artifact analysis) | `gpt-6.1-sol` | `medium` | Balanced reasoning ensures rigorous evaluation of screenshots, logs, and state evidence without timeout delays. |
-| **Gemini** | Simple ops (routine execution, navigation, basic steps) | `gemini-3.8-flash` | `medium` | High throughput, fast response times for multi-step browser/CLI steps. |
-| **Gemini** | Everything else (evidence checks, verification, diagnosis, planning) | `gemini-3.8-flash` | `high` | Increased reasoning depth for independent verification, root-cause diagnosis, and scenario authoring. |
+| **Gemini** | Simple ops (routine execution, navigation, basic steps) | `gemini-3.8-flash` | `low` | High throughput, fast response times for multi-step browser/CLI steps. |
+| **Gemini** | Evidence checks & verification | `gemini-3.8-flash` | `medium` | Balanced reasoning depth for independent verification and assertion checks. |
+| **Gemini** | Deep diagnosis & complex planning | `gemini-3.8-flash` | `high` | Increased reasoning depth reserved strictly for root-cause diagnosis and scenario authoring. |
 
 ## Tool dependencies & specialized sibling skills
 
@@ -29,13 +31,13 @@ This skill orchestrates campaigns; specialized domain testing is executed throug
 
 | Domain | Designated runner skill | Dependency & repository | Fail-fast requirement |
 |---|---|---|---|
-| **Web** | `ego-browser` | [citrolabs/ego-lite](https://github.com/citrolabs/ego-lite) · [ego-browser skill](https://github.com/citrolabs/ego-lite/blob/main/skills/ego-browser/SKILL.md) | Refuse to start if `ego-browser` skill/CLI is missing. If running remotely over SSH, remote screenshots **must be retrieved via SCP** to local `evidences/`. |
-| **Mobile** | `test-by-maestro` | [test-by-maestro](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-maestro) · [Maestro CLI](https://maestro.dev) | Requires Maestro CLI (`maestro --version` ≥ 2.11.0), Xcode for iOS Simulator, or ADB for Android. |
-| **MCP** | `test-by-mcpc-cli` | [test-by-mcpc-cli](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-mcpc-cli) · [@apify/mcpc](https://github.com/apify/mcpc) | Requires `mcpc` 0.7.x session-first CLI (`mcpc connect <url> @session`). Pre-0.7.0 syntax is obsolete. |
+| **Web** | `ego-browser` | [citrolabs/ego-lite](https://github.com/citrolabs/ego-lite) · [ego-browser skill](https://github.com/citrolabs/ego-lite/blob/main/skills/ego-browser/SKILL.md) | Refuse to start (`RUNNER_SKILL_MISSING`) if `ego-browser` skill/CLI is missing. If running remotely over SSH, remote screenshots **must be retrieved via SCP** to local `evidences/`. |
+| **Mobile** | `test-by-maestro` | [test-by-maestro](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-maestro) · [Maestro CLI](https://maestro.dev) | Refuse to start if `test-by-maestro` skill or Maestro CLI (`maestro --version` ≥ 2.10.0 / 2.11.0) is missing. Requires Xcode for iOS Simulator or ADB for Android. If running over SSH, retrieve remote JUnit XML/screenshots via SCP. |
+| **MCP** | `test-by-mcpc-cli` | [test-by-mcpc-cli](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-mcpc-cli) · [@apify/mcpc](https://github.com/apify/mcpc) | Refuse to start if `test-by-mcpc-cli` skill or `mcpc` CLI is missing. Requires `mcpc` 0.7.x session-first CLI (`mcpc connect <url> @session`). Pre-0.7.0 syntax is obsolete. |
 | **CLI** | Native process runner | Node.js ≥ 22, Bash/Zsh, POSIX tools | Bound process handles with real stdout/stderr capture and exit code checks. |
 
-### Remote browser artifact transport (SCP)
-When `ego-browser` runs against a remote host (e.g., via SSH tunnel to a remote browser machine), browser scripts execute remotely and write screenshots/downloads to the **remote filesystem**. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` before sealing the execution submission:
+### Remote artifact transport (SCP)
+When `ego-browser` (e.g., via SSH tunnel to remote browser host `tugce`) or `test-by-maestro` (via SSH to a remote macOS simulator host) runs against a remote host, scripts execute remotely and write screenshots, test logs, and JUnit XML to the **remote filesystem**. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` before sealing the execution submission:
 - **Enforce absolute remote paths**: `scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCE_PATH"` (OpenSSH 9.0+ defaults to SFTP and resolves unanchored paths relative to user home).
 - **Escape special characters**: Quote paths on both sides to prevent remote shell splitting on spaces or query parameters.
 - **Protocol fallback**: If the remote host lacks SFTP subsystem support, pass `scp -O` to use the legacy SCP protocol.
@@ -81,13 +83,19 @@ When authoring or executing scenarios with conditional logic or fallback branche
 1. **Distinguish Execution Faults from Clean Falsity**:
    An unhandled exception, network timeout, HTTP 500 error, or browser crash is an **execution failure**, NOT a condition evaluating to `false`. Treating a crash as a negative condition and taking the fallback branch silently masks critical bugs. If an action throws or times out unexpectedly, fail the step immediately.
 2. **Explicit Condition Waits over Instantaneous Checks**:
-   Modern web apps render asynchronously with client-side hydration. Checking `if (element.isVisible())` instantaneously evaluates `false` prematurely. Always use bounded condition waits (`waitForSelector`, `waitForFunction`) with an explicit timeout before concluding an element is absent.
+   Modern web apps render asynchronously with client-side hydration. Checking `if (element.isVisible())` instantaneously evaluates `false` prematurely. Always use bounded condition waits (`waitForSelector`, `waitForFunction`, `toBeVisible()`) with an explicit timeout before concluding an element is absent.
 3. **Atomic State Isolation & Teardown between Branches**:
    If Branch A partially executes (fills an input, mutates local storage, clicks a toggle) before failing, Branch B runs in a dirty DOM state. Enforce a state reset (page reload or fixture reset) before executing a fallback branch.
 4. **Bounded Fallback Depth (No Circular Loops)**:
    Limit fallback depth to at most 1 (`fallback_depth <= 1`). Never allow "if A fails try B; if B fails try A" circular loops that burn tokens and hang execution.
 5. **Session Expiration Guard**:
    Check for HTTP 401/403 or URL redirection to login before evaluating branch conditions to prevent misattributing expired credentials to application UI absence.
+6. **Non-Idempotent Side Effects & Transactional Integrity**:
+   If Branch A mutates state (submits a payment, creates an account, writes to a database) before encountering a UI failure, taking Branch B without rollback causes duplicate mutations, 409 Conflict errors, or double charges. Any branch containing mutating side effects must be strictly idempotent or provide an explicit transactional cleanup/rollback step before Branch B executes.
+7. **Observable Fallback Recording (No Silent Concealment)**:
+   Taking a fallback branch must never result in an invisible `PASS` that conceals primary flow regressions. The execution observation must record `FALLBACK_TAKEN` with evidence detailing why Branch A did not execute.
+8. **Branch Oracle & Verification Clarity**:
+   The executor must explicitly record branch decision points, entry conditions, and selected paths so that independent blind verifiers know exactly which contract was evaluated.
 
 ## Parallelism and loop optimization
 

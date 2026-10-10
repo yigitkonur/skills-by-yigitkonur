@@ -14,8 +14,8 @@ How to organize and write reference files that agents can effectively consume.
 │   ├── category-b/
 │   │   └── guide.md
 │   └── shared-reference.md     # Top-level refs for cross-cutting concerns
-├── scripts/                    # Optional — executable helpers
-│   └── setup.sh
+├── scripts/                    # Optional — executable helpers (Node ESM or Python)
+│   └── setup.mjs
 └── assets/                     # Optional — templates, static files
     └── template.html
 ```

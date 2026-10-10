@@ -13,20 +13,21 @@ The harness verifies these prerequisites during preflight and refuses to start i
 
 ## Model selection & reasoning configuration per provider
 
-Automated test loops require fast turnaround, accurate tool invocation, and token discipline. Model selection differs fundamentally across providers: **Anthropic splits models by family, whereas Codex and Gemini split capabilities primarily by reasoning effort.**
+Automated test loops require fast turnaround, accurate tool invocation, and token discipline. Configure models strictly per provider:
 
 1. **Anthropic**:
-   - **Models**: Use `sonnet-5.5` or `haiku-5.5` (unless a newer version has come out, in which case use the newer one).
-   - **Reasoning**: *Omitted*. Anthropic sorts models by family rather than reasoning tiers; no reasoning level is needed.
-   - **Prohibition**: Never use heavy flagship family models like Opus for automated execution or verification loops.
+   - **Models**: Use `sonnet-5.5` or `haiku-5.5` (or newer, such as `claude-3.7-sonnet`).
+   - **Reasoning**: Set reasoning effort to **`low` or `medium`** (cap extended thinking budget to 1,024–2,048 tokens; disable for routine deterministic steps).
+   - **Prohibition**: **NEVER use Opus** for automated test loops. Opus is 5x more expensive ($15/$75 per MTok vs $3/$15), has higher latency on multi-turn tool calling, and does not improve UI/assertion accuracy.
 
 2. **Codex**:
-   - **Simple ops** (routine execution, CLI commands, basic UI navigation): `gpt-6-luna` with `xhigh` reasoning effort. `luna` is a compact, lightweight model, so `xhigh` reasoning keeps execution and assertions robust without inflating token costs.
-   - **Evidence checks** (verifiers, assertion checks, artifact analysis): `gpt-6.1-sol` with `medium` reasoning effort.
+   - **Simple ops** (routine execution, CLI commands, basic UI navigation): `gpt-6-luna` with **`low`** reasoning effort. Avoid `xhigh`, which burns 10,000+ reasoning tokens on routine commands and triggers timeouts.
+   - **Evidence checks** (verifiers, assertion checks, artifact analysis): `gpt-6.1-sol` with **`medium`** reasoning effort.
 
 3. **Gemini**:
-   - **Simple ops** (routine execution, basic command loops): `gemini-3.8-flash` with `medium` reasoning effort.
-   - **Everything else** (evidence checks, verification, diagnosis, planning): `gemini-3.8-flash` with `high` reasoning effort.
+   - **Simple ops** (routine execution, basic command loops): `gemini-3.8-flash` with **`low`** reasoning effort for high throughput and rapid tool calls.
+   - **Evidence checks & verification**: `gemini-3.8-flash` with **`medium`** reasoning effort.
+   - **Deep diagnosis & complex planning**: `gemini-3.8-flash` with **`high`** reasoning effort.
 
 ## Map host capabilities once
 
@@ -87,8 +88,8 @@ expectations unresolved.
 
 Use installed tool documentation/help to bind commands during Wave 0:
 - **Web (`ego-browser`)**: Verify browser daemon/CLI is running.
-  - *Remote Browser Filesystem Boundary*: When `ego-browser` runs over an SSH tunnel to a remote machine, screenshots and downloaded files are written to the remote filesystem. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` using absolute remote paths and proper shell quoting (`scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCE_PATH"`) before submitting.
-- **Mobile (`test-by-maestro`)**: Verify `maestro --version` ≥ 2.11.0, active simulator/device, and offline YAML syntax with `maestro check-syntax`.
+  - *Remote Browser Filesystem Boundary*: When `ego-browser` runs over an SSH tunnel to a remote browser machine (e.g. `tugce`), screenshots and downloaded files are written to the remote filesystem. The executor must transfer remote artifacts to the local campaign's `evidences/` path via hardened `scp` using absolute remote paths and proper shell quoting (`scp -p "$REMOTE_HOST:$ABSOLUTE_REMOTE_PATH" "$LOCAL_EVIDENCE_PATH"`) before submitting.
+- **Mobile (`test-by-maestro`)**: Verify `maestro --version` reports `2.10.0` or `2.11.0`+, active simulator/device, and offline YAML syntax with `maestro check-syntax`. When running over SSH to a remote macOS simulator host, retrieve JUnit XML reports (`--format junit`) and screenshots via `scp`.
 - **MCP (`test-by-mcpc-cli`)**: Verify `mcpc --version` reports `0.7.x` and connect using session-first syntax (`mcpc connect <target> @session`).
 - **Cloudflare tunnels**: Use only when remote inspection requires a public HTTP endpoint.
 
