@@ -94,12 +94,8 @@ name: agent-tools
 
 **Root cause**: Description is too vague or missing trigger phrases.
 
-**Quick diagnosis**: Ask Claude:
-```
-"When would you use the [skill-name] skill?"
-```
-
-Claude quotes the description back. If the answer doesn't match your intended use cases, the description needs work.
+**Quick diagnosis**: Test with 3–5 representative user queries (including paraphrased variants).
+Do NOT ask the model directly "When would you use this skill?" — models will rationalize and quote descriptions back without reflecting real routing mechanics. If the skill fails to load on actual task queries, the description lacks natural trigger keywords or context verbs.
 
 **Common description problems**:
 
@@ -172,8 +168,8 @@ description: Data visualization and charting. Do NOT use for statistical
 **Diagnosis checklist**:
 
 1. **Verify MCP is connected**
-   - Claude.ai: Settings > Extensions > [Service] → should show "Connected"
-   - Claude Code: Check MCP server configuration
+   - Check MCP client configuration (`claude_desktop_config.json`, `.mcp.json`, or environment variables)
+   - Claude Code / Agent CLI: Check MCP server status via CLI commands or diagnostic logs
 
 2. **Test MCP independently**
    ```

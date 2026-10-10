@@ -70,9 +70,10 @@ If `create_issue` fails with 403:
 - API key may lack write permissions
 - Ask user to verify token scopes in Linear settings
 
-If connection times out:
-- Verify MCP server is running (Settings > Extensions)
-- Try reconnecting: Settings > Extensions > Linear > Reconnect
+If connection times out or fails to resolve:
+- Verify MCP server process is running and configured in client JSON (`claude_desktop_config.json`, `.mcp.json`, or environment settings)
+- Check MCP server logs for authentication, network, or transport errors
+- Verify required tool permissions are granted in `allowed-tools` if specified
 ```
 
 ## Multi-MCP coordination
@@ -138,7 +139,7 @@ Then test the skill workflow:
 
 | Test | Expected |
 |---|---|
-| MCP connected | Settings shows "Connected" |
+| MCP connected | Server starts and tools are enumerated in client environment |
 | Tool names match | Skill references correct MCP tool names |
 | Auth valid | API keys not expired, correct scopes |
 | Data flows | Output from one call feeds correctly into next |
