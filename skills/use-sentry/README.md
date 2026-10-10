@@ -1,6 +1,6 @@
 # use-sentry
 
-Comprehensive Sentry intelligence and operations suite. Use when initializing Sentry in any project from scratch (with web research up to 20 keywords for stack-specific patterns like MCP servers or scrapers), auditing an existing Sentry setup across 4 enterprise feature pillars, or debugging production incidents, stack traces, and slow spans using the token-efficient 4-rung CLI funnel.
+Comprehensive Sentry intelligence and operations suite. Use when initializing Sentry in any project from scratch (with web research up to 20 keywords for stack-specific patterns like Swift/Apple, MCP servers, AI/LLM, Next.js, or cloud browsers), auditing an existing Sentry setup across full enterprise observability pillars (OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, AI/LLM, MCP), or debugging production incidents and stack traces using the token-efficient 4-rung CLI funnel powered by Seer AI.
 
 **Category:** observability
 

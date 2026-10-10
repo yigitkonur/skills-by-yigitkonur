@@ -16,7 +16,7 @@ for arg in "$@"; do
     echo ""
     echo "Examples:"
     echo "  $0 http://localhost:3000/api/monitoring/tunnel"
-    echo "  $0 4512053148975104"
+    echo "  $0 123456"
     exit 0
   fi
 done
@@ -29,7 +29,7 @@ if [[ "${INPUT}" =~ ^[0-9]+$ || "${INPUT}" =~ ^https://[^@]+@ ]]; then
   TUNNEL_URL="${APP_BASE}/api/monitoring/tunnel"
 else
   TUNNEL_URL="${INPUT}"
-  PROJECT_ID="${PROJECT_ID:-4512053148975104}"
+  PROJECT_ID="${SENTRY_PROJECT_ID:-123456}"
 fi
 
 echo "=== Sentry Network & Application Reverse Proxy Diagnostic ==="

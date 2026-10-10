@@ -1,75 +1,98 @@
 # Stack Traces & Sourcemap Build Pipeline
 
-How to map minified production bundle errors back to original TypeScript/JavaScript source lines using Sentry CLI and release pipelines.
+How to map minified production bundle errors back to original TypeScript/JavaScript source lines using modern **Debug IDs** and Sentry bundler plugins.
 
-## The Minification Problem
+## The Modern Solution: Debug IDs
 
-Without sourcemaps, production error stack traces display:
-```text
-TypeError: Cannot read property 'map' of undefined
-    at e.extract (https://cdn.example.com/app.min.js:1:14231)
-    at t.process (https://cdn.example.com/app.min.js:1:982)
-```
-Engineers cannot identify the offending line or variable name.
+Historically, Sentry relied strictly on matching release names (`release` + `dist`) between source code and uploaded sourcemaps.
+Modern Sentry uses **Debug IDs**:
+1. During build time, Sentry injects a unique deterministic UUID snippet into each compiled `.js` file and its corresponding `.map` file.
+2. When an error occurs in production, the runtime stack trace includes the embedded Debug ID.
+3. Sentry matches the error to the exact uploaded sourcemap instantly, regardless of release tagging mismatches or multi-bundle architectures.
 
-With sourcemaps uploaded to Sentry:
-```text
-TypeError: Cannot read property 'map' of undefined
-    at extractResults (src/core/extract.ts:42:18)
-    at processPipeline (src/core/pipeline.ts:112:5)
-```
+---
 
-## Step 1: Configure Build Tool to Emit Sourcemaps
+## Approach A: Official Bundler Plugins (Recommended)
 
-### TypeScript (`tsconfig.json`)
-```json
-{
-  "compilerOptions": {
-    "sourceMap": true,
-    "inlineSources": true
-  }
-}
+The simplest and most reliable way to inject Debug IDs and upload sourcemaps is using Sentry's bundler plugins during your build.
+
+### 1. Vite (`vite.config.ts`)
+
+```bash
+npm install --save-dev @sentry/vite-plugin
 ```
 
-### Vite / Rollup (`vite.config.ts`)
 ```typescript
+import { defineConfig } from 'vite';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+
 export default defineConfig({
   build: {
-    sourcemap: true, // or 'hidden' so maps are not published to public CDN
+    sourcemap: true, // or 'hidden' so source maps are not publicly exposed
   },
+  plugins: [
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      telemetry: false,
+    }),
+  ],
 });
 ```
 
-## Step 2: Upload Sourcemaps via Sentry CLI
-
-In your CI/CD pipeline (e.g. GitHub Actions):
+### 2. Webpack (`webpack.config.js`)
 
 ```bash
-# 1. Define release version (e.g. git commit sha or package version)
-export SENTRY_RELEASE=$(git rev-parse --short HEAD)
-
-# 2. Create release
-sentry-cli releases new "$SENTRY_RELEASE"
-
-# 3. Associate Git commits for repo line-linking
-sentry-cli releases set-commits "$SENTRY_RELEASE" --auto
-
-# 4. Upload sourcemaps from build directory
-sentry-cli sourcemaps upload --release "$SENTRY_RELEASE" ./dist
-
-# 5. Finalize release
-sentry-cli releases finalize "$SENTRY_RELEASE"
+npm install --save-dev @sentry/webpack-plugin
 ```
 
-## Step 3: Delete Sourcemaps from Public CDN (Optional)
+```javascript
+const { sentryWebpackPlugin } = require('@sentry/webpack-plugin');
 
-If you do not want public users downloading `.map` files:
+module.exports = {
+  devtool: 'source-map',
+  plugins: [
+    sentryWebpackPlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+    }),
+  ],
+};
+```
+
+---
+
+## Approach B: Sentry CLI with Debug IDs (`inject` + `upload`)
+
+If using custom build scripts, esbuild, or CI/CD pipelines without bundler plugins:
+
 ```bash
-# Upload to Sentry first
-sentry-cli sourcemaps upload --release "$SENTRY_RELEASE" ./dist
+# 1. Build your application with sourcemaps enabled
+npm run build
 
-# Remove local .map files before uploading bundle to public S3 / Cloudflare Pages
+# 2. Inject Debug IDs into generated minified JS and sourcemaps
+sentry-cli sourcemaps inject ./dist
+
+# 3. Upload sourcemaps to Sentry
+sentry-cli sourcemaps upload ./dist
+
+# 4. Optional: Delete local .map files before deploying to public CDN
 rm ./dist/*.map
 ```
 
-Sentry securely stores the sourcemaps and de-obfuscates stack traces automatically on ingest.
+---
+
+## Approach C: Classic Release-Based Pipeline (Legacy Fallback)
+
+If using older SDK versions (< 7.45.0) that do not support Debug IDs:
+
+```bash
+export SENTRY_RELEASE=$(git rev-parse --short HEAD)
+
+sentry-cli releases new "$SENTRY_RELEASE"
+sentry-cli releases set-commits "$SENTRY_RELEASE" --auto
+sentry-cli sourcemaps upload --release "$SENTRY_RELEASE" ./dist
+sentry-cli releases finalize "$SENTRY_RELEASE"
+```

@@ -2,16 +2,16 @@
 set -euo pipefail
 
 # Automated Sentry Feature Audit Scanner
-# Evaluates project adoption across the 4 Sentry Feature Pillars.
-# Supports multi-lingual codebases: Node/JavaScript/TypeScript, Python, Go.
+# Evaluates project adoption across Enterprise Sentry Observability Pillars.
+# Supports multi-lingual codebases: JavaScript/TypeScript, Python, Go, Swift/Apple.
 
 for arg in "$@"; do
   if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
     echo "Usage: $0 [TARGET_DIR]"
     echo ""
     echo "Automated Sentry Feature Audit Scanner."
-    echo "Evaluates project adoption across the 4 Sentry Feature Pillars."
-    echo "Supports JavaScript/TypeScript, Python, and Go codebases."
+    echo "Evaluates project adoption across Enterprise Sentry Observability Pillars."
+    echo "Supports JavaScript/TypeScript, Python, Go, and Swift/Apple codebases."
     echo ""
     echo "Arguments:"
     echo "  TARGET_DIR   Directory of the project to audit (default: .)"
@@ -19,7 +19,7 @@ for arg in "$@"; do
     echo ""
     echo "Examples:"
     echo "  $0 ."
-    echo "  $0 /path/to/my-python-service"
+    echo "  $0 /path/to/my-service"
     exit 0
   fi
 done
@@ -46,6 +46,9 @@ fi
 if [[ -f "${TARGET_DIR}/go.mod" || -f "${TARGET_DIR}/go.sum" ]] || find "${TARGET_DIR}" -maxdepth 3 \( -name node_modules -o -name .git -o -name vendor \) -prune -o -name "*.go" -print 2>/dev/null | grep -q .; then
   DETECTED_ECOSYSTEMS+=("Go")
 fi
+if [[ -f "${TARGET_DIR}/Package.swift" ]] || find "${TARGET_DIR}" -maxdepth 3 \( -name .build -o -name .git -o -name DerivedData \) -prune -o \( -name "*.swift" -o -name "*.xcodeproj" -o -name "*.xcworkspace" \) -print 2>/dev/null | grep -q .; then
+  DETECTED_ECOSYSTEMS+=("Swift/Apple")
+fi
 
 if [[ ${#DETECTED_ECOSYSTEMS[@]} -gt 0 ]]; then
   echo "Detected Ecosystem: $(IFS=', '; echo "${DETECTED_ECOSYSTEMS[*]}")"
@@ -66,6 +69,8 @@ check_feature() {
     --exclude-dir=venv \
     --exclude-dir=dist \
     --exclude-dir=build \
+    --exclude-dir=.build \
+    --exclude-dir=DerivedData \
     --exclude-dir=.next \
     --exclude-dir=__pycache__ \
     --exclude-dir=.turbo \
@@ -77,45 +82,62 @@ check_feature() {
     --exclude="*-lock.json" \
     --exclude="package-lock.json" \
     "${pattern}" "${TARGET_DIR}" 2>/dev/null; then
-    printf "  [✅ PRESENT] %-30s (%s)\n" "${name}" "${pillar}"
+    printf "  [✅ PRESENT] %-32s (%s)\n" "${name}" "${pillar}"
     return 0
   else
-    printf "  [⚠️ MISSING] %-30s (%s)\n" "${name}" "${pillar}"
+    printf "  [⚠️ MISSING] %-32s (%s)\n" "${name}" "${pillar}"
     return 1
   fi
 }
 
 echo ""
-echo "--- Pillar 1: Core Error Tracking & Resolution ---"
-check_feature "Exception Capture" "(captureException|capture_exception|CaptureException|registerProcessErrorHandlers|uncaughtException|sentry\.CaptureMessage|capture_message)" "Error Tracking" || true
-check_feature "Sourcemaps Pipeline" "(sourceMap|sourcemap|sourcemaps upload|sentry-cli sourcemaps|upload-sourcemaps|upload-dif)" "Error Tracking" || true
+echo "--- Core Error Tracking & Grouping ---"
+check_feature "Exception Capture" "(captureException|capture_exception|CaptureException|uncaughtException|sentry\.CaptureMessage|capture_message|SentrySDK\.capture)" "Error Tracking" || true
+check_feature "Sourcemaps / Debug IDs" "(sourceMap|sourcemap|sourcemaps inject|sourcemaps upload|sentry-cli debug-files|sentryVitePlugin|sentryWebpackPlugin)" "Error Tracking" || true
 check_feature "Custom Fingerprinting" "(setFingerprint|set_fingerprint|SetFingerprint|fingerprint|Fingerprint)" "Error Tracking" || true
 check_feature "Inbound Filtering" "(beforeSend|before_send|BeforeSend|inbound-filters|ignoreErrors|ignore_errors|IgnoreErrors|before_send_transaction|beforeSendTransaction)" "Error Tracking" || true
 
 echo ""
-echo "--- Pillar 2: Contextual Breadcrumbs & Environment ---"
-check_feature "System Breadcrumbs" "(addBreadcrumb|add_breadcrumb|AddBreadcrumb)" "Breadcrumbs" || true
-check_feature "UI Breadcrumbs" "(breadcrumbsIntegration|recordUiAction|breadcrumbs|Breadcrumbs)" "Breadcrumbs" || true
+echo "--- Contextual Breadcrumbs & Environment ---"
+check_feature "System Breadcrumbs" "(addBreadcrumb|add_breadcrumb|AddBreadcrumb|SentrySDK\.addBreadcrumb)" "Breadcrumbs" || true
+check_feature "UI Breadcrumbs" "(breadcrumbsIntegration|recordUiAction|breadcrumbs|Breadcrumbs|enableUserInteractionTracing)" "Breadcrumbs" || true
 check_feature "Custom Tags" "(setTag|set_tag|SetTag|tags:\s*\{|tags=\s*\{|set_tags|setTags|SetTags)" "Breadcrumbs" || true
-check_feature "User Feedback" "(captureFeedback|capture_feedback|CaptureFeedback|showReportDialog)" "Breadcrumbs" || true
+check_feature "User Feedback" "(feedbackIntegration|captureFeedback|capture_feedback|CaptureFeedback|showReportDialog)" "Breadcrumbs" || true
 check_feature "Device Context" "(setContext|set_context|SetContext)" "Breadcrumbs" || true
 
 echo ""
-echo "--- Pillar 3: Log Management & Analytics ---"
+echo "--- Logging & Structured Analytics ---"
 check_feature "Structured Logs" "(Sentry\.logger|sentry_sdk\.integrations\.logging|LoggingIntegration|winston-transport|pino-sentry|sentry\.NewHub)" "Logging" || true
 check_feature "Pin-to-Top Logs" "(severity:\s*['\"]critical['\"]|fatal_assertion|critical_failure|severity.*critical)" "Logging" || true
 
 echo ""
-echo "--- Pillar 4: Performance, Tracing & Replay ---"
+echo "--- Distributed Tracing & Profiling ---"
 check_feature "Distributed Tracing" "(startSpan|startTransaction|start_span|start_transaction|StartSpan|sentry-trace|traces_sample_rate|tracesSampleRate|TracesSampleRate)" "Performance" || true
-check_feature "AsyncLocalStorage" "(AsyncLocalStorage|withContext|withScope|with_scope|WithScope|isolation_scope|new_scope|ConfigureScope|configure_scope)" "Performance" || true
-check_feature "Session Replay" "(replayIntegration|replaysSessionSampleRate|replaysOnErrorSampleRate|replays_session_sample_rate)" "Performance" || true
+check_feature "Continuous Profiling" "(profilesSampleRate|profiles_sample_rate|profileSessionSampleRate|profiling-node|ContinuousProfiling)" "Performance" || true
 check_feature "Cron Monitors" "(withMonitor|with_monitor|monitor\(|check-ins|capture_checkin|captureCheckIn|CaptureCheckIn|crons?\.monitor)" "Performance" || true
+check_feature "Application Metrics" "(metrics\.count|metrics\.gauge|metrics\.distribution|metrics\.set|sentry_sdk\.metrics)" "Performance" || true
 
 echo ""
-echo "--- Network & Security Resilience ---"
+echo "--- Privacy, Replay & Local Dev ---"
+check_feature "Session Replay" "(replayIntegration|replaysSessionSampleRate|replaysOnErrorSampleRate|sessionReplay)" "Replay" || true
+check_feature "Credential Redaction" "(redact|Filtered|beforeBreadcrumb|before_breadcrumb|BeforeBreadcrumb|maskAllText)" "Security" || true
+check_feature "Spotlight Local Dev" "(spotlight:\s*|spotlight=True|spotlight\.init)" "Dev Tools" || true
+
+echo ""
+echo "--- AI, LLM & MCP Observability ---"
+check_feature "AI / LLM Monitoring" "(openAiIntegration|anthropicIntegration|OpenAIIntegration|AnthropicIntegration|LangchainIntegration|gen_ai)" "AI/LLM" || true
+check_feature "MCP Server Telemetry" "(McpServer|StdioServerTransport|sentry_sdk\.integrations\.mcp|mcp\.tool)" "MCP" || true
+
+echo ""
+echo "--- Apple / Native Diagnostics ---"
+check_feature "App Hang Tracking" "(enableAppHangTracking|appHangTimeoutInterval)" "Apple Native" || true
+check_feature "MetricKit Integration" "(enableMetricKit|MXDiagnosticPayload)" "Apple Native" || true
+check_feature "Watchdog OOM Tracking" "(enableWatchdogTerminationTracking)" "Apple Native" || true
+check_feature "SwiftUI View Tracing" "(sentryTrace|SentryTracedView)" "Apple Native" || true
+
+echo ""
+echo "--- Network & Resilience ---"
 check_feature "Envelope Tunneling" "(tunnel:\s*|tunnelRoute|/envelope/|tunnel=)" "Network" || true
-check_feature "Credential Redaction" "(redact|Filtered|beforeBreadcrumb|before_breadcrumb|BeforeBreadcrumb)" "Security" || true
 check_feature "Offline Isolation Gate" "(!dsn|offline.*gate|getClient|dsn=None|dsn=\"\"|DSN == \"\"|dsn:\s*['\"]['\"]|enabled:\s*false|enabled=\s*False)" "Testing" || true
 
 echo ""

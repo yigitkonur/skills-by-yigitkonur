@@ -1,53 +1,68 @@
 # User Feedback Dialog & Programmatic API
 
-How to collect user crash descriptions following an unhandled error and link feedback directly to the Sentry event ID.
+How to collect user crash descriptions, feature requests, and bug reports correlated directly with Sentry errors and session replays.
 
-## 1. Browser User Feedback Dialog (React / Next.js)
+## 1. Browser User Feedback Widget (`feedbackIntegration`)
 
-When an error boundary catches a render crash, prompt the user for feedback:
+Modern Sentry (v8+) provides the native User Feedback integration with customizable floating buttons, modal forms, and screenshot capture:
 
 ```typescript
-import * as Sentry from '@sentry/react';
+import * as Sentry from '@sentry/browser'; // or @sentry/react / @sentry/nextjs
 
-function ErrorFallback({ error, resetErrorBoundary, eventId }: any) {
-  return (
-    <div>
-      <h2>Something went wrong.</h2>
-      <button onClick={() => Sentry.showReportDialog({ eventId })}>
-        Report feedback
-      </button>
-      <button onClick={resetErrorBoundary}>Try again</button>
-    </div>
-  );
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  integrations: [
+    Sentry.feedbackIntegration({
+      // Auto-inject a floating feedback button in the bottom right corner
+      autoInject: true,
+      colorScheme: 'system',
+      formTitle: 'Report an Issue',
+      submitButtonLabel: 'Send Feedback',
+      isEmailRequired: true,
+      showScreenshot: true,
+    }),
+  ],
+});
+```
+
+To trigger the feedback modal manually from your own button or error boundary:
+```typescript
+const feedback = Sentry.getFeedback();
+if (feedback) {
+  feedback.openDialog();
 }
 ```
 
-## 2. Programmatic User Feedback Submission (REST API)
+## 2. Programmatic User Feedback Submission (`Sentry.captureFeedback`)
 
-If you collect feedback through a custom in-app modal or backend API:
+When building a custom feedback modal or collecting feedback from a backend/mobile API:
 
 ```typescript
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node'; // or @sentry/browser
 
-export async function submitUserCrashFeedback(params: {
-  eventId: string;
+export async function submitCrashFeedback(params: {
+  eventId?: string;
   name: string;
   email: string;
-  comments: string;
+  message: string;
 }) {
-  const userFeedback = {
-    event_id: params.eventId,
+  // CRITICAL: Modern Sentry SDK requires 'message' (not 'comments')
+  Sentry.captureFeedback({
+    message: params.message,
     name: params.name,
     email: params.email,
-    comments: params.comments,
-  };
-
-  Sentry.captureFeedback(userFeedback);
+    associatedEventId: params.eventId,
+  });
 }
 ```
 
-## REST API Direct Ingest:
-`POST https://sentry.io/api/0/projects/{org_slug}/{project_slug}/user-feedback/`
+## 3. Direct REST API Ingest
+
+`POST https://<sentry-host>/api/0/projects/{org_slug}/{project_slug}/user-feedback/`
+
+Header: `Authorization: Bearer <AUTH_TOKEN>` or Client DSN auth.
+
+Payload:
 ```json
 {
   "event_id": "9ec60100773b4f648b265b1618c774f0",
@@ -56,4 +71,4 @@ export async function submitUserCrashFeedback(params: {
   "comments": "The page crashed when I clicked 'Export to CSV'."
 }
 ```
-Sentry automatically pins the user's comments to the top of the issue layout in the dashboard.
+*Note: In the REST API HTTP payload, `comments` is accepted by the ingest endpoint, but the modern SDK function `Sentry.captureFeedback()` expects `message`.*

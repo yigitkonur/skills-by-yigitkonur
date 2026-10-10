@@ -12,27 +12,37 @@ sentry fastify plugin request context error handler trace propagation open telem
 sentry nextjs app router server components instrumentation hook tunnel rewrites edge runtime
 ```
 
-## 3. MCP Server (stdio isolation)
+## 3. Swift & Apple Ecosystem (macOS, iOS, visionOS)
 ```text
-sentry mcp server model context protocol stdio stderr transport breadcrumbs tool call
+sentry cocoa swift spm app hang tracking metrickit watchdog oom swiftui sentryTrace replay
 ```
 
-## 4. Cloud Browser / Playwright Scraper
+## 4. MCP Server & Remote MCP Integration
+```text
+sentry mcp server model context protocol stdio stderr transport auto instrumentation mcp.sentry.dev
+```
+
+## 5. AI & LLM Observability
+```text
+sentry ai llm monitoring openai anthropic langchain gen_ai prompt tokens spans pii redaction
+```
+
+## 6. Cloud Browser / Playwright Scraper
 ```text
 sentry playwright scraper browser cdp ws url jwt redaction breadcrumbs span traces
 ```
 
-## 5. Python FastAPI / Celery Worker
+## 7. Python FastAPI / Celery Worker
 ```text
 sentry sdk python fastapi celery distributed tracing spans async context envelope
 ```
 
-## 6. Go Gin Middleware
+## 8. Go Gin Middleware
 ```text
 sentry go gin middleware recovery traceparent context distributed tracing
 ```
 
-## 7. Standalone Node CLI / Bundled Scripts
+## 9. Standalone Node CLI / Bundled Scripts
 ```text
 sentry cli standalone script unhandledRejection uncaughtException flush close process exit
 ```

@@ -21,7 +21,23 @@ echo "=== Sentry Credential Pre-flight Check ==="
 
 TOKEN=""
 SOURCE=""
+BASE_URL=""
 
+# 1. Detect Base URL (Regional cluster awareness)
+if [[ -n "${SENTRY_URL:-}" ]]; then
+  BASE_URL="${SENTRY_URL%/}"
+elif [[ -f "${HOME}/.sentryclirc" ]]; then
+  EXTRACTED_URL=$(awk -F '=' '/^url/ {gsub(/[ "]/, "", $2); print $2}' "${HOME}/.sentryclirc" | head -n 1 || true)
+  if [[ -n "${EXTRACTED_URL}" ]]; then
+    BASE_URL="${EXTRACTED_URL%/}"
+  fi
+fi
+
+if [[ -z "${BASE_URL}" ]]; then
+  BASE_URL="https://sentry.io"
+fi
+
+# 2. Detect Auth Token
 if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
   TOKEN="${SENTRY_AUTH_TOKEN}"
   SOURCE="environment variable (SENTRY_AUTH_TOKEN)"
@@ -44,11 +60,12 @@ TOKEN_LEN="${#TOKEN}"
 
 echo "✅ Sentry auth token detected from ${SOURCE}."
 echo "   Token type: ${TOKEN_PREFIX}... (${TOKEN_LEN} characters)"
+echo "   Target Sentry URL: ${BASE_URL}"
 
 echo "Checking organization access..."
 HTTP_STATUS=$(curl -s -o /tmp/sentry_orgs_check.json -w "%{http_code}" \
   -H "Authorization: Bearer ${TOKEN}" \
-  https://sentry.io/api/0/organizations/ || echo "000")
+  "${BASE_URL}/api/0/organizations/" || echo "000")
 
 if [[ "${HTTP_STATUS}" == "200" ]]; then
   ORG_COUNT=$(jq 'length' /tmp/sentry_orgs_check.json 2>/dev/null || echo "0")
@@ -56,7 +73,7 @@ if [[ "${HTTP_STATUS}" == "200" ]]; then
   jq -r '.[] | "   - \(.name) (slug: \(.slug))"' /tmp/sentry_orgs_check.json 2>/dev/null || true
   rm -f /tmp/sentry_orgs_check.json
 else
-  echo "❌ Authentication failed with HTTP status ${HTTP_STATUS}."
+  echo "❌ Authentication failed with HTTP status ${HTTP_STATUS} against ${BASE_URL}."
   rm -f /tmp/sentry_orgs_check.json
   exit 1
 fi
