@@ -16,8 +16,8 @@ Discovery channels:
 # Basic search — pass 3–20 keywords
 node scripts/skill-dl.mjs search "agent browser" "headless automation" "browser testing"
 
-# Or using the executable shim:
-bash scripts/skill-dl search "typescript" "mcp" "server" --top 20
+# Filter top results
+node scripts/skill-dl.mjs search "typescript" "mcp" "server" --top 20
 
 # Minimum recommended: at least 3 keywords
 # Maximum: 20 keywords per invocation
@@ -71,23 +71,23 @@ node scripts/skill-dl.mjs --where
 node scripts/skill-dl.mjs search typescript mcp server --top 20
 
 # Download skills from a file list
-node scripts/skill-dl.mjs urls.txt -o ./corpus --no-auto-category -f
+node scripts/skill-dl.mjs download urls.txt -o ./corpus --no-auto-category -f
 ```
 
 ### Quick start
 
 ```bash
 # Single skill download
-node scripts/skill-dl.mjs https://skills.sh/vercel-labs/agent-browser/agent-browser -o ./corpus
+node scripts/skill-dl.mjs download https://skills.sh/vercel-labs/agent-browser/agent-browser -o ./corpus
 
 # Download by owner/repo/skill triple
-node scripts/skill-dl.mjs anthropics/skills/mcp-builder -o ./corpus
+node scripts/skill-dl.mjs download anthropics/skills/mcp-builder -o ./corpus
 
 # Batch from file
-node scripts/skill-dl.mjs urls.txt -o ./corpus --no-auto-category -f
+node scripts/skill-dl.mjs download urls.txt -o ./corpus --no-auto-category -f
 
 # Dry run first
-node scripts/skill-dl.mjs urls.txt --dry-run
+node scripts/skill-dl.mjs download urls.txt --dry-run
 ```
 
 ### Specification Inspection
@@ -118,7 +118,7 @@ The inspector verifies:
 | `-c <name>` | Force all into one category folder |
 | `-f` | Overwrite existing directories |
 | `--dry-run` | Preview only without cloning |
-| `-v` | Verbose output (shows resolved paths) |
+| `-v, --version` | Print script version information |
 | `--top <N>` | Limit search results to top N matches |
 | `--min-match <N>` | Minimum keyword hits required for search results |
 
@@ -143,7 +143,7 @@ Fallback: full-repo search for `SKILL.md` with matching parent dir name, then ro
 | `Cannot find module ... skill-dl.mjs` | Run from the repository root or provide the full path to `scripts/skill-dl.mjs`. |
 | Search returns 0 results | Check network connectivity and that `npx` is functional (`npx --version`). Try broader keywords. |
 | `[ERR] could not clone` | Repo is private, renamed, or deleted. Check the repository URL manually. |
-| `[ERR] not found in repo` | Skill name doesn't match any path in the repo. Run with `-v` to see resolved paths; the skill may use a custom directory layout. |
+| `[ERR] not found in repo` | Skill name doesn't match any path in the repo. Check whether the repo uses a custom layout or different branch. |
 | Need to retry failures | Pipe failed URLs from summary into a new file and re-run. |
 
 ## Using downloaded skills as evidence
