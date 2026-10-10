@@ -19,8 +19,8 @@ bash scripts/audit-project.sh
 Or manually check the codebase against the enterprise features:
 
 ### Pillar 1: Core Error Tracking & Resolution
-- [ ] **Exception Capture:** Are unhandled promise rejections, crashes, and edge workers monitored? (See `references/error-tracking/exception-capture.md`)
-- [ ] **Sourcemaps Pipeline:** Are sourcemaps generated with Debug IDs and uploaded during CI? (See `references/error-tracking/sourcemaps-pipeline.md`)
+- [ ] **Exception Capture:** Are unhandled promise rejections, crashes, and edge workers (Cloudflare/Node) monitored? (See `references/error-tracking/exception-capture.md` & `references/architectures/cloudflare-workers.md`)
+- [ ] **Sourcemaps Pipeline:** Are sourcemaps generated with Debug IDs and uploaded during CI (or via `upload_source_maps` in Wrangler)? (See `references/error-tracking/sourcemaps-pipeline.md`)
 - [ ] **Custom Fingerprinting:** Are custom grouping rules configured to merge redundant alerts? (See `references/error-tracking/fingerprinting-grouping.md`)
 - [ ] **Inbound Filters:** Are web crawlers, browser extensions, and noise errors dropped before quota billing? (See `references/error-tracking/inbound-filters.md`)
 - [ ] **Issue Merges/Splits:** Are duplicate clusters merged? (See `references/error-tracking/merges-and-splits.md`)
@@ -33,25 +33,26 @@ Or manually check the codebase against the enterprise features:
 - [ ] **Device Context:** Are runtime version, OS architecture, and memory stats attached? (See `references/breadcrumbs-context/device-runtime-context.md`)
 
 ### Pillar 3: Log Management & Analytics
-- [ ] **Structured Logs:** Are application logs indexed into Sentry with `traceId` correlation? (See `references/logging-analytics/structured-logs.md`)
+- [ ] **Structured Logs:** Are application logs indexed into Sentry via `Sentry.logger` or `pinoIntegration()` with `traceId` correlation? (See `references/logging-analytics/structured-logs.md`)
 - [ ] **Pin-to-Top Logs:** Are fatal log lines pinned to the issue header? (See `references/logging-analytics/pin-to-top-logs.md`)
 - [ ] **Log Explorer Queries:** Can you query logs by severity and trace? (See `references/logging-analytics/log-explorer-queries.md`)
 - [ ] **Discover Query Builder:** Are SQL-like queries used for trend analysis? (See `references/logging-analytics/discover-query-builder.md`)
 
 ### Pillar 4: Distributed Tracing & OpenTelemetry
-- [ ] **Distributed Tracing & Spans:** Are latency-critical operations wrapped with `startSpan`? (See `references/performance-replay/distributed-tracing-spans.md`)
-- [ ] **AsyncLocalStorage Context:** Is context bound across async execution flows? (See `references/performance-replay/asynclocalstorage-context.md`)
+- [ ] **Distributed Tracing & Spans:** Are latency-critical operations wrapped with `startSpan` and propagated over HTTP or Cloudflare RPC? (See `references/performance-replay/distributed-tracing-spans.md` & `references/architectures/cloudflare-workers.md`)
+- [ ] **AsyncLocalStorage Context:** Is context bound across async execution flows (`nodejs_compat` enabled on Workers)? (See `references/performance-replay/asynclocalstorage-context.md`)
 - [ ] **Spotlight Local Development:** Is the local sidecar enabled for zero-network local tracing? (See `references/performance-replay/spotlight-local-dev.md`)
 
 ### Pillar 5: Continuous Profiling & Runtime Diagnostics
-- [ ] **Continuous Profiling:** Is CPU and memory profiling enabled (`profilesSampleRate` / `profileSessionSampleRate`)?
-- [ ] **Native Diagnostics (Mobile/Apple):** Are App Hangs, MetricKit, and Watchdog OOM tracked? (See `references/architectures/swift-apple-ecosystem.md`)
+- [ ] **Continuous Profiling:** Is service-lifetime CPU profiling enabled (`profileSessionSampleRate` or manual start/stop)?
+- [ ] **Transaction Profiling (Legacy):** Is trace-coupled profiling configured via `profilesSampleRate`?
+- [ ] **Native Diagnostics (Mobile/Apple):** Are Apple MetricKit, Watchdog OOM, and TTID/TTFD tracked? (See `references/architectures/swift-apple-ecosystem.md`)
 
 ### Pillar 6: Cron & Uptime Monitors
-- [ ] **Cron Monitors:** Are scheduled cron jobs monitored via heartbeats (`withMonitor`, `captureCheckIn`)? (See `references/performance-replay/cron-monitors.md`)
+- [ ] **Cron Monitors:** Are scheduled cron jobs monitored via heartbeats (`withMonitor`, `captureCheckIn`, or Cloudflare Worker `scheduled` handlers)? (See `references/performance-replay/cron-monitors.md`)
 
 ### Pillar 7: Application Metrics
-- [ ] **Application Metrics:** Are real-time counters, distributions, and gauges tracked (`Sentry.metrics.count`, `gauge`, `distribution`)?
+- [ ] **Trace-Connected Metrics:** Are application counters, distributions, and span measurements tracked (`span.setMeasurement`, OTel metrics)?
 
 ### Pillar 8: Session Replay & Privacy Redaction
 - [ ] **Session Replay:** Is DOM or mobile view recording enabled with rage/dead click detection? (See `references/performance-replay/session-replay.md`)
@@ -59,7 +60,8 @@ Or manually check the codebase against the enterprise features:
 
 ### Pillar 9: AI, LLM & Model Context Protocol (MCP) Observability
 - [ ] **AI / LLM Monitoring:** Are token counts, prompts, completions, and model latencies tracked? (See `references/architectures/ai-llm-monitoring.md`)
-- [ ] **MCP Server Monitoring:** Are MCP tools auto-instrumented with stdio isolation? (See `references/architectures/sentry-mcp-integration.md`)
+- [ ] **MCP Server Monitoring:** Are MCP tools auto-instrumented with stdio isolation (`mcpServerIntegration`)? (See `references/architectures/mcp-server-sentry.md`)
+- [ ] **AI Assistant Integration:** Are AI agents connected via Claude Code plugin (`getsentry/sentry-mcp`), `sentry mcp`, or remote `mcp.sentry.dev`? (See `references/architectures/sentry-mcp-integration.md`)
 
 ---
 

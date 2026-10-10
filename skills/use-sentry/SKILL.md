@@ -1,43 +1,45 @@
 ---
 name: use-sentry
-description: "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
+description: "Use if setting up or auditing modern Sentry observability with Cloudflare Workers/Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
 disable-model-invocation: true
 metadata:
   author: Yigit Konur
-  version: 3.1.0
+  version: 3.2.0
   category: observability
-  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, ai, llm]
+  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, ai, llm, cloudflare-workers, cloudflare-pages]
 ---
 
 # Sentry
 
-The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
+The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Cloudflare Workers & Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
 
 ## The Enterprise Observability Pillars
 
 Modern Sentry extends beyond basic error catching into a unified, full-stack observability platform:
 1. **Error Monitoring & Exception Capture**: Automated unhandled exception capture, source maps with Debug IDs, contextual breadcrumbs, semantic issue grouping, and inbound noise filters.
 2. **OpenTelemetry & Distributed Tracing**: Native OpenTelemetry engine (`@sentry/opentelemetry`), W3C `traceparent` and `baggage` propagation, and end-to-end distributed span waterfall trees (`Sentry.startSpan`).
-3. **Continuous Profiling**: Low-overhead runtime CPU and memory profiling (`profilesSampleRate`, `profileSessionSampleRate`, `@sentry/profiling-node`) decoupled from individual transactions.
+3. **Continuous Profiling**: Low-overhead runtime CPU and memory profiling (`profileSessionSampleRate`, `@sentry/profiling-node`, or manual start/stop) decoupled from individual transactions. Distinguish from transaction-coupled profiling (`profilesSampleRate`, max 30s).
 4. **Cron & Uptime Monitoring**: Heartbeat check-ins and missed execution alerts for background queues and scheduled tasks (`Sentry.withMonitor`, `Sentry.captureCheckIn`).
-5. **Application Metrics**: Real-time telemetry counters, distributions, and gauges (`Sentry.metrics.count`, `Sentry.metrics.gauge`, `Sentry.metrics.distribution`). *(Note: Legacy beta `increment` and `set` were superseded).*
+5. **Trace-Connected Metrics**: Real-time telemetry counters, distributions, and gauges correlated with distributed traces (`Sentry.metrics.count`, `Sentry.metrics.gauge`, `Sentry.metrics.distribution`) or OpenTelemetry measurements (`span.setMeasurement`). *(Note: Standalone Custom Metrics/DDM was sunset in favor of span-correlated metrics).*
 6. **Session Replay & Privacy Redaction**: Video-like DOM and mobile view reconstruction correlated with error traces, enforced with strict privacy shields (`maskAllText`, `blockAllMedia`) and network allowlists.
-7. **Structured Logging & Analytics**: Log explorer queries, live streaming (`sentry log list -f`), trace-correlated log ingestion, and Discover SQL analytics.
+7. **Structured Logging & Analytics**: Official `Sentry.logger` API, native Pino integration (`pinoIntegration()`), Log Explorer queries, live streaming (`sentry log list -f`), and Discover SQL analytics.
 8. **AI & LLM Observability**: Native integrations for OpenAI, Anthropic, and LangChain tracking token usage (prompt/completion), latency, cost, and PII-sanitized prompt pipelines.
-9. **Model Context Protocol (MCP) Ecosystem**: Out-of-the-box MCP server auto-instrumentation (`McpServer` / `FastMCP`) with strict stdio isolation, and connecting AI coding assistants directly to Sentry's remote MCP server (`mcp.sentry.dev`).
-10. **Swift & Apple Ecosystem**: Native macOS, iOS, visionOS instrumentation via `sentry-cocoa` SPM, App Hang tracking, MetricKit OS crash/diagnostic payloads, Watchdog OOM detection, and SwiftUI `.sentryTrace`.
-11. **Spotlight Local Development Overlay**: Zero-overhead local developer sidecar (`@spotlightjs/spotlight`, `spotlight: true`) for instant browser trace visibility with zero SaaS quota consumption.
+9. **Model Context Protocol (MCP) Ecosystem**: Out-of-the-box MCP server auto-instrumentation (`mcpServerIntegration` for `@modelcontextprotocol/server` v2 and `@modelcontextprotocol/sdk` v1) with strict stdio isolation (`recordInputs`, `recordOutputs`), and connecting AI coding assistants directly to Sentry's remote MCP server (`https://mcp.sentry.dev/mcp`, Claude Code plugin `getsentry/sentry-mcp`, or CLI `sentry mcp`).
+10. **Swift & Apple Ecosystem**: Native macOS, iOS, visionOS instrumentation via `sentry-cocoa` SPM, SwiftUI `SentryTracedView` (supporting TTID/TTFD via `waitForFullDisplay`), MetricKit OS crash/diagnostic payloads (`enableMetricKit = true`, migrating from deprecated `enableAppHangTracking`), and Watchdog OOM detection.
+11. **Edge & Serverless Isolates (Cloudflare Workers & Pages)**: First-class edge isolate observability (`@sentry/cloudflare`, `sentryCloudflareVitePlugin`), build-time dependency instrumentation, `AsyncLocalStorage` via `nodejs_compat`, Durable Objects (`instrumentDurableObjectWithSentry`), Workflows, and Agents SDK telemetry.
+12. **Spotlight Local Development Overlay**: Zero-overhead local developer sidecar (`@spotlightjs/spotlight`, `spotlight: true`) for instant browser trace visibility with zero SaaS quota consumption.
 
 ## Decision tree (The 3 Modes)
 
 ```
 What is your objective?
 ├── Mode 1: Sentry is NOT in the project OR user says "set up / initialize Sentry"
-│   ├── Step 1: Detect runtime, framework & architecture (Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
+│   ├── Step 1: Detect runtime, framework & architecture (Cloudflare Workers/Pages, Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
 │   ├── Step 2: Research stack patterns via research-mcp (max 20 keywords): references/research/research-mcp-protocol.md
 │   ├── Step 3: Choose keyword matrix: references/research/stack-keyword-matrices.md
 │   ├── Step 4: Step-by-step setup guide: references/modes/mode-1-init.md
 │   ├── Step 5: Stack blueprints: references/architectures/
+│   │   ├── Cloudflare Workers & Pages: references/architectures/cloudflare-workers.md
 │   │   ├── Swift / Apple: references/architectures/swift-apple-ecosystem.md
 │   │   ├── MCP Server & Remote MCP: references/architectures/sentry-mcp-integration.md & references/architectures/mcp-server-sentry.md
 │   │   ├── AI / LLM Observability: references/architectures/ai-llm-monitoring.md
@@ -55,9 +57,10 @@ What is your objective?
 │   ├── Step 2: Full enterprise audit & gap analysis guide: references/modes/mode-2-audit.md
 │   ├── Pillar 1 (Error Tracking & Sourcemaps): references/error-tracking/ (capture, sourcemaps, fingerprints, inbound-filters, merges)
 │   ├── Pillar 2 (Breadcrumbs & Rich Context): references/breadcrumbs-context/ (system, ui, tags, feedback, device)
-│   ├── Pillar 3 (Logging & Analytics): references/logging-analytics/ (structured-logs, pin-to-top, log-explorer, discover)
-│   ├── Pillar 4 (Tracing, Profiling, Crons, Replay): references/performance-replay/ (spans, asynclocalstorage, replay, crons, spotlight)
-│   └── Pillar 5 (Privacy & Redaction): references/privacy-redaction/ (credentials, url-jwt)
+│   ├── Pillar 3 (Logging & Analytics): references/logging-analytics/ (structured-logs with Pino & Sentry.logger, pin-to-top, log-explorer, discover)
+│   ├── Pillar 4 (Tracing, Profiling, Crons, Replay): references/performance-replay/ (spans, continuous profiling, asynclocalstorage, replay, crons, spotlight)
+│   ├── Pillar 5 (Edge, Swift & Special Stacks): references/architectures/ (cloudflare-workers, swift-apple-ecosystem, mcp-server-sentry)
+│   └── Pillar 6 (Privacy & Redaction): references/privacy-redaction/ (credentials, url-jwt)
 │
 └── Mode 3: "Something is broken in prod" / Triage alerts / Debug incident
     ├── Step 1: Run triage scanner: bash scripts/triage-issues.sh <org>/<project>
@@ -132,7 +135,7 @@ When `SENTRY_DSN` is empty or missing, `Sentry.init({ dsn: process.env.SENTRY_DS
 CLI scripts, worker jobs, and serverless functions terminate processes immediately on completion. Always wrap execution in try/catch and execute `await Sentry.flush(3000)` or `await Sentry.close(3000)` before `process.exit()` to ensure buffered async HTTP envelopes leave the network buffer.
 
 ### 5. CLI Disambiguation: Modern `sentry` vs Legacy `sentry-cli`
-- **Modern `sentry` CLI** (`cli.sentry.dev` / `getsentry/toolkit`): Built for developers and AI coding agents. Uses singular noun commands (`sentry issue`, `sentry log`, `sentry trace`, `sentry explore`, `sentry replay`, `sentry api`). Features Seer AI integration (`sentry issue explain`, `sentry issue plan`), live log streaming (`-f`), and automatic OAuth token refresh via SQLite (`~/.config/sentry/cli.db`).
+- **Modern `sentry` CLI** (`cli.sentry.dev` / `getsentry/toolkit`): Built for developers and AI coding agents. Uses singular noun commands (`sentry issue`, `sentry log`, `sentry trace`, `sentry explore`, `sentry replay`, `sentry api`, `sentry monitor`, `sentry auth`). Includes native `sentry mcp` for local stdio MCP server execution, Seer AI integration (`sentry issue explain`, `sentry issue plan`), live log streaming (`-f`), and automatic OAuth token refresh via SQLite (`~/.config/sentry/cli.db`).
 - **Legacy `sentry-cli`** (`getsentry/sentry-cli`): Rust-based build utility. Uses plural noun commands (`sentry-cli releases`, `sentry-cli sourcemaps`, `sentry-cli issues`). Intended strictly for CI/CD asset injection, sourcemap uploads, and release finalization.
 
 ### 6. Seer AI Root-Cause Analysis & Fix Planning
@@ -142,15 +145,14 @@ Sentry Seer is an integrated AI engine analyzing traces, breadcrumbs, correlated
 - **Semantic Grouping**: Uses high-dimensional embeddings to semantically group error variations, eliminating alert storms.
 
 ### 7. Model Context Protocol (MCP) Ecosystem
-- **Connecting AI Agents to Sentry (`mcp.sentry.dev`)**: Point Cursor, Claude Code, or Antigravity to `https://mcp.sentry.dev/mcp/<org>/<project>` to query unresolved issues, inspect stack traces, fetch correlated logs, and read Seer AI fix plans autonomously.
-- **Monitoring Custom MCP Servers**: Modern Sentry SDKs (Node.js 9.46.0+ / 11.1.0+, Python `sentry-sdk`) auto-instrument `@modelcontextprotocol/sdk` (`McpServer`). In `stdio` mode, `debug: false` is mandatory; never write non-JSON-RPC telemetry to `stdout`.
+- **Connecting AI Agents to Sentry (`mcp.sentry.dev`)**: Point Cursor, Claude Code, or Antigravity to the universal remote endpoint `https://mcp.sentry.dev/mcp` authenticated via Bearer token (no URL path scoping needed). Alternatively install the official Claude Code plugin (`claude plugin marketplace add getsentry/sentry-mcp`) or run `sentry mcp` locally.
+- **Monitoring Custom MCP Servers**: Modern Sentry SDKs (`@sentry/node` 9.46.0+ / 11.1.0+, Python `sentry-sdk`) auto-instrument `@modelcontextprotocol/server` (v2) and `@modelcontextprotocol/sdk` (v1) via `mcpServerIntegration({ recordInputs: true, recordOutputs: true })`. In `stdio` mode, `debug: false` is mandatory; never write non-JSON-RPC telemetry to `stdout`.
 
 ### 8. Apple Platform Native Telemetry (`sentry-cocoa`)
 Native Swift / Apple apps benefit from deep OS-level diagnostics:
-- **App Hang Tracking**: Detects main-thread UI blocks exceeding threshold (default: 2.0s).
-- **MetricKit Integration**: Captures Apple OS crash diagnostics, CPU spikes, thermal throttling, and disk write anomalies.
+- **MetricKit Integration**: Captures Apple OS crash diagnostics, CPU spikes, thermal throttling, and disk write anomalies (`enableMetricKit = true`). Note: `enableAppHangTracking` is deprecated in Cocoa SDK v9 and scheduled for removal in v10; MetricKit is the forward path.
+- **SwiftUI View Tracing**: Primary view container is `SentryTracedView` supporting Time to Initial Display (TTID) and Time to Full Display (TTFD via `waitForFullDisplay` / `SentrySDK.reportFullyDisplayed()`).
 - **Watchdog OOM Tracking**: Reports terminations caused by OS memory limits or slow startup.
-- **SwiftUI View Tracing**: Instruments view lifecycles using `.sentryTrace("ViewName")`.
 
 ### 9. Quota Bleed & Runaway Loop Circuit Breakers (Archiving/Muting ≠ Quota Relief)
 Muting (`sentry-cli issues mute`) or archiving (`sentry issue archive`) only silences notifications. Events are still ingested at Sentry's edge and consume monthly quota. To halt runaway quota bleed:
@@ -161,6 +163,13 @@ Muting (`sentry-cli issues mute`) or archiving (`sentry issue archive`) only sil
 
 ### 10. Regional Multi-Tenant Host Awareness
 Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` vs US cluster `https://sentry.io`). When an organization is hosted on a regional cluster, API queries and CLI commands must target `https://de.sentry.io/` (`--url https://de.sentry.io/` or `url = https://de.sentry.io/` in `~/.sentryclirc`). Pointing to `https://sentry.io/` will return `404 Not Found` for legitimate issues and projects.
+
+### 11. Edge & Serverless Isolates (Cloudflare Workers & Pages)
+Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runtime monkey-patching:
+- **Build-Time Dependency Instrumentation**: Bundled packages (D1, Vectorize, Hyperdrive, AI) require build-time AST instrumentation via `@cloudflare/vite-plugin` and `sentryCloudflareVitePlugin` (`@sentry/cloudflare/vite`).
+- **`AsyncLocalStorage` Context**: Requires `compatibility_flags = ["nodejs_compat"]` and `compatibility_date = "2024-09-23"` or later for trace propagation.
+- **Entry Pattern**: `src/instrument.server.ts` adjacent to worker entry exporting `defineCloudflareOptions`, or `withSentry` wrapper for Wrangler CLI builds.
+- **Stateful & Async Primitives**: Native instrumentations via `instrumentDurableObjectWithSentry`, `instrumentWorkflowWithSentry`, and `instrumentAgentWithSentry`.
 
 ## Common pitfalls
 
@@ -174,10 +183,13 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 | Queue retry flood exhausts quota | Queue retries failed jobs in a loop; SDK reports on every attempt | Add SDK `ignoreErrors`, guard handlers against `undefined`, rate-limit DSN |
 | Seer AI plan fails with repo error | GitHub/GitLab integration or Code Mappings missing | Upload mappings via `sentry code-mappings upload` and link repository |
 | MCP client crashes on start | Sentry debug or console logs written to stdout in stdio mode | Set `debug: false`; isolate all logging to stderr in stdio mode |
+| Sentry MCP URL 404 / 401 | Using deprecated `/sse` transport or legacy path scoping | Connect to universal `https://mcp.sentry.dev/mcp` with Bearer auth or run `sentry mcp` |
+| Cloudflare Workers context drops | Missing `nodejs_compat` compatibility flag in wrangler config | Add `compatibility_flags = ["nodejs_compat"]` and `compatibility_date = "2024-09-23"` |
+| Cloudflare bundled calls untraced | D1/Vectorize/Fetch not auto-instrumented without build-time plugin | Add `sentryCloudflareVitePlugin` in `vite.config.ts` |
 | Spotlight active in production | `spotlight: true` sends requests to localhost sidecar in prod | Guard with `spotlight: process.env.NODE_ENV === 'development'` |
 | Token leak in logs | URLs logged with raw `?jwt=...` query parameters | Scrub query parameters in `beforeSend` / `beforeSendSpan` |
 | Duplicate error reports in Node.js | Manually registering `process.on('uncaughtException')` alongside SDK | Sentry Node SDK registers them automatically; configure via integrations |
-| App Hangs going untracked in Swift | Synchronous blocking work executed on main thread | Enable `options.enableAppHangTracking = true` and offload heavy tasks to Swift tasks |
+| App Hangs deprecated in Swift | `enableAppHangTracking` deprecated in Cocoa SDK v9 | Migrate to `options.enableMetricKit = true` |
 
 ## Minimal reading sets
 
@@ -187,6 +199,11 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 - `references/network-tunneling/envelope-tunneling.md`
 - `references/network-tunneling/application-proxy-routes.md`
 - `references/privacy-redaction/credential-redaction-rules.md`
+
+### "I need to deploy or monitor Cloudflare Workers / Pages"
+- `references/architectures/cloudflare-workers.md`
+- `references/performance-replay/distributed-tracing-spans.md`
+- `references/error-tracking/sourcemaps-pipeline.md`
 
 ### "I need to audit our Sentry setup and implement missing features"
 - `references/modes/mode-2-audit.md`
@@ -221,9 +238,10 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 | `references/modes/mode-2-audit.md` | Comprehensive enterprise audit protocol across all observability pillars. |
 | `references/modes/mode-3-debug.md` | 4-rung debugging funnel with Seer AI root cause analysis and fix planning. |
 | `references/research/research-mcp-protocol.md` | How to drive research-mcp with up to 20 keywords for stack research. |
-| `references/research/stack-keyword-matrices.md` | Ready-to-use search keyword matrices for Swift, MCP, AI, Next.js, etc. |
-| `references/architectures/swift-apple-ecosystem.md` | Swift & Apple ecosystem (macOS, iOS, visionOS), App Hangs, MetricKit, SwiftUI tracing. |
-| `references/architectures/sentry-mcp-integration.md` | Hosted Sentry MCP (mcp.sentry.dev) for AI agents and MCP server auto-instrumentation. |
+| `references/research/stack-keyword-matrices.md` | Ready-to-use search keyword matrices for Swift, MCP, Cloudflare, AI, Next.js, etc. |
+| `references/architectures/cloudflare-workers.md` | Cloudflare Workers & Pages native isolation, Vite plugin, Durable Objects, Workflows, Agents. |
+| `references/architectures/swift-apple-ecosystem.md` | Swift & Apple ecosystem (macOS, iOS, visionOS), SentryTracedView, TTID/TTFD, MetricKit migration. |
+| `references/architectures/sentry-mcp-integration.md` | Hosted Sentry MCP (mcp.sentry.dev), Claude Code plugin, sentry mcp, and MCP server auto-instrumentation. |
 | `references/architectures/ai-llm-monitoring.md` | OpenAI, Anthropic, LangChain token tracking, latency, and prompt PII redaction. |
 | `references/architectures/mcp-server-sentry.md` | MCP Server architecture: stdio isolation, tool breadcrumbs, token redaction. |
 | `references/architectures/cloud-browsers-playwright.md` | Playwright/Kernel browser tracing and strict cdpWsUrl JWT scrubbing. |
@@ -242,7 +260,7 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 | `references/breadcrumbs-context/custom-tags-context.md` | Attaching searchable key-value tags (tenant, user tier, driver). |
 | `references/breadcrumbs-context/user-feedback-api.md` | In-app feedback widget (`feedbackIntegration`) and programmatic submission. |
 | `references/breadcrumbs-context/device-runtime-context.md` | Capturing OS, runtime version, memory stats, and container metadata. |
-| `references/logging-analytics/structured-logs.md` | Ingesting, indexing, and querying application structured logs. |
+| `references/logging-analytics/structured-logs.md` | Ingesting, indexing, and querying application structured logs with Pino and Sentry.logger. |
 | `references/logging-analytics/pin-to-top-logs.md` | Highlighting critical log context and fatal assertion tags. |
 | `references/logging-analytics/log-explorer-queries.md` | Sentry Log Explorer query syntax and live tail streaming. |
 | `references/logging-analytics/discover-query-builder.md` | Running SQL-like Discover queries for latency and error trends. |
@@ -256,7 +274,7 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 | `references/network-tunneling/application-proxy-routes.md` | Implementing internal tunnel endpoints in Next.js, Fastify, Express. |
 | `references/privacy-redaction/credential-redaction-rules.md` | Defense-in-depth sanitization of auth headers, Bearer tokens, cookies. |
 | `references/privacy-redaction/url-jwt-sanitization.md` | Scrubbing sensitive query parameters (?jwt=..., ?token=...) from URLs. |
-| `references/cli-tooling/modern-sentry-cli.md` | Full manual for the modern sentry binary (cli.sentry.dev) and Seer AI. |
+| `references/cli-tooling/modern-sentry-cli.md` | Full manual for the modern sentry binary (cli.sentry.dev), Seer AI, and sentry mcp. |
 | `references/cli-tooling/legacy-sentry-cli.md` | Complete manual for legacy sentry-cli (/usr/local/bin/sentry-cli). |
 | `references/cli-tooling/project-mapping-config.md` | Mapping repositories to Sentry slugs via local config. |
 | `references/cli-tooling/cli-troubleshooting.md` | Resolving auth failures, 404s on whoami, and timeouts. |
@@ -269,6 +287,10 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 
 - Never commit real auth tokens (`sntryu_`, `sntrys_`) to git; store them in `~/.sentryclirc` or `.env`.
 - In MCP servers using `stdio`, NEVER write Sentry logs or debug output to `stdout`; always use `stderr`.
+- In Cloudflare Workers, always ensure `compatibility_flags = ["nodejs_compat"]` is configured in `wrangler.jsonc` or `wrangler.toml` so `AsyncLocalStorage` context propagates correctly.
+- In Swift Cocoa SDK, configure `enableMetricKit = true` for OS crash diagnostics and app hang reports (`enableAppHangTracking` is deprecated in v9+).
+- In MCP integrations, connect via universal `https://mcp.sentry.dev/mcp` or `sentry mcp` rather than legacy `/sse` or manual URL path scoping.
+- In modern Sentry SDKs, use `Sentry.metrics.count(...)`, `Sentry.metrics.gauge(...)`, and `Sentry.metrics.distribution(...)` for Trace-Connected metrics or OpenTelemetry `span.setMeasurement(...)`.
 - Never log raw URLs containing JWT tokens, API keys, or credentials (`?jwt=...`, `?token=...`).
 - Never disable TLS verification (`NODE_TLS_REJECT_UNAUTHORIZED=0`); configure an application reverse proxy tunnel instead.
 - Never let an offline test suite make network requests to Sentry; `Sentry.init` natively no-ops when `SENTRY_DSN` is empty.
@@ -278,4 +300,4 @@ Sentry SaaS operates regional clusters (e.g. EU cluster `https://de.sentry.io` v
 - Never rely on `sentry issue archive` or legacy `sentry-cli issues mute` to stop quota exhaustion; use Inbound Filters or Client Key rate limits.
 - Always verify the Sentry organization cluster (`de.sentry.io` vs `sentry.io`) when configuring CLI or investigating API 404s.
 - Never let queue/cron/workflow handlers throw unhandled 500s in an infinite retry loop without SDK `ignoreErrors` or poison-pill suppression.
-- In modern Sentry SDKs, use `Sentry.metrics.count(...)`, `Sentry.metrics.gauge(...)`, and `Sentry.metrics.distribution(...)` for application metrics.
+

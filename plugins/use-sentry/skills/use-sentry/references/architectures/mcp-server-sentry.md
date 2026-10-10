@@ -1,9 +1,9 @@
 # Architecture: Model Context Protocol (MCP) Server Sentry Integration
 
-How to instrument MCP servers (stdio & SSE / HTTP transports) with Sentry while strictly preventing protocol corruption and redacting LLM tokens.
+How to instrument MCP servers (stdio & Streamable HTTP / SSE transports) with Sentry while strictly preventing protocol corruption and redacting LLM tokens.
 
 > [!NOTE]
-> For connecting AI coding assistants (Antigravity, Cursor, Claude Code) to Sentry's hosted remote MCP server (`mcp.sentry.dev`), see [sentry-mcp-integration.md](file:///Users/mac/dev/skills-by-yigitkonur/skills/use-sentry/references/architectures/sentry-mcp-integration.md).
+> For connecting AI coding assistants (Claude Code, Antigravity, Cursor) to Sentry's hosted remote MCP server (`mcp.sentry.dev`) or local stdio (`sentry mcp`), see [sentry-mcp-integration.md](file:///Users/mac/dev/skills-by-yigitkonur/skills/use-sentry/references/architectures/sentry-mcp-integration.md).
 
 ## The Critical Stdio Constraint
 
@@ -12,22 +12,29 @@ In an MCP server using `stdio` transport:
 LLM Client <--- JSON-RPC via stdin/stdout ---> MCP Server
 ```
 - **RULE 1: NEVER write anything to `stdout` except valid JSON-RPC frames.**
-- If Sentry's `debug: true`, internal logger, or an unhandled `console.log` writes to `stdout`, the client's JSON parser crashes instantly, disconnecting the MCP server.
+- If Sentry's `debug: true`, internal loggers, or an unhandled `console.log` writes to `stdout`, the client's JSON parser crashes instantly, disconnecting the MCP server.
 - Sentry MUST be configured with `debug: false`, and any internal error logging MUST use `process.stderr.write()`.
 
 ## 1. Native Auto-Instrumentation (Modern Sentry SDK)
 
-In `@sentry/node` (v9.46.0+ / v11.1.0+), Sentry automatically instruments `@modelcontextprotocol/sdk` (`McpServer`).
+Modern Sentry SDKs (`@sentry/node`, `@sentry/cloudflare`, `@sentry/bun`) provide native auto-instrumentation for both `@modelcontextprotocol/server` (v2 API) and legacy `@modelcontextprotocol/sdk` (v1 API).
 
 ```typescript
 import * as Sentry from '@sentry/node';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio.js';
+import { z } from 'zod';
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   debug: false, // CRITICAL: Protect stdio JSON-RPC transport
   tracesSampleRate: 1.0,
+  integrations: [
+    Sentry.mcpServerIntegration({
+      recordInputs: true,  // Captures tool input arguments in span data
+      recordOutputs: true, // Captures tool return data in span data
+    }),
+  ],
   beforeSend(event) {
     if (event.extra?.arguments) {
       event.extra.arguments = redactMcpArguments(event.extra.arguments);
@@ -45,6 +52,18 @@ const server = new McpServer({
 });
 
 // Sentry automatically wraps registered tools with spans and captures unhandled exceptions
+server.registerTool(
+  'fetch_user_profile',
+  { userId: z.string() },
+  async ({ userId }) => {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ userId, role: 'admin' }) }],
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
 ```
 
 ## 2. Explicit Tool Wrapping (Fallback / Custom Telemetry)
@@ -99,12 +118,11 @@ export async function executeMcpTool<T>(
 }
 ```
 
-## 3. Redacting Prompt Tokens & Model Payloads
+## 3. Token & Prompt Sanitization
 
 ```typescript
 function redactMcpArguments(args: any): any {
   if (!args || typeof args !== 'object') return args;
-
   const sanitized: Record<string, any> = { ...args };
   const sensitiveKeys = ['apikey', 'token', 'authorization', 'password', 'secret', 'jwt'];
 
@@ -112,11 +130,9 @@ function redactMcpArguments(args: any): any {
     if (sensitiveKeys.some((s) => key.toLowerCase().includes(s))) {
       sanitized[key] = '[Filtered]';
     } else if (typeof sanitized[key] === 'string' && sanitized[key].length > 1000) {
-      // Truncate massive prompt strings to avoid burning Sentry event quotas
-      sanitized[key] = sanitized[key].slice(0, 500) + '... [Truncated Prompt]';
+      sanitized[key] = sanitized[key].slice(0, 500) + '... [Truncated Payload]';
     }
   }
-
   return sanitized;
 }
 ```

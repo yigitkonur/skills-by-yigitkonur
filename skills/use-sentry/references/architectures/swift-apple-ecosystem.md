@@ -1,6 +1,8 @@
 # Architecture: Swift & Apple Ecosystem (macOS, iOS, visionOS)
 
-Complete guide for instrumenting Apple platform applications (macOS, iOS, iPadOS, watchOS, tvOS, visionOS) using Sentry Cocoa SDK (`sentry-cocoa`), Swift Concurrency, App Hang tracking, MetricKit, and SwiftUI view tracing.
+Complete guide for instrumenting Apple platform applications (macOS, iOS, iPadOS, watchOS, tvOS, visionOS) using Sentry Cocoa SDK (`sentry-cocoa`), Swift Concurrency, MetricKit, App Hang tracking, and SwiftUI view performance monitoring.
+
+---
 
 ## 1. Installation via Swift Package Manager (SPM)
 
@@ -23,6 +25,8 @@ targets: [
 ]
 ```
 
+---
+
 ## 2. Initialization in SwiftUI (`App.swift`)
 
 Initialize Sentry at the earliest application launch point:
@@ -42,23 +46,25 @@ struct MyApp: App {
             // Tracing & Spans
             options.tracesSampleRate = 1.0
 
-            // App Hang Tracking (detects main-thread UI hangs)
-            options.enableAppHangTracking = true
-            options.appHangTimeoutInterval = 2.0 // Report hangs exceeding 2 seconds
-
-            // Apple MetricKit (crashes, CPU/battery diagnostics, disk writes)
+            // System-level OS diagnostics & Crashes (Apple MetricKit)
             #if os(iOS) || os(macOS)
             options.enableMetricKit = true
             #endif
 
+            // App Hang Tracking (detects main-thread UI hangs)
+            // NOTE: Sentry recommends migrating to MetricKit for hang diagnostics.
+            // Disable for App Clips, Widgets, and Live Activities.
+            options.enableAppHangTracking = true
+            options.appHangTimeoutInterval = 2.0 // Report hangs exceeding 2 seconds
+
             // Watchdog & Out-of-Memory (OOM) tracking
             options.enableWatchdogTerminationTracking = true
 
-            // Continuous Profiling
+            // Continuous Profiling / UI Profiling
             options.profilesSampleRate = 1.0
 
-            // Mobile Session Replay with strict privacy
-            #if os(iOS)
+            // Mobile Session Replay with strict privacy controls
+            #if os(iOS) || os(tvOS)
             options.sessionReplay.sessionSampleRate = 0.1
             options.sessionReplay.onErrorSampleRate = 1.0
             options.sessionReplay.maskAllText = true
@@ -78,9 +84,13 @@ struct MyApp: App {
 }
 ```
 
-## 3. SwiftUI View Tracing
+---
 
-Trace view lifecycle and rendering transitions automatically using `.sentryTrace`:
+## 3. SwiftUI View Performance: Traced Views, TTID & TTFD
+
+### Primary Container: `SentryTracedView`
+
+The recommended approach to monitor view performance is wrapping your views in `SentryTracedView`:
 
 ```swift
 import SwiftUI
@@ -90,68 +100,75 @@ struct ContentView: View {
     @State private var items: [String] = []
 
     var body: some View {
-        NavigationStack {
-            List(items, id: \.self) { item in
-                Text(item)
-            }
-            .navigationTitle("Dashboard")
-        }
-        // Instruments view load and attach duration as a span in Sentry
-        .sentryTrace("ContentView")
-        .task {
-            await loadData()
-        }
-    }
-
-    private func loadData() async {
-        // Custom span for asynchronous work
-        let span = SentrySDK.span?.startChild(operation: "data.fetch", description: "Fetch user items")
-        defer { span?.finish(status: .ok) }
-
-        do {
-            // Outbound network call automatically traced by Sentry Network Tracking
-            let (data, _) = try await URLSession.shared.data(from: URL(string: "https://api.example.com/items")!)
-            self.items = try JSONDecoder().decode([String].self, from: data)
-        } catch {
-            span?.finish(status: .internalError)
-            SentrySDK.capture(error: error) { scope in
-                scope.setTag(value: "data_fetch_failed", key: "error_type")
+        SentryTracedView("ContentView") {
+            NavigationStack {
+                List(items, id: \.self) { item in
+                    Text(item)
+                }
+                .navigationTitle("Dashboard")
             }
         }
     }
 }
 ```
 
-## 4. Key Apple Diagnostics Tracked by Sentry
+Alternatively, use the modifier syntax:
+```swift
+List(items, id: \.self) { item in
+    Text(item)
+}
+.sentryTrace("DashboardList")
+```
 
-| Diagnostic Mechanism | What It Captures | Configuration Flag |
-|---|---|---|
-| **App Hangs** | Main thread blocked > 2s by synchronous I/O or heavy computation. | `options.enableAppHangTracking = true`<br>`options.appHangTimeoutInterval = 2.0` |
-| **MetricKit** | Apple OS-level crash reports, energy consumption, CPU spikes, thermal state. | `options.enableMetricKit = true` |
-| **Watchdog OOM** | OS killed the app due to memory limit or slow startup without throwing an exception. | `options.enableWatchdogTerminationTracking = true` |
-| **Network Tracking** | Full HTTP request/response spans and distributed `sentry-trace` headers. | `options.enableNetworkTracking = true` (default) |
-| **File I/O Tracking** | Disk read/write operations exceeding thresholds. | `options.enableFileIOTracking = true` (default) |
-| **User Interactions** | Touch gestures, button taps, and keyboard events as breadcrumbs. | `options.enableUserInteractionTracing = true` |
+### Time to Initial Display (TTID) & Time to Full Display (TTFD)
 
-## 5. Offline Storage & Guaranteed Envelopes
+Available since Sentry Cocoa SDK 8.44.0 (iOS and tvOS):
+- **TTID (`ui.load.initial-display`):** Automatically tracked when the view appears on screen via `onAppear`.
+- **TTFD (`ui.load.full-display`):** Measures when async content is fully loaded. Pass `waitForFullDisplay: true` and manually signal completion:
 
-On mobile and macOS devices, network connectivity drops frequently:
-- Sentry Cocoa automatically buffers envelopes to encrypted local disk storage when offline.
-- When network connectivity returns, buffered envelopes are drained and sent in background threads without blocking UI.
-- No custom offline queue wrappers are required.
+```swift
+struct FeedView: View {
+    @State private var posts: [Post] = []
 
-## 6. Debug Symbols (dSYMs) Uploading
+    var body: some View {
+        SentryTracedView("FeedView", waitForFullDisplay: true) {
+            List(posts) { post in
+                PostRow(post: post)
+            }
+            .task {
+                posts = await fetchPosts()
+                // Explicitly report when all asynchronous data is rendered
+                SentrySDK.reportFullyDisplayed()
+            }
+        }
+    }
+}
+```
 
-To de-symbolicate crash stacks, upload dSYMs in your Xcode Archive build phase or CI:
+---
 
-```bash
-# Sentry CLI dSYM upload script for Xcode Run Script phase
-if which sentry-cli >/dev/null; then
-  export SENTRY_ORG="your-org"
-  export SENTRY_PROJECT="your-project"
-  ERROR=$(sentry-cli debug-files upload --include-sources "$DWARF_DSYM_FOLDER_PATH" 2>&1 >/dev/null)
-  if [ ! $? -eq 0 ]; then
-    echo "warning: sentry-cli - $ERROR"
-  fi
-fi
+## 4. App Hangs vs. MetricKit Architecture Notice
+
+> [!WARNING]
+> Sentry officially announced that standalone thread-based App Hang tracking (`enableAppHangTracking`) is deprecated and scheduled for removal in Cocoa SDK v10 in favor of **Apple MetricKit** (`options.enableMetricKit = true`).
+> - **Why?** MetricKit uses OS-level power/hang telemetry directly from Apple with zero false positives.
+> - **Widget Guidelines:** Never enable thread-based App Hang tracking in Widgets or Live Activities.
+> - **Permission Dialogs:** When opening iOS system permission dialogs (e.g. pasteboard, camera, location), pause hang tracking with `SentrySDK.pauseAppHangTracking()` and resume with `SentrySDK.resumeAppHangTracking()`.
+
+---
+
+## 5. Capturing Errors with Rich Swift Breadcrumbs
+
+```swift
+do {
+    try processTransaction()
+} catch {
+    SentrySDK.capture(error: error) { scope in
+        scope.setTag(value: "checkout", key: "flow")
+        scope.setContext(value: [
+            "cart_size": cart.items.count,
+            "payment_method": "apple_pay"
+        ], key: "checkout_state")
+    }
+}
 ```
