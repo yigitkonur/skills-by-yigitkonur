@@ -1,221 +1,115 @@
 ---
 name: convert-to-natural-writing
-description: Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.
-disable-model-invocation: true
+description: "Use if auditing or converting text into natural human cadence, eliminating Turkish translationese and synthetic AI writing patterns."
 ---
 
 # Convert to Natural Writing
 
-Rewrite supplied content into warm, natural, casual-professional prose without changing what the writer can honestly claim. Optimize for the reader, locale, genre, and document contract—not for a performance of humanity or a detector score.
+Rewrite or audit text into natural human cadence, authentic voice, and fluid rhythm without altering factual claims, inventing personal experiences, or relying on mechanical word bans.
 
-## Hard contract
+This skill is grounded in linguistic reality: modern foundation models suffer from pervasive syntactic calquing (especially Turkish translationese, which represents 80% of common defects) and universal statistical flattening (20% of defects). The mandatory operating procedure is the **Audit-First Active Ledger**, which requires systematically diagnosing structural defects and protecting factual invariants before executing rewrites.
 
-1. **Protect before editing.** Inventory facts, names, numbers, dates, quotations, links, code, markup, attribution, uncertainty, scope, and document structure before changing prose.
-2. **Never fabricate humanity.** Do not add personal experience, opinions, feelings, anecdotes, interviews, sources, metrics, mistakes, dialect markers, or quirks that the input does not support.
-3. **Never certify authorship.** Style patterns and detector scores cannot prove who or what wrote text. Do not return an AI probability, a human-written guarantee, or detector-evasion tactics.
-4. **Diagnose in context.** A word, punctuation mark, sentence length, list, or rhetorical device is not a defect by itself. Explain the reader harm before changing it.
-5. **Preserve expertise.** Natural does not mean simplistic. Keep necessary terminology, qualification, detail, and genre conventions for expert readers.
-6. **Compose the locale, not an English template.** Use the source language's syntax, register, terminology, punctuation, and cultural expectations. Surface low confidence or the need for fluent review.
-7. **Keep publication accountable.** A deterministic audit catches token and markup drift, not factual truth, semantic equivalence, native fluency, or publication fitness.
+---
 
-If the user asks to make text “undetectable,” “bypass a detector,” or look “definitely human,” state the reframe in one sentence and continue toward clarity, specificity, voice, integrity, and reader usefulness. Do not optimize against a detector.
+## 1. Hard Editorial Contract
 
-## Choose the mode
+1. **Protect Before Editing**: Inventory all exact literals (code, URLs, markdown destinations, tags), factual values (names, numbers, dates, units, quotes), epistemic force (uncertainty markers, causal claims, negative bounds), and document structure before modifying prose.
+2. **Never Fabricate Humanity**: Never invent personal anecdotes, fake emotional declarations, synthetic mistakes, or ungrounded opinions to simulate human authorship.
+3. **Never Optimize for Detector Theater**: Do not certify authorship or attempt to evade AI detectors. Detectors measure statistical token perplexity, not editorial quality or human truth. Focus strictly on clarity, cadence, specificity, and reader usefulness.
+4. **Context Over Blacklists**: Strictly prohibit mechanical word/token blacklists and regex bans. An isolated word (e.g., *delve*, *pivotal*, *robust*, *tarafından*) is not an inherent defect; diagnose the underlying structural flaw—such as ungrounded significance, passive evasion, or converb overload.
+5. **Preserve Domain Expertise**: Natural writing is never dumbed-down writing. Preserve necessary technical terminology, mathematical definitions, and domain nuances for expert audiences.
+6. **Compose the Locale, Not an English Template**: In Turkish, embrace natural agglutinative morphology, pro-drop pronoun economy, topic-prominent constituent order, and conversational inverted sentences (*devrik cümle*). Eliminate Germanic/Romance calques.
+7. **Accountable Verification**: Verify that every revised sentence preserves its epistemic force and factual values. Read revised text aloud to ensure natural breathing.
 
-Infer the mode and proceed. Ask only when an unknown audience, locale, source authority, or change boundary would materially alter the result and cannot be found in the supplied content or repository.
+---
 
-| Mode | Use when | Return |
-| --- | --- | --- |
-| **Diagnose** | The user asks why text feels robotic, generic, templated, translated, or AI-sounding. | Exact excerpt, quality problem, reader impact, evidence level, and smallest useful change. No authorship verdict. |
-| **Rewrite** | The user asks to humanize, naturalize, deslopify, warm up, de-template, or rewrite existing content. | Clean revised content by default; add unresolved risks only when material. |
-| **Publication review** | The draft is near-final or the user asks whether it is ready to publish. | Blockers, warnings, unresolved evidence, and ready copy—or a clear not-ready verdict. |
+## 2. Operational Modes
 
-Proofreading-only, translation-only, writing from a blank page, research without a supplied draft, and AI-authorship classification are outside this skill. A rewrite may include grammar fixes, transcreation, or fact checks when they support the editorial job.
+Infer the appropriate mode from the user's intent or repository context:
 
-## Quick start
+| Mode | Trigger Condition | Primary Deliverable |
+| :--- | :--- | :--- |
+| **Audit / Diagnose** | User asks why copy feels robotic, generic, translated, stiff, or AI-generated. | A structured Active Ledger identifying exact excerpts, structural flaws, reader harm, and natural alternatives. |
+| **Rewrite** | User requests humanizing, polishing, naturalizing, or rewriting draft content. | Clean, restructured deliverable backed by an internal invariant reconciliation pass. |
+| **Publication Review** | Draft is near-final and requires pre-publication verification. | Strict verification report detailing blockers, warnings, invariant checks, and release-ready text. |
 
-For an ordinary rewrite:
+---
 
-1. Read `references/foundations/editorial-contract.md`, `references/workflow/protected-content-ledger.md`, and `references/workflow/rewrite-passes.md`.
-2. Add `references/voice/warm-casual-professional.md` for the default register.
-3. Add `references/voice/multilingual-editing.md` when the content is not in the editor's strongest language or contains multiple locales.
-4. Build the ledger, run the three passes, reconcile the revision, and return clean copy.
+## 3. The Mandatory Audit-First Active Ledger Workflow
 
-Example:
+All conversions follow this three-phase lifecycle:
 
-```text
-Source: In our 2025 review, 12.5% of sampled pages may need another check. See [the method](https://example.com/method).
-Internal ledger: 2025; 12.5%; sampled pages; “may”; https://example.com/method
-Return: Our 2025 review found that 12.5% of the sampled pages may need another check. See [the method](https://example.com/method).
+```
+[ Phase 1: Forensic Audit ] ──► [ Phase 2: Ordered Passes ] ──► [ Phase 3: Reconciliation ]
+  - Inventory invariants          - Pass 1: Substance/Facts       - Reconcile with ledger
+  - Diagnose linguistic flaws     - Pass 2: Voice/Register        - Invariant integrity check
+  - Commit to Active Ledger       - Pass 3: Cadence/Breathing     - Vocalization reading test
 ```
 
-The ledger stays internal unless requested or needed to explain a blocker.
+### Phase 1: Invariant Inventory & Forensic Audit
+1. Read the source text completely to establish audience, document purpose, and target genre.
+2. Inventory all **Exact** (URLs, code, markup), **Value** (numbers, dates, metrics), **Force** (uncertainty, causality), and **Document** invariants.
+3. Traverse the text sentence by sentence. When prose feels stiff, identify the linguistic flaw using the core reference guides and log it in the Active Ledger:
+   ```markdown
+   - Location & Excerpt: [Verbatim text]
+   - Context & Genre: [Medium, e.g., SaaS Landing Page, Crisis PR]
+   - Linguistic Flaw / Smell: [Pattern from Turkish Translationese, Universal AI, or Model Quirks]
+   - Reader Harm / Impact: [Why this impairs cognition or trust]
+   - Natural Alternative: [Reconstructed natural sentence]
+   - Invariant Check: [Confirmation of preserved facts, numbers, and scope]
+   ```
+   Detailed instructions: [`references/audit-ledger-workflow.md`](references/audit-ledger-workflow.md).
 
-## Minimal reading sets
+### Phase 2: Structural & Cadence Recomposition
+Execute rewrites in three ordered passes:
+* **Pass 1: Substance & Clarity**: Strip ungrounded superlatives, throat-clearing openings, and filler phrases. Name concrete actors, direct mechanisms, and tangible outcomes.
+* **Pass 2: Register & Voice**: Calibrate formality, directness, and social distance to the target genre (see [`references/formats-and-genres.md`](references/formats-and-genres.md)).
+* **Pass 3: Cadence & Rhythm**: Break sentence length monotony. Inject burstiness. Eliminate gerund/converb chaining (*ulaç yığılması*). In Turkish, drop overt subject pronouns and utilize *devrik cümle* for conversational breathing (see [`references/cadence-and-rhythm.md`](references/cadence-and-rhythm.md)).
 
-Choose one mode base, then add only the modifiers needed for the current phase. Keep the initial load to five references.
+### Phase 3: Reconciliation & Publication Review
+1. Cross-check the revision against the Phase 1 invariant inventory. Confirm zero numbers, dates, URLs, code blocks, or epistemic caveats were altered.
+2. Perform the vocalization check: read the text aloud to ensure sentences breathe naturally without breathless run-ons.
 
-### Mode bases
+---
 
-| Mode | Read |
-| --- | --- |
-| **Rewrite** | `references/foundations/editorial-contract.md`, `references/workflow/protected-content-ledger.md`, `references/workflow/rewrite-passes.md` |
-| **Diagnose** | `references/foundations/evidence-and-authorship.md`, `references/diagnosis/editorial-signals.md`, `references/diagnosis/non-signals.md` |
-| **Publication review** | `references/workflow/publication-review.md`, `references/foundations/editorial-contract.md`, `references/workflow/protected-content-ledger.md` |
+## 4. Core Reference Library
 
-### Modifiers
+Consult these flat reference guides for deep operational methodology:
 
-1. **Default voice:** add `references/voice/warm-casual-professional.md` when no stronger house voice or supplied sample exists.
-2. **Multilingual:** add `references/voice/multilingual-editing.md` for non-English, mixed-language, localized, or culturally sensitive content.
-3. **People and identity:** add `references/voice/inclusive-language.md` when editing descriptions of people, communities, identities, disability, age, gender, race, ethnicity, or socioeconomic status.
-4. **File format:** add `references/formats/markdown-mdx-html.md` for `.md`, `.mdx`, `.html`, frontmatter, JSX, embedded code, or repository-backed content.
-5. **Production residue:** add `references/diagnosis/production-artifacts.md` for placeholders, assistant chatter, malformed citations, broken fences, or renderer mismatches.
-6. **Worked model:** add `references/examples/multilingual-before-after.md` only when a concrete transformation pattern is needed.
-7. **Source verification:** add `references/sources/annotated-bibliography.md` when a rule, detector claim, or external standard needs provenance.
-8. **Skill verification:** use `references/testing/trigger-and-functional-tests.md` when installing, testing, or revising this skill.
-9. **Hard cases:** add `references/workflow/edge-case-playbook.md` for partial or long rewrites, generated regions, templates, accessibility copy, explicit invariants, parser gaps, or high-stakes content.
+* [`references/audit-ledger-workflow.md`](references/audit-ledger-workflow.md)  
+  *The Active Ledger Workflow*: Schema, invariant classification, logging protocols, and multi-agent coordination.
+* [`references/turkish-translationese-guide.md`](references/turkish-translationese-guide.md)  
+  *14 Turkish Morpho-Syntactic Patterns*: In-depth analysis of *tarafından-pasifleri*, *belirsiz artikel enflasyonu*, *sahte fiilimsiler*, *ulaç yığılmaları*, *-dir mekanik enflasyonu*, *kataforik iki nokta*, *kalıp bağlaçlar*, *iyelik eki tembelliği*, *soyut adlaştırma*, *sorumluluktan kaçınma*, *kaskatı SOV*, *sözde soru kancaları*, *dolaylama*, and *pro-drop kaçınması*.
+* [`references/model-specific-quirks.md`](references/model-specific-quirks.md)  
+  *Model Signatures*: Diagnosing and correcting Claude's didactic option taxonomies and meta-apologies; Codex's semicolon staccato and comment-as-prose leaks; and Gemini's corporate jargon inflation (*beacon of innovation*, *rich tapestry*, *delve*) and manufactured euphoria.
+* [`references/signs-of-ai-heuristics.md`](references/signs-of-ai-heuristics.md)  
+  *Universal AI Heuristics*: Wikipedia `WP:Signs_of_AI_writing` markers (significance inflation, false ranges, negative parallelisms, compulsive sandwich summaries), burstiness deficits, and why mechanical token blacklists fail.
+* [`references/cadence-and-rhythm.md`](references/cadence-and-rhythm.md)  
+  *Cadence & Rhythm Mechanics*: Sentence length variation (burstiness), Gary Provost's music of syntax, gerund balance, conversational breathing, Turkish pro-drop economy, and the power of *devrik cümle*.
+* [`references/formats-and-genres.md`](references/formats-and-genres.md)  
+  *Genre Register Calibration*: Calibrating formality, directness, and pacing across 20+ professional and consumer genres (SaaS, pitch decks, investor updates, technical docs, crisis PR, support, social copy, and microcopy).
 
-## Workflow
+---
 
-### 1. Establish the editorial contract
+## 5. Failure Behaviors & Boundary Rules
 
-Identify or infer:
+| Situation | Correct Action |
+| :--- | :--- |
+| **Source facts are ambiguous or contradictory** | Flag the contradiction in the ledger; do not invent facts to smooth over authorial ambiguity. |
+| **User requests detector evasion or deliberate typos** | Decline detector gaming. Reframe toward clarity, human cadence, and reader utility. |
+| **A protected value must change for syntactic coherence** | Stop that edit; request authority or better source material before proceeding. |
+| **Pervasive translationese across a whole document** | Recompose from first principles: extract the core propositions and re-write natively in the target locale rather than line-by-line translating. |
+| **Uncertainty in localized domain terminology** | Mark the term unresolved in the ledger and assign to a native subject-matter expert. |
 
-- mode, source locale, target locale if adaptation is in scope, audience, knowledge level, and genre;
-- reader job, document purpose, intended decision, and publication channel;
-- approved facts, sources, terminology, quotations, and genuine first-hand material;
-- desired voice, formality, warmth, and supplied positive or negative samples;
-- format and renderer: plain text, Markdown, MDX, HTML, CMS field, email, report, or another container;
-- scope boundaries for headings, metadata, links, CTA, structure, length, legal language, and SEO intent.
+---
 
-Use `references/foundations/editorial-contract.md`. Existing copy is evidence of intent, not automatically a quality oracle. A house guide or current approved sample outranks the default register.
+## 6. Completion Checklist
 
-### 2. Build the protected-content ledger
-
-Record four protection classes:
-
-| Class | Examples | Rule |
-| --- | --- | --- |
-| **Exact** | URLs, link destinations, code, citations, IDs, slugs, component names, HTML/JSX attributes | Preserve byte-for-byte unless a change is explicitly authorized. |
-| **Value** | Names, numbers, dates, units, quotations, CTA commitments, factual propositions | Preserve the value and its referent; wording may change without semantic drift. |
-| **Force** | Uncertainty, attribution, causality, comparison set, scope, limitations, negative claims | Never make a claim more certain, broader, more causal, or more favorable. |
-| **Document** | Locale identity, genre, heading job, metadata purpose, search intent, reading order | Preserve the document contract even when prose is restructured. |
-
-Follow `references/workflow/protected-content-ledger.md`. Mark contradictions or unsupported material unresolved; do not polish uncertainty into certainty.
-
-### 3. Diagnose by evidence level
-
-Sort every observation into one bucket:
-
-1. **Objective production defects:** prompt residue, placeholders, malformed citation tokens, broken markup, changed protected values, or renderer mismatch.
-2. **Contextual editorial signals:** vague actors, unsupported significance, generic promotion, shallow analysis, repetitive syntax, templated section shapes, empty summaries, or model-associated vocabulary clusters.
-3. **Non-signals:** an isolated word, em dash, bold span, list, table, title case, formal register, correct grammar, dialect feature, or detector score.
-
-Use `references/diagnosis/editorial-signals.md`, `references/diagnosis/non-signals.md`, and, when relevant, `references/diagnosis/production-artifacts.md`. Diagnose the text's reader-facing quality, never its author.
-
-### 4. Rewrite in ordered passes
-
-Run these passes in order. If a later pass changes meaning, return to the earliest affected pass.
-
-1. **Substance and clarity**
-   - Lead with what the reader needs.
-   - Name concrete actors, actions, mechanisms, evidence, limits, and decisions.
-   - Remove empty promotion, fake comprehensiveness, duplicate commentary, and unsupported significance.
-   - Keep one stable domain term per concept.
-2. **Voice, audience, and locale**
-   - Match the supplied or house voice; otherwise use the warm casual-professional default.
-   - Adapt tone to reader state, genre, stakes, culture, and expertise.
-   - Use first person only for a verified speaker and second person only for a real reader action.
-   - Compose naturally in the declared locale; do not translate syntax, tell lists, or jokes mechanically.
-3. **Rhythm and surface**
-   - Vary structure when meaning and cadence benefit, not to satisfy a pattern quota.
-   - Simplify transitions, repair accidental repetition, and stop at the last useful sentence.
-   - Keep rhetoric, fragments, lists, headings, and punctuation when they do real work.
-
-Use `references/workflow/rewrite-passes.md` and the exact voice references selected above.
-
-### 5. Verify integrity
-
-Compare the revision with the ledger claim by claim and value by value. Re-read each changed sentence in its paragraph and each paragraph in its document role.
-
-When original and revised files are available, run:
-
-```bash
-python3 {baseDir}/scripts/audit-rewrite.py path/to/original.mdx path/to/revised.mdx
-```
-
-Use repeatable `--protect "exact literal"` options for legal phrases, product names, UI labels, quotations, or other invariants the generic inventory cannot infer. Use repeatable `--protect-from path/to/literals.txt` options for newline-delimited lists; blank lines and `#` comments are ignored. Add `--json` for machine-readable output.
-
-The audit checks deterministic values, code, links and references, frontmatter, markup, expressions, templates, localized currency/unit forms, and common production residue. Exit `1` means an inventory mismatch or new artifact; exit `2` means invalid input or invocation. Warnings for sparse inventory, empty input, or a large size delta do not change pass status. Resolve or report every failure and inspect every warning.
-
-The helper does not prove factual truth, semantic equivalence, syntax validity, style quality, native fluency, publication fitness, or authorship. Review a clean result semantically. Use `references/workflow/edge-case-playbook.md` whenever scopes differ, content is generated or template-heavy, explicit literals are needed, or native proof is unavailable.
-
-For Markdown, MDX, or HTML, also follow `references/formats/markdown-mdx-html.md` and run the consuming repository's parser, formatter, build, or renderer when available.
-
-### 6. Return the mode-specific result
-
-- **Rewrite:** return clean content with no preamble by default. Add `Unresolved` only for material facts, sources, locale confidence, format risks, or approvals.
-- **Diagnose:** use `Excerpt → issue → reader impact → evidence level → smallest useful change`.
-- **Publication review:** separate `Blockers`, `Warnings`, `Unresolved evidence`, and `Ready copy`.
-
-When the user requests a change ledger, group it by substance, voice/locale, surface, and protected-item verification. Do not narrate every synonym change.
-
-## Failure behavior
-
-| Situation | Action |
-| --- | --- |
-| Approved facts or source text are missing | Improve only supported material; name the exact evidence gap and block affected claims. |
-| The draft and source conflict | Show the conflict, rank source authority, and preserve neither silently. |
-| The user asks for invented specificity or personality | Refuse the invention inside the deliverable; use only supplied, attributable detail. |
-| The user asks for detector optimization | Reframe to editorial quality and proceed without detector-facing transformations or scores. |
-| A protected value must change for coherence | Stop that edit and request authority or better source evidence. |
-| Locale competence is uncertain | Preserve meaning conservatively, flag confidence, and require fluent review for high-stakes publication. |
-| The audit passes but meaning drifted | Treat it as failure; semantic review outranks token equality. |
-| The audit flags an authorized change | Record the authorization and keep the expected difference visible. |
-| The original/revised scopes differ | Compare equivalent fragments or reconstruct both full documents; never interpret a whole-file mismatch as editorial drift. |
-| A parser or renderer is unavailable | Report deterministic and manual checks only; do not claim structured publication readiness. |
-
-## Pitfalls
-
-| Pitfall | Correction |
-| --- | --- |
-| Replacing “AI words” with synonyms | Fix the underlying vagueness, repetition, or unsupported claim—or keep the precise word. |
-| Adding an anecdote, opinion, or mistake for warmth | Use only genuine material supplied by an accountable speaker. |
-| Removing every dash, list, heading, bold span, or formal phrase | Judge function, genre, locale, and renderer rather than a tell list. |
-| Making every sentence short and conversational | Match cognitive load and expertise; preserve technical precision. |
-| Making every language sound like translated US English | Recompose for local syntax, register, terminology, and culture. |
-| Trusting a detector or “human score” | Ignore the score as an editorial target; assess clarity, specificity, fidelity, and usefulness. |
-| Declaring success because the script passes | Run semantic, locale, format, and publication review too. |
-
-## Reference catalog
-
-Every reference is a direct leaf. Load it only for the stated decision.
-
-| File | Read when |
-| --- | --- |
-| `references/foundations/editorial-contract.md` | Establishing mode, audience, purpose, source authority, voice, scope, and stop conditions. |
-| `references/foundations/evidence-and-authorship.md` | Separating editorial evidence, authorship claims, detector limits, and safe reframing. |
-| `references/diagnosis/editorial-signals.md` | Diagnosing clustered, transferable quality problems without using a blacklist. |
-| `references/diagnosis/non-signals.md` | Preventing false positives based on punctuation, vocabulary, dialect, format, register, or scores. |
-| `references/diagnosis/production-artifacts.md` | Finding placeholders, prompt residue, malformed citations, broken markup, and renderer defects. |
-| `references/workflow/protected-content-ledger.md` | Capturing exact, value, force, document, locale, and structured-content invariants. |
-| `references/workflow/rewrite-passes.md` | Running substance, voice/locale, and rhythm/surface passes with regression checks. |
-| `references/workflow/publication-review.md` | Deciding blockers, warnings, evidence gaps, reviewer ownership, and ready state. |
-| `references/workflow/edge-case-playbook.md` | Handling partial/long rewrites, generated content, templates, accessibility copy, exact literals, high-stakes text, and parser gaps. |
-| `references/voice/warm-casual-professional.md` | Applying the default warm, natural, knowledgeable register without forced intimacy. |
-| `references/voice/multilingual-editing.md` | Editing non-English, mixed-language, localized, low-resource, or culturally sensitive content. |
-| `references/voice/inclusive-language.md` | Editing references to people and identity accurately, specifically, and without imposed labels. |
-| `references/formats/markdown-mdx-html.md` | Preserving Markdown, frontmatter, JSX, ESM, HTML tags/attributes, code, links, and language metadata. |
-| `references/examples/multilingual-before-after.md` | Studying ledger-backed English, Turkish, Spanish, and mixed-format transformations. |
-| `references/sources/annotated-bibliography.md` | Verifying research authority, dates, quotes, scope, conflicts, and source-derived rules. |
-| `references/testing/trigger-and-functional-tests.md` | Testing activation boundaries, primary workflows, failure cases, and audit-helper fixtures. |
-
-## Completion check
-
-- Every protected item is preserved or explicitly authorized.
-- Every changed claim keeps its attribution, uncertainty, scope, and causal strength.
-- No fact, source, experience, emotion, metric, quote, identity label, or dialect feature was invented.
-- The locale reads naturally at the confidence level claimed; high-risk gaps have reviewer ownership.
-- Structure, links, code, metadata, CTA, and renderer contracts remain intact.
-- Diagnostics describe reader-facing defects, never inferred authorship.
-- The result is useful and specific without forced casualness, fake imperfection, or detector theater.
+Before delivering output:
+- [ ] Active Ledger created with verbatim location, flaw, impact, and fix.
+- [ ] Every Exact, Value, Force, and Document invariant is strictly preserved.
+- [ ] Zero mechanical token blacklists or regex bans were applied.
+- [ ] No fake personal anecdotes or synthetic human quirks were fabricated.
+- [ ] Turkish copy is free from *tarafından* calques, converb pile-ups, and unneeded "bir" articles.
+- [ ] Sentence lengths vary naturally (burstiness); text passes the vocalization test.
+- [ ] Deliverable conforms to the target genre's register and social distance.

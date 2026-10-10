@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Regression tests for audit-rewrite.py."""
+"""Comprehensive test suite for audit-rewrite.py.
+
+Verifies:
+1. Valid vs invalid Active Ledger schemas (Markdown tables, sections, JSON).
+2. Cadence & Rhythm metrics (burstiness, variance, std dev, monotony detection).
+3. Linguistic structure heuristics (gerund cascades, nominalizations, passives).
+4. CLI execution, JSON reporting, and deterministic exit codes.
+5. Absolute zero dogmatic word/token blacklists.
+"""
 
 from __future__ import annotations
 
@@ -12,364 +20,403 @@ import unittest
 from pathlib import Path
 
 
+# Prevent bytecode caching
 sys.dont_write_bytecode = True
-SCRIPT = Path(__file__).with_name("audit-rewrite.py")
-SPEC = importlib.util.spec_from_file_location("audit_rewrite", SCRIPT)
+
+SCRIPT_PATH = Path(__file__).with_name("audit-rewrite.py")
+SPEC = importlib.util.spec_from_file_location("audit_rewrite", SCRIPT_PATH)
 assert SPEC and SPEC.loader
-AUDIT = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = AUDIT
-SPEC.loader.exec_module(AUDIT)
+AUDIT_MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = AUDIT_MODULE
+SPEC.loader.exec_module(AUDIT_MODULE)
 
 
-class AuditRewriteTests(unittest.TestCase):
-    def assert_passes(self, original: str, revised: str) -> None:
-        report = AUDIT.audit(original, revised)
-        self.assertTrue(report["pass"], report)
+class ActiveLedgerSchemaTests(unittest.TestCase):
+    """Tests for Active Ledger schema validation and integrity checks."""
 
-    def assert_fails_in(self, category: str, original: str, revised: str) -> None:
-        report = AUDIT.audit(original, revised)
-        self.assertFalse(report["pass"], report)
-        categories = {item["category"] for item in report["differences"]}
-        self.assertIn(category, categories, report)
+    def setUp(self) -> None:
+        self.validator = AUDIT_MODULE.LedgerValidator()
 
-    def test_plain_prose_can_change(self) -> None:
-        self.assert_passes("This generic sentence is long.", "This sentence is clearer.")
+    def test_valid_markdown_table_ledger(self) -> None:
+        table = """# Active Audit Ledger
 
-    def test_urls_and_emails_are_protected(self) -> None:
-        original = "Visit https://example.com/a and email team@example.com."
-        revised = "Email team@example.org or visit https://example.com/b."
-        report = AUDIT.audit(original, revised)
-        categories = {item["category"] for item in report["differences"]}
-        self.assertTrue({"urls", "emails"}.issubset(categories), report)
+| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |
+|:---|:---|:---|:---|
+| SaaS Landing Page | Çözümümüz işletmeler tarafından sevilerek kullanılmaktadır. | Tarafından-pasifi ve kopula yığılması | İşletmeler çözümümüzü severek kullanıyor. |
+| Pitch Deck | Büyüme oranlarımızın artışı gerçekleştirilmiştir. | Eylemsi enflasyonu ve sahte fiilimsi | Büyümemiz hızla arttı. |
+"""
+        report = self.validator.validate(table)
+        self.assertTrue(report.is_valid, f"Expected valid ledger, got errors: {report.errors}")
+        self.assertEqual(2, report.total_findings)
+        self.assertEqual("markdown_table", report.schema_detected)
+        self.assertEqual("SaaS Landing Page", report.findings[0].context)
+        self.assertEqual("İşletmeler çözümümüzü severek kullanıyor.", report.findings[0].alternative)
 
-    def test_markdown_label_can_change_but_destination_cannot(self) -> None:
-        self.assert_passes("Read [the complete guide](https://example.com/docs).", "See [the guide](https://example.com/docs).")
-        self.assert_fails_in(
-            "markdown-destinations",
-            "Read [the guide](https://example.com/docs).",
-            "Read [the guide](https://example.com/start).",
+    def test_valid_turkish_headers(self) -> None:
+        table = """
+| Bağlam | Orijinal Cümle | Kusur / Kategori | Doğal Alternatif |
+|---|---|---|---|
+| E-ticaret | Ürün tarafımızca kargolanacaktır. | Tarafından-pasifi | Ürünü bugün kargoya veriyoruz. |
+"""
+        report = self.validator.validate(table)
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertEqual(1, report.total_findings)
+        self.assertEqual("Ürün tarafımızca kargolanacaktır.", report.findings[0].original)
+
+    def test_invalid_ledger_missing_columns(self) -> None:
+        table_missing_alt = """
+| Context | Original / Synthetic Sentence | Flaw / Category |
+|---|---|---|
+| Docs | System was configured. | Passive voice |
+"""
+        report = self.validator.validate(table_missing_alt)
+        self.assertFalse(report.is_valid)
+        self.assertTrue(any("alternative" in err.lower() for err in report.errors))
+
+    def test_invalid_ledger_empty_cells(self) -> None:
+        table_empty_alt = """
+| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |
+|---|---|---|---|
+| Blog | Some sentence. | Some flaw |   |
+"""
+        report = self.validator.validate(table_empty_alt)
+        self.assertFalse(report.is_valid)
+        self.assertTrue(any("empty" in err.lower() for err in report.errors))
+
+    def test_invalid_ledger_below_min_findings(self) -> None:
+        empty_table = """
+| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |
+|---|---|---|---|
+"""
+        validator = AUDIT_MODULE.LedgerValidator(min_findings=1)
+        report = validator.validate(empty_table)
+        self.assertFalse(report.is_valid)
+        self.assertEqual(0, report.total_findings)
+
+    def test_valid_json_ledger(self) -> None:
+        json_data = json.dumps([
+            {
+                "context": "Support",
+                "original": "Talebiniz alınmıştır.",
+                "flaw": "Edilgen",
+                "alternative": "Talebinizi aldık."
+            }
+        ])
+        report = self.validator.validate(json_data)
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertEqual(1, report.total_findings)
+        self.assertEqual("json", report.schema_detected)
+
+    def test_invalid_json_ledger_missing_required_fields(self) -> None:
+        json_data = json.dumps([
+            {
+                "context": "Support",
+                "original": "Talebiniz alınmıştır."
+                # missing flaw and alternative
+            }
+        ])
+        report = self.validator.validate(json_data)
+        self.assertFalse(report.is_valid)
+        self.assertTrue(len(report.errors) > 0)
+
+    def test_valid_structured_markdown_sections(self) -> None:
+        content = """### Finding 1
+- **Context**: Mobile App
+- **Original**: Butona basılarak işlem onaylanmalıdır.
+- **Flaw**: Sahte fiilimsi ve zorunluluk kipi
+- **Alternative**: İşlemi onaylamak için butona dokunun.
+"""
+        report = self.validator.validate(content)
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertEqual(1, report.total_findings)
+        self.assertEqual("markdown_sections", report.schema_detected)
+
+    def test_empty_content_fails(self) -> None:
+        report = self.validator.validate("   \n\n  ")
+        self.assertFalse(report.is_valid)
+        self.assertIn("empty", report.errors[0].lower())
+
+
+class CadenceAndRhythmMetricTests(unittest.TestCase):
+    """Tests for cadence, rhythm, burstiness, and sentence segmentation."""
+
+    def setUp(self) -> None:
+        self.analyzer = AUDIT_MODULE.CadenceAnalyzer()
+
+    def test_empty_text(self) -> None:
+        metrics = self.analyzer.analyze("")
+        self.assertEqual(0, metrics.sentence_count)
+        self.assertEqual(0, metrics.word_count)
+        self.assertEqual(0.0, metrics.variance)
+
+    def test_monotonous_ai_prose(self) -> None:
+        # Uniform length sentences (~7 words each) typical of low-temperature robotic AI output
+        monotonous_text = (
+            "Sistem verimliliği artırmak amacıyla dikkatle yapılandırılmıştır. "
+            "Kullanıcı deneyimi bu aşamada özenle optimize edilmektedir. "
+            "Performans göstergeleri düzenli periyotlarla titizlikle izlenmektedir. "
+            "Veri analitiği sonuçları haftalık toplantılarda doğrudan paylaşılmaktadır. "
+            "Teknik altyapı ihtiyaçları zamanında eksiksiz olarak karşılanmaktadır."
         )
+        metrics = self.analyzer.analyze(monotonous_text)
+        self.assertEqual(5, metrics.sentence_count)
+        # Sentence lengths should be virtually identical
+        self.assertLess(metrics.standard_deviation, 2.5)
+        self.assertLess(metrics.burstiness_score, -0.6)
+        self.assertTrue(metrics.cadence_monotony, "Expected cadence monotony flag for robotic uniformity")
 
-    def test_reference_definitions_and_relative_destinations_are_protected(self) -> None:
-        original = "Read [the guide][docs].\n\n[docs]: <../guides/start_(here).md> \"Start\"\n"
-        revised = "See [our guide][docs].\n\n[docs]: <../guides/finish_(here).md> \"Start\"\n"
-        self.assert_fails_in("markdown-references", original, revised)
-
-    def test_reference_identifier_can_remain_while_visible_label_changes(self) -> None:
-        original = "Read [the old label][docs].\n\n[docs]: /guide\n"
-        revised = "See [the clearer label][docs].\n\n[docs]: /guide\n"
-        self.assert_passes(original, revised)
-
-    def test_reference_titles_are_copy_but_shortcuts_and_footnote_ids_are_protected(self) -> None:
-        original = 'Read [docs] and note [^scope].\n\n[docs]: ../guide.md "Old title"\n[^scope]: Old note.\n'
-        title_and_note_rewrite = (
-            'See [docs] and note [^scope].\n\n[docs]: ../guide.md "Clear title"\n[^scope]: Clear note.\n'
+    def test_dynamic_human_prose(self) -> None:
+        # Dynamic variation: 1-word punchy opening, long compound sentence (25+ words), medium, then short finish
+        dynamic_text = (
+            "Durduk. "
+            "Salondaki sessizlik gittikçe ağırlaşırken dışarıdaki fırtınanın camlara vuran uğultusu herkesi tedirgin etmeye yetmişti; kimse ne yapacağını kestiremiyordu çünkü elektrikler de ansızın kesilmişti ve yardımın geleceği çok şüpheliydi. "
+            "Birden kapı gürültüyle çalındı. "
+            "Gelen oydu."
         )
-        changed_footnote = title_and_note_rewrite.replace("[^scope]", "[^limits]")
-        self.assert_passes(original, title_and_note_rewrite)
-        self.assert_fails_in("markdown-references", original, changed_footnote)
+        metrics = self.analyzer.analyze(dynamic_text)
+        self.assertEqual(4, metrics.sentence_count)
+        # High standard deviation and variance reflecting conversational breathing
+        self.assertGreater(metrics.standard_deviation, 4.0)
+        self.assertGreater(metrics.variance, 16.0)
+        self.assertGreater(metrics.burstiness_score, -0.4)
+        self.assertFalse(metrics.cadence_monotony, "Dynamic human prose should not be flagged as monotonous")
+        self.assertGreater(metrics.short_sentences_count, 0)
+        self.assertGreater(metrics.long_sentences_count, 0)
 
-    def test_nested_markdown_destination_is_protected_but_title_is_copy(self) -> None:
-        original = 'Read [the guide](../guides/start_(here).md "Old title").'
-        title_change = 'See [our guide](../guides/start_(here).md "Clear title").'
-        destination_change = 'See [our guide](../guides/finish_(here).md "Clear title").'
-        self.assert_passes(original, title_change)
-        self.assert_fails_in("markdown-destinations", original, destination_change)
-
-    def test_numbers_dates_currency_and_units_are_protected(self) -> None:
-        original = "On 2026-07-26, 12.5% paid €49 for 10 GB."
-        revised = "On 2026-07-27, 12% paid €59 for 20 GB."
-        self.assert_fails_in("numbers-dates-currency-units", original, revised)
-
-    def test_inline_and_fenced_code_are_protected(self) -> None:
-        original = "Run `pnpm verify`.\n\n```bash\npnpm verify --filter site\n```\n"
-        changed_inline = original.replace("`pnpm verify`", "`pnpm test`")
-        changed_fence = original.replace("--filter site", "--filter app")
-        self.assert_fails_in("inline-code", original, changed_inline)
-        self.assert_fails_in("fenced-code", original, changed_fence)
-
-    def test_longer_closing_fence_and_multibacktick_span_are_protected(self) -> None:
-        original = "Use ``code with ` inside``.\n\n```txt\nexact prose-like code\n````\n"
-        changed_span = original.replace("code with ` inside", "different ` code")
-        changed_fence = original.replace("exact prose-like code", "changed prose-like code")
-        self.assert_fails_in("inline-code", original, changed_span)
-        self.assert_fails_in("fenced-code", original, changed_fence)
-
-    def test_code_like_numbers_do_not_leak_into_prose_inventory(self) -> None:
-        original = "Use this command:\n\n```bash\nretry --count 3\n```\n"
-        revised = "Run the command:\n\n```bash\nretry --count 3\n```\n"
-        self.assert_passes(original, revised)
-
-    def test_indented_code_is_protected(self) -> None:
-        original = "Run this command:\n\n    deploy --environment staging\n    verify --sha 123\n"
-        revised = "Use these commands:\n\n    deploy --environment production\n    verify --sha 123\n"
-        self.assert_fails_in("indented-code", original, revised)
-
-    def test_frontmatter_keys_and_protected_values(self) -> None:
-        original = '---\ntitle: "Old title"\nslug: keep-me\ndraft: false\n---\nOld copy.\n'
-        title_change = '---\ntitle: "Better title"\nslug: keep-me\ndraft: false\n---\nNew copy.\n'
-        slug_change = title_change.replace("keep-me", "changed")
-        removed_key = title_change.replace('title: "Better title"\n', "")
-        self.assert_passes(original, title_change)
-        self.assert_fails_in("frontmatter-protected-values", original, slug_change)
-        self.assert_fails_in("frontmatter-keys", original, removed_key)
-
-    def test_frontmatter_sequences_and_noncopy_scalars_are_protected(self) -> None:
-        original = '---\ntitle: "Old"\nauthor: Ada\ntags:\n  - stable\n  - public\n---\nOld copy.\n'
-        revised = '---\ntitle: "Better"\nauthor: Grace\ntags:\n  - changed\n  - public\n---\nNew copy.\n'
-        self.assert_fails_in("frontmatter-protected-values", original, revised)
-
-    def test_nested_frontmatter_copy_fields_can_change_but_object_ids_cannot(self) -> None:
-        original = (
-            "---\nseo:\n  title: Old title\n  description: Old description\nauthors:\n"
-            "  - name: Ada\n    id: author-1\n---\nOld body.\n"
+    def test_sentence_segmentation_with_abbreviations_and_numbers(self) -> None:
+        text = (
+            "Dr. Kaya ve Prof. Demir saat 14:00'te geldi. "
+            "Veriler 3.14 kat artış gösterdi. "
+            "Rapor vb. belgeleri masaya bıraktılar!"
         )
-        copy_change = (
-            "---\nseo:\n  title: Clear title\n  description: Clear description\nauthors:\n"
-            "  - name: Ada\n    id: author-1\n---\nClear body.\n"
+        sentences = AUDIT_MODULE.split_sentences(text)
+        self.assertEqual(3, len(sentences), f"Expected 3 sentences, got: {sentences}")
+        self.assertTrue(sentences[0].startswith("Dr. Kaya"))
+        self.assertIn("3.14 kat", sentences[1])
+        self.assertTrue(sentences[2].startswith("Rapor vb."))
+
+    def test_short_to_long_ratio(self) -> None:
+        text = (
+            "Kısa cümle. "
+            "Bir başka kısa cümle. "
+            "Bu ise oldukça uzun, detaylı, akıcı, zengin ve yirmi beş kelimeden daha uzun bir yapıya sahip olan birleşik bir cümledir çünkü birden fazla yan cümlecikle ve bağlaçlarla bilerek uzatılmıştır."
         )
-        id_change = copy_change.replace("author-1", "author-2")
-        self.assert_passes(original, copy_change)
-        self.assert_fails_in("frontmatter-protected-values", original, id_change)
+        metrics = self.analyzer.analyze(text)
+        self.assertEqual(2, metrics.short_sentences_count)
+        self.assertEqual(1, metrics.long_sentences_count)
+        self.assertEqual(2.0, metrics.short_to_long_ratio)
 
-    def test_frontmatter_copy_block_may_change_without_losing_shape(self) -> None:
-        original = "---\ndescription: >\n  Old generic copy.\nslug: stable\n---\nBody.\n"
-        revised = "---\ndescription: >\n  Clear useful copy.\nslug: stable\n---\nRevised body.\n"
-        self.assert_passes(original, revised)
+    def test_burstiness_score_bounded(self) -> None:
+        metrics = self.analyzer.analyze("Bir iki üç. Dört beş altı yedi sekiz dokuz on. On bir.")
+        self.assertGreaterEqual(metrics.burstiness_score, -1.0)
+        self.assertLessEqual(metrics.burstiness_score, 1.0)
 
-    def test_html_text_and_copy_attributes_may_change(self) -> None:
-        original = '<p class="lead"><img src="hero.png" alt="Generic image">Old copy.</p>'
-        revised = '<p class="lead"><img src="hero.png" alt="Team reviewing a report">Clear copy.</p>'
-        self.assert_passes(original, revised)
 
-    def test_html_and_jsx_structure_is_protected(self) -> None:
-        original = '<Callout tone="warning" id="renewal">Old copy.</Callout>'
-        changed_attr = '<Callout tone="info" id="renewal">New copy.</Callout>'
-        changed_name = '<Notice tone="warning" id="renewal">New copy.</Notice>'
-        self.assert_fails_in("markup-protected-values", original, changed_attr)
-        self.assert_fails_in("markup-tags", original, changed_name)
+class LinguisticStructureHeuristicsTests(unittest.TestCase):
+    """Tests for non-dogmatic syntactic choking hazards detection."""
 
-    def test_language_and_direction_values_are_protected(self) -> None:
-        original = '<p lang="tr" dir="ltr">Metin.</p>'
-        revised = '<p lang="en" dir="rtl">Text.</p>'
-        self.assert_fails_in("markup-protected-values", original, revised)
+    def setUp(self) -> None:
+        self.analyzer = AUDIT_MODULE.LinguisticStructureAnalyzer()
 
-    def test_html_comments_entities_and_raw_text_are_protected(self) -> None:
-        original = '<!-- cms:keep --><p>A&nbsp;B</p><script type="application/ld+json">{"name":"Old"}</script>'
-        changed_comment = original.replace("cms:keep", "cms:drop")
-        changed_entity = original.replace("&nbsp;", "&thinsp;")
-        changed_script = original.replace('"Old"', '"New"')
-        self.assert_fails_in("html-comments", original, changed_comment)
-        self.assert_fails_in("html-entities", original, changed_entity)
-        self.assert_fails_in("html-raw-text", original, changed_script)
+    def test_cascading_gerund_chains_detected(self) -> None:
+        # 3 consecutive gerunds (toplayıp, inceleyerek, hazırlayarak)
+        text = "Verileri toplayıp, modelleri inceleyerek ve raporu hazırlayarak sunum yaptı."
+        issues = self.analyzer.analyze(text)
+        categories = [i.category for i in issues]
+        self.assertIn("cascading_gerund_chain", categories)
+        gerund_issue = next(i for i in issues if i.category == "cascading_gerund_chain")
+        self.assertGreaterEqual(len(gerund_issue.evidence), 3)
 
-    def test_raw_text_isolated_from_mdx_expressions_and_unclosed_comments_are_artifacts(self) -> None:
-        original = '<style>.card { color: red; }</style><p>Old copy.</p>'
-        revised = '<style>.card { color: blue; }</style><p>Clear copy.</p>'
-        report = AUDIT.audit(original, revised)
-        categories = {item["category"] for item in report["differences"]}
-        self.assertIn("html-raw-text", categories, report)
-        self.assertNotIn("brace-expressions", categories, report)
+    def test_single_or_double_gerund_not_flagged(self) -> None:
+        # Natural prose with 1 gerund should NOT be flagged (zero dogmatic word bans!)
+        text = "Koşarak içeri girdi ve haber verdi."
+        issues = self.analyzer.analyze(text)
+        categories = [i.category for i in issues]
+        self.assertNotIn("cascading_gerund_chain", categories)
 
-        malformed = AUDIT.audit("<p>Copy.</p>", "<!-- unfinished\n<p>Copy.</p>")
-        self.assertFalse(malformed["pass"], malformed)
-        self.assertTrue(any("unclosed-html-comment" in item for item in malformed["artifacts"]["added"]), malformed)
+    def test_excessive_nominalization_detected(self) -> None:
+        # High concentration of nominalizations
+        text = "Sistemin yapılandırılması, kullanımının yaygınlaştırılması ve sürecin gerçekleştirilmesi hedeflenmektedir."
+        issues = self.analyzer.analyze(text)
+        categories = [i.category for i in issues]
+        self.assertIn("excessive_nominalization", categories)
 
-    def test_mdx_expressions_esm_and_template_directives_are_protected(self) -> None:
-        expression_original = '<Price value={{monthly: prices[locale]}}>{format(price)}</Price>'
-        expression_revised = '<Price value={{annual: prices[locale]}}>{format(total)}</Price>'
-        expression_report = AUDIT.audit(expression_original, expression_revised)
-        expression_categories = {item["category"] for item in expression_report["differences"]}
-        self.assertIn("brace-expressions", expression_categories, expression_report)
+    def test_periphrastic_passive_stacking_detected(self) -> None:
+        # 'tarafından-pasifi'
+        text = "Rapor yönetim kurulu tarafından onaylanarak sisteme girilmiştir."
+        issues = self.analyzer.analyze(text)
+        categories = [i.category for i in issues]
+        self.assertIn("periphrastic_passive_stacking", categories)
 
-        esm_original = 'export const plan = "starter"\n\n# Old\n'
-        esm_revised = 'export const plan = "enterprise"\n\n# New\n'
-        self.assert_fails_in("mdx-esm", esm_original, esm_revised)
+    def test_active_voice_not_flagged(self) -> None:
+        # Direct active human subject
+        text = "Yönetim kurulu raporu onayladı ve sisteme girdi."
+        issues = self.analyzer.analyze(text)
+        categories = [i.category for i in issues]
+        self.assertNotIn("periphrastic_passive_stacking", categories)
 
-        template_original = "Hello {{ customer.name }}. {% if active %}${plan}{% endif %}"
-        template_revised = "Hello {{ account.name }}. {% if trial %}${tier}{% endif %}"
-        self.assert_fails_in("template-directives", template_original, template_revised)
+    def test_run_on_sentence_detected(self) -> None:
+        # Extreme sentence with >45 words without breaks
+        run_on = " ".join(["kelime"] * 50) + "."
+        issues = self.analyzer.analyze(run_on)
+        categories = [i.category for i in issues]
+        self.assertIn("run_on_sentence", categories)
 
-    def test_localized_currency_suffix_and_spacing_are_protected(self) -> None:
-        original = "Plan A: 100\u00a0zł; Plan B: ₺1.250,50; Plan C: ١٢٫٥ د.إ"
-        revised = "Plan A: 100\u00a0kr; Plan B: ₺1.250,50; Plan C: ١٢٫٥ ر.س"
-        self.assert_fails_in("numbers-dates-currency-units", original, revised)
 
-    def test_user_protected_literals_cover_legal_terms_and_names(self) -> None:
-        original = "Offer is void where prohibited. Contact Acme & Co."
-        revised = "Offer is unavailable where prohibited. Contact Acme and Company."
-        report = AUDIT.audit(
-            original,
-            revised,
-            protected_literals=["Offer is void where prohibited.", "Acme & Co."],
-        )
-        self.assertFalse(report["pass"], report)
-        categories = {item["category"] for item in report["differences"]}
-        self.assertIn("user-protected-literals", categories, report)
+class CLIExecutionAndExitCodeTests(unittest.TestCase):
+    """Functional tests running audit-rewrite.py via subprocess CLI."""
 
-    def test_user_protected_literal_must_exist_in_original(self) -> None:
-        with self.assertRaisesRegex(ValueError, "not present in original"):
-            AUDIT.audit("Original copy.", "Revised copy.", protected_literals=["Missing invariant"])
-
-    def test_user_protected_literal_preserves_occurrence_count_and_deduplicates_inputs(self) -> None:
-        report = AUDIT.audit("Exact / Exact", "Exact", protected_literals=["Exact", "Exact"])
-        self.assertFalse(report["pass"], report)
-        difference = next(item for item in report["differences"] if item["category"] == "user-protected-literals")
-        self.assertEqual(["Exact"], difference["missing"], report)
-
-    def test_low_signal_and_large_delta_warnings_do_not_claim_failure(self) -> None:
-        low_signal = AUDIT.audit("Plain original prose.", "Clear revised prose.")
-        self.assertTrue(low_signal["pass"], low_signal)
-        self.assertIn("no-deterministic-protections", {item["code"] for item in low_signal["warnings"]})
-
-        empty = AUDIT.audit("", "New prose without protected tokens.")
-        self.assertTrue(empty["pass"], empty)
-        self.assertIn("original-empty", {item["code"] for item in empty["warnings"]})
-
-        large_delta = AUDIT.audit("Keep 2026. Short.", "Keep 2026. " + "Expanded prose. " * 20)
-        self.assertTrue(large_delta["pass"], large_delta)
-        self.assertIn("large-size-delta", {item["code"] for item in large_delta["warnings"]})
-
-    def test_multilingual_assistant_and_prompt_residue_fail(self) -> None:
-        revised = (
-            "İşte yeniden yazılmış sürüm:\n\nMetin.\n\n"
-            "Como modelo de lenguaje de IA, no tengo opiniones personales."
-        )
-        report = AUDIT.audit("Metin.", revised)
-        self.assertFalse(report["pass"], report)
-        self.assertGreaterEqual(len(report["artifacts"]["added"]), 2, report)
-
-    def test_new_unclosed_fence_is_an_artifact(self) -> None:
-        original = "Text.\n\n```txt\nclosed\n```\n"
-        revised = "Text.\n\n```txt\nunclosed\n"
-        report = AUDIT.audit(original, revised)
-        self.assertFalse(report["pass"], report)
-        self.assertTrue(any("unclosed-fence" in item for item in report["artifacts"]["added"]), report)
-
-    def test_new_artifact_fails_but_existing_artifact_is_reported(self) -> None:
-        added = AUDIT.audit("Ready copy.", "Ready copy. [insert source]")
-        self.assertFalse(added["pass"])
-        self.assertTrue(added["artifacts"]["added"])
-
-        existing = AUDIT.audit("TODO: add source", "TODO: add source")
-        self.assertTrue(existing["pass"], existing)
-        self.assertTrue(existing["artifacts"]["existing"])
-        self.assertFalse(existing["artifacts"]["added"])
-
-    def test_assistant_chatter_and_citation_residue_fail(self) -> None:
-        report = AUDIT.audit("Article text.", "Here is the revised version:\n\nArticle text. citeturn0search1")
-        self.assertFalse(report["pass"])
-        self.assertEqual(2, len(report["artifacts"]["added"]), report)
-
-    def test_cli_json_and_exit_codes(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            original = root / "original.md"
-            revised = root / "revised.md"
-            original.write_text("Price: €49.", encoding="utf-8")
-            revised.write_text("The price is €49.", encoding="utf-8")
-            passed = subprocess.run(
-                [sys.executable, str(SCRIPT), "--json", str(original), str(revised)],
-                check=False,
-                capture_output=True,
-                text=True,
+    def test_cli_valid_ledger_exits_0(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_file = Path(temp_dir) / "ledger.md"
+            ledger_file.write_text(
+                "| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |\n"
+                "|:---|:---|:---|:---|\n"
+                "| UI | İşlem yapılmıştır. | Edilgen | İşlemi tamamladık. |\n",
+                encoding="utf-8",
             )
-            self.assertEqual(0, passed.returncode, passed.stderr)
-            payload = json.loads(passed.stdout)
-            self.assertTrue(payload["pass"])
-            self.assertIn("does not prove semantic equivalence", payload["limitations"][0])
-
-            revised.write_text("The price is €59.", encoding="utf-8")
-            failed = subprocess.run(
-                [sys.executable, str(SCRIPT), str(original), str(revised)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(1, failed.returncode)
-            self.assertTrue(failed.stdout.startswith("FAIL"), failed.stdout)
-
-    def test_cli_protect_and_protect_from(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            original = root / "original.md"
-            revised = root / "revised.md"
-            protected = root / "protected.txt"
-            original.write_text("Keep Exact Product Name and Legal phrase.", encoding="utf-8")
-            revised.write_text("Keep Product Name and revised phrase.", encoding="utf-8")
-            protected.write_text("# exact literals\nExact Product Name\nLegal phrase\n", encoding="utf-8")
             result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--json",
-                    "--protect",
-                    "Exact Product Name",
-                    "--protect-from",
-                    str(protected),
-                    str(original),
-                    str(revised),
-                ],
-                check=False,
+                [sys.executable, str(SCRIPT_PATH), "--ledger", str(ledger_file)],
                 capture_output=True,
                 text=True,
-            )
-            self.assertEqual(1, result.returncode, result.stderr)
-            payload = json.loads(result.stdout)
-            self.assertIn("user-protected-literals", {item["category"] for item in payload["differences"]})
-
-    def test_cli_rejects_missing_protected_literal_and_file(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            original = root / "original.md"
-            revised = root / "revised.md"
-            original.write_text("Original.", encoding="utf-8")
-            revised.write_text("Revised.", encoding="utf-8")
-            missing_literal = subprocess.run(
-                [sys.executable, str(SCRIPT), "--protect", "Absent", str(original), str(revised)],
                 check=False,
+            )
+            self.assertEqual(0, result.returncode, f"stderr: {result.stderr}")
+            self.assertIn("PASS", result.stdout)
+
+    def test_cli_invalid_ledger_exits_1(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_file = Path(temp_dir) / "invalid_ledger.md"
+            ledger_file.write_text(
+                "| Context | Original / Synthetic Sentence |\n"
+                "|:---|:---|\n"
+                "| UI | Eksik tablo |\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), "--ledger", str(ledger_file)],
                 capture_output=True,
                 text=True,
-            )
-            self.assertEqual(2, missing_literal.returncode)
-            self.assertIn("not present in original", missing_literal.stderr)
-
-            missing_file = subprocess.run(
-                [sys.executable, str(SCRIPT), "--protect-from", str(root / "missing.txt"), str(original), str(revised)],
                 check=False,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("FAIL", result.stdout)
+
+    def test_cli_valid_text_exits_0(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            text_file = Path(temp_dir) / "prose.txt"
+            text_file.write_text(
+                "Geldik. Kapıyı açtık ve içeriye baktık. Her şey yerli yerindeydi.",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), "--text", str(text_file)],
                 capture_output=True,
                 text=True,
-            )
-            self.assertEqual(2, missing_file.returncode)
-            self.assertIn("cannot read", missing_file.stderr)
-
-    def test_cli_rejects_blank_literal_and_empty_protection_file(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            original = root / "original.md"
-            revised = root / "revised.md"
-            empty = root / "empty.txt"
-            original.write_text("Original.", encoding="utf-8")
-            revised.write_text("Revised.", encoding="utf-8")
-            empty.write_text("# comments only\n\n", encoding="utf-8")
-
-            blank = subprocess.run(
-                [sys.executable, str(SCRIPT), "--protect", "  ", str(original), str(revised)],
                 check=False,
+            )
+            self.assertEqual(0, result.returncode, f"stderr: {result.stderr}")
+            self.assertIn("PASS", result.stdout)
+
+    def test_cli_strict_mode_fails_on_monotony(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            text_file = Path(temp_dir) / "monotonous.txt"
+            text_file.write_text(
+                "Sistem verimliliği artırmak amacıyla yapılandırılmıştır. "
+                "Kullanıcı deneyimi bu aşamada optimize edilmektedir. "
+                "Performans göstergeleri düzenli olarak izlenmektedir. "
+                "Veri analitiği sonuçları haftalık paylaşılmaktadır.",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), "--text", str(text_file), "--strict"],
                 capture_output=True,
                 text=True,
-            )
-            self.assertEqual(2, blank.returncode)
-            self.assertIn("must not be blank", blank.stderr)
-
-            empty_file = subprocess.run(
-                [sys.executable, str(SCRIPT), "--protect-from", str(empty), str(original), str(revised)],
                 check=False,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("FAIL", result.stdout)
+
+    def test_cli_json_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_file = Path(temp_dir) / "ledger.md"
+            ledger_file.write_text(
+                "| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |\n"
+                "|:---|:---|:---|:---|\n"
+                "| SaaS | Yapay metin. | Kusur | Doğal alternatif. |\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), "--ledger", str(ledger_file), "--json"],
                 capture_output=True,
                 text=True,
+                check=False,
             )
-            self.assertEqual(2, empty_file.returncode)
-            self.assertIn("contains no protected literals", empty_file.stderr)
+            self.assertEqual(0, result.returncode)
+            data = json.loads(result.stdout)
+            self.assertTrue(data["pass"])
+            self.assertIn("ledger", data)
+            self.assertTrue(data["ledger"]["valid"])
+            self.assertEqual(1, data["ledger"]["total_findings"])
+
+    def test_cli_missing_file_exits_2(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--ledger", "non_existent_file.md"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(2, result.returncode)
+
+    def test_cli_no_args_exits_2(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(2, result.returncode)
+
+    def test_cli_positional_arguments_auto_detection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_file = Path(temp_dir) / "my_ledger.md"
+            ledger_file.write_text(
+                "| Context | Original / Synthetic Sentence | Flaw / Category | Natural Alternative |\n"
+                "|:---|:---|:---|:---|\n"
+                "| Landing | Yapay cümle örneği | Kopula | Doğal cümle örneği |\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), str(ledger_file)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, f"stderr: {result.stderr}")
+            self.assertIn("PASS", result.stdout)
+
+
+class ZeroDogmaticBlacklistIntegrityTests(unittest.TestCase):
+    """Verifies that audit-rewrite.py strictly contains NO dogmatic token/word blacklists."""
+
+    def test_no_dogmatic_word_blacklists_in_source(self) -> None:
+        source_code = SCRIPT_PATH.read_text(encoding="utf-8")
+        # Ensure old artifact patterns and banned token lists are completely purged
+        banned_stems = [
+            "ARTIFACT_PATTERNS",
+            "assistant-chatter",
+            "model-disclaimer",
+            "certainly",
+            "of course",
+            "işte",
+            "bir yapay zek",
+        ]
+        for stem in banned_stems:
+            self.assertNotIn(
+                stem.lower(),
+                source_code.lower(),
+                f"Found dogmatic blacklist residue '{stem}' in audit-rewrite.py",
+            )
 
 
 if __name__ == "__main__":
