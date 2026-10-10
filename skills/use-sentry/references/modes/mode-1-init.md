@@ -12,9 +12,10 @@ Trigger Mode 1 when:
 ## Step 1: Detect Project Stack & Architecture
 
 Before fetching packages or touching code, inspect the repository to determine:
-1. **Primary Runtime:** Node.js (ESM / CJS), TypeScript, Python, Go, Rust, Swift, Cloudflare Workers / V8 Isolate.
-2. **Framework:** Cloudflare Workers/Pages, Hono, Next.js App Router, Fastify, Express, FastAPI, Django, Gin, NestJS.
+1. **Primary Runtime:** Node.js (ESM / CJS), TypeScript, Python, Go, Rust, Swift, Cloudflare Workers / V8 Isolate, React Native / Hermes VM.
+2. **Framework:** Expo / React Native (Expo Router), Cloudflare Workers/Pages, Hono, Next.js App Router, Fastify, Express, FastAPI, Django, Gin, NestJS.
 3. **Application Topology:**
+   - Expo & React Native mobile app (`@sentry/react-native`, `@sentry/react-native/expo`, `getSentryExpoConfig`).
    - Cloudflare Worker / Durable Object / Workflow / Agents SDK (`@sentry/cloudflare`).
    - Model Context Protocol (MCP) Server (requires stdio isolation).
    - Cloud browser / scraper / automation engine (Playwright, Puppeteer, Kernel).
@@ -75,10 +76,10 @@ See `references/network-tunneling/envelope-tunneling.md` and `references/network
 
 ## Step 6: Install SDK, Redaction & Context Store
 
-1. Install official SDK (`@sentry/node`, `@sentry/nextjs`, `@sentry/cloudflare`, `sentry-sdk`, `sentry-cocoa`, etc.).
+1. Install official SDK (`@sentry/node`, `@sentry/nextjs`, `@sentry/cloudflare`, `@sentry/react-native`, `sentry-sdk`, `sentry-cocoa`, etc.).
 2. Wire `beforeSend` and `beforeBreadcrumb` with redaction filters. See `references/privacy-redaction/credential-redaction-rules.md`.
 3. Wire `AsyncLocalStorage` request context store (or `nodejs_compat` on Cloudflare). See `references/performance-replay/asynclocalstorage-context.md`.
-4. Apply framework-specific blueprints and error boundaries. See `references/architectures/` (including `references/architectures/cloudflare-workers.md`).
+4. Apply framework-specific blueprints and error boundaries. See `references/architectures/` (including `references/architectures/cloudflare-workers.md` and `references/architectures/expo-mobile.md`).
 
 ## Step 7: Offline Gate & Live Verification
 

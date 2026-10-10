@@ -46,3 +46,13 @@ sentry go gin middleware recovery traceparent context distributed tracing
 ```text
 sentry cli standalone script unhandledRejection uncaughtException flush close process exit
 ```
+
+## 10. Cloudflare Workers & Pages
+```text
+sentry cloudflare workers sentryCloudflareVitePlugin instrument.server defineCloudflareOptions durable objects workflows
+```
+
+## 11. Expo & React Native Mobile Apps
+```text
+sentry react native expo config plugin getSentryExpoConfig hermes sourcemap expoRouterIntegration mobileReplay eas
+```

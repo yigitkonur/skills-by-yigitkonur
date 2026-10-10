@@ -46,7 +46,7 @@ Or manually check the codebase against the enterprise features:
 ### Pillar 5: Continuous Profiling & Runtime Diagnostics
 - [ ] **Continuous Profiling:** Is service-lifetime CPU profiling enabled (`profileSessionSampleRate` or manual start/stop)?
 - [ ] **Transaction Profiling (Legacy):** Is trace-coupled profiling configured via `profilesSampleRate`?
-- [ ] **Native Diagnostics (Mobile/Apple):** Are Apple MetricKit, Watchdog OOM, and TTID/TTFD tracked? (See `references/architectures/swift-apple-ecosystem.md`)
+- [ ] **Native Diagnostics (Mobile/Apple/Android):** Are Apple MetricKit, Watchdog OOM, Android ANRs, and TTID/TTFD tracked? (See `references/architectures/swift-apple-ecosystem.md` & `references/architectures/expo-mobile.md`)
 
 ### Pillar 6: Cron & Uptime Monitors
 - [ ] **Cron Monitors:** Are scheduled cron jobs monitored via heartbeats (`withMonitor`, `captureCheckIn`, or Cloudflare Worker `scheduled` handlers)? (See `references/performance-replay/cron-monitors.md`)
@@ -55,13 +55,17 @@ Or manually check the codebase against the enterprise features:
 - [ ] **Trace-Connected Metrics:** Are application counters, distributions, and span measurements tracked (`span.setMeasurement`, OTel metrics)?
 
 ### Pillar 8: Session Replay & Privacy Redaction
-- [ ] **Session Replay:** Is DOM or mobile view recording enabled with rage/dead click detection? (See `references/performance-replay/session-replay.md`)
+- [ ] **Session Replay:** Is DOM or mobile view recording enabled with rage/dead click detection and strict privacy shields (`mobileReplayIntegration`, `maskAllText`, `maskAllImages`)? (See `references/performance-replay/session-replay.md` & `references/architectures/expo-mobile.md`)
 - [ ] **Privacy Redaction:** Are passwords, auth headers, and query JWTs scrubbed? (See `references/privacy-redaction/credential-redaction-rules.md` & `references/privacy-redaction/url-jwt-sanitization.md`)
 
 ### Pillar 9: AI, LLM & Model Context Protocol (MCP) Observability
 - [ ] **AI / LLM Monitoring:** Are token counts, prompts, completions, and model latencies tracked? (See `references/architectures/ai-llm-monitoring.md`)
 - [ ] **MCP Server Monitoring:** Are MCP tools auto-instrumented with stdio isolation (`mcpServerIntegration`)? (See `references/architectures/mcp-server-sentry.md`)
 - [ ] **AI Assistant Integration:** Are AI agents connected via Claude Code plugin (`getsentry/sentry-mcp`), `sentry mcp`, or remote `mcp.sentry.dev`? (See `references/architectures/sentry-mcp-integration.md`)
+
+### Pillar 10: Edge & Mobile Specialized Architecture
+- [ ] **Cloudflare Workers:** Are build-time AST instrumentation (`sentryCloudflareVitePlugin`), `nodejs_compat`, Durable Objects, and Workflows instrumented? (See `references/architectures/cloudflare-workers.md`)
+- [ ] **Expo & React Native:** Are Hermes Debug IDs (`getSentryExpoConfig`), Expo Router navigation tracing (`expoRouterIntegration`), EAS Build secrets, and OTA update sourcemaps configured? (See `references/architectures/expo-mobile.md`)
 
 ---
 

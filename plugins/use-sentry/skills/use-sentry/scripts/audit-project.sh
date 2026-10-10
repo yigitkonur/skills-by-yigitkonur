@@ -43,6 +43,9 @@ fi
 if [[ -f "${TARGET_DIR}/wrangler.jsonc" || -f "${TARGET_DIR}/wrangler.json" || -f "${TARGET_DIR}/wrangler.toml" ]] || grep -rq "@sentry/cloudflare" "${TARGET_DIR}/package.json" 2>/dev/null; then
   DETECTED_ECOSYSTEMS+=("Cloudflare Workers/Pages")
 fi
+if [[ -f "${TARGET_DIR}/app.json" || -f "${TARGET_DIR}/app.config.ts" || -f "${TARGET_DIR}/app.config.js" ]] || grep -rqE "(\"expo\"|@sentry/react-native)" "${TARGET_DIR}/package.json" 2>/dev/null; then
+  DETECTED_ECOSYSTEMS+=("Expo/React Native")
+fi
 if [[ -f "${TARGET_DIR}/pyproject.toml" || -f "${TARGET_DIR}/requirements.txt" || -f "${TARGET_DIR}/Pipfile" || -f "${TARGET_DIR}/setup.py" || -f "${TARGET_DIR}/setup.cfg" ]] || find "${TARGET_DIR}" -maxdepth 3 \( -name node_modules -o -name .git -o -name .venv -o -name venv -o -name __pycache__ \) -prune -o -name "*.py" -print 2>/dev/null | grep -q .; then
   DETECTED_ECOSYSTEMS+=("Python")
 fi
@@ -122,7 +125,7 @@ check_feature "Application Metrics" "(metrics\.count|metrics\.gauge|metrics\.dis
 
 echo ""
 echo "--- Privacy, Replay & Local Dev ---"
-check_feature "Session Replay" "(replayIntegration|replaysSessionSampleRate|replaysOnErrorSampleRate|sessionReplay)" "Replay" || true
+check_feature "Session Replay" "(replayIntegration|mobileReplayIntegration|replaysSessionSampleRate|replaysOnErrorSampleRate|sessionReplay)" "Replay" || true
 check_feature "Credential Redaction" "(redact|Filtered|beforeBreadcrumb|before_breadcrumb|BeforeBreadcrumb|maskAllText)" "Security" || true
 check_feature "Spotlight Local Dev" "(spotlight:\s*|spotlight=True|spotlight\.init)" "Dev Tools" || true
 
@@ -137,6 +140,14 @@ check_feature "App Hang Tracking" "(enableAppHangTracking|appHangTimeoutInterval
 check_feature "MetricKit Integration" "(enableMetricKit|MXDiagnosticPayload)" "Apple Native" || true
 check_feature "Watchdog OOM Tracking" "(enableWatchdogTerminationTracking)" "Apple Native" || true
 check_feature "SwiftUI View Tracing" "(sentryTrace|SentryTracedView|reportFullyDisplayed)" "Apple Native" || true
+
+echo ""
+echo "--- Mobile & Edge Frameworks ---"
+check_feature "Expo Config Plugin" "(@sentry/react-native/expo|withSentry)" "Expo Mobile" || true
+check_feature "Expo Metro Serializer" "(getSentryExpoConfig)" "Expo Mobile" || true
+check_feature "Expo Router Tracing" "(expoRouterIntegration|reactNavigationIntegration)" "Expo Mobile" || true
+check_feature "Mobile Session Replay" "(mobileReplayIntegration|maskAllImages|maskAllVectors)" "Expo Mobile" || true
+check_feature "Cloudflare Worker Instrumentation" "(sentryCloudflareVitePlugin|instrumentDurableObjectWithSentry|instrumentWorkflowWithSentry)" "Cloudflare" || true
 
 echo ""
 echo "--- Network & Resilience ---"

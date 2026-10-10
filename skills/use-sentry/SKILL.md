@@ -1,17 +1,17 @@
 ---
 name: use-sentry
-description: "Use if setting up or auditing modern Sentry observability with Cloudflare Workers/Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
+description: "Use if setting up or auditing modern Sentry observability with Expo/React Native, Cloudflare Workers/Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
 disable-model-invocation: true
 metadata:
   author: Yigit Konur
-  version: 3.2.0
+  version: 3.3.0
   category: observability
-  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, ai, llm, cloudflare-workers, cloudflare-pages]
+  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, ai, llm, cloudflare-workers, cloudflare-pages, expo, react-native, mobile]
 ---
 
 # Sentry
 
-The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Cloudflare Workers & Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
+The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Expo/React Native, Cloudflare Workers & Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
 
 ## The Enterprise Observability Pillars
 
@@ -27,18 +27,20 @@ Modern Sentry extends beyond basic error catching into a unified, full-stack obs
 9. **Model Context Protocol (MCP) Ecosystem**: Out-of-the-box MCP server auto-instrumentation (`mcpServerIntegration` for `@modelcontextprotocol/server` v2 and `@modelcontextprotocol/sdk` v1) with strict stdio isolation (`recordInputs`, `recordOutputs`), and connecting AI coding assistants directly to Sentry's remote MCP server (`https://mcp.sentry.dev/mcp`, Claude Code plugin `getsentry/sentry-mcp`, or CLI `sentry mcp`).
 10. **Swift & Apple Ecosystem**: Native macOS, iOS, visionOS instrumentation via `sentry-cocoa` SPM, SwiftUI `SentryTracedView` (supporting TTID/TTFD via `waitForFullDisplay`), MetricKit OS crash/diagnostic payloads (`enableMetricKit = true`, migrating from deprecated `enableAppHangTracking`), and Watchdog OOM detection.
 11. **Edge & Serverless Isolates (Cloudflare Workers & Pages)**: First-class edge isolate observability (`@sentry/cloudflare`, `sentryCloudflareVitePlugin`), build-time dependency instrumentation, `AsyncLocalStorage` via `nodejs_compat`, Durable Objects (`instrumentDurableObjectWithSentry`), Workflows, and Agents SDK telemetry.
-12. **Spotlight Local Development Overlay**: Zero-overhead local developer sidecar (`@spotlightjs/spotlight`, `spotlight: true`) for instant browser trace visibility with zero SaaS quota consumption.
+12. **Expo & React Native Mobile Apps**: Native iOS/Android crash reporting, Hermes bytecode Debug IDs (`@sentry/react-native/metro`), Expo Config Plugin (`@sentry/react-native/expo`), Expo Router tracing (`expoRouterIntegration`), Mobile Session Replay (`mobileReplayIntegration`), and EAS Build / OTA Update source map automation.
+13. **Spotlight Local Development Overlay**: Zero-overhead local developer sidecar (`@spotlightjs/spotlight`, `spotlight: true`) for instant browser trace visibility with zero SaaS quota consumption.
 
 ## Decision tree (The 3 Modes)
 
 ```
 What is your objective?
 ├── Mode 1: Sentry is NOT in the project OR user says "set up / initialize Sentry"
-│   ├── Step 1: Detect runtime, framework & architecture (Cloudflare Workers/Pages, Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
+│   ├── Step 1: Detect runtime, framework & architecture (Expo/React Native, Cloudflare Workers/Pages, Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
 │   ├── Step 2: Research stack patterns via research-mcp (max 20 keywords): references/research/research-mcp-protocol.md
 │   ├── Step 3: Choose keyword matrix: references/research/stack-keyword-matrices.md
 │   ├── Step 4: Step-by-step setup guide: references/modes/mode-1-init.md
 │   ├── Step 5: Stack blueprints: references/architectures/
+│   │   ├── Expo & React Native Mobile: references/architectures/expo-mobile.md
 │   │   ├── Cloudflare Workers & Pages: references/architectures/cloudflare-workers.md
 │   │   ├── Swift / Apple: references/architectures/swift-apple-ecosystem.md
 │   │   ├── MCP Server & Remote MCP: references/architectures/sentry-mcp-integration.md & references/architectures/mcp-server-sentry.md
@@ -59,7 +61,7 @@ What is your objective?
 │   ├── Pillar 2 (Breadcrumbs & Rich Context): references/breadcrumbs-context/ (system, ui, tags, feedback, device)
 │   ├── Pillar 3 (Logging & Analytics): references/logging-analytics/ (structured-logs with Pino & Sentry.logger, pin-to-top, log-explorer, discover)
 │   ├── Pillar 4 (Tracing, Profiling, Crons, Replay): references/performance-replay/ (spans, continuous profiling, asynclocalstorage, replay, crons, spotlight)
-│   ├── Pillar 5 (Edge, Swift & Special Stacks): references/architectures/ (cloudflare-workers, swift-apple-ecosystem, mcp-server-sentry)
+│   ├── Pillar 5 (Edge, Mobile, Swift & Special Stacks): references/architectures/ (expo-mobile, cloudflare-workers, swift-apple-ecosystem, mcp-server-sentry)
 │   └── Pillar 6 (Privacy & Redaction): references/privacy-redaction/ (credentials, url-jwt)
 │
 └── Mode 3: "Something is broken in prod" / Triage alerts / Debug incident
@@ -171,6 +173,14 @@ Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runt
 - **Entry Pattern**: `src/instrument.server.ts` adjacent to worker entry exporting `defineCloudflareOptions`, or `withSentry` wrapper for Wrangler CLI builds.
 - **Stateful & Async Primitives**: Native instrumentations via `instrumentDurableObjectWithSentry`, `instrumentWorkflowWithSentry`, and `instrumentAgentWithSentry`.
 
+### 12. Expo & React Native Mobile Observability (`@sentry/react-native`)
+Mobile apps combine the Hermes JavaScript VM with native iOS (`sentry-cocoa`) and Android (`sentry-android`) runtimes:
+- **Modern Standard**: The legacy `sentry-expo` package is retired; modern apps must use `@sentry/react-native` with the `@sentry/react-native/expo` config plugin.
+- **Hermes Bytecode Debug IDs**: Wrap Metro configuration with `getSentryExpoConfig` (`@sentry/react-native/metro`) to inject deterministic Debug IDs into Hermes bytecode bundles for seamless symbolication.
+- **Expo Router Navigation & TTID**: Auto-instrument route transitions and Time to Initial Display via `Sentry.expoRouterIntegration({ enableTimeToInitialDisplay: !isRunningInExpoGo() })`.
+- **Session Replay for Mobile**: Record screen redraws correlated with errors while shielding sensitive user information with `Sentry.mobileReplayIntegration({ maskAllText: true, maskAllImages: true, maskAllVectors: true })`.
+- **EAS Build Secret Management**: Set `SENTRY_AUTH_TOKEN` via `eas secret:create` so cloud builds upload source maps and dSYM files without committing tokens into git.
+
 ## Common pitfalls
 
 | Pitfall | Root Cause | Fix |
@@ -186,6 +196,9 @@ Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runt
 | Sentry MCP URL 404 / 401 | Using deprecated `/sse` transport or legacy path scoping | Connect to universal `https://mcp.sentry.dev/mcp` with Bearer auth or run `sentry mcp` |
 | Cloudflare Workers context drops | Missing `nodejs_compat` compatibility flag in wrangler config | Add `compatibility_flags = ["nodejs_compat"]` and `compatibility_date = "2024-09-23"` |
 | Cloudflare bundled calls untraced | D1/Vectorize/Fetch not auto-instrumented without build-time plugin | Add `sentryCloudflareVitePlugin` in `vite.config.ts` |
+| Unsymbolicated Hermes frames | Missing `getSentryExpoConfig` in `metro.config.js` | Wrap Metro config with `getSentryExpoConfig(__dirname)` |
+| Native crashes missing in Expo Go | Expo Go does not execute custom native modules | Build a development build (`npx expo run:ios` or `eas build`) |
+| `sentry-expo` package missing | Package deprecated since Expo SDK 50 | Migrate to `@sentry/react-native` and `@sentry/react-native/expo` plugin |
 | Spotlight active in production | `spotlight: true` sends requests to localhost sidecar in prod | Guard with `spotlight: process.env.NODE_ENV === 'development'` |
 | Token leak in logs | URLs logged with raw `?jwt=...` query parameters | Scrub query parameters in `beforeSend` / `beforeSendSpan` |
 | Duplicate error reports in Node.js | Manually registering `process.on('uncaughtException')` alongside SDK | Sentry Node SDK registers them automatically; configure via integrations |
@@ -199,6 +212,11 @@ Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runt
 - `references/network-tunneling/envelope-tunneling.md`
 - `references/network-tunneling/application-proxy-routes.md`
 - `references/privacy-redaction/credential-redaction-rules.md`
+
+### "I need to deploy or monitor an Expo / React Native mobile app"
+- `references/architectures/expo-mobile.md`
+- `references/performance-replay/session-replay.md`
+- `references/error-tracking/sourcemaps-pipeline.md`
 
 ### "I need to deploy or monitor Cloudflare Workers / Pages"
 - `references/architectures/cloudflare-workers.md`
@@ -238,7 +256,8 @@ Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runt
 | `references/modes/mode-2-audit.md` | Comprehensive enterprise audit protocol across all observability pillars. |
 | `references/modes/mode-3-debug.md` | 4-rung debugging funnel with Seer AI root cause analysis and fix planning. |
 | `references/research/research-mcp-protocol.md` | How to drive research-mcp with up to 20 keywords for stack research. |
-| `references/research/stack-keyword-matrices.md` | Ready-to-use search keyword matrices for Swift, MCP, Cloudflare, AI, Next.js, etc. |
+| `references/research/stack-keyword-matrices.md` | Ready-to-use search keyword matrices for Swift, MCP, Cloudflare, Expo, AI, Next.js, etc. |
+| `references/architectures/expo-mobile.md` | Expo & React Native mobile apps, Hermes Debug IDs, Expo Router tracing, Mobile Replay. |
 | `references/architectures/cloudflare-workers.md` | Cloudflare Workers & Pages native isolation, Vite plugin, Durable Objects, Workflows, Agents. |
 | `references/architectures/swift-apple-ecosystem.md` | Swift & Apple ecosystem (macOS, iOS, visionOS), SentryTracedView, TTID/TTFD, MetricKit migration. |
 | `references/architectures/sentry-mcp-integration.md` | Hosted Sentry MCP (mcp.sentry.dev), Claude Code plugin, sentry mcp, and MCP server auto-instrumentation. |
@@ -288,6 +307,8 @@ Cloudflare Workers execute on the V8 isolate runtime, which forbids dynamic runt
 - Never commit real auth tokens (`sntryu_`, `sntrys_`) to git; store them in `~/.sentryclirc` or `.env`.
 - In MCP servers using `stdio`, NEVER write Sentry logs or debug output to `stdout`; always use `stderr`.
 - In Cloudflare Workers, always ensure `compatibility_flags = ["nodejs_compat"]` is configured in `wrangler.jsonc` or `wrangler.toml` so `AsyncLocalStorage` context propagates correctly.
+- In Expo and React Native projects, always use `getSentryExpoConfig` in `metro.config.js` so Hermes bytecode Debug IDs match uploaded source maps.
+- In Expo and mobile apps, never store `SENTRY_AUTH_TOKEN` in committed code or `.env`; store it as an EAS secret (`eas secret:create`) or uncommitted `.env.local`.
 - In Swift Cocoa SDK, configure `enableMetricKit = true` for OS crash diagnostics and app hang reports (`enableAppHangTracking` is deprecated in v9+).
 - In MCP integrations, connect via universal `https://mcp.sentry.dev/mcp` or `sentry mcp` rather than legacy `/sse` or manual URL path scoping.
 - In modern Sentry SDKs, use `Sentry.metrics.count(...)`, `Sentry.metrics.gauge(...)`, and `Sentry.metrics.distribution(...)` for Trace-Connected metrics or OpenTelemetry `span.setMeasurement(...)`.
