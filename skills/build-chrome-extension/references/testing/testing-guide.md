@@ -120,7 +120,7 @@ Test the behavior most likely to break in MV3:
 
 - state persists after the service worker idles out
 - listeners are registered at top level after a restart
-- async message handlers return `true`
+- async message handlers return a Promise (Chrome 148+) or return `true` synchronously (<148)
 - alarms are recreated on install/startup when required
 - ports reconnect or fall back to storage-backed state
 

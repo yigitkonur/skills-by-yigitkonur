@@ -151,13 +151,17 @@ window.addEventListener("__ext_data", ((event: CustomEvent) => {
 ```
 
 ```typescript
-// Alternative: window.postMessage
-// MAIN world
-window.postMessage({ source: "ext-main", payload: { key: "value" } }, "*");
+// Alternative: window.postMessage with cryptographic token
+// Generate a per-session random nonce in ISOLATED world and share it securely (e.g., via script dataset or closure)
+const BRIDGE_TOKEN = crypto.randomUUID();
 
-// ISOLATED world — always validate source
+// MAIN world — include the verified nonce in messages
+window.postMessage({ token: BRIDGE_TOKEN, payload: { key: "value" } }, "*");
+
+// ISOLATED world — strictly validate sender window and cryptographic token
 window.addEventListener("message", (event) => {
-  if (event.source !== window || event.data?.source !== "ext-main") return;
+  if (event.source !== window) return;
+  if (event.data?.token !== BRIDGE_TOKEN) return; // Rejects unauthorized page scripts
   chrome.runtime.sendMessage({ type: "from-page", payload: event.data.payload });
 });
 ```
@@ -248,17 +252,32 @@ observer.observe(document.body, { childList: true, subtree: true });
 window.addEventListener("message", (e) => { /* ... */ }, { signal: controller.signal });
 window.addEventListener("beforeunload", () => { controller.abort(); observer.disconnect(); });
 
-// Detect extension context invalidation (e.g. extension reload or update):
-// Open a port to the extension runtime. When the extension is reloaded or disabled,
-// the port is disconnected automatically.
-try {
-  const port = chrome.runtime.connect({ name: "content-script-lifecycle" });
-  port.onDisconnect.addListener(() => {
-    controller.abort();
-    observer.disconnect();
+// Safe detection of extension context invalidation (e.g. extension reload or update):
+// NEVER use an idle port for lifecycle detection — in MV3, idle ports disconnect when the
+// background service worker suspends (~30s), which prematurely tears down healthy content scripts!
+function isContextValid(): boolean {
+  try {
+    return Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
+function safeSendMessage(message: unknown): void {
+  if (!isContextValid()) {
+    cleanup();
+    return;
+  }
+  chrome.runtime.sendMessage(message).catch((err) => {
+    if (err?.message?.includes("Extension context invalidated")) {
+      cleanup();
+    }
   });
-} catch (e) {
-  // Context already invalidated
+}
+
+function cleanup(): void {
+  controller.abort();
+  observer.disconnect();
 }
 ```
 
@@ -269,11 +288,12 @@ try {
 | `https://*.example.com/*` | Any path on example.com + subdomains, HTTPS |
 | `https://example.com/path/*` | Paths starting with `/path/` |
 | `*://*.example.com/*` | HTTP and HTTPS |
-| `<all_urls>` | All HTTP(S), file, ftp (triggers extra CWS review) |
+| `<all_urls>` | All HTTP(S) and file (triggers extra CWS review; access to local `file://` URLs requires explicit user activation in `chrome://extensions`) |
 | `https://example.com/` | Exact root path only |
 | `http://127.0.0.1/*` | Localhost HTTP |
+| `http://127.0.0.1:8080/*` | Localhost HTTP with explicit port (Chrome 116+) |
 
-**Rules:** scheme is `http`/`https`/`file`/`ftp`/`*`; host wildcard `*` only at start (`*.example.com`); path `*` matches any chars including `/`.
+**Rules:** scheme is `http`/`https`/`file`/`*` (`ftp` scheme was removed in Chrome 88); optional port `<host>:<port>` syntax is supported (Chrome 116+); host wildcard `*` only at start (`*.example.com`); path `*` matches any chars including `/`.
 
 | Invalid pattern | Why |
 |---|---|
@@ -315,12 +335,15 @@ Must declare in manifest:
 {
   "web_accessible_resources": [{
     "resources": ["images/*", "styles/*", "injected.js"],
-    "matches": ["https://*.example.com/*"]
+    // In MV3, matches patterns are evaluated at ORIGIN level (any path is ignored):
+    "matches": ["https://*.example.com/*"],
+    // Anti-fingerprinting: dynamic GUID URLs change per session so sites cannot detect extension ID:
+    "use_dynamic_url": true
   }]
 }
 ```
 
-Only expose the minimum necessary. Exposed resources let websites detect the extension.
+Only expose the minimum necessary. Exposed resources let websites detect the extension unless `"use_dynamic_url": true` is enabled (which returns a randomized GUID URL via `chrome.runtime.getURL()`).
 
 ## Common Content Script Pitfalls
 

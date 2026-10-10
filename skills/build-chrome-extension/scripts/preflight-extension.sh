@@ -20,6 +20,11 @@ function review(message) {
   reviews.push(message);
 }
 
+function isHostPattern(pattern) {
+  if (typeof pattern !== "string") return false;
+  return pattern === "<all_urls>" || /^((\*|https?|file|ftp):\/\/|\*:\/\/\/)/.test(pattern) || pattern.includes("://");
+}
+
 function readJson(file, label) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -74,6 +79,13 @@ if (!fs.existsSync(manifestPath)) {
 const manifest = failures.length ? null : readJson(manifestPath, "manifest.json");
 
 if (manifest) {
+  const versionRegex = /^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])(\.(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])){0,3}$/;
+  if (typeof manifest.version !== "string" || manifest.version.trim() === "") {
+    fail("version is required in manifest.json");
+  } else if (!versionRegex.test(manifest.version)) {
+    fail(`version "${manifest.version}" is invalid: Chrome requires 1-4 dot-separated integers (0-65535) with no leading zeros`);
+  }
+
   if (typeof manifest.icons === "object" && manifest.icons !== null) {
     for (const [size, rel] of Object.entries(manifest.icons)) checkIcon(rel, Number(size), `icons.${size}`);
   }
@@ -86,9 +98,11 @@ if (manifest) {
     }
   }
 
-  const broadPermissions = new Set(["<all_urls>", "tabs", "history", "bookmarks", "cookies", "webRequest"]);
+  const broadPermissions = new Set(["tabs", "history", "bookmarks", "cookies", "webRequest"]);
   for (const perm of manifest.permissions || []) {
-    if (broadPermissions.has(perm)) review(`permission needs review justification: ${perm}`);
+    if (isHostPattern(perm)) {
+      fail(`permissions includes host match pattern "${perm}"; in MV3, host permissions must be declared in host_permissions, not permissions`);
+    } else if (broadPermissions.has(perm)) review(`permission needs review justification: ${perm}`);
   }
   for (const host of manifest.host_permissions || []) {
     if (host === "<all_urls>" || /^(\*|https?):\/\/\*(\/.*)?$/.test(host) || /^\*:\/\//.test(host)) {
@@ -107,6 +121,9 @@ if (manifest) {
         }
         if (/script-src[^;]*(https?:|\/\/)/i.test(extPagesCsp)) {
           fail("CSP extension_pages script-src allows remote scripts");
+        }
+        if (/'?unsafe-inline'?/i.test(extPagesCsp)) {
+          fail("CSP extension_pages contains unsafe-inline (forbidden in MV3)");
         }
       }
     }

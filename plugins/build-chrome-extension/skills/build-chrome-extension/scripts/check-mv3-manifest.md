@@ -23,7 +23,8 @@ scripts/check-mv3-manifest.sh dist
 
 - `manifest.json` exists and parses as JSON.
 - `manifest_version` is exactly `3`.
-- required `name` and `version` fields exist; `version` conforms to Chrome's 1-4 dot-separated integer format (0-65535).
+- required `name` and `version` fields exist; `version` conforms to Chrome's 1-4 dot-separated integer format (0-65535) with no leading zeros.
+- host match patterns (such as `<all_urls>`, `*://*/*`, `https://*.example.com/*`) are strictly forbidden in `permissions` and must reside in `host_permissions` in MV3 (triggers `FAIL`).
 - MV2-only keys (`background.scripts`, `background.page`, `browser_action`, `page_action`) are absent.
 - `content_scripts` entries contain non-empty `matches` arrays.
 - `web_accessible_resources` conforms to MV3 object structure (`resources` array + `matches` or `extension_ids`).
@@ -37,10 +38,10 @@ scripts/check-mv3-manifest.sh dist
   - concrete web-accessible resource paths
 - `web_accessible_resources` glob patterns such as `images/*` or `*.png` are allowed.
 - manifest paths do not point at obvious source-only files such as `src/*.ts`.
-- `content_security_policy` is an object in MV3; `extension_pages` CSP does not allow `unsafe-eval` or remote script sources (sandboxed pages in `manifest.sandbox` are exempt).
+- `content_security_policy` is an object in MV3; `extension_pages` CSP does not allow `unsafe-eval`, `unsafe-inline`, or remote script sources (sandboxed pages in `manifest.sandbox` are exempt).
 - manifest does not reference remote `.js` / `.mjs` files.
 
-The script also emits `WARN` lines for broad `<all_urls>` permissions so the final report can include permission justifications.
+The script also emits `WARN` lines for broad `<all_urls>` in `host_permissions` so the final report can include permission justifications.
 
 ## Output
 

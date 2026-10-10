@@ -15,6 +15,7 @@ Trigger when the request matches any of:
 - *creating a new Chrome MV3 extension or scaffolding from a framework (WXT, Plasmo, CRXJS, Vite)*
 - *editing or generating `manifest.json` with `manifest_version: 3`, `service_worker`, `content_scripts`, `host_permissions`, `action`, or `side_panel` fields*
 - *implementing or debugging `chrome.runtime`, `chrome.storage`, `chrome.alarms`, `chrome.scripting`, `chrome.tabs`, `chrome.declarativeNetRequest`, `chrome.sidePanel`, or `chrome.offscreen` APIs*
+- *connecting a Chrome extension to desktop apps or local daemons (Raycast Companion, local WebSocket servers, Native Messaging hosts)*
 - *fixing MV3 service-worker lifecycle issues: idle termination, top-level listener registration, async `onMessage` returns, `chrome.alarms` vs `setInterval`*
 - *bridging content scripts between ISOLATED and MAIN worlds, or routing fetches through the service worker for cross-origin host permissions*
 - *migrating an MV2 extension to MV3 (background page → service worker, blocking `webRequest` → `declarativeNetRequest`, browser_action → action)*
@@ -40,6 +41,7 @@ Do NOT use this skill when:
 | Network modification | `chrome.declarativeNetRequest` — never blocking `webRequest` |
 | Permissions | Least privilege; prefer `optional_permissions` and `optional_host_permissions` granted via `chrome.permissions.request` |
 | Loaded folder | Built output only: WXT `.output/chrome-mv3-dev/` or `.output/chrome-mv3/`; Plasmo `build/chrome-mv3-*`; CRXJS/Vite `dist/` |
+| Desktop IPC transport | Local WebSocket for unprivileged daemons; Native Messaging for installer-backed system tools |
 | Package preflight | Run `scripts/check-mv3-manifest.sh` and `scripts/preflight-extension.sh` against the production build before zipping |
 
 ## MV3 Footguns — Keep In Working Memory
@@ -49,7 +51,11 @@ These are the failures that recur across every MV3 build. Internalize before wri
 - Service workers idle out (~30s default). Global module-scope state disappears between events. Persist before each await and rehydrate at event entry.
 - Register `chrome.runtime.onMessage`, `onInstalled`, `onStartup`, alarm, and tab listeners **synchronously at top level**. Late-registered listeners miss wake-up events.
 - `setTimeout`/`setInterval` cannot keep a service worker alive and will not fire reliably across idle cycles. Use `chrome.alarms.create` with `periodInMinutes >= 0.5`.
-- `chrome.runtime.onMessage` async handlers must `return true` synchronously to keep the message channel open; otherwise the message channel closes immediately and the sender receives `undefined` (or rejects with "The message port closed before a response was received"). Never mark the listener function itself as `async` because returning a Promise does not keep the channel open.
+- In Chrome 148+, `chrome.runtime.onMessage` listeners natively support returning a `Promise` or using `async`. For backward compatibility (<148 and cross-browser), async handlers must synchronously `return true` and invoke `sendResponse` when complete; otherwise the message channel closes immediately and the sender receives `undefined` (or rejects with "The message port closed before a response was received").
+- Local WebSocket connections in service workers terminate after ~30 seconds of inactivity. You must maintain an active heartbeat ping (<30s interval, e.g. 24s) to reset Chrome 116+ idle timers. Idle open sockets do not keep the worker alive.
+- Local WebSockets listening on 127.0.0.1 are vulnerable to Cross-Site WebSocket Hijacking (CSWSH) from malicious web pages. Daemons MUST validate the `Origin` header against `chrome-extension://<id>` and require an authentication token during HTTP Upgrade.
+- Native Messaging hosts must NEVER write debug logs or unformatted output to standard output (`stdout`). Any non-framed stdout output corrupts the 32-bit length prefix and crashes the connection. Send logs to `stderr`.
+- Messages sent from a Native Messaging host to Chrome are strictly capped at 1 MB. Exceeding 1 MB terminates the process immediately.
 - Content scripts run in an isolated world by default. The page's JS, frameworks, and `window.*` globals are invisible. Use `world: "MAIN"` only for page-JS access, then bridge with `postMessage` plus a same-origin token.
 - Extension-origin `fetch` requires matching `host_permissions`. Content-script `fetch` is bound by the page's origin and CORS rules — route privileged requests through the service worker via `chrome.runtime.sendMessage`.
 - MV3 CSP forbids inline `<script>`, `eval()`, `new Function()`, and remote executable code in extension pages. Bundle everything; no CDN-loaded scripts. (Sandboxed pages in `manifest.sandbox` are the sole exception where `unsafe-eval` is permitted).
@@ -69,6 +75,7 @@ These are the failures that recur across every MV3 build. Internalize before wri
 | Host access | `activeTab` or optional host grants | Extension is non-functional without install-time host access |
 | Side panel vs popup | Side panel for persistent companion UI | Quick action or short form → popup |
 | Offscreen document | DOM/canvas/clipboard/audio/Worker from service worker | Popup/options/content script can own it → skip |
+| Desktop communication | Local WebSocket (`ws://127.0.0.1:<port>`) with CSWSH protection | Deep OS integration / enterprise distribution / zero local port exposure → `chrome.runtime.connectNative` |
 
 ## Routing Boundary
 
@@ -115,6 +122,7 @@ Read the matching reference before writing code:
 - Content scripts, world isolation, idempotency, cross-origin routing → `references/patterns/content-scripts.md`
 - Popup, options, side panel, devtools, new-tab surfaces → `references/patterns/ui-surfaces.md`
 - One-time messages, ports, external/native messaging, page bridges → `references/apis/messaging.md`
+- Desktop communication, Raycast Companion, Native Messaging → `references/patterns/desktop-ipc.md`
 - `chrome.storage` areas, quotas, typed wrappers, migrations → `references/apis/storage.md`
 - Tabs, scripting, alarms, DNR, side panel, offscreen, runtime → `references/apis/core-apis.md`
 - Manifest, permission, and MV2 migration decisions are covered by the pinned defaults and guardrails in this `SKILL.md`.

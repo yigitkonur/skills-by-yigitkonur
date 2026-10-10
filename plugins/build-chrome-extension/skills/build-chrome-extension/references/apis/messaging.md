@@ -76,9 +76,18 @@ chrome.runtime.onMessage.addListener(
 );
 ```
 
-> **The `return true` rule:** If a handler does asynchronous work before calling `sendResponse`, it **must** `return true` from the listener synchronously. Otherwise Chrome closes the message channel immediately and the sender receives `undefined` (or rejects with "The message port closed before a response was received").
->
-> **Crucial pitfall:** Never define the listener function itself as `async` (`chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => { ... })`). An `async` function returns a `Promise`, not the boolean `true`. Chrome's messaging engine ignores Promises returned from listeners and immediately closes the channel. Always use a standard synchronous function and return `true` explicitly if invoking asynchronous operations.
+> **Async Responses (Native Promises in Chrome 148+ vs `return true`):**
+> - **Chrome 148+:** `chrome.runtime.onMessage` listeners natively support returning a `Promise`. You can define the listener as `async` or return a Promise directly, and Chrome keeps the channel open until the Promise resolves or rejects:
+>   ```typescript
+>   // Chrome 148+ native Promise return:
+>   chrome.runtime.onMessage.addListener(async (message, sender) => {
+>     if (message.type === "FETCH_REMOTE") {
+>       const data = await fetchFromApi(message.payload as string);
+>       return { ok: true, data };
+>     }
+>   });
+>   ```
+> - **Backward Compatibility (<Chrome 148 & cross-browser):** For older Chrome versions or cross-browser compatibility (Firefox, Safari), do **not** mark the listener as `async`. Keep the listener synchronous, invoke asynchronous operations internally, call `sendResponse(...)`, and **must `return true` synchronously** to keep the message channel open. Otherwise Chrome closes the channel immediately and the sender receives `undefined`.
 
 ### Sending from Background to a Specific Content Script
 
@@ -201,8 +210,10 @@ chrome.runtime.onMessage.addListener((msg: TypedMessage, sender, sendResponse) =
 
   const result = handler(msg.payload, sender);
   if (result instanceof Promise) {
+    // In Chrome 148+, returning the Promise directly is natively supported: return result;
+    // For backward compatibility (<Chrome 148), return true and pipe result to sendResponse:
     result.then(sendResponse).catch((e) => sendResponse({ error: e.message }));
-    return true; // async — keep channel open
+    return true; // async — keep channel open in <Chrome 148
   }
   sendResponse(result);
   return false;
@@ -338,12 +349,14 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 });
 ```
 
-### Native Messaging
+### Native Messaging & Desktop IPC
 
-Communicate with a native host application (requires `nativeMessaging` permission and a native host manifest installed on the OS).
+Communicate with a native host application (requires `"nativeMessaging"` permission and a native host manifest installed on the OS) or local desktop daemons.
+
+**Keepalive Behavior:** An open `chrome.runtime.connectNative` port keeps the MV3 service worker alive indefinitely while the native host process runs, exempting it from the normal ~30-second idle termination.
 
 ```typescript
-// background.ts
+// background.ts — persistent native messaging port
 const port = chrome.runtime.connectNative("com.example.myhost");
 
 port.onMessage.addListener((msg) => {
@@ -369,6 +382,8 @@ Native host manifest (`com.example.myhost.json`):
 }
 ```
 
+> **Comprehensive Desktop Architecture Guide:** For full architectural patterns, 32-bit length-prefixed stdio wire protocol, 1MB limits, OS installation paths, and the Raycast Companion Local WebSocket model (`ws://127.0.0.1:<port>` with JSON-RPC 2.0 and CSWSH defenses), see [Desktop IPC Patterns](../patterns/desktop-ipc.md).
+
 ---
 
 ## Content Script ↔ Web Page Messaging
@@ -376,10 +391,12 @@ Native host manifest (`com.example.myhost.json`):
 Content scripts share the DOM but not the JS context with the web page. Use `window.postMessage`:
 
 ```typescript
-// content.ts — relay from page to background
+// content.ts — relay from page to background using cryptographic nonce
+const BRIDGE_TOKEN = crypto.randomUUID();
+
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
-  if (event.data?.source !== "MY_EXT_PAGE") return;
+  if (event.data?.token !== BRIDGE_TOKEN) return; // Rejects untrusted page scripts
 
   chrome.runtime.sendMessage({
     type: "PAGE_EVENT",
@@ -387,17 +404,20 @@ window.addEventListener("message", (event) => {
   });
 });
 
-// Inject a script that posts messages from the page world
+// Pass token securely to page script via dataset
 const script = document.createElement("script");
 script.src = chrome.runtime.getURL("page-bridge.js");
+script.dataset.bridgeToken = BRIDGE_TOKEN;
 document.documentElement.appendChild(script);
 ```
 
 ```typescript
 // page-bridge.js (runs in page MAIN world)
+const token = (document.currentScript as HTMLScriptElement)?.dataset.bridgeToken;
+
 document.addEventListener("my-ext-event", (e: CustomEvent) => {
   window.postMessage(
-    { source: "MY_EXT_PAGE", payload: e.detail },
+    { token, payload: e.detail },
     window.location.origin
   );
 });
@@ -411,9 +431,9 @@ Alternatively, Manifest V3 supports `chrome.scripting.executeScript` with `world
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `sendMessage` callback receives `undefined` | Listener did not call `sendResponse`, or async handler did not `return true` | Ensure every code path calls `sendResponse`; return `true` for async |
+| `sendMessage` callback receives `undefined` | Listener did not call `sendResponse`, or async handler did not return `true` / return a Promise | In Chrome 148+, return a Promise or use `async`; in <148, ensure every code path calls `sendResponse` and synchronously returns `true` |
 | `"Could not establish connection. Receiving end does not exist."` | No listener registered, content script not injected in target tab, or extension context invalidated | Check that the content script matches the tab URL; use `chrome.scripting.executeScript` to inject on demand |
-| `"The message port closed before a response was received."` | Async handler forgot `return true`; or the sender context (popup) closed before reply arrived | Add `return true`; for popup, consider using ports instead |
+| `"The message port closed before a response was received."` | Async handler forgot `return true` (in <148) or did not return a Promise; or sender context (popup) closed | In Chrome 148+, return a Promise; in <148, return `true` synchronously; for popup, consider using ports instead |
 | Messages from popup stop after popup closes | Popup is destroyed when closed; one-time messages in flight are lost | Use ports and handle `onDisconnect`, or send fire-and-forget messages and poll storage for results |
 | `chrome.runtime.lastError` set after `sendMessage` | Extension was reloaded/updated while message was in flight | Wrap in try/catch; check `chrome.runtime.id` before sending |
 | Content script receives messages meant for other content scripts | `onMessage` fires in all content scripts across all tabs | Always filter by `message.type`; background should target with `chrome.tabs.sendMessage(specificTabId, ...)` |

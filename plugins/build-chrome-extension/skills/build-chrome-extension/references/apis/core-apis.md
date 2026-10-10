@@ -8,14 +8,14 @@ Verified: 2026-05-09 against official Chrome API docs for service worker lifecyc
 
 ## chrome.tabs
 
-**Permission:** None for basic query/create. `"tabs"` permission only needed to read `url`, `title`, `favIconUrl` fields.
+**Permission:** None for basic query/create. `"tabs"` permission only needed to read sensitive tab properties (`url`, `pendingUrl`, `title`, `favIconUrl`).
 
 **Key methods:** `query`, `create`, `update`, `remove`, `get`, `onUpdated`, `onActivated`, `onRemoved`
 
 ```typescript
 // Query the active tab in the current window
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-console.log(tab.id, tab.url); // url requires "tabs" permission
+console.log(tab.id, tab.url); // url, pendingUrl, title require "tabs" permission
 
 // Open a new tab
 const newTab = await chrome.tabs.create({
@@ -307,7 +307,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         await chrome.sidePanel.open({ tabId: tab.id });
       }
       break;
-    // "_execute_action" automatically triggers chrome.action.onClicked — no handler needed here
+    // "_execute_action" opens the popup if "default_popup" is set; triggers chrome.action.onClicked only if no popup is defined
   }
 });
 
@@ -326,7 +326,7 @@ for (const cmd of commands) {
 
 ## chrome.declarativeNetRequest
 
-**Permission:** `"declarativeNetRequest"` (or `"declarativeNetRequestWithHostAccess"` to scope rules only to URLs where the extension has host permissions, without triggering scary install-time warnings). Static rules also need `"declarativeNetRequest"` + a `"rule_resources"` entry in manifest.
+**Permission:** `"declarativeNetRequest"` (or `"declarativeNetRequestWithHostAccess"` to scope rules only to URLs where the extension has host permissions, without triggering broad install-time warnings). Static rulesets declared in `"rule_resources"` can also use `"declarativeNetRequestWithHostAccess"` alongside matching `host_permissions` instead of `"declarativeNetRequest"` to eliminate broad install-time warnings.
 
 > **Important (Host Permissions for Actions):** While simple `block` rules do not require host permissions, rules with action type `redirect`, `upgradeScheme`, or `modifyHeaders` strictly require host permissions for the matched request URL (and the redirect destination URL for redirects). Without host permissions, these actions will fail silently or be ignored.
 
@@ -761,7 +761,7 @@ Not every API is available in every extension context. Quick reference:
 | `chrome.scripting` | Yes | Yes | No | No |
 | `chrome.alarms` | Yes | Yes | No | No |
 | `chrome.notifications` | Yes | Yes | No | No |
-| `chrome.contextMenus` | Yes | No | No | No |
+| `chrome.contextMenus` | Yes | Yes | No | No |
 | `chrome.commands` | Yes (onCommand) | Yes (getAll) | No | No |
 | `chrome.declarativeNetRequest` | Yes | Yes | No | No |
 | `chrome.sidePanel` | Yes | Yes | No | No |
@@ -777,7 +777,7 @@ Not every API is available in every extension context. Quick reference:
 
 | API | Permission | Manifest Key |
 |---|---|---|
-| `chrome.tabs` | None (basic) / `"tabs"` (url/title) | `"permissions"` |
+| `chrome.tabs` | None (basic) / `"tabs"` (url/pendingUrl/title) | `"permissions"` |
 | `chrome.scripting` | `"scripting"` (+ host_permissions or `"activeTab"`) | `"permissions"` |
 | `chrome.alarms` | `"alarms"` | `"permissions"` |
 | `chrome.notifications` | `"notifications"` | `"permissions"` |

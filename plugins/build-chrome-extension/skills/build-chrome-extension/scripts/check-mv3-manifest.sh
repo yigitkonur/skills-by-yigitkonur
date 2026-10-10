@@ -24,6 +24,11 @@ function hasGlob(rel) {
   return /[*?[\]{}]/.test(rel);
 }
 
+function isHostPattern(pattern) {
+  if (typeof pattern !== "string") return false;
+  return pattern === "<all_urls>" || /^((\*|https?|file|ftp):\/\/|\*:\/\/\/)/.test(pattern) || pattern.includes("://");
+}
+
 function exists(rel, label, options = {}) {
   if (!rel || typeof rel !== "string") return;
   const normalized = rel.replace(/^\//, "");
@@ -59,10 +64,11 @@ if (failures.length === 0) {
 if (failures.length === 0) {
   if (manifest.manifest_version !== 3) fail("manifest_version must be 3");
   if (typeof manifest.name !== "string" || manifest.name.trim() === "") fail("name is required");
+  const versionRegex = /^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])(\.(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])){0,3}$/;
   if (typeof manifest.version !== "string" || manifest.version.trim() === "") {
     fail("version is required");
-  } else if (!/^(\d{1,5}\.){0,3}\d{1,5}$/.test(manifest.version)) {
-    fail(`version "${manifest.version}" is invalid: Chrome requires 1-4 dot-separated integers (0-65535)`);
+  } else if (!versionRegex.test(manifest.version)) {
+    fail(`version "${manifest.version}" is invalid: Chrome requires 1-4 dot-separated integers (0-65535) with no leading zeros`);
   }
 
   // MV2 legacy key checks
@@ -137,6 +143,9 @@ if (failures.length === 0) {
         if (/script-src[^;]*(https?:|\/\/)/i.test(extPagesCsp)) {
           fail("content_security_policy.extension_pages script-src allows remote scripts");
         }
+        if (/'?unsafe-inline'?/i.test(extPagesCsp)) {
+          fail("content_security_policy.extension_pages contains unsafe-inline (forbidden in MV3)");
+        }
       }
     }
   }
@@ -152,7 +161,11 @@ if (failures.length === 0) {
     }
   }
 
-  if (manifest.permissions?.includes("<all_urls>")) warn("permissions includes <all_urls>; justify or narrow it");
+  for (const perm of manifest.permissions || []) {
+    if (isHostPattern(perm)) {
+      fail(`permissions includes host match pattern "${perm}"; in MV3, host permissions must be declared in host_permissions, not permissions`);
+    }
+  }
   if ((manifest.host_permissions || []).includes("<all_urls>")) warn("host_permissions includes <all_urls>; justify or narrow it");
 }
 

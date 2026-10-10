@@ -60,6 +60,8 @@ Queued events, running handlers, extension API calls, and active network work re
 
 | Action | Keeps SW alive? |
 |---|---|
+| `chrome.runtime.connectNative` open port | Yes; keeps SW alive while native host process runs |
+| WebSocket with active traffic (<30s ping) | Yes; active traffic resets Chrome 116+ idle timer (idle socket does not) |
 | Sending messages over a long-lived `Port` | Yes; Chrome 114+ keeps alive when messages are sent |
 | Opening a `Port` and leaving it idle | No; Chrome 114+ no longer resets timers just for opening the port |
 | Pending `fetch()` request | Yes, until response completes |
@@ -134,7 +136,6 @@ Fires once per browser launch (not per SW restart).
 
 ```typescript
 chrome.runtime.onStartup.addListener(() => {
-  chrome.storage.session.clear(); // clean stale session data
   // Ensure alarms survive browser restart
   chrome.alarms.get("periodic-sync", (alarm) => {
     if (!alarm) chrome.alarms.create("periodic-sync", { periodInMinutes: 5 });
@@ -210,6 +211,8 @@ Only **one** offscreen document can exist at a time per extension.
 
 | Strategy | Tradeoff |
 |---|---|
+| `chrome.runtime.connectNative` persistent port | Keeps SW alive indefinitely while the native host process runs (see `references/patterns/desktop-ipc.md`) |
+| WebSocket heartbeat ping (<30s interval) | Resets Chrome 116+ idle timer; keeps SW alive while connected (see `references/patterns/desktop-ipc.md`) |
 | `chrome.alarms` heartbeat (30s) | Minimum 30s gap; SW still dies between alarms |
 | Long-lived `Port` with active messages from popup/sidepanel | Only works while that UI surface is open and messages continue |
 | Offscreen document holding a port | Adds complexity; offscreen doc can also be closed |
@@ -255,10 +258,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 ```typescript
 chrome.runtime.onStartup.addListener(async () => {
-  const { clean } = await chrome.storage.session.get("clean");
-  if (clean === false) await recoverFromCrash();
-  await chrome.storage.session.set({ clean: false });
+  const { cleanShutdown } = await chrome.storage.local.get("cleanShutdown");
+  if (cleanShutdown === false) {
+    await recoverFromCrash();
+  }
+  // Mark session as active; set to true on clean exit or heartbeat cleanup
+  await chrome.storage.local.set({ cleanShutdown: false });
 });
+// Note: chrome.storage.local persists across restarts, whereas chrome.storage.session is cleared on restart.
 // No reliable "beforeTerminate" event exists — persist state proactively.
 ```
 
@@ -272,9 +279,9 @@ chrome.runtime.onStartup.addListener(async () => {
 | Async top-level listener registration | Listeners missed after restart | Register synchronously at top level |
 | `window.*` or `document.*` | Does not exist in SW | `self.*` or `chrome.offscreen` |
 | `localStorage` / `sessionStorage` | Not available in SW | `chrome.storage.local` / `.session` |
-| Not returning `true` in `onMessage` | `sendResponse` invalid before async completes | Always `return true` for async |
+| Not returning `true` or Promise in `onMessage` | Sender receives undefined or port closes | Chrome 148+: return Promise or `async`; Chrome <148: `return true` with `sendResponse` |
 | Wrapping listener behind `import()` | Listener not registered on restart | Static registration; dynamic import inside handler only |
-| WebSocket expecting persistence | Closes on SW termination | Reconnect on wake; queue messages in storage |
+| WebSocket expecting persistence | Closes on SW termination | Keep alive with <30s heartbeat ping (Chrome 116+) or reconnect on wake (see `references/patterns/desktop-ipc.md`) |
 | Long computation (>5 min) | Chrome hard-kills | Break into chunks; use offscreen Worker |
 | Ignoring `chrome.runtime.lastError` | Silent failures in callback APIs | Always check in callbacks |
 

@@ -202,6 +202,11 @@ export default defineConfig({
 });
 ```
 
+> **Critical Content Script Bundling Rule:** Manifest-declared `content_scripts` are executed by Chrome as **classic scripts**. If Vanilla Vite bundles your content script as an ES module (the default `format: "es"` or code-split chunks with `import`), Chrome fails at runtime with `SyntaxError: Cannot use import statement outside a module`.
+> - **Solution A:** Build content scripts in a separate build pass or library mode with `format: "iife"` and `inlineDynamicImports: true`.
+> - **Solution B:** Use dedicated extension bundlers like CRXJS or WXT, which bundle content scripts as IIFE automatically.
+> - **Solution C:** Use a lightweight classic loader script in `manifest.json` that calls `import(chrome.runtime.getURL("content.js"))` with `"content.js"` declared in `web_accessible_resources`.
+
 ### Framework entry points (all follow the same pattern)
 
 ```typescript
@@ -301,7 +306,7 @@ All surfaces use the same APIs:
 // One-shot request/response
 const result = await chrome.runtime.sendMessage({ type: "action", payload: {} });
 
-// Long-lived connection (keeps SW alive while open)
+// Long-lived connection (in Chrome 114+, keeps SW alive while active messages are sent, not when idle)
 const port = chrome.runtime.connect({ name: "popup" });
 port.postMessage({ type: "subscribe" });
 port.onMessage.addListener((msg) => { /* handle */ });

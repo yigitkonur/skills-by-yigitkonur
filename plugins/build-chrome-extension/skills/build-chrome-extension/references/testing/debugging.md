@@ -92,7 +92,7 @@ Content-script errors can appear in the page's DevTools, not the extension card.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Receiving end does not exist` | target content script not loaded or listener missing | verify match pattern, inject on demand, or wait for listener |
-| `message port closed before a response was received` | async handler did not return `true` | return `true` synchronously and call `sendResponse` later |
+| `message port closed before a response was received` | async handler did not return a Promise (Chrome 148+) or return `true` (<148) | In Chrome 148+, return a Promise; in <148, return `true` synchronously and call `sendResponse` later |
 | popup request disappears | popup closed before response | use storage-backed state or a port with disconnect handling |
 | port disconnects | service worker idled or surface closed | reconnect and resume from persisted state |
 

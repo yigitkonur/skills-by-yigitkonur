@@ -111,9 +111,10 @@ Use CRXJS when an existing Vite app needs Chrome extension output with minimal r
 ### Setup
 
 ```bash
-npm create vite@latest my-crx-ext -- --template react-ts
+npm create crxjs@latest my-crx-ext
 cd my-crx-ext
-npm install @crxjs/vite-plugin@beta
+npm install
+npm run dev
 ```
 
 ### Core config
@@ -167,6 +168,14 @@ dist/
 ### Vite rule
 
 Set Rollup inputs for every HTML and script entry point that Chrome will load. Keep extension TypeScript scoped to the extension package so unrelated workspace type errors do not block the extension build.
+
+### Content script bundling constraint
+
+> **Critical Classic Script Requirement:** Content scripts declared statically in `manifest.json` are executed by Chrome as **classic scripts**. Vite by default generates ES modules (`format: "es"` or code-split chunks with `import`). If a content script is emitted as an ES module, Chrome fails at runtime with `SyntaxError: Cannot use import statement outside a module`.
+> In Vanilla Vite:
+> - Content scripts must be built in a dedicated build pass or library mode targeting IIFE format (`format: "iife"` and `inlineDynamicImports: true`).
+> - OR use a classic loader script in the manifest that imports the module dynamically via `import(chrome.runtime.getURL("content.js"))` (with the script declared in `web_accessible_resources`).
+> - Extension frameworks like WXT and CRXJS handle this IIFE transformation automatically.
 
 ## Anti-Selections
 
