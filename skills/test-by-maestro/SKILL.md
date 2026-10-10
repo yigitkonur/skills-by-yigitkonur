@@ -1,6 +1,7 @@
 ---
 name: test-by-maestro
 description: "Use if writing, running, or debugging Maestro E2E test flows on iOS Simulators, Android, or Web, including MCP agent automation and CI suites."
+disable-model-invocation: true
 ---
 
 # Test Mobile and Web UI with Maestro

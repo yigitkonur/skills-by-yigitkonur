@@ -261,25 +261,13 @@ In Maestro 2.5.0+, the server pruned granular per-action tools (`tap_on`, `input
    - `c`: child nodes
    *Mapping rule*: Map `a11y` attribute to Maestro's `text:` selector (or `id:` if matching `rid`). The string `a11y` is not a valid YAML selector key.
 
-### MCP Client Configurations
+### MCP Client Configurations (Source: https://maestro.dev/mcp)
 
-#### 1. Cursor IDE (`.cursor/mcp.json`)
-```json
-{
-  "mcpServers": {
-    "maestro": {
-      "command": "maestro",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-#### 2. Claude Code CLI (`~/.claude.json`)
+#### 1. Claude Code CLI
 ```bash
 claude mcp add maestro -- maestro mcp
 ```
-Or with explicit Java runtime:
+Or specify explicit environment paths if Java is not in non-interactive PATH:
 ```json
 {
   "mcpServers": {
@@ -294,7 +282,7 @@ Or with explicit Java runtime:
 }
 ```
 
-#### 3. Windsurf (`~/.codeium/windsurf/mcp_config.json`)
+#### 2. Cursor IDE / Cursor CLI (`~/.cursor/mcp.json` or `.cursor/mcp.json`)
 ```json
 {
   "mcpServers": {
@@ -306,11 +294,45 @@ Or with explicit Java runtime:
 }
 ```
 
-#### 4. OpenAI Codex CLI (`~/.codex/config.toml`)
+#### 3. OpenAI Codex CLI / Desktop
+Via CLI command:
+```bash
+codex mcp add maestro -- maestro mcp
+```
+Or in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.maestro]
 command = "maestro"
 args = ["mcp"]
+```
+
+#### 4. Gemini CLI / Antigravity (`~/.gemini/settings.json`)
+Via CLI command:
+```bash
+gemini mcp add maestro maestro mcp
+```
+Or directly in settings:
+```json
+{
+  "mcpServers": {
+    "maestro": {
+      "command": "maestro",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+#### 5. Windsurf (`~/.codeium/windsurf/mcp_config.json`)
+```json
+{
+  "mcpServers": {
+    "maestro": {
+      "command": "maestro",
+      "args": ["mcp"]
+    }
+  }
+}
 ```
 
 ---

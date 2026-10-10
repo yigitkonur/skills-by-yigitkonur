@@ -256,10 +256,16 @@ Generate and type realistic test data natively without external scripts:
       - fixtures/avatar.jpg
       - fixtures/receipt.png
   ```
-- **`openLink` & `openBrowser`**:
+- **`openLink`**: Opens standard URLs, deep links, or app schemes in browser or app:
   ```yaml
+  # Simple deep link
   - openLink: "myapp://order/12345"
-  - openBrowser: "https://example.com/verify"
+
+  # Open URL in external browser with optional auto-verification
+  - openLink:
+      link: "https://example.com/verify"
+      browser: true                 # Opens in external browser rather than app
+      autoVerify: true              # Handles Android App Links / iOS Universal Links verification
   ```
 
 ### 5. Media & Telemetry Capture

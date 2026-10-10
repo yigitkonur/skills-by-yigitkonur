@@ -83,37 +83,100 @@ maestro test --include-tags smoke,checkout .maestro/flows/
 
 ---
 
-## Reusable Subflows with Parameter Passing
+## Ready-Made Test Flow Templates
 
-Extract repeated sequences (such as logging in or navigating to a specific tab) into `subflows/`. Pass runtime context via `env`:
+Build robust test suites quickly by composing these battle-tested template flows:
 
+### 1. Robust Authentication & Session Reset (`subflows/auth-setup.yaml`)
 ```yaml
-# Main flow: flows/03-checkout.yaml
+# subflows/auth-setup.yaml
 appId: com.example.demo
+env:
+  USER_EMAIL: ${USER_EMAIL || "testuser@example.com"}
+  USER_PASS: ${USER_PASS || "Password123!"}
 ---
-# Invoke reusable login subflow with specific credentials
-- runFlow:
-    file: ../subflows/auth-setup.yaml
-    env:
-      USER_EMAIL: "buyer@example.com"
-      ROLE: "premium"
-
-- tapOn:
-    id: "cart_tab"
-- assertVisible: "Shopping Cart"
-```
-
-In `subflows/auth-setup.yaml`:
-
-```yaml
-appId: com.example.demo
----
-- tapOn:
-    id: "email_input"
-- inputText: ${USER_EMAIL}
+# Guarantee clean launch without stale keychain auth
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible: "Welcome"
 - tapOn:
     id: "login_button"
+- inputText: ${USER_EMAIL}
+- tapOn:
+    id: "password_input"
+- inputText: ${USER_PASS}
+- hideKeyboard:
+    optional: true
+- tapOn: "Sign In"
 - assertVisible: "Dashboard"
+```
+
+### 2. Form Entry with Synthetic Test Data (`flows/profile-update.yaml`)
+```yaml
+appId: com.example.demo
+tags:
+  - regression
+  - profile
+---
+- tapOn:
+    id: "profile_settings"
+- tapOn:
+    id: "edit_name"
+- eraseText
+# Native synthetic data typing
+- inputRandomPersonName
+- tapOn:
+    id: "edit_email"
+- eraseText
+- inputRandomEmail
+- tapOn:
+    id: "save_changes"
+- assertVisible: "Profile updated successfully"
+```
+
+### 3. Visual Regression & AI Defect Guard (`flows/checkout-visual.yaml`)
+```yaml
+appId: com.example.demo
+tags:
+  - visual
+  - smoke
+---
+- openLink: "exampleapp://checkout?orderId=1042"
+- waitForAnimationToEnd:
+    timeout: 3000
+# Pixel comparison against baseline reference
+- assertScreenshot:
+    path: baselines/checkout_screen
+    thresholdPercentage: 0.5%
+# Multimodal defect audit
+- assertNoDefectsWithAI:
+    optional: true
+```
+
+---
+
+## Continuous Test Creation with AI Agents
+
+When authoring new flows, follow the continuous exploratory cycle via Maestro MCP (`maestro mcp`):
+
+```text
+┌─────────────────┐       inspect_screen       ┌─────────────────┐
+│ AI Coding Agent │ ─────────────────────────▶ │  Live Emulator  │
+│ (Cursor/Claude) │ ◀───────────────────────── │   or Simulator  │
+└─────────────────┘       view hierarchy       └─────────────────┘
+         │
+         ▼
+[Execute Action via MCP `run` (inline YAML)]
+         │
+         ▼
+[Verify UI Result via `inspect_screen` or `take_screenshot`]
+         │
+         ▼
+[Export Passing Steps into `.maestro/flows/<flow>.yaml`]
+         │
+         ▼
+[Run Full Suite via `maestro test` with JUnit Artifacts in CI]
 ```
 
 ---
