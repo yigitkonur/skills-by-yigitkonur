@@ -10,20 +10,20 @@ Six engines drive a TypeScript cleanup. Each answers a question no other engine 
 
 | Engine | What It Finds | Scope | Speed | Autofix? | Detail |
 |---|---|---|---|---|---|
-| **Knip** | Unused files, unused exports, unused types, unused dependencies, unused binaries | Whole-project module graph | Seconds (batch, whole repo) | No — reports only; removal is manual and waved | [`./knip-configuration.md`](./knip-configuration.md) |
+| **Knip** | Unused files, unused exports, unused types, unused dependencies, unused binaries, import cycles | Whole-project module graph | Seconds (batch, whole repo) | Yes — native `--fix` (`--fix-type dependencies,exports,types,files`, `--allow-remove-files`); also manual/waved cleanup | [`./knip-configuration.md`](./knip-configuration.md) |
 | **Biome** | Unused locals, dead imports, correctness lint, formatting, import order | Single-file AST | Sub-second (Rust, parallel) | Yes — `check --write` | [`./lint-engines.md`](./lint-engines.md) |
 | **Oxlint** | Unused locals, dead imports, correctness lint | Single-file AST | Sub-second (Rust, parallel) | Yes — `--fix` | [`./lint-engines.md`](./lint-engines.md) |
-| **ESLint** | Unused locals, dead imports, correctness lint, type-aware rules | Single-file AST (+ project types when type-aware) | Seconds to minutes | Yes — `--fix` | [`./lint-engines.md`](./lint-engines.md) |
+| **ESLint** | Unused locals, dead imports, correctness lint, type-aware rules (Flat Config v9 default) | Single-file AST (+ project types when type-aware) | Seconds to minutes | Yes — `--fix` | [`./lint-engines.md`](./lint-engines.md) |
 | **Ultracite** | Same class as Biome (zero-config wrapper) | Single-file AST | Sub-second | Yes — `fix` | [`./lint-engines.md`](./lint-engines.md) |
 | **`tsc`** | Type errors, unused locals/params, broken imports, declaration emit failures (TS4023, TS4081, TS2742) | Whole-program type graph | Seconds to minutes | No — diagnostic gate only | [`../types/strict-migration.md`](../types/strict-migration.md) |
 | **`type-coverage`** | Numeric any-creep score; every untyped identifier | Whole-program type graph | Seconds | No — measurement only | [`./analysis-engines.md`](./analysis-engines.md) |
-| **`madge`** | Circular dependency cycles, orphan modules, leaf modules | Whole-project import graph | Seconds | No — reports cycles; breaking them is manual | [`./analysis-engines.md`](./analysis-engines.md) |
+| **`dpdm` / `madge`** | Circular dependency cycles, orphan modules, leaf modules (Knip also detects cycles natively via `--cycles`) | Whole-project import graph | Seconds | No — reports cycles; breaking them is manual | [`./analysis-engines.md`](./analysis-engines.md) |
 | **anti-slop** (Oxlint plugin) | LLM-generated antipatterns: chained type assertions, `unknown` laundering, widen-then-assert, runtime `typeof` | Single-file AST (runs inside Oxlint) | Sub-second | No — flags only; fixes are judgement calls | [`./analysis-engines.md`](./analysis-engines.md) |
 
 ### Reading the Matrix
 
-- **Report-only engines** (`Knip`, `tsc`, `type-coverage`, `madge`, `anti-slop`) produce work items. Feed their output into the wave protocol in [`../remediation/waves.md`](../remediation/waves.md).
-- **Autofix engines** (`Biome`, `Oxlint`, `ESLint`, `Ultracite`) consume work items mechanically. Run them to clear residue left by the report-only engines.
+- **Report-only engines** (`Knip` discovery, `tsc`, `type-coverage`, `madge`, `anti-slop`) produce work items. Feed their output into the wave protocol in [`../remediation/waves.md`](../remediation/waves.md).
+- **Autofix engines** (`Knip --fix`, `Biome`, `Oxlint`, `ESLint`, `Ultracite`) consume work items mechanically. Run them to clear residue left by the report-only engines.
 - **Speed dictates cadence.** Run sub-second engines on every edit. Run second-scale engines once per wave. Run minute-scale engines at wave gates only.
 
 ---
@@ -36,12 +36,12 @@ No single engine sees the whole picture. Cleanup requires all three scopes becau
 +-------------------------------------------------------------------------------+
 |                    TYPESCRIPT CLEANUP ANALYSIS SCOPES                         |
 +-------------------------------------------------------------------------------+
-| GRAPH SCOPE  --  Knip, madge                                                  |
+| GRAPH SCOPE  --  Knip, madge, dpdm                                            |
 | - Traverses the whole-repository module graph from configured entry points    |
 | - Finds orphaned source files never imported by any module                    |
 | - Finds unused npm packages in dependencies and devDependencies               |
 | - Finds exported symbols, types, and enums unreferenced across files          |
-| - Finds import cycles spanning arbitrarily many modules (madge)               |
+| - Finds import cycles spanning arbitrarily many modules (Knip --cycles, madge)|
 | - BLIND SPOT: Internal lexical scopes; type-level correctness                 |
 +---------------------------------------+---------------------------------------+
                                         | Leaves orphaned local bindings & imports
@@ -61,7 +61,7 @@ No single engine sees the whole picture. Cleanup requires all three scopes becau
 | PROGRAM SCOPE  --  tsc, type-coverage                                         |
 | - Resolves the full type graph across every file in the compilation           |
 | - Proves no broken import or signature survives a removal (tsc --noEmit)      |
-| - Verifies public '.d.ts' emit stays sound (tsc -b --noEmit)                  |
+| - Verifies public '.d.ts' emit stays sound (tsc -b --emitDeclarationOnly)     |
 | - Scores the proportion of identifiers that are not 'any' (type-coverage)     |
 | - BLIND SPOT: Reachability. A fully-typed export can still be 100% dead code  |
 +-------------------------------------------------------------------------------+
@@ -83,9 +83,9 @@ No single engine sees the whole picture. Cleanup requires all three scopes becau
 | "This export may be dead" | Knip | `npx knip --include exports,types` |
 | "This import is unused" | Lint engine | `npx oxlint --fix` (or detected equivalent) |
 | "Compilation broke after a removal" | `tsc` | `npx tsc --noEmit` |
-| "Public `.d.ts` emit broke" | `tsc` | `npx tsc -b --noEmit` |
+| "Public `.d.ts` emit broke" | `tsc` | `npx tsc -b --emitDeclarationOnly` (or `--isolatedDeclarations`) |
 | "`any` is creeping back in" | `type-coverage` | `npx type-coverage --detail` |
-| "Modules import each other in a loop" | `madge` | `npx madge --circular --extensions ts,tsx src/` |
+| "Modules import each other in a loop" | Knip / `madge` | `npx knip --cycles` or `npx madge --circular --extensions ts,tsx src/` |
 | "This code reads like LLM output" | anti-slop + ripgrep | `npx oxlint` + [`../detection/code-slop-catalog.md`](../detection/code-slop-catalog.md) |
 
 ---
@@ -223,7 +223,7 @@ Engines are not interchangeable across phases. Bind each to its stage.
 | **Root-cause pass** | `madge`, anti-slop, lint engine | Break cycles and strip antipatterns before pruning symbols |
 | **Waves 1-5** | Knip (report), manual edits | Remove files, barrels/cycles, exports, types, and dependencies in causal order |
 | **Inter-wave bridge** | Lint engine autofix | Clear un-export residue between Wave 3 and Wave 4 |
-| **Wave gates** | `tsc --noEmit`, `tsc -b --noEmit`, tests, build | Prove each wave introduced zero regressions |
+| **Wave gates** | `tsc --noEmit`, `tsc -b --emitDeclarationOnly` (or `--isolatedDeclarations`), tests, build | Prove each wave introduced zero regressions |
 | **Post-flight** | Knip, `type-coverage`, `madge` | Confirm zero findings and no ratchet regression |
 
 Consult [`../remediation/waves.md`](../remediation/waves.md) for the canonical wave sequence, the inter-wave linter bridge, and every verification gate. That file — not this one — decides *when* an engine runs.

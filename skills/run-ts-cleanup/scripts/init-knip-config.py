@@ -431,7 +431,7 @@ class ConfigGenerator:
                     continue
                 if clean_pattern.startswith("packages") or clean_pattern.startswith("libs"):
                     workspaces[clean_pattern] = {
-                        "entry": ["src/index.ts!"],
+                        "entry": ["src/index.ts"],
                         "project": ["src/**/*.{js,jsx,ts,tsx}"],
                     }
                 elif clean_pattern.startswith("apps"):
@@ -440,7 +440,7 @@ class ConfigGenerator:
                     }
                 else:
                     workspaces[clean_pattern] = {
-                        "entry": ["src/index.{js,ts}!"],
+                        "entry": ["src/index.{js,ts}"],
                         "project": ["src/**/*.{js,jsx,ts,tsx}"],
                     }
             config["workspaces"] = workspaces
@@ -486,7 +486,7 @@ class ConfigGenerator:
                 "src/hooks.{client,server}.{js,ts}",
             ])
         if "nest" in fw:
-            entries.append("src/main.ts!")
+            entries.append("src/main.ts")
         if "vite" in fw and not entries:
             entries.append("index.html")
         if "express" in fw and not ("next" in fw or "remix" in fw or "nest" in fw):

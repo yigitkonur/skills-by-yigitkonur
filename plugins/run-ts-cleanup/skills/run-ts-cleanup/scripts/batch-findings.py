@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Batch and prioritize dead-code findings into 6 contextual remediation batches.
+"""Batch and prioritize dead-code findings into 9 contextual remediation batches.
 
-Parses Knip JSON output (from file, stdin, or direct execution via `npx knip --reporter json`)
-and groups findings into 6 dependency-ordered remediation batches:
-    1: unused-dependencies (package manifests, lockfile stability)
-    2: unreferenced-files (orphaned source files, abandoned pages/components)
-    3: dead-barrel-exports (re-exports inside index/barrel files)
-    4: test-only-exports (production symbols exposed solely for unit tests)
-    5: internal-only-exports (exports consumed strictly in-file)
-    6: unused-types (dead interfaces, type aliases, unreferenced enums)
+Parses Knip and analysis engine output (from file, stdin, or direct execution via `npx knip --reporter json`)
+and groups findings into 9 dependency-ordered remediation batches:
+    1: unused-dependencies (package manifests, lockfile stability) -> Wave 5
+    2: unreferenced-files (orphaned source files, abandoned pages/components) -> Wave 1
+    3: dead-barrel-exports (re-exports inside index/barrel files) -> Wave 2
+    4: test-only-exports (production symbols exposed solely for unit tests) -> Wave 3
+    5: internal-only-exports (exports consumed strictly in-file) -> Wave 3
+    6: unused-types (dead interfaces, type aliases, unreferenced enums) -> Wave 4
+    7: unused-locals-and-imports (unreferenced local bindings, TS6133) -> Bridge
+    8: type-soundness-leaks (untyped identifiers, any-creep) -> Wave 4
+    9: import-cycles (circular dependency loops) -> Wave 2
 
-Each batch carries the remediation wave it feeds. Batches 4 and 5 both feed Wave 3,
-so the 6 batches collapse into 5 waves. Waves are the only ordering axis here; the
-enclosing workflow's phases are numbered separately and are not referenced by this tool.
-
+The 9 batches collapse into 5 causal remediation waves plus the linter bridge.
 For each finding, calculates an operational risk score (Low, Medium, High)
 and produces a clear, deterministic remediation recommendation.
 
@@ -78,7 +78,7 @@ MANAGER_COMMANDS: dict[str, dict[str, str]] = {
         "test": "yarn test",
         "build": "yarn build",
     },
-    "bun": {"install": "bun install --frozen-lockfile", "test": "bun test", "build": "bun run build"},
+    "bun": {"install": "bun install --frozen-lockfile", "test": "bun run test", "build": "bun run build"},
 }
 
 
@@ -97,8 +97,8 @@ def render_gate(template: str, manager: str) -> str:
 
 # `wave` is the remediation wave each batch feeds. Causal wave order:
 # Wave 1 (Files) -> Wave 2 (Barrels/Cycles) -> Wave 3 (Encapsulation) -> Bridge -> Wave 4 (Types) -> Wave 5 (Deps).
-# Batches 4 and 5 both feed Wave 3, so 6 batches collapse into 5 waves. Gates are templates -- render them
-# through render_gate() with the detected manager before display.
+# Batches 3 and 9 feed Wave 2; batches 4 and 5 feed Wave 3; batches 6 and 8 feed Wave 4; batch 1 feeds Wave 5.
+# Gates are templates -- render them through render_gate() with the detected manager before display.
 BATCH_METADATA: dict[int, dict[str, str]] = {
     1: {
         "name": "unused-dependencies",
@@ -141,6 +141,27 @@ BATCH_METADATA: dict[int, dict[str, str]] = {
         "wave": "Wave 4",
         "description": "Zero-runtime TypeScript declarations and enum variants with zero consumers.",
         "verification_gate": "npx tsc --noEmit",
+    },
+    7: {
+        "name": "unused-locals-and-imports",
+        "title": "Unused Locals & Dead Imports",
+        "wave": "Bridge (between Wave 3 & 4)",
+        "description": "Unreferenced local const/let/type bindings (TS6133) and dangling import statements.",
+        "verification_gate": "npx tsc --noEmit",
+    },
+    8: {
+        "name": "type-soundness-leaks",
+        "title": "Type Soundness Leaks & any-Creep",
+        "wave": "Wave 4",
+        "description": "Untyped identifiers, type laundering (as any), and schema drift.",
+        "verification_gate": "npx tsc --noEmit && npx type-coverage",
+    },
+    9: {
+        "name": "import-cycles",
+        "title": "Circular Import Dependencies",
+        "wave": "Wave 2",
+        "description": "Modules that import each other in a loop, threatening TDZ runtime crashes and blocking tree-shaking.",
+        "verification_gate": "npx tsc --noEmit && {build}",
     },
 }
 
@@ -293,6 +314,10 @@ class KnipReportParser:
         for cls_m in issue_obj.get("classMembers", []):
             self._classify_export(file_path, "classMembers", cls_m)
 
+        # 5. cycles
+        for cycle in issue_obj.get("cycles", []):
+            self._add_cycle_finding(cycle)
+
     def _parse_flat_issue_dict(self, data: dict[str, Any]) -> None:
         """Parse flat Knip issue format where keys are rule names."""
         # files
@@ -330,6 +355,10 @@ class KnipReportParser:
                     if isinstance(items, list):
                         for it in items:
                             self._add_type_finding(file_path, rule, it)
+
+        # cycles
+        for cycle in (data.get("cycles", []) + data.get("circular", [])):
+            self._add_cycle_finding(cycle)
 
     # -------------------------------------------------------------------------
     # Batch 1: Unused Dependencies
@@ -570,6 +599,37 @@ class KnipReportParser:
             )
         )
 
+    # -------------------------------------------------------------------------
+    # Batch 9: Import Cycles
+    # -------------------------------------------------------------------------
+    def _add_cycle_finding(self, item: Any) -> None:
+        if isinstance(item, list):
+            cycle_chain = " -> ".join(str(node) for node in item)
+            root_file = str(item[0]) if item else "unknown"
+        elif isinstance(item, dict):
+            root_file = str(item.get("file") or item.get("name") or "unknown")
+            chain_nodes = item.get("chain") or item.get("cycle") or [root_file]
+            cycle_chain = " -> ".join(str(n) for n in chain_nodes) if isinstance(chain_nodes, list) else str(chain_nodes)
+        else:
+            root_file = str(item)
+            cycle_chain = str(item)
+
+        self.findings.append(
+            Finding(
+                id=self._next_id(),
+                batch=9,
+                batch_name="import-cycles",
+                rule="cycles",
+                file=root_file,
+                symbol=cycle_chain,
+                line=None,
+                col=None,
+                risk_score="High",
+                risk_rationale="Circular dependency loop. Can cause TDZ undefined runtime crashes and breaks tree-shaking.",
+                action=f"Untangle import cycle: {cycle_chain}. Extract shared types/constants or avoid circular barrel imports.",
+            )
+        )
+
     @staticmethod
     def _extract_symbol_and_location(item: Any) -> tuple[str, int | None, int | None]:
         """Extract symbol name, line, and column from heterogeneous Knip issue items."""
@@ -585,7 +645,7 @@ def parse_batch_filter(batch_arg: str) -> set[int]:
     """Parse batch filter specification such as '1', '1,2', '1-3', or 'all'."""
     batch_arg = batch_arg.strip().lower()
     if batch_arg in ("all", "*"):
-        return set(range(1, 7))
+        return set(range(1, 10))
     selected: set[int] = set()
     parts = [p.strip() for p in batch_arg.split(",") if p.strip()]
     for part in parts:
@@ -601,8 +661,8 @@ def parse_batch_filter(batch_arg: str) -> set[int]:
                 selected.add(int(part))
             except ValueError:
                 pass
-    valid = {b for b in selected if 1 <= b <= 6}
-    return valid if valid else set(range(1, 7))
+    valid = {b for b in selected if 1 <= b <= 9}
+    return valid if valid else set(range(1, 10))
 
 
 class ReportEmitter:
@@ -615,7 +675,7 @@ class ReportEmitter:
         manager: str = "npm",
     ) -> None:
         self.findings = findings
-        self.active_batches = active_batches or set(range(1, 7))
+        self.active_batches = active_batches or set(range(1, 10))
         self.manager = manager
 
     def gate(self, batch_id: int) -> str:

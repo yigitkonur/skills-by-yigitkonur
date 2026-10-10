@@ -149,6 +149,21 @@ class SlopDetector:
         self.re_fn_decl = re.compile(
             r"(?:export\s+)?(?:async\s+)?(?:function\s+(?P<fn>[a-zA-Z0-9_$]+)|(?:const|let|var)\s+(?P<var>[a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[a-zA-Z0-9_$]+)?\s*=>)"
         )
+        self.re_type_laundering = re.compile(
+            r"\bas\s+(?:any|unknown\s+as\s+[a-zA-Z0-9_$]+)\b|\bsatisfies\s+any\b"
+        )
+        self.re_ghost_interface = re.compile(
+            r"\binterface\s+(I[A-Z][a-zA-Z0-9_$]+)\b"
+        )
+        self.re_zod_schema = re.compile(
+            r"(?:const|let)\s+([A-Za-z0-9_$]+Schema)\s*=\s*z\.object\("
+        )
+        self.re_manual_interface = re.compile(
+            r"\binterface\s+([A-Za-z0-9_$]+)\b"
+        )
+        self.re_zod_infer = re.compile(
+            r"z\.infer<\s*typeof\s+([A-Za-z0-9_$]+Schema)\s*>"
+        )
 
     def scan(self) -> list[SlopFinding]:
         self.findings = []
@@ -172,10 +187,19 @@ class SlopDetector:
             # 2. Check Boolean Theater
             self._scan_boolean_theater(rel_file, content)
 
-            # 3. Collect utility declarations
+            # 3. Check Type Laundering (as any)
+            self._scan_type_laundering(rel_file, content)
+
+            # 4. Check Ghost Interfaces (IUserService)
+            self._scan_ghost_interfaces(rel_file, content)
+
+            # 5. Check Schema Drift (zod schema without z.infer)
+            self._scan_schema_drift(rel_file, content)
+
+            # 6. Collect utility declarations
             self._collect_utilities(rel_file, content, utility_declarations)
 
-        # 4. Analyze utility duplication across files
+        # 7. Analyze utility duplication across files
         self._analyze_utility_duplication(utility_declarations)
 
         return self.findings
@@ -318,6 +342,62 @@ class SlopDetector:
                     action="Remove redundant '!!' operator on identifier already declared or typed as boolean.",
                 )
             )
+
+    def _scan_type_laundering(self, file_path: str, content: str) -> None:
+        for m in self.re_type_laundering.finditer(content):
+            line_no = content[:m.start()].count("\n") + 1
+            snippet = m.group(0).strip()
+            self.findings.append(
+                SlopFinding(
+                    id=self._next_id(),
+                    category="Type Laundering",
+                    rule="type-escape-hatch",
+                    file=file_path,
+                    line=line_no,
+                    risk="High",
+                    snippet=snippet,
+                    action="Remove type escape hatch; replace 'as any' with discriminated unions, type guards, or proper narrowing.",
+                )
+            )
+
+    def _scan_ghost_interfaces(self, file_path: str, content: str) -> None:
+        for m in self.re_ghost_interface.finditer(content):
+            name = m.group(1)
+            line_no = content[:m.start()].count("\n") + 1
+            self.findings.append(
+                SlopFinding(
+                    id=self._next_id(),
+                    category="Speculative Abstraction",
+                    rule="ghost-interface-prefix",
+                    file=file_path,
+                    line=line_no,
+                    risk="Low",
+                    snippet=f"interface {name}",
+                    action=f"Apply Seam Test: remove 'I' prefix or inline '{name}' if only a single implementation exists.",
+                )
+            )
+
+    def _scan_schema_drift(self, file_path: str, content: str) -> None:
+        zod_schemas = {m.group(1): m.start() for m in self.re_zod_schema.finditer(content)}
+        inferred = set(self.re_zod_infer.findall(content))
+        manual_interfaces = {m.group(1): m.start() for m in self.re_manual_interface.finditer(content)}
+
+        for schema_name, pos in zod_schemas.items():
+            base_name = schema_name[:-6] if schema_name.endswith("Schema") else schema_name
+            if schema_name not in inferred and base_name in manual_interfaces:
+                line_no = content[:pos].count("\n") + 1
+                self.findings.append(
+                    SlopFinding(
+                        id=self._next_id(),
+                        category="Schema Drift",
+                        rule="dual-schema-interface-drift",
+                        file=file_path,
+                        line=line_no,
+                        risk="Medium",
+                        snippet=f"{schema_name} + interface {base_name}",
+                        action=f"Derive type from schema via 'type {base_name} = z.infer<typeof {schema_name}>' instead of maintaining duplicate manual interface.",
+                    )
+                )
 
     def _collect_utilities(
         self,

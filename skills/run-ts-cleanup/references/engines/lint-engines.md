@@ -131,19 +131,19 @@ Oxlint doubles as the host for the `anti-slop` JS plugin, which mechanically fla
 
 ## 4. ESLint
 
-ESLint is the standard JavaScript/TypeScript linter. Configuration varies between Flat Config (v9+) and Legacy Config (v8).
+ESLint is the standard JavaScript/TypeScript linter. In ESLint v9+, Flat Config (`eslint.config.js`, `eslint.config.mjs`) is the default format.
 
 ### Primary Autofix Commands
 
 ```bash
-# Standard autofix across source files
+# Standard autofix across source files (ESLint v9 Flat Config)
 npx eslint --fix "src/**/*.{js,jsx,ts,tsx}"
 
 # For pnpm projects
 pnpm eslint --fix "src/**/*.{js,jsx,ts,tsx}"
 
-# For Flat Config explicitly when environment requires flag
-ESLINT_USE_FLAT_CONFIG=true npx eslint --fix "src/**/*.{js,jsx,ts,tsx}"
+# Legacy .eslintrc compatibility (ESLint v8 / opt-in)
+ESLINT_USE_FLAT_CONFIG=false npx eslint --fix "src/**/*.{js,jsx,ts,tsx}"
 ```
 
 ### Targeted Single-Rule Autofix
@@ -152,8 +152,8 @@ Avoid triggering slow style or complexity rules across the repository during a r
 
 ```bash
 # Requires eslint-plugin-unused-imports in the project
+# Note: ESLint v9 removed --no-eslintrc; use --no-config-lookup if bypassing lookup
 npx eslint --fix \
-  --no-eslintrc \
   --rule 'unused-imports/no-unused-imports: error' \
   "src/**/*.{ts,tsx}"
 ```
@@ -163,15 +163,15 @@ npx eslint --fix \
 Ensure the project's ESLint configuration incorporates these rules for automated dead-import pruning:
 
 ```javascript
-// eslint.config.js (Flat Config)
+// eslint.config.js (Flat Config v9+ with typescript-eslint v8+)
+import tseslint from "typescript-eslint";
 import unusedImports from "eslint-plugin-unused-imports";
-import tsPlugin from "@typescript-eslint/eslint-plugin";
 
-export default [
+export default tseslint.config(
+  ...tseslint.configs.recommended,
   {
     plugins: {
       "unused-imports": unusedImports,
-      "@typescript-eslint": tsPlugin,
     },
     rules: {
       // Strips unused import declarations automatically on --fix

@@ -1,19 +1,26 @@
 # Application-Level Sentry Proxy Routes
 
-How to implement an internal tunnel proxy route in Fastify, Next.js, and Express to relay envelopes securely from frontend or backend clients.
+How to implement an internal tunnel proxy route in Next.js, Fastify, and Express to relay frontend envelopes securely from client browsers.
 
 ## Why Use an Internal Proxy Route?
 
-1. **Circumvents Client-Side Ad-Blockers:** UBlock Origin and Brave Shields block `*.sentry.io`. Forwarding through `/api/monitoring/tunnel` looks like first-party traffic.
-2. **Defeats ISP Filtering:** Ensures browsers and backend workers send telemetry only to your trusted server domain.
-3. **Validates Project Destination:** Prevents malicious actors from using your proxy to send arbitrary envelopes to other Sentry projects.
+1. **Circumvents Client-Side Ad-Blockers:** UBlock Origin, Brave Shields, and privacy extensions block requests to `*.sentry.io`. Forwarding through `/api/monitoring/tunnel` on your own domain looks like first-party traffic.
+2. **Defeats ISP DNS Interception:** Prevents captive ISP DNS hijacking (e.g. TTNet returning self-signed certificates) from failing client TLS connections.
+3. **Validates Project Destination:** Prevents malicious actors from using your server as an open proxy to send arbitrary envelopes to other Sentry projects.
 
 ## 1. Next.js App Router Proxy Route (`app/api/monitoring/tunnel/route.ts`)
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 
-const ALLOWED_PROJECT_IDS = new Set(['4512053148975104']);
+// Read allowed project IDs and hosts from environment or config
+const SENTRY_PROJECT_ID = process.env.SENTRY_PROJECT_ID || process.env.NEXT_PUBLIC_SENTRY_PROJECT_ID;
+const ALLOWED_PROJECT_IDS = new Set(
+  (process.env.SENTRY_ALLOWED_PROJECT_IDS || SENTRY_PROJECT_ID || '').split(',').map((id) => id.trim()).filter(Boolean)
+);
+
+// Allow valid Sentry SaaS hosts (US, EU, and custom ingest domains)
+const ALLOWED_HOST_PATTERN = /^([a-zA-Z0-9-]+\.)?(ingest(\.[a-z]{2})?\.sentry\.io|sentry\.io)$/;
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,14 +31,25 @@ export async function POST(req: NextRequest) {
     }
 
     const header = JSON.parse(headerLine);
-    const dsn = new URL(header.dsn);
-    const projectId = dsn.pathname.replace('/', '');
-
-    if (!ALLOWED_PROJECT_IDS.has(projectId)) {
-      return NextResponse.json({ error: 'Invalid project destination' }, { status: 403 });
+    if (!header.dsn) {
+      return NextResponse.json({ error: 'Missing DSN in envelope header' }, { status: 400 });
     }
 
-    const sentryUrl = `https://sentry.io/api/${projectId}/envelope/`;
+    const dsn = new URL(header.dsn);
+    const projectId = dsn.pathname.replace(/^\//, '');
+
+    // 1. Destination project validation
+    if (ALLOWED_PROJECT_IDS.size > 0 && !ALLOWED_PROJECT_IDS.has(projectId)) {
+      return NextResponse.json({ error: 'Unauthorized project destination' }, { status: 403 });
+    }
+
+    // 2. Destination host validation (prevent open proxy relay)
+    if (!ALLOWED_HOST_PATTERN.test(dsn.host)) {
+      return NextResponse.json({ error: 'Unauthorized Sentry host' }, { status: 403 });
+    }
+
+    // 3. Relay to regional Sentry ingest endpoint dynamically
+    const sentryUrl = `https://${dsn.host}/api/${projectId}/envelope/`;
     const response = await fetch(sentryUrl, {
       method: 'POST',
       body: rawEnvelope,
@@ -50,11 +68,12 @@ export async function POST(req: NextRequest) {
 ```typescript
 import type { FastifyPluginAsync } from 'fastify';
 
-export const sentryTunnelPlugin: FastifyPluginAsync<{ allowedProjectIds: string[] }> = async (
+export const sentryTunnelPlugin: FastifyPluginAsync<{ allowedProjectIds?: string[] }> = async (
   fastify,
   opts
 ) => {
-  const allowed = new Set(opts.allowedProjectIds);
+  const allowed = new Set(opts.allowedProjectIds || [process.env.SENTRY_PROJECT_ID || '']);
+  const allowedHostPattern = /^([a-zA-Z0-9-]+\.)?(ingest(\.[a-z]{2})?\.sentry\.io|sentry\.io)$/;
 
   fastify.addContentTypeParser(
     ['application/x-sentry-envelope', 'text/plain'],
@@ -72,14 +91,22 @@ export const sentryTunnelPlugin: FastifyPluginAsync<{ allowedProjectIds: string[
 
     const firstLine = rawEnvelope.split('\n')[0];
     const header = JSON.parse(firstLine);
-    const dsn = new URL(header.dsn);
-    const projectId = dsn.pathname.replace('/', '');
+    if (!header.dsn) {
+      return reply.code(400).send({ error: 'Missing DSN' });
+    }
 
-    if (!allowed.has(projectId)) {
+    const dsn = new URL(header.dsn);
+    const projectId = dsn.pathname.replace(/^\//, '');
+
+    if (allowed.size > 0 && !allowed.has(projectId)) {
       return reply.code(403).send({ error: 'Unauthorized project' });
     }
 
-    const sentryRes = await fetch(`https://sentry.io/api/${projectId}/envelope/`, {
+    if (!allowedHostPattern.test(dsn.host)) {
+      return reply.code(403).send({ error: 'Unauthorized host' });
+    }
+
+    const sentryRes = await fetch(`https://${dsn.host}/api/${projectId}/envelope/`, {
       method: 'POST',
       body: rawEnvelope,
       headers: { 'Content-Type': 'application/x-sentry-envelope' },

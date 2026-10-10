@@ -16,12 +16,12 @@ A true TypeScript cleanup is not merely running `knip` and deleting lines. A pro
 │    (Graph Layer)                 │    (Interface & Visibility Layer)   │
 │    • Unreferenced files          │    • Test-only leak containment     │
 │    • Orphaned dependencies       │    • In-file private internalization│
-│    • Abandoned zombie features   │    • Public API designation (!)     │
+│    • Abandoned zombie features   │    • Public API boundary designation│
 ├──────────────────────────────────┼─────────────────────────────────────┤
 │ 3. Type Rigor & Soundness        │ 4. Module & Graph Health            │
 │    (Semantic & Inference Layer)  │    (Architecture & Build Layer)     │
-│    • Ban type laundering (as any)│    • Eliminate barrel smog          │
-│    • Schema-type single source   │    • Break import cycles (dpdm)     │
+│    • Ban type laundering (as any)│    • Eliminate barrel smog & cycles │
+│    • Schema-type single source   │    • Deep modules & locality        │
 │    • Declaration emit safety     │    • Deterministic lockfile sync    │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```

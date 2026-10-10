@@ -103,11 +103,36 @@ A coverage drop during cleanup means a removal was papered over with `any` or a 
 
 ---
 
-## 2. `madge` — Circular Dependency Graph
+## 2. Import Cycles — Knip Native, `madge`, and `dpdm`
 
-`madge` builds the import graph and reports cycles. Cycles cause non-deterministic module initialization, `undefined` imports at runtime, and defeat tree-shaking — and they routinely block barrel pruning during cleanup.
+Import cycles cause non-deterministic module initialization (Temporal Dead Zone runtime errors), `undefined` imports at runtime, and defeat tree-shaking — and they routinely block barrel pruning during cleanup.
 
-### Install and Invoke
+### Primary: Knip Native Cycle Detection
+
+Knip has built-in circular dependency detection that shares the project's existing configuration and entry points without requiring external tools:
+
+```bash
+# Report cycles using Knip CLI
+npx knip --cycles
+
+# Machine-readable or focused cycles report
+npx knip --cycles --reporter cycles
+```
+
+In `knip.jsonc`:
+```jsonc
+{
+  "rules": {
+    "cycles": "error"
+  }
+}
+```
+
+### Specialized Alternatives: `madge` & `dpdm`
+
+Use `madge` when visual dependency graphs (SVG/DOT via Graphviz) are needed, or `dpdm` to differentiate between runtime circular references and harmless type-only circular imports.
+
+#### `madge` Install and Invoke
 
 ```bash
 npm i -D madge                               # or run ad hoc via npx

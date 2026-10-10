@@ -26,11 +26,11 @@ import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
   // Schema reference for IDE intellisense in JSON/JSONC variants
-  // $schema: 'https://unpkg.com/knip@5/overview/schema.json',
+  // $schema: 'https://unpkg.com/knip@5/schema-jsonc.json',
 
   // Entry points defining the root of the dependency graph
-  // Use the '!' suffix to denote public APIs where unused exports are intentionally permitted
-  entry: ['src/index.ts!', 'src/cli.ts!'],
+  // Note: Trailing '!' marks entries as production code for --production mode
+  entry: ['src/index.ts', 'src/cli.ts'],
 
   // Files included in the analysis graph
   project: ['src/**/*.{ts,tsx}', '!src/**/*.generated.ts'],
@@ -66,14 +66,14 @@ const config: KnipConfig = {
     'mounted',
   ],
 
-  // Knip v5: Control whether exports from entry files are analyzed
-  // Default is false (entry exports are considered public). Setting to true checks entry exports
-  // unless the entry pattern includes the '!' suffix.
+  // Knip: Control whether exports from entry files are analyzed
+  // Default is false (entry exports are considered public library API).
+  // Setting to true checks entry exports as unused unless marked with JSDoc @public.
   includeEntryExports: false,
 
-  // Knip v5: JSDoc/TSDoc tag-based export filtering
+  // JSDoc/TSDoc tag-based export filtering (omits the '@' character)
   // Prefix with '-' to exclude from report, or '+' to exclusively report
-  tags: ['-@internal', '-@beta'],
+  tags: ['-internal', '-beta'],
 
   // Rules classification with strict enterprise defaults
   rules: {
@@ -89,15 +89,15 @@ const config: KnipConfig = {
     nsTypes: 'error',
     duplicateExports: 'error',
     enumMembers: 'warn',
-    namespaceMembers: 'error', // Added in Knip v6 (classMembers was dropped)
+    namespaceMembers: 'error', // Supported directly in Knip AST
   },
 
-  // File compilers for non-TS/JS extensions (Astro, MDX, Vue, Svelte)
+  // Built-in compilers for non-TS/JS extensions (Astro, MDX, Vue, Svelte)
   compilers: {
-    vue: (text: string) => text,
-    mdx: (text: string) => text,
-    astro: (text: string) => text,
-    svelte: (text: string) => text,
+    vue: true,
+    mdx: true,
+    astro: true,
+    svelte: true,
   },
 
   // Monorepo workspaces definition
@@ -107,11 +107,11 @@ const config: KnipConfig = {
       project: ['scripts/*.ts'],
     },
     'packages/*': {
-      entry: ['src/index.ts!'],
+      entry: ['src/index.ts'],
       project: ['src/**/*.ts'],
     },
     'apps/*': {
-      entry: ['src/main.tsx!'],
+      entry: ['src/main.tsx'],
       project: ['src/**/*.{ts,tsx}'],
     },
   },
@@ -122,25 +122,30 @@ export default config;
 
 ---
 
-## 2. Knip v5 Schema Nuances & Architecture Shifts
+## 2. Knip Schema Nuances & Architecture Shifts
 
-Knip v5 introduces key architectural refinements that differentiate it from earlier major versions. Understanding these nuances avoids configuration drift, false-positive reports, and broken CI pipelines.
+Knip introduces key architectural concepts that differentiate graph traversal from traditional linters. Understanding these nuances avoids configuration drift, false-positive reports, and broken CI pipelines.
 
-### 1. The `!` Public API Entry Suffix vs. `includeEntryExports`
-In Knip v5, entry files defined in `entry` are treated as public interfaces by default.
-- **Without `!`**: If `includeEntryExports: true` is configured, Knip will report unused exports in entry files.
-- **With `!` (e.g., `src/index.ts!`)**: The exclamation mark explicitly designates the entry file as a **published public library API**. Even if `includeEntryExports: true` is active, Knip strictly exempts exports in `!`-suffixed files from being reported as dead exports.
-- **CLI Override**: Running `knip --include-entry-exports` toggles entry export analysis globally across all non-`!` entries.
+### 1. The `!` Production Marker vs. Public API Exports
+In Knip:
+- **The `!` Suffix**: A trailing exclamation mark (e.g., `"src/index.ts!"` or `"entry": ["src/index.ts!"]`) explicitly marks the entry file as **production code** when running `knip --production`. In `--production` mode, non-`!` entries (such as tests or scripts) are omitted so devDependencies are not required.
+- **Public API Exports (`includeEntryExports`)**: By default, `includeEntryExports` is `false`. This means Knip automatically treats all exports from configured `entry` files as public library APIs and will **not** report them as unused, even if nothing inside the repository imports them.
+- **Enabling Entry Export Checks**: If you want Knip to verify that entry exports are actually used (e.g. within an application or via public tags), set `includeEntryExports: true`, and exempt external library exports via JSDoc `@public` tags.
 
-### 2. Production Mode Scoping (`--production` / `--prod`)
+### 2. Knip v6 Engine Architecture (OXC Parser & Performance)
+In Knip v6 (released March 2026):
+- Knip migrated its AST parser and module resolution pipeline to **OXC** (the ultra-fast Rust-based JavaScript/TypeScript tooling), delivering 10x–20x faster scan times on monorepos.
+- `classMembers` was dropped because analyzing unused class methods and properties required the full TypeScript `LanguageService` / compiler host (which was slow and bottlenecked scans). AST-level exports, types, and `namespaceMembers` remain fully supported and accelerated.
+
+### 3. Production Mode Scoping (`--production` / `--prod`)
 Running Knip in production mode changes graph boundaries:
 - Ignores all `devDependencies`.
 - Excludes test files (`**/*.test.ts`, `**/*.spec.ts`), Storybook stories, and development scripts from `project`.
 - Only checks that `dependencies` satisfy imports in production source files.
 - Useful for Docker build container pruning and lean production image validation.
 
-### 3. Granular `ignoreExportsUsedInFile`
-Earlier versions supported only a boolean flag. Knip v5 supports a granular object schema allowing fine-grained policy:
+### 4. Granular `ignoreExportsUsedInFile`
+Knip supports a granular object schema allowing fine-grained policy:
 ```jsonc
 {
   "ignoreExportsUsedInFile": {
@@ -153,13 +158,13 @@ Earlier versions supported only a boolean flag. Knip v5 supports a granular obje
 }
 ```
 
-### 4. TSDoc / JSDoc Tag-Based Filtering (`tags`)
-Knip v5 parses AST JSDoc/TSDoc docblocks on exported symbols:
-- `tags: ["-@internal"]`: Ignores unused export warnings if the symbol is tagged with `/** @internal */`. This allows internal utility exports across packages without triggering dead code alarms.
-- `tags: ["+@public"]`: Only report unused exports that are explicitly marked with `/** @public */`.
+### 5. TSDoc / JSDoc Tag-Based Filtering (`tags`)
+Knip parses AST JSDoc/TSDoc docblocks on exported symbols without the `@` character:
+- `tags: ["-internal"]`: Ignores unused export warnings if the symbol is tagged with `/** @internal */`. This allows internal utility exports across packages without triggering dead code alarms.
+- `tags: ["+public"]`: Only report unused exports that are explicitly marked with `/** @public */`.
 
-### 5. Negation Globs in `project` and `entry`
-Knip v5 natively honors leading `!` in glob patterns to carve out generated or excluded files without using the destructive top-level `ignore` array:
+### 6. Negation Globs in `project` and `entry`
+Knip natively honors leading `!` in glob patterns to carve out generated or excluded files without using the destructive top-level `ignore` array:
 ```jsonc
 {
   "project": [
@@ -186,7 +191,7 @@ Recommended for Turborepo and standard pnpm monorepos where a single configurati
 ```jsonc
 // knip.jsonc (root)
 {
-  "$schema": "https://unpkg.com/knip@5/overview/schema.json",
+  "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
   "workspaces": {
     // 1. Root Workspace (Tooling, Orchestration, CI scripts)
     ".": {
@@ -204,7 +209,7 @@ Recommended for Turborepo and standard pnpm monorepos where a single configurati
 
     // 2. Shared UI Library Package (Public API)
     "packages/ui": {
-      "entry": ["src/index.ts!"],
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.{ts,tsx}"],
       "storybook": true,
       "tailwind": true
@@ -212,7 +217,7 @@ Recommended for Turborepo and standard pnpm monorepos where a single configurati
 
     // 3. Shared Database / ORM Package
     "packages/database": {
-      "entry": ["src/index.ts!", "src/seed.ts!"],
+      "entry": ["src/index.ts", "src/seed.ts"],
       "project": ["src/**/*.ts"],
       "prisma": true
     },
@@ -229,7 +234,7 @@ Recommended for Turborepo and standard pnpm monorepos where a single configurati
 
     // 6. Generic wildcard for internal tool packages
     "tools/*": {
-      "entry": ["src/cli.ts!"],
+      "entry": ["src/cli.ts"],
       "project": ["src/**/*.ts"]
     }
   }
@@ -243,7 +248,7 @@ Recommended for large enterprise monorepos (Nx or Lerna) where individual teams 
 1. **Root Configuration (`knip.jsonc`)**:
    ```jsonc
    {
-     "$schema": "https://unpkg.com/knip@5/overview/schema.json",
+     "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
      "rules": {
        "unlisted": "error",
        "dependencies": "error",
@@ -254,7 +259,7 @@ Recommended for large enterprise monorepos (Nx or Lerna) where individual teams 
 2. **Leaf Package Configuration (`apps/web/knip.jsonc`)**:
    ```jsonc
    {
-     "$schema": "https://unpkg.com/knip@5/overview/schema.json",
+     "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
      "next": true,
      "ignoreDependencies": ["sharp"]
    }
@@ -262,8 +267,8 @@ Recommended for large enterprise monorepos (Nx or Lerna) where individual teams 
 3. **Library Package Configuration (`packages/core/knip.jsonc`)**:
    ```jsonc
    {
-     "$schema": "https://unpkg.com/knip@5/overview/schema.json",
-     "entry": ["src/index.ts!"],
+     "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
+     "entry": ["src/index.ts"],
      "project": ["src/**/*.ts"]
    }
    ```
@@ -273,17 +278,36 @@ Recommended for large enterprise monorepos (Nx or Lerna) where individual teams 
 | Monorepo Challenge | Root Cause | Knip v5 Defense / Configuration |
 |---|---|---|
 | **Root Dependency Bleed** | Workspace imports dependency installed in root `node_modules` without listing it in its own `package.json`. | Enable `"unlisted": "error"` in root rules. Knip validates imports against the local package manifest, flagging root-hoisted packages as unlisted. |
-| **Bypassing Package `exports`** | Consuming package directly imports private internal files of a sibling library (`@repo/ui/src/button.ts`). | Restrict library package `entry` strictly to public barrel entries (`src/index.ts!`) and align `package.json#exports`. Knip flags internal files not reached from entry. |
+| **Bypassing Package `exports`** | Consuming package directly imports private internal files of a sibling library (`@repo/ui/src/button.ts`). | Restrict library package `entry` strictly to public barrel entries (`src/index.ts`) and align `package.json#exports`. Knip flags internal files not reached from entry. |
 | **Phantom Workspace Links** | `"@repo/pkg": "workspace:*"` declared in `package.json`, but no symbols are imported. | Knip flags `@repo/pkg` in `dependencies` as an unused dependency. |
 | **Mismatched tsconfig paths** | Root `tsconfig.json` paths alias packages differently from package `package.json` package names. | Ensure each workspace specifies its local `project` and `tsconfig` or runs Knip with workspace-aware resolution. |
 
 ---
 
-## 4. Advanced Compilers Configuration (MDX, Astro, Vue, Svelte)
+## 4. Compilers Configuration (MDX, Astro, Vue, Svelte)
 
-Knip parses TypeScript and JavaScript Abstract Syntax Trees. Non-JS/TS files (MDX, Astro, Vue, Svelte) require a compiler function to extract valid JS/TS script content, imports, and exports before AST walking.
+Knip parses TypeScript and JavaScript Abstract Syntax Trees. Non-JS/TS files (MDX, Astro, Vue, Svelte) require a compiler to extract valid JS/TS script content, imports, and exports before AST walking.
 
-Knip compiler signatures support synchronous or asynchronous functions:
+### Built-in Native Compilers (Recommended)
+
+Modern Knip ships with built-in compilers for Astro, MDX, Svelte, and Vue. In `knip.jsonc`, enable them with:
+
+```jsonc
+{
+  "compilers": {
+    "astro": true,
+    "mdx": true,
+    "svelte": true,
+    "vue": true
+  }
+}
+```
+
+Never pass dummy identity functions like `"(text: string) => text"`, as passing unparsed HTML/template markup into Knip's JavaScript parser causes fatal parse syntax errors.
+
+### Custom Compilers (For Custom DSLs)
+
+When custom AST preprocessing is required, Knip compiler signatures support synchronous or asynchronous functions:
 ```typescript
 type Compiler = (text: string, path: string) => string | Promise<string>;
 ```

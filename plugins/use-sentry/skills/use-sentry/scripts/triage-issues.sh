@@ -37,8 +37,7 @@ if command -v sentry >/dev/null 2>&1; then
 
   echo "Querying unresolved issues via 'sentry' CLI for ${TARGET}..."
   sentry issue list "${TARGET}" -q 'is:unresolved' -s freq -t 24h -n 15 --json \
-    --fields shortId,title,level,priority,seerFixabilityScore \
-    | jq -r '.data[] | "\(.shortId)\t[\(.priority)]\tseer=\(.seerFixabilityScore // 0)\t\(.title)"' \
+    | jq -r '.data[]? | "\(.shortId // .id)\t[\(.priority // .level // "info")]\t\(.title)"' \
     | column -t -s $'\t' || true
 
 elif command -v sentry-cli >/dev/null 2>&1; then

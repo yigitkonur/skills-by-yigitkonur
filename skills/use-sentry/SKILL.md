@@ -1,6 +1,6 @@
 ---
 name: use-sentry
-description: "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging production incidents using Seer AI and modern CLI recipes."
+description: "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
 disable-model-invocation: true
 metadata:
   author: Yigit Konur

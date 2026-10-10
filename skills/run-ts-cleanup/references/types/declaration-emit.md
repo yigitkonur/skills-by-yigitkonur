@@ -13,8 +13,8 @@ Declaration emit risk activates when any of these conditions hold:
 | Condition | tsconfig / package signal | Verification command |
 |---|---|---|
 | Project emits declaration files | `"declaration": true`, `"emitDeclarationOnly": true` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
-| Package is a composite project reference | `"composite": true` | `tsc -b --noEmit` |
-| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
+| Package is a composite project reference | `"composite": true` | `tsc -b --emitDeclarationOnly` (never `--noEmit`, triggers `TS5094`) |
+| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --noEmit` or `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
 | Package ships types to consumers | `package.json` `"types"`, `"typings"`, or `exports["."].types` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
 
 Detect exposure before assuming the gate is optional:
@@ -193,7 +193,11 @@ Under `isolatedDeclarations`, every exported symbol needs an explicit, locally-r
 
 ## 5. Declaration Emit Verification Workflow
 
-`tsc --noEmit` does not check declaration emit diagnostics. Furthermore, passing `tsc --declaration --emitDeclarationOnly --noEmit` triggers `error TS5053: Option 'emitDeclarationOnly' cannot be specified with option 'noEmit'`. To run a fast, side-effect-free declaration check without polluting the project source tree, redirect emit output to an ephemeral temporary directory:
+`tsc --noEmit` does not check declaration emit diagnostics. Furthermore:
+- Passing `tsc --declaration --emitDeclarationOnly --noEmit` triggers `error TS5053: Option 'emitDeclarationOnly' cannot be specified with option 'noEmit'`.
+- Passing `tsc -b --noEmit` triggers `error TS5094: Compiler option '--noEmit' may not be used with '--build'`.
+
+To run a fast, side-effect-free declaration check without polluting the project source tree, redirect emit output to an ephemeral temporary directory:
 
 ```bash
 # 1. Single project: verify declaration graph without polluting the workspace
@@ -201,7 +205,7 @@ npx tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check
 
 # 2. Composite monorepo: rebuild the full project-reference graph from scratch
 #    (--clean is mandatory; stale .tsbuildinfo masks fresh emit failures)
-npx tsc -b --clean && npx tsc -b --noEmit
+npx tsc -b --clean && npx tsc -b --emitDeclarationOnly
 
 # 3. Clean up the ephemeral probe directory after verification
 rm -rf /tmp/dts-check
@@ -224,7 +228,7 @@ Install the checks as first-class scripts so CI and pre-commit hooks run them un
   "scripts": {
     "typecheck": "tsc --noEmit",
     "typecheck:emit": "tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check",
-    "typecheck:build": "tsc -b --noEmit"
+    "typecheck:build": "tsc -b --emitDeclarationOnly"
   }
 }
 ```

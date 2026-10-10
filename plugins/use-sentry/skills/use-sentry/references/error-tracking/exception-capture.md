@@ -4,42 +4,59 @@ How to reliably capture unhandled runtime errors, edge crashes, and script excep
 
 ## 1. Unhandled Rejections & Uncaught Exceptions
 
-In Node.js, unhandled promise rejections or uncaught exceptions can silently terminate worker threads or cause memory leaks.
+By default, `@sentry/node` automatically enables `onUnhandledRejectionIntegration` and `onUncaughtExceptionIntegration` inside `Sentry.init()`. **Do NOT manually attach redundant `process.on('unhandledRejection')` handlers that call `Sentry.captureException`**, as this will result in duplicate error reports.
+
+### Customizing Uncaught Exception Handling
+
+If you want custom process exit behavior or crash logging:
 
 ```typescript
 import * as Sentry from '@sentry/node';
 
-export function registerProcessErrorHandlers() {
-  process.on('unhandledRejection', (reason: unknown, promise: Promise<any>) => {
-    Sentry.withScope((scope) => {
-      scope.setExtra('unhandledPromise', String(promise));
-      scope.setLevel('fatal');
-      Sentry.captureException(reason);
-    });
-  });
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    // Configure default uncaught exception integration behavior
+    Sentry.onUncaughtExceptionIntegration({
+      exitEvenIfRestarts: true,
+      onFatalError: async (error) => {
+        console.error('Fatal crash intercepted by Sentry:', error.message);
+        // Flush buffered events to Sentry before exit
+        await Sentry.flush(2000);
+        process.exit(1);
+      },
+    }),
+  ],
+});
+```
 
-  process.on('uncaughtException', async (error: Error) => {
-    Sentry.withScope((scope) => {
-      scope.setLevel('fatal');
-      Sentry.captureException(error);
-    });
+### Graceful Shutdown Flush Hook
 
-    // Give Sentry transport 2 seconds to flush before terminating
-    await Sentry.flush(2000);
-    process.exit(1);
-  });
+For SIGTERM / SIGINT termination in Kubernetes, Docker, or serverless containers:
+
+```typescript
+async function handleGracefulShutdown(signal: string) {
+  console.log(`Received ${signal}. Flushing Sentry and exiting...`);
+  try {
+    await Sentry.close(2000); // Closes transport and drains pending events
+  } finally {
+    process.exit(0);
+  }
 }
+
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
 ```
 
 ## 2. Capturing Handled Exceptions with Rich Context
 
-When handling an exception in a `try / catch` block, do NOT lose the stack trace or surrounding context:
+When handling an exception in a `try / catch` block, do NOT discard the stack trace or surrounding context:
 
 ```typescript
 try {
   await executeCriticalOperation(payload);
 } catch (error: any) {
-  // Capture with custom tags and extras for this specific failure
+  // Capture with custom tags and extra debugging metadata
   Sentry.captureException(error, {
     tags: {
       operation: 'executeCriticalOperation',
@@ -51,14 +68,14 @@ try {
     },
   });
 
-  // Re-throw or handle gracefully
+  // Re-throw or handle gracefully according to business logic
   throw error;
 }
 ```
 
 ## 3. Capturing Non-Exception Messages
 
-For business logic anomalies, security breaches, or unexpected state transitions:
+For business logic anomalies, security alerts, or invariant violations:
 
 ```typescript
 if (suspiciousLoginAttempts > 10) {
@@ -73,7 +90,7 @@ if (suspiciousLoginAttempts > 10) {
 
 In Cloudflare Workers, Vercel Edge, or AWS Lambda:
 ```typescript
-import * as Sentry from '@sentry/edge'; // or @sentry/aws-serverless
+import * as Sentry from '@sentry/edge';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
@@ -81,9 +98,9 @@ export default {
       return await handleRequest(request);
     } catch (err: any) {
       Sentry.captureException(err);
-      // Ensure async logs finish before worker dies
+      // Wait for network flush before edge worker terminates
       ctx.waitUntil(Sentry.flush(2000));
-      return new Response('Internal Error', { status: 500 });
+      return new Response('Internal Server Error', { status: 500 });
     }
   }
 };

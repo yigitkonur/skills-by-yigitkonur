@@ -421,3 +421,46 @@ Commit each structural wave atomically with a scoped message:
 - `refactor(colocate): co-locate checkout helpers into feature pod`
 
 Never mix a functional bug fix into a structural commit — it destroys the revertability that makes these refactors safe.
+
+---
+
+## 8. Architectural Deepening (Matt Pocock Model)
+
+Synthesizing Matt Pocock's `improve-codebase-architecture` and John Ousterhout's *Philosophy of Software Design* for TypeScript codebases, a cleanup operation must not merely delete dead lines — it must deepen existing modules and improve system leverage.
+
+```
+          SHALLOW MODULE (Agent Anti-Pattern)
+         ┌───────────────────────────────────┐
+         │ Interface: 15 exported functions  │
+         │ Implementation: 2 lines each      │  ← Wide surface, shallow value,
+         └───────────────────────────────────┘     high cognitive friction
+                          vs.
+           DEEP MODULE (High Architectural Leverage)
+         ┌───────────────────────────────────┐
+         │ Interface: 1 function / command   │  ← Tiny surface, deep value,
+         ├───────────────────────────────────┤     hides complexity completely
+         │ Implementation: state machine,    │
+         │ caching, validation, persistence  │
+         └───────────────────────────────────┘
+```
+
+### 1. The Deep Module Principle
+- **The Defect:** Agents create shallow pass-through modules (`apiWrapper.ts`, `dataFetcher.ts`) with wide export surfaces that simply wrap standard library or third-party SDK calls in one-liners.
+- **The Remediation:** Deepen the module. Consolidate caching, validation, retry policies, and error normalization inside the module, exposing a single, narrow entry point (`createCheckoutSession(cart: Cart): Promise<CheckoutResult>`).
+
+### 2. The Seam Test
+- **The Defect:** Speculative abstraction. Agents generate enterprise boilerplate: `interface IUserService`, `class UserServiceImpl`, `class UserDTO`, `class UserValidator` for basic operations with only one implementation.
+- **The Remediation:** Apply the Seam Test:
+  * *Is there more than one implementation in this repository?*
+  * *Does this boundary cross a physical runtime or package boundary (worker, network, process)?*
+  If the answer to both is NO, delete the redundant interface and export the concrete implementation directly.
+
+### 3. The Deletion Test
+- **The Defect:** Leaky domain boundaries. A feature (`src/features/referrals/`) exports internal types and helpers into shared folders (`src/utils/`, `src/types/`), creating invisible horizontal coupling.
+- **The Remediation:** Apply the Deletion Test:
+  * *Can this entire feature directory be deleted cleanly with `git rm -r` without breaking 15 unrelated features?*
+  If deleting the feature causes cascading compiler errors in other domains, colocate those shared helpers back inside the feature directory.
+
+### 4. Interface as the Test Surface
+- **The Defect:** Testing private plumbing. Agents export internal helper functions (`export function _computeDiscount()`) solely to write micro-unit tests against them, leaking implementation details.
+- **The Remediation:** Un-export internal helpers. Test domain behavior through the deep module's public contract. Write tests against inputs and outputs, not intermediate implementation seams.

@@ -8,18 +8,19 @@ Clean up a TypeScript codebase — dead code, unused dependencies, AI slop, weak
 
 A deterministic engineering protocol and automated toolkit for dead-code pruning, structural simplification, and TypeScript health work:
 
-- **Multi-engine, not single-tool:** Knip drives module-graph dead code; Biome / Oxlint / ESLint / Ultracite drive file-level lint and autofix; `tsc` gates types and declaration emit; `type-coverage` scores `any`-creep; `madge` finds dependency cycles.
+- **Multi-engine, not single-tool:** Knip drives module-graph dead code, native autofix (`--fix`), and native cycles (`--cycles`); Biome / Oxlint / ESLint / Ultracite drive file-level lint and autofix; `tsc` gates types and declaration emit; `type-coverage` scores `any`-creep; `dpdm`/`madge` provide cycle visualization and runtime vs type separation.
 - **Disciplined causal wave execution:** Remediation across 5 isolated, causal waves (Orphan Files → Barrels & Cycles → Private Exports → Types → Dependencies) with atomic commits and single-command rollback.
-- **The 4 Pillars & Agent Bloat Taxonomy:** Systematic diagnosis across Reachability, Encapsulation, Type Soundness, and Module Health, eliminating the 7 core agent bloat patterns (type laundering, schema drift, defensive null paranoia, barrel smog, test utility bleed, phantom generics, anemic type guards).
-- **Type safety and declaration-emit verification:** Compile-time guards against declaration emit crashes (`TS4023`, `TS4081`, `TS4060`, `TS2742`) before un-exporting anything.
+- **The 4 Pillars & 8 Sins of Agent-Written TypeScript:** Systematic diagnosis across Reachability, Encapsulation, Type Soundness, and Architectural Deepening, eliminating the 8 core agent bloat patterns (type laundering, schema drift, defensive null paranoia, barrel smog, test utility bleed, speculative ghost interfaces, catch laundering, any-ified external boundaries).
+- **Matt Pocock Architectural Deepening:** Integrates deep modules, locality/colocation, the seam test, and the deletion test to eliminate shallow wrappers and micro-file sprawl without HTML dashboards.
+- **Type safety and declaration-emit verification:** Compile-time guards against declaration emit crashes (`TS4023`, `TS4081`, `TS4060`, `TS2742`) and flag collisions (never `tsc -b --noEmit`, which triggers `TS5094`; use `tsc -b --emitDeclarationOnly` or `--isolatedDeclarations`).
 - **Non-harmful lightweight refactoring:** Plan-first structural work for developer and agent navigability — inlining single-use micro-abstractions, untangling circular dependency webs, co-locating isolated helpers, dismantling bloated barrels.
-- **Zero-dependency Python tooling:** Three Python 3 stdlib scripts for engine configuration, finding batching, and whole-codebase health auditing.
+- **Zero-dependency Python tooling:** Three Python 3 stdlib scripts for engine configuration, finding batching across all 9 batches, and whole-codebase health auditing.
 
 ## Bundled Tools
 
-- `scripts/init-knip-config.py`: Scans project architecture, detects frameworks and monorepo layouts, and emits an optimal `knip.jsonc` with a `$schema` matching the installed Knip major version.
-- `scripts/batch-findings.py`: Parses dead-code JSON findings, groups them into 6 dependency-ordered batches mapped onto the 5 waves, assigns risk ratings, and renders verification gates for the detected package manager.
-- `scripts/audit-ts-health.py`: Audits `tsconfig.json` compiler flags, detects linter/formatter configurations, finds circular import cycles, and flags AI slop markers.
+- `scripts/init-knip-config.py`: Scans project architecture, detects frameworks and monorepo layouts, and emits an optimal `knip.jsonc` with a valid `$schema` URL (`https://unpkg.com/knip@5/schema-jsonc.json` or v6) and built-in compiler configurations.
+- `scripts/batch-findings.py`: Parses dead-code and analysis JSON findings, groups them into 9 dependency-ordered batches mapped onto the 5 waves, assigns risk ratings, and renders verification gates for the detected package manager.
+- `scripts/audit-ts-health.py`: Audits `tsconfig.json` compiler flags, detects linter/formatter configurations, finds circular import cycles, and flags AI slop markers and schema drift.
 
 ## Install
 

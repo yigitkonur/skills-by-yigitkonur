@@ -647,7 +647,7 @@
     {
       "name": "use-sentry",
       "source": "./",
-      "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, or triaging production incidents using Seer AI and modern CLI recipes.",
+      "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes.",
       "version": "1.0.123",
       "category": "skills",
       "strict": false,
