@@ -16,8 +16,8 @@ These affect CLI command behavior:
 | `$npm_config_user_agent` | create-mcp-use-app | auto-detect | Detects package manager (npm/pnpm/bun) from invocation; set by the package manager itself, not user-configured |
 | `$MCP_USE_API_KEY` | login | unset | Fallback API key read by `mcp-use login` when neither `--api-key` nor `--device-code` is passed |
 | `$MCP_USE_CLOUD_API_URL` / `$MCP_API_URL` | login, deploy, org, servers, deployments | `https://cloud.manufact.com/api/v1` | Overrides the cloud API base URL (`MCP_USE_CLOUD_API_URL` takes precedence over `MCP_API_URL`) |
-| `$MCP_USE_CLOUD_WEB_URL` | deploy (`--open`), login | `https://manufact.com` | Overrides the cloud web app base URL used to build browser-facing links |
-| `$MCP_USE_TUNNEL_API` | dev, start (`--tunnel`) | (built-in tunnel API) | Overrides the tunnel control-plane API base URL |
+| `$MCP_WEB_URL` | deploy (`--open`), login | `https://manufact.com` | Overrides the cloud web app base URL used to build browser-facing links |
+| `$MCP_USE_API` | dev, start (`--tunnel`) | (built-in tunnel API) | Overrides the tunnel control-plane API base URL |
 | `$MCP_USE_CHROME_PATH` / `$PUPPETEER_EXECUTABLE_PATH` / `$CHROME_PATH` | screenshot | auto-detect | Explicit path to a Chrome/Chromium/Edge/Brave binary; checked in this order before OS-specific auto-detection (which also reads `$PROGRAMFILES`/`$LOCALAPPDATA` on Windows) |
 | `$MCP_USE_OAUTH_DEBUG` | client, server runtime | unset | Enables verbose OAuth flow logging |
 | `$MANUFACT_CHAT_URL` | dev, start (`--with-inspector`) | (built-in) | Overrides the hosted chat endpoint injected into the Inspector shell |
@@ -69,7 +69,7 @@ mcp-use deploy --env API_KEY=secret --env DB_URL=postgres://...
 mcp-use deploy --env-file .env.production
 ```
 
-Vars passed via `--env` or `--env-file` override defaults and are stored in Manufact Cloud; your code reads them via `process.env` at runtime.
+Vars passed via `--env` or `--env-file` override defaults and are stored in mcp-use Cloud; your code reads them via `process.env` at runtime.
 
 ## Securing secrets
 
@@ -80,11 +80,11 @@ Vars passed via `--env` or `--env-file` override defaults and are stored in Manu
 **Do:**
 - Use CI secrets (GitHub Actions `secrets.MY_KEY`)
 - Store in `.env.production` (git-ignored) for local deploys
-- Use Manufact Cloud env var UI for persistent secrets
+- Use mcp-use Cloud env var UI for persistent secrets
 
 **Example CI workflow (GitHub Actions):**
 ```yaml
-- name: Deploy to Manufact
+- name: Deploy to mcp-use
   env:
     MCP_USE_API_KEY: ${{ secrets.MCP_USE_API_KEY }}
     DATABASE_URL: ${{ secrets.DATABASE_URL }}

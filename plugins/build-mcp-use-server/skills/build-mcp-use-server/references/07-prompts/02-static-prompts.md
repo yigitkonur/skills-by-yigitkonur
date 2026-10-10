@@ -119,7 +119,6 @@ Where `ContentBlock` is one of:
 | { type: "image", data: string, mimeType: string }       // data is base64
 | { type: "audio", data: string, mimeType: string }       // data is base64
 | { type: "resource", resource: { uri: string, mimeType?: string, text: string } | { uri: string, mimeType?: string, blob: string } }
-| { type: "resource_link", uri: string, name: string, title?: string, mimeType?: string, description?: string }
 ```
 
 `resource`'s `blob` is a base64-encoded **string**, not `Uint8Array` — the SDK schema serializes binary content as base64 text over the wire.

@@ -9,12 +9,12 @@ v2 uses Web-standard Fetch API (`server.fetch(request)` → `Response`). Endpoin
 | Method | Purpose | Payload | Response (stateless default) |
 |--------|---------|---------|----------|
 | `POST /mcp` | Send MCP JSON-RPC request (modern or legacy wire) | JSON body | JSON `{ result, id }` / error envelope (modern), or SSE-framed JSON-RPC (legacy) |
-| `GET /mcp` | Browser navigation or SDK probe | None | HTML navigation (`Accept: text/html`) returns the landing page/auth response; other probes return `204 No Content` |
-| `DELETE /mcp` | Optional SDK probe | None | `204 No Content` |
-| `HEAD /mcp` | Browser navigation or SDK probe | None | HTML navigation follows the landing-page branch; other probes return `204 No Content` |
+| `GET /mcp` | Browser navigation or SDK probe | None | HTML navigation (`Accept: text/html`) returns landing page; other probes return `405 Method Not Allowed` |
+| `DELETE /mcp` | Legacy session probe | None | `405 Method Not Allowed` |
+| `HEAD /mcp` | Browser navigation or SDK probe | None | HTML navigation follows landing-page branch; other probes return `405 Method Not Allowed` |
 | `OPTIONS /mcp` | CORS preflight | None | `405` if `config.cors` is unset; `204` + CORS headers if `config.cors` is set |
 
-DELETE and non-HTML GET/HEAD probes are **not** a legacy SSE-stream-open or session-teardown mechanism — the stateless mount answers them with `204`. HTML-accepting GET/HEAD navigation is handled first at the same `basePath` and returns the landing page (or its OAuth response). A bare `OPTIONS` without CORS configured is a real `405`, since there is no preflight to answer.
+DELETE and non-HTML GET/HEAD probes return `405 Method Not Allowed` — legacy session operations are rejected; only POST with JSON-RPC is accepted. HTML-accepting GET/HEAD navigation is handled first at the same `basePath` and returns the landing page (or its OAuth response). A bare `OPTIONS` without CORS configured is a real `405`, since there is no preflight to answer.
 
 ## Modern wire (2026-07-28): the native v2 protocol
 

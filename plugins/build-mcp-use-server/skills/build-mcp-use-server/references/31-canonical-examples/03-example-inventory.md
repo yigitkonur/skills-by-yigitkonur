@@ -66,7 +66,7 @@ npm run dev
 
 ## External template gallery (deployable full apps, not in-repo)
 
-Source: `docs/home/templates.mdx`. Each has a live demo, a standalone GitHub repo, and a one-click deploy button through Manufact Cloud.
+Source: `docs/home/templates.mdx`. Each has a live demo, a standalone GitHub repo, and a one-click deploy button through mcp-use Cloud.
 
 | Template | Tools | Live endpoint | GitHub source |
 |----------|-------|----------------|----------------|

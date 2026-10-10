@@ -142,4 +142,4 @@ export default function FileFeature() {
 }
 ```
 
-The standard protocol's `downloadFile` capability and the beta.66 `useFiles()` wrapper are not the same surface. See `view-react/07-host-context-files-and-size.md` for the shipped wrapper and its limitations.
+The standard protocol's `downloadFile` capability and the v2 `useFiles()` wrapper are not the same surface. See `view-react/07-host-context-files-and-size.md` for the shipped wrapper and its limitations.

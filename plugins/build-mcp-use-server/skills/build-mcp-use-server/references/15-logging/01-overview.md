@@ -41,7 +41,7 @@ Within a tool callback, send structured log messages to the client:
 ctx.sendLog(level, data, logger?)
 ```
 
-Clients receive these as notifications during the request. `ctx.sendLog()` sends unconditionally — it does not filter by a client's `logging/setLevel` request, so throttle by severity in your own code if needed. Clients without log support simply ignore the notification.
+Clients receive these as notifications during the request. `ctx.sendLog()` respects the client's negotiated minimum log level (set via `logging/setLevel`); messages below the client's requested threshold are suppressed by the SDK. Note that starting in v2.8.1, server request logging no longer buffers SSE response bodies, allowing streaming tool logs to reach clients in real time before tool execution finishes.
 
 **Levels:** `"debug"` | `"info"` | `"notice"` | `"warning"` | `"error"` | `"critical"` | `"alert"` | `"emergency"`
 

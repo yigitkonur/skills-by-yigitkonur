@@ -55,7 +55,7 @@ return {
 
 ### 3. Deprecation status
 
-Helpers are marked `@deprecated` in `mcp-use@2.0.0-beta.66`. Plan migration to raw envelopes for new code.
+Helpers are marked `@deprecated` in `mcp-use@2.8.2`. Plan migration to raw envelopes for new code.
 
 ## Do not copy tool envelopes into resource callbacks
 

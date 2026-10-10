@@ -18,8 +18,8 @@ By default, an OAuth-configured server rejects unauthenticated calls to the MCP 
 | **Supabase** | Backend + PostgreSQL | Project ID or URL → JWT verification |
 | **Keycloak** | Self-hosted + fine-grained roles | Server URL + realm → DCR |
 | **Better Auth** | Full auth control | Better Auth issuer URL → DCR |
-| **Scalekit** | Enterprise SSO + CIMD | Environment URL + Client ID/Secret → DCR |
-| **Convex** | Convex backend data | Convex deployment URL → JWT verification |
+| **Scalekit** | Enterprise SSO + B2B auth | Environment URL + Resource ID → DCR (secret-less resource server) |
+| **Convex** | Convex backend data | Auth URL → OAuth Provider component DCR |
 
 See `providers/` for each provider's setup, user fields, and gotchas. Custom providers can be created via `oauthCustomProvider` using the built-in `createJwtVerifier`.
 

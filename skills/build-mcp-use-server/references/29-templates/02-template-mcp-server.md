@@ -100,12 +100,12 @@ npm run dev
 ```bash
 npm run deploy
 # Default source mode: GitHub-backed. Requires a configured `origin` remote,
-# the Manufact GitHub App installed on that repo, and `mcp-use login` first.
+# the mcp-use GitHub App installed on that repo, and `mcp-use login` first.
 # Prints server ID, deployment ID, status, and a dashboard URL — copy the
 # generated MCP endpoint from the dashboard; do not infer it from the slug.
 ```
 
-`mcp-use deploy --no-github` skips Git entirely and uploads the local project as a managed archive (80 MB limit) instead — use it when there is no GitHub repo yet. `mcp-use login` authenticates; `mcp-use whoami` only prints the already-authenticated identity, it does not log in. Full flag/behavior reference: `references/25-deploy/`.
+`mcp-use deployhub` skips Git entirely and uploads the local project as a managed archive (80 MB limit) instead — use it when there is no GitHub repo yet. `mcp-use login` authenticates; `mcp-use whoami` only prints the already-authenticated identity, it does not log in. Full flag/behavior reference: `references/25-deploy/`.
 
 ## Next Steps
 

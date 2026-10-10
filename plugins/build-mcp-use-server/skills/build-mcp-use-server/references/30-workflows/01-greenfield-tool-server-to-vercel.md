@@ -14,7 +14,7 @@
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-weather-server --template mcp-server --npm --install
+npx create-mcp-use-app@latest my-weather-server --template mcp-server --npm --install
 cd my-weather-server
 ```
 
@@ -106,7 +106,7 @@ npx vercel deploy
 # Output: https://my-weather-server.vercel.app/api/mcp
 ```
 
-`npx vercel deploy` is the standard Vercel CLI — this workflow never calls `mcp-use login` or `mcp-use deploy`. Those commands target Manufact Cloud, a separate deployment platform (see `../25-deploy/platforms/01-mcp-use-cloud.md`); do not mix the two.
+`npx vercel deploy` is the standard Vercel CLI — this workflow never calls `mcp-use login` or `mcp-use deploy`. Those commands target mcp-use Cloud, a separate deployment platform (see `../25-deploy/platforms/01-mcp-use-cloud.md`); do not mix the two.
 
 **Verify:** Point the standalone Inspector at the deployed URL:
 
@@ -127,4 +127,4 @@ npx @mcp-use/inspector --url https://my-weather-server.vercel.app/api/mcp
 - Add more tools to `index.ts`.
 - Add resources (read `../06-resources/01-overview.md`).
 - Add OAuth to protect endpoints (read `../11-auth/01-overview.md`).
-- Deploy on other platforms, including Manufact Cloud (read `../25-deploy/01-decision-matrix.md`).
+- Deploy on other platforms, including mcp-use Cloud (read `../25-deploy/01-decision-matrix.md`).

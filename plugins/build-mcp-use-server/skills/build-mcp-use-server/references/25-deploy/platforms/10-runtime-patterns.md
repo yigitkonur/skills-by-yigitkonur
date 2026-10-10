@@ -6,7 +6,7 @@
 
 `server.fetch(request)` is the portable MCP server boundary across all runtimes. Views live in `.mcp-use/build/views/`. The difference is how you deploy the views relative to your server. Pick the pattern matching your runtime:
 
-### 1. Node and filesystem runtimes (Railway, Manufact, Bun, Node Vercel)
+### 1. Node and filesystem runtimes (Railway, mcp-use, Bun, Node Vercel)
 
 Deploy `.mcp-use/build` on the same filesystem as your server. The server reads generated assets from disk and serves them from the same public origin.
 
@@ -17,7 +17,7 @@ MCP_URL=https://api.example.com npm run build
 
 **Handler:**
 ```ts
-// mcp-use start / npm start (Manufact, Railway, generic Node) needs a
+// mcp-use start / npm start (mcp-use, Railway, generic Node) needs a
 // listen()-capable default export — export the server instance itself:
 export default server;
 

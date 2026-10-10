@@ -6,7 +6,7 @@ All documented targets use the stateless Web Fetch boundary. Choose by runtime a
 
 | Target | Runtime pattern | Handler or command | View assets | Choose it when |
 |---|---|---|---|---|
-| **Manufact Cloud** | Managed Node/filesystem | `mcp-use deploy` | Deployed with the server | You want managed builds, logs, GitHub or source upload, and branch previews |
+| **mcp-use Cloud** | Managed Node/filesystem | `mcp-use deploy` | Deployed with the server | You want managed builds, logs, GitHub or source upload, and branch previews |
 | **Vercel Function** | Node serverless | Export the `MCPServer` from `api/mcp.ts` | Function bundle; include nested asset paths | You want a non-Next Vercel Function |
 | **Vercel + Next.js** | Next.js App Router | `withMcpUse()` + `createNextHandler()` | Integrated into the Next.js build | The MCP server lives inside a Next.js app |
 | **Cloudflare Workers** | Edge + co-located static binding | Asset route, otherwise `server.fetch` | Workers static-assets binding | You can publish `.mcp-use/build` through a Worker binding |
@@ -23,7 +23,7 @@ Fly.io is intentionally absent: no v2 ground-truth deployment page exists.
 
 ### Filesystem runtime
 
-Use for Manufact Cloud, Railway, Bun, Cloud Run, and Node Vercel Functions:
+Use for mcp-use Cloud, Railway, Bun, Cloud Run, and Node Vercel Functions:
 
 ```bash
 MCP_URL=https://api.example.com mcp-use build

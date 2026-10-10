@@ -15,6 +15,8 @@ RUN npm run typecheck && npm run build
 FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/.mcp-use/build/ ./.mcp-use/build/

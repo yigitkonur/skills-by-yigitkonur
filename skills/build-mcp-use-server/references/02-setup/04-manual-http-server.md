@@ -99,10 +99,10 @@ npm run dev
 Without scaffolding (manual):
 
 ```bash
-npx mcp-use@2.0.0-beta.66 dev --entry index.ts
+npx mcp-use@2.8.2 dev --entry index.ts
 ```
 
-`mcp-use` is the canonical CLI implementation; `@mcp-use/cli@4.0.0-beta.15` is a compatibility-only bin shim for the historical install command with no command logic of its own — either invocation works, but prefer `mcp-use` directly in new docs/scripts.
+`mcp-use` is the canonical CLI implementation; `@mcp-use/cli@4.3.2` is a compatibility-only bin shim for the historical install command with no command logic of its own — either invocation works, but prefer `mcp-use` directly in new docs/scripts.
 
 Only `mcp-use dev` (or, in production, `mcp-use start --with-inspector`) mounts the Inspector. Running the entry file directly does **not**:
 

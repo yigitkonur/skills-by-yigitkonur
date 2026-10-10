@@ -91,7 +91,7 @@ server.resourceTemplate(
 Modifiers:
 - **Explode** (`{path*}`) — the extracted value may expand to multiple comma-separated segments; the callback receives `string[]` for that variable instead of `string`.
 - **Comma-separated variable lists** in one expression are valid: `{x,y}` declares two variables in a single `{}` block.
-- A `;` (path-style parameter) operator appears in some RFC 6570 type-level references but is **not implemented** by the runtime `UriTemplate.getOperator()` matcher shipped in beta.66 — do not use `{;var}`; it will not match as expected.
+- A `;` (path-style parameter) operator appears in some RFC 6570 type-level references but is **not implemented** by the runtime `UriTemplate.getOperator()` matcher shipped in v2 — do not use `{;var}`; it will not match as expected.
 
 | Template | Example URI | Extracted params |
 |---|---|---|

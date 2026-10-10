@@ -155,7 +155,7 @@ Expected response (HTTP 200):
 
 ## With a Deployed Server
 
-Replace `http://localhost:3000/mcp` with the exact MCP endpoint supplied by the platform/dashboard — never infer a Manufact hostname from a slug:
+Replace `http://localhost:3000/mcp` with the exact MCP endpoint supplied by the platform/dashboard — never infer a mcp-use hostname from a slug:
 
 ```bash
 export MCP_URL="PASTE_THE_EXACT_DEPLOYED_MCP_URL"
@@ -169,7 +169,7 @@ curl -X POST "${MCP_URL}" \
 For tunneled endpoints (via `mcp-use dev --tunnel`):
 
 ```bash
-curl -X POST https://happy-blue.local.mcp-use.run/mcp \
+curl -X POST https://happy-blue.tunnel.mcp-use.run/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "Mcp-Protocol-Version: 2024-11-05" \

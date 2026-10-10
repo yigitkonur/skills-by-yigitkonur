@@ -54,7 +54,7 @@ const server = new MCPServer({
 
 This is **not** a v2 feature that is delayed or coming later. The v2 engineering spec explicitly excludes session stores from the port: "Do not port: session stores/StreamManager... These are obsolete under the stateless model." The v2 migration guide lists "Session stores, active-session registries, stream managers, session recovery, and session affinity are not part of v2" as a standing limitation of the beta, not a gap to be filled. Do not plan a v2 architecture around a future `sessionStore` config landing — none is documented as forthcoming.
 
-## Current reality (beta.66)
+## Current reality (v2.8+)
 
 v2 is stateless: every request is independent. No session configuration exists. For multi-round or persistent workflows, use an external database keyed by verified identity, or the `requestState` codec for round-trip integrity within a single elicitation flow.
 

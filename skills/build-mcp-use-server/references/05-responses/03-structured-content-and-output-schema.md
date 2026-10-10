@@ -63,7 +63,7 @@ return { content: [], structuredContent: [1, 2, 3] };
 // Result: { content: [{ type: "text", text: "[1,2,3]" }], structuredContent: [1, 2, 3] }
 ```
 
-For objects, SDK does **not** auto-append; return explicit text block. This fallback lives in the wire codec (`projectCallToolResult`), applied to every `tools/call` result regardless of protocol era.
+For objects, SDK does **not** auto-append; return explicit text block. Always provide an explicit text block alongside structuredContent.
 
 ## _meta privacy (separate from structuredContent)
 

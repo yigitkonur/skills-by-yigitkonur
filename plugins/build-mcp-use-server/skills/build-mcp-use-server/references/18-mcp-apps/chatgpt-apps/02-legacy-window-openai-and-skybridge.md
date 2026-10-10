@@ -97,7 +97,7 @@ Legacy Apps SDK projects may contain OpenAI-namespaced descriptor or resource me
 | `openai/widgetDomain` | `view.domain` |
 | legacy `openai/widgetCSP` standard categories | `view.csp` |
 
-Some OpenAI extensions have no standard equivalent: invocation status strings, `openai/fileParams`, `openai/widgetDescription`, and `openai/widgetCSP.redirect_domains`. Tool-descriptor extensions can pass through `ToolDefinition._meta`; generated resource extensions cannot be authored through a public arbitrary resource `_meta` surface in beta.66. See `01-dual-protocol.md` and `03-csp-differences.md` for the exact boundary.
+Some OpenAI extensions have no standard equivalent: invocation status strings, `openai/fileParams`, `openai/widgetDescription`, and `openai/widgetCSP.redirect_domains`. Tool-descriptor extensions can pass through `ToolDefinition._meta`; generated resource extensions cannot be authored through a public arbitrary resource `_meta` surface in v2. See `01-dual-protocol.md` and `03-csp-differences.md` for the exact boundary.
 
 ## Migration Checklist
 

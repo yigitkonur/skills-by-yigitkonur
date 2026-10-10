@@ -116,7 +116,7 @@ Test Widget-Declared mode before release. If a View works only in Permissive mod
 
 View CSP applies to the iframe, not to server-side tool callback fetches.
 
-Inspector CSP checks validate standard `_meta.ui.csp`. They do not validate ChatGPT's remaining `openai/widgetCSP.redirect_domains` extension, which generated mcp-use View resources cannot author through a public arbitrary resource `_meta` surface in beta.66.
+Inspector CSP checks validate standard `_meta.ui.csp`. They do not validate ChatGPT's remaining `openai/widgetCSP.redirect_domains` extension, which generated mcp-use View resources cannot author through a public arbitrary resource `_meta` surface in v2.
 
 ## Verify in Real ChatGPT
 
@@ -132,7 +132,7 @@ After the standard flow is green, connect the deployed HTTPS MCP server to real 
 
 The literal ChatGPT metadata and file-schema requirements come from the official OpenAI Plugin UI reference. The availability of those keys in `ToolDefinition._meta` comes from shipped mcp-use tool types and `buildToolUiMeta()` pass-through behavior.
 
-## Known beta.66 Limits to Record
+## Known v2.8 Limits to Record
 
 - `useFiles()` wraps only upload and temporary-download-URL methods, not `selectFiles()` or upload `{ library: true }`.
 - File support is captured when the View runtime is created; late method injection does not update `isSupported`.

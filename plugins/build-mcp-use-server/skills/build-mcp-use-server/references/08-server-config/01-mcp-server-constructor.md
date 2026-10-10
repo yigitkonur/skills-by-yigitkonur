@@ -35,7 +35,7 @@ const server = new MCPServer<TUser>(config: ServerConfig<TUser>)
 | `requestState` | `ServerOptions["requestState"]` | `undefined` | Integrity options object for `input_required` round-trip state validation, typically `{ verify: createRequestStateCodec(...).verify }`. |
 | `cors` | `CorsOptions \| undefined` | `undefined` | CORS headers on all routes: off when omitted; `{}` enables with defaults. |
 | `mixedAuth` | `boolean \| undefined` | `false` | When OAuth is configured, enables public discovery on `tools/list` without token; individual tools declare access requirements via `securitySchemes`. |
-| `skills` | `boolean \| { directory: string } \| undefined` | `false` | Enables Agent Skills over MCP (SEP-2640). If `true`, auto-discovers `skills/` directory. |
+| `skills` | `boolean \| { directory?: string }` | `undefined` (auto) | Enables Agent Skills over MCP (SEP-2640). Default `undefined` automatically discovers `./skills/` if present. Set `true` to require `skills/` to exist; set `false` to disable. |
 | `oauth` | `OAuthProvider<TUser>` | (none if `TUser = never`) | External OAuth provider; required when `TUser ≠ never`. |
 
 ## CORS Configuration Detail

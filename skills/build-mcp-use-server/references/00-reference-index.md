@@ -117,7 +117,9 @@
 - `references/11-auth/providers/03-workos.md` — OAuth Provider: WorkOS
 - `references/11-auth/providers/04-supabase.md` — OAuth Provider: Supabase
 - `references/11-auth/providers/05-keycloak.md` — OAuth Provider: Keycloak
-- `references/11-auth/providers/06-better-auth.md` — OAuth Provider: Better Auth
+- `references/11-auth/providers/06-better-auth.md`
+- `references/11-auth/providers/07-scalekit.md`
+- `references/11-auth/providers/08-convex.md` — OAuth Provider: Better Auth
 
 ## 12-elicitation
 
@@ -240,7 +242,7 @@
 - `references/25-deploy/02-pre-deploy-checklist.md` — Pre-Deploy Checklist
 - `references/25-deploy/03-docker.md` — Docker
 - `references/25-deploy/04-cli-and-org-management.md` — CLI and Org Management
-- `references/25-deploy/platforms/01-mcp-use-cloud.md` — Manufact Cloud (mcp-use Cloud)
+- `references/25-deploy/platforms/01-mcp-use-cloud.md` — mcp-use Cloud (mcp-use Cloud)
 - `references/25-deploy/platforms/02-vercel.md` — Vercel
 - `references/25-deploy/platforms/03-cloudflare-workers.md` — Cloudflare Workers
 - `references/25-deploy/platforms/04-google-cloud-run.md` — Google Cloud Run

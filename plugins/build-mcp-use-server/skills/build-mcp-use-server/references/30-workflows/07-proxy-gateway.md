@@ -7,7 +7,7 @@
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 gateway --template blank --npm --install
+npx create-mcp-use-app@latest gateway --template blank --npm --install
 cd gateway
 ```
 

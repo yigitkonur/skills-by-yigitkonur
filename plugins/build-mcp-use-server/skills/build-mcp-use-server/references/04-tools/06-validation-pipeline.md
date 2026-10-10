@@ -12,15 +12,10 @@ The shipped `tools/call` request handler resolves the tool, then wraps everythin
 // Shape of the shipped handler (SDK internals, not user-facing API):
 const tool = registeredTools[request.params.name];
 if (!tool) throw new ProtocolError(InvalidParams, `Tool ${name} not found`);
-if (!tool.enabled) throw new ProtocolError(InvalidParams, `Tool ${name} disabled`);
-try {
-  const args = await validateToolInput(tool, request.params.arguments, name); // throws on bad input
-  const result = await executeToolHandler(tool, args, ctx);                  // your callback
-  await validateToolOutput(tool, result, name);                              // throws on bad output
-  return projectCallToolResult(result, tool.outputSchemaJson);
-} catch (error) {
-  return { content: [{ type: "text", text: error.message }], isError: true };
-}
+const args = await validateToolInput(tool, request.params.arguments, name); // validates input
+const result = await executeToolHandler(tool, args, ctx);                  // runs callback
+await validateToolOutput(tool, result, name);                              // validates outputSchema
+return result;
 ```
 
 1. **Receive request.** The transport (streamable HTTP) parses the incoming JSON-RPC envelope. Malformed JSON or unknown methods are rejected as protocol errors before any tool code runs.
@@ -30,7 +25,7 @@ try {
 5. **Validate output against `outputSchema` (if set).** Runs **inside** the `try`. A schema mismatch, or a missing `structuredContent` when `outputSchema` is declared, throws `ProtocolError(InvalidParams, "Output validation error: ...")` — caught the same way.
 6. **Format and emit.** On success, the raw result is projected against `outputSchemaJson` and serialized to wire format.
 
-**The one rule that matters:** only "tool not found" and "tool disabled" become JSON-RPC protocol errors. Every failure that happens once the tool is confirmed to exist and be enabled — bad input, a thrown error in your handler, bad output — is caught and turned into a normal `CallToolResult` with `isError: true`. There is no server-side 500 path for handler throws; the SDK always converts them to a tool result the model can read and react to.
+**The error handling rule:** In official MCP, unhandled exceptions thrown in tool callbacks bubble up as JSON-RPC protocol errors (code `-32603`). For expected failures (e.g. invalid user input, external API failure, or domain validation), tool callbacks MUST NOT throw; instead, return `{ isError: true, content: [{ type: "text", text: errorMessage }] }` so the LLM host can inspect the error and self-correct.
 
 ## What fails where
 

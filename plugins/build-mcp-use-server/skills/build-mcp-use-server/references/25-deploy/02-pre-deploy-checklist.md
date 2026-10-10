@@ -27,9 +27,9 @@ Skip these and you will have post-deploy outages. Work through all sections.
 
 ## 4. Server Code
 
-- [ ] Server entry `export default`s something. For Manufact Cloud / `mcp-use start` / Cloud Run / Railway (any Node CLI-managed listener), export the `MCPServer` instance itself (`export default server;`) — the CLI's `start` command requires the default export to expose a `.listen()` method and throws otherwise. For serverless/edge platforms, expose the same Web boundary through the platform's documented shape: Vercel can `export default server`; Cloudflare exports an object whose `fetch` wrapper calls `server.fetch`; Deno calls `Deno.serve((request) => server.fetch(request))`; Hono mounts `server.fetch(c.req.raw)`.
+- [ ] Server entry `export default`s something. For mcp-use Cloud / `mcp-use start` / Cloud Run / Railway (any Node CLI-managed listener), export the `MCPServer` instance itself (`export default server;`) — the CLI's `start` command requires the default export to expose a `.listen()` method and throws otherwise. For serverless/edge platforms, expose the same Web boundary through the platform's documented shape: Vercel can `export default server`; Cloudflare exports an object whose `fetch` wrapper calls `server.fetch`; Deno calls `Deno.serve((request) => server.fetch(request))`; Hono mounts `server.fetch(c.req.raw)`.
 - [ ] Server does NOT call `listen()` if deploying to serverless/edge (Vercel, Cloudflare, Supabase, Deno Deploy).
-- [ ] Server DOES call `listen()` — or is started via `mcp-use start` / `npm start`, which calls it for you — if deploying to a Node-based platform (Manufact, Cloud Run, Railway).
+- [ ] Server DOES call `listen()` — or is started via `mcp-use start` / `npm start`, which calls it for you — if deploying to a Node-based platform (mcp-use, Cloud Run, Railway).
 - [ ] Health endpoint registered at the root level (not nested under the MCP `basePath`): `server.get("/health", (c) => c.json({ ok: true }))`.
 
 ## 5. Staging Smoke Test

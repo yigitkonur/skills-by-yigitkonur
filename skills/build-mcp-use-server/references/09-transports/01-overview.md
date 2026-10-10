@@ -6,7 +6,7 @@ v2 uses **Streamable HTTP only** — there is no stdio, SSE, or proprietary tran
 
 ## Three transport patterns
 
-1. **Node.js and filesystem runtimes (Railway, Manufact, Bun):** Call `server.listen(port)` to bind HTTP + automatic View file serving.
+1. **Node.js and filesystem runtimes (Railway, mcp-use, Bun):** Call `server.listen(port)` to bind HTTP + automatic View file serving.
 2. **Edge and serverless (Cloudflare Workers, Deno, Vercel):** Export `server.fetch` or mount via framework (`withMcpUse` for Next.js).
 3. **Embedded in frameworks:** Use `mcp-use/next` or `mcp-use/node` adapters to bind the fetch handler.
 

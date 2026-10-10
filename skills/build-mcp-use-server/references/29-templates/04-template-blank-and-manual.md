@@ -7,7 +7,7 @@
 The `blank` template is the smallest starting point.
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-project --template blank
+npx create-mcp-use-app@latest my-project --template blank
 ```
 
 ### Generated File Tree

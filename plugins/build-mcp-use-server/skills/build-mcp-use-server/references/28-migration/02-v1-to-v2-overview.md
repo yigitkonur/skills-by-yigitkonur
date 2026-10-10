@@ -2,11 +2,11 @@
 
 *Read this first if upgrading an mcp-use v1 server to v2.*
 
-v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, context shape, OAuth, and widgets all change. The migration checklist below maps every change; following sections dive into each category.
+v1.34.5 to v2.8.2 is a major rewrite. Import paths, tool registration, context shape, OAuth, and widgets all change. The migration checklist below maps every change; following sections dive into each category.
 
 ## Master delta table
 
-| Feature | v1.34.5 | v2.0.0-beta.66 | Migrate to |
+| Feature | v1.34.5 | v2.8.2 | Migrate to |
 |---------|---------|---|---|
 | **Import** | `mcp-use/server` | `mcp-use` (root) | Root import; see 03 |
 | **Node.js** | `^20.19.0 \|\| >=22.12.0` | `>=22.22.2`, ESM only | Update `engines`; drop CommonJS |
@@ -16,7 +16,7 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 | **Resource callback** | `()` or `(ctx)` (legacy v1 callback receives context, not requested URI) | `(uri, ctx)` | Add requested URI as first parameter; context moves to second |
 | **Template config/callbacks** | Legacy nested `resourceTemplate.callbacks.complete` or newer flat `uriTemplate` + `callbacks.complete`; callbacks could take `(uri, params, ctx?)` | Flat top-level `uriTemplate` + `complete`; canonical `(uri, params, ctx)` callback | Remove legacy nesting; move `callbacks.complete`; use canonical signature |
 | **Prompt schema** | `args: [{ name, type, required? }]` (deprecated even in v1; `schema` preferred there too) | Single `schema` field only — `args` removed | Move to unified `schema` |
-| **Context lifecycle** | Session-affine, stateful | Request-scoped, stateless | No sessions in beta.66; see 07 |
+| **Context lifecycle** | Session-affine, stateful | Request-scoped, stateless | No sessions in v2; see 07 |
 | **User ID** | `ctx.auth.user.userId` | `ctx.auth.user.id` (provider-specific) | Rename everywhere; see 05 |
 | **OAuth config** | In MCPServer constructor | Provider factories from `mcp-use/oauth/*` | Move to separate import; see 05 |
 | **OAuth Proxy** | `oauthProxy()` | **Removed** | Use external broker + `oauthCustomProvider`; see 05 |
@@ -32,14 +32,14 @@ v1.34.5 to v2.0.0-beta.66 is a major rewrite. Import paths, tool registration, c
 | **Express/Connect** | `server.listen({ express, router })` | **Removed** | Use Hono (`server.app`) or `server.fetch`; see 07 |
 | **Notifications** | `sendToolsChanged()` | `notifyToolsChanged()` | Rename; await result |
 | **Resource notify** | `sendResourcesListChanged()` | `notifyResourcesChanged()` | Rename |
-| **Session store** | `sessionStore` option | **Not shipped in beta.66** | Use external DB keyed by `ctx.auth`; see 07 |
+| **Session store** | `sessionStore` option | **Not shipped in v2** | Use external DB keyed by `ctx.auth`; see 07 |
 
 ## What's removed entirely
 
 | Feature | v1 | v2 Status | Migration |
 |---------|----|----|---|
 | OAuth Proxy (`oauthProxy`) | ✓ | ✗ Removed | Deploy external auth server; use `oauthCustomProvider` for verification |
-| Session stores (InMemory, Redis, Filesystem) | ✓ | ✗ Not shipped in beta.66 | Use application-owned DB keyed by `ctx.auth.user.id` |
+| Session stores (InMemory, Redis, Filesystem) | ✓ | ✗ Not shipped in v2 | Use application-owned DB keyed by `ctx.auth.user.id` |
 | Post-response push | `sendNotificationToSession()` | ✗ Removed | Use subscription listeners only (request-scoped) |
 | Server-side sampling | `ctx.sample()` | ✗ Removed | Delegate generation to client/model; server provides deterministic tools |
 | Stdio serving | `server.listen({ stdio: true })` | ✗ Removed | Use HTTP adapters or compatible CLI clients |

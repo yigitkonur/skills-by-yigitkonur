@@ -124,4 +124,4 @@ The type parameter is then constrained to `keyof RegisteredTools`. An unregister
 - **Ready input remains optional** → a terminal result can arrive before a complete input snapshot.
 - **First terminal result wins** → the first structured success or tool error is latched for the mounted View's lifetime.
 - **Content-only success is not terminal** → without `structuredContent` or `isError: true`, the runtime leaves the context pending.
-- **Cancellation has no public branch** → an uncorrelated cancellation leaves the context pending.
+- **Host cancellation transitions to error** → on host cancellation, `status` becomes `"error"` with `error instanceof ToolCancelledError` (narrow with `instanceof ToolError` before reading `error.result`).

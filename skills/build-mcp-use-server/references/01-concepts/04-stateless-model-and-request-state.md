@@ -69,7 +69,7 @@ server.tool(
 
 `inputRequired.elicitUrl({ message, url })` requests URL-mode input (open a browser flow) instead of a typed form. When round state must carry signed, tamper-evident data, create a codec with `createRequestStateCodec({ key, ttlSeconds })`, pass `requestState: { verify: codec.verify }` to `MCPServer`, and read decoded state per request with `ctx.requestState<T>()`.
 
-Server docs and the beta spec also describe a convenience `ctx.elicit(key, message, schemaOrUrl)` wrapper over this same mechanism. It does not appear in the shipped `beta.66` `dist/context.d.ts`, the compiled `toRequestContext()` object construction, or the framework's own `examples/elicitation` source — treat it as not yet shipped and use the primitives above. See `12-elicitation/` (owned by a sibling cluster) for the full elicitation contract and status-value table.
+Server docs and the beta spec also describe a convenience `ctx.elicit(key, message, schemaOrUrl)` wrapper over this same mechanism. It does not appear in the shipped `v2` `dist/context.d.ts`, the compiled `toRequestContext()` object construction, or the framework's own `examples/elicitation` source — treat it as not yet shipped and use the primitives above. See `12-elicitation/` (owned by a sibling cluster) for the full elicitation contract and status-value table.
 
 ## Notifications (request-scoped)
 
@@ -83,8 +83,8 @@ Use `server.notifyToolsChanged()`, `server.notifyPromptsChanged()`, `server.noti
 
 See `14-notifications/01-overview.md` for failure modes in stateless model.
 
-## No session stores in beta.66
+## No session stores in v2
 
-`InMemorySessionStore`, `RedisSessionStore`, and related session-management APIs appear only in the **v1** docs (`docs/typescript/server/session-management/`) — not in v2 docs, not in the shipped `beta.66` dist. Current v2 is stateless-only with no session store of any kind shipped.
+`InMemorySessionStore`, `RedisSessionStore`, and related session-management APIs appear only in the **v1** docs (`docs/typescript/server/session-management/`) — not in v2 docs, not in the shipped `v2` dist. Current v2 is stateless-only with no session store of any kind shipped.
 
 See `10-sessions/01-overview-stateless-truth.md` for current reality.

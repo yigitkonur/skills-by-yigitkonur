@@ -85,7 +85,11 @@ Nesting produces an indented tree:
     - Shows 5 revenue streams
 ```
 
-There is no exported imperative `modelContext.set/remove` API. Compose `<ModelContext>` nodes declaratively so registration and cleanup follow React lifecycle.
+In addition to the declarative `<ModelContext>` JSX component, `mcp-use/react` (v2.8.0+) exports the imperative `useModelContext()` hook:
+```typescript
+const { attachments, add, remove, clearAttachments } = useModelContext();
+```
+This hook allows programmatically attaching keyed items (`text`, `image`, `resource_link`, or embedded `resource`) to the host model context.
 
 ## Combining useViewState and ModelContext
 

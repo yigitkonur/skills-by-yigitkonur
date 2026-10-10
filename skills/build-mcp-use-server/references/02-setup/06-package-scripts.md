@@ -71,10 +71,10 @@ Useful for testing production build locally.
 
 ### `npm run deploy`
 
-Deploys to Manufact Cloud. The CLI does **not** initialize Git, create a repository, commit, push, install the GitHub App, or upload local source — configure those prerequisites yourself first:
+Deploys to mcp-use Cloud. The CLI does **not** initialize Git, create a repository, commit, push, install the GitHub App, or upload local source — configure those prerequisites yourself first:
 1. Commit the server to an existing Git repository.
 2. Configure `origin` as a supported GitHub repository and push the branch to deploy.
-3. Install the Manufact GitHub App with access to that repository.
+3. Install the mcp-use GitHub App with access to that repository.
 4. `mcp-use login` (one-time; supports `--api-key`/`--org` or `--device-code`/`--org` for non-interactive sign-in).
 
 ```bash
@@ -86,7 +86,7 @@ npm run deploy -- --region us-west-2
 
 The first deploy resolves the repo from `origin`, confirms GitHub App access, creates a Git-backed cloud server, starts the deployment, and writes non-secret linkage to `.mcp-use/cloud/link.json`. It starts the deployment; it does not wait for the build to finish — follow it with `mcp-use deployments logs DEPLOYMENT_ID --build --follow`. A later `npm run deploy` with a link file present redeploys the same linked server; pass `--new` to create a separate server instead.
 
-**Result URL:** after the deployment is running, copy the exact generated MCP URL from the Manufact dashboard. Do not infer a hostname from the server slug — the dashboard is authoritative for generated and custom domains; no fixed URL pattern is guaranteed.
+**Result URL:** after the deployment is running, copy the exact generated MCP URL from the mcp-use dashboard. Do not infer a hostname from the server slug — the dashboard is authoritative for generated and custom domains; no fixed URL pattern is guaranteed.
 
 ## Flags per script
 
@@ -106,7 +106,7 @@ The first deploy resolves the repo from `origin`, confirms GitHub App access, cr
 | Flag | Purpose |
 |------|---------|
 | `[path]` | Project directory; defaults to the current directory |
-| `--org <id-or-slug>` | Select the Manufact organization |
+| `--org <id-or-slug>` | Select the mcp-use organization |
 | `--name <name>` | Set the server name on creation |
 | `--branch <name>` | Deploy a branch instead of the current branch |
 | `--root-dir <path>` | Repository-relative app root (must stay inside the repo) |

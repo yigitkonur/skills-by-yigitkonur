@@ -14,7 +14,7 @@ Chart Builder is an **external template-gallery app** — a standalone repo outs
 |----------|-----|
 | **Demo endpoint** | `https://yellow-shadow-21833.run.mcp-use.com/mcp` |
 | **GitHub source** | [mcp-use/mcp-chart-builder](https://github.com/mcp-use/mcp-chart-builder) |
-| **One-click deploy** | [Deploy on Manufact](https://mcp-use.com/deploy/start?repository-url=https%3A%2F%2Fgithub.com%2Fmcp-use%2Fmcp-chart-builder&branch=main&project-name=mcp-chart-builder&port=3000&runtime=node) |
+| **One-click deploy** | [Deploy on mcp-use](https://mcp-use.com/deploy/start?repository-url=https%3A%2F%2Fgithub.com%2Fmcp-use%2Fmcp-chart-builder&branch=main&project-name=mcp-chart-builder&port=3000&runtime=node) |
 
 ## Connect in Inspector
 

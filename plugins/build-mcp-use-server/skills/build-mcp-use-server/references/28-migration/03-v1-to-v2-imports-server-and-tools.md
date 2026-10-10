@@ -19,7 +19,7 @@ import { z } from "zod";
 
 ## Step 1b: The `Logger` root API is removed
 
-v1's application logger is not exported from v2. `Logger`, `Logger.get(name)`, `Logger.configure(...)`, `Logger.setDebug(level)`, and the default `logger` instance **do not exist** in beta.66 — v2's only root logging exports are `requestLogger` (Fetch middleware) and the built-in `logging` constructor option.
+v1's application logger is not exported from v2. `Logger`, `Logger.get(name)`, `Logger.configure(...)`, `Logger.setDebug(level)`, and the default `logger` instance **do not exist** in v2 — v2's only root logging exports are `requestLogger` (Fetch middleware) and the built-in `logging` constructor option.
 
 **v1**:
 ```typescript
@@ -293,7 +293,7 @@ return {
 };
 ```
 
-**Why**: Raw envelopes are type-safe and align with MCP spec. Helpers (`text()`, `object()`, etc.) remain as **deprecated upgrade shims only**; beta.66 does not specify a removal release.
+**Why**: Raw envelopes are type-safe and align with MCP spec. Helpers (`text()`, `object()`, etc.) remain as **deprecated upgrade shims only**; v2 does not specify a removal release.
 
 ## Step 8: Deprecated helpers — if you must use them
 
@@ -307,7 +307,7 @@ return text("Hello");  // Alias for { content: [{ type: "text", text: "Hello" }]
 return error("Failed"); // Alias for { content: [...], isError: true }
 ```
 
-Migrate away from them and prefer raw envelopes; beta.66 does not specify when the shims will be removed.
+Migrate away from them and prefer raw envelopes; v2 does not specify when the shims will be removed.
 
 ## Step 9: Tool annotations (unchanged)
 

@@ -89,14 +89,14 @@ function InputHint() {
 
 Do not treat all file support as one cross-host API.
 
-| Capability | Classification in beta.66 |
+| Capability | Classification in v2 |
 |---|---|
 | Host-mediated `ui/download-file` and `hostCapabilities.downloadFile` | Standard MCP Apps protocol capability |
-| Public `mcp-use/react` wrapper for standard `ui/download-file` | **Not shipped in beta.66** |
+| Public `mcp-use/react` wrapper for standard `ui/download-file` | **Not shipped in v2** |
 | `useFiles().upload()` | ChatGPT-only wrapper over `window.openai.uploadFile` |
 | `useFiles().getDownloadUrl()` | ChatGPT-only wrapper over `window.openai.getFileDownloadUrl` |
 
-The standard protocol can advertise file download support, but beta.66 exposes no public React hook or runtime method for a View author to invoke `ui/download-file`. Checking `hostCapabilities.downloadFile` therefore detects host capability but does not make a standard download callable through the published `mcp-use/react` surface.
+The standard protocol can advertise file download support, but v2 exposes no public React hook or runtime method for a View author to invoke `ui/download-file`. Checking `hostCapabilities.downloadFile` therefore detects host capability but does not make a standard download callable through the published `mcp-use/react` surface.
 
 `useFiles()` is a separate, narrower ChatGPT extension:
 
@@ -140,11 +140,11 @@ function FileUpload() {
 }
 ```
 
-`isSupported` requires both ChatGPT methods. Unsupported calls reject, so check it before either operation. The beta.66 hook does not wrap other ChatGPT file features such as a host file picker, `selectFiles`, or upload library options.
+`isSupported` requires both ChatGPT methods. Unsupported calls reject, so check it before either operation. The v2 hook does not wrap other ChatGPT file features such as a host file picker, `selectFiles`, or upload library options.
 
 ### Availability snapshot timing
 
-In beta.66, file support is resolved once when the View runtime is created. The files subscription is not updated afterward. If `window.openai` or its file methods are injected later, `useFiles().isSupported` remains at its initial value for that mounted runtime. A fresh iframe/runtime is required to take a new availability snapshot; do not promise reactive late-injection detection.
+In v2, file support is resolved once when the View runtime is created. The files subscription is not updated afterward. If `window.openai` or its file methods are injected later, `useFiles().isSupported` remains at its initial value for that mounted runtime. A fresh iframe/runtime is required to take a new availability snapshot; do not promise reactive late-injection detection.
 
 ## Send size changed
 

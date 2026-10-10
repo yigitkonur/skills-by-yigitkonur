@@ -14,7 +14,7 @@ Diagram Builder is an **external template-gallery app** — a standalone repo ou
 |----------|-----|
 | **Demo endpoint** | `https://lucky-darkness-402ph.run.mcp-use.com/mcp` |
 | **GitHub source** | [mcp-use/mcp-diagram-builder](https://github.com/mcp-use/mcp-diagram-builder) |
-| **One-click deploy** | [Deploy on Manufact](https://mcp-use.com/deploy/start?repository-url=https%3A%2F%2Fgithub.com%2Fmcp-use%2Fmcp-diagram-builder&branch=main&project-name=mcp-diagram-builder&port=3000&runtime=node) |
+| **One-click deploy** | [Deploy on mcp-use](https://mcp-use.com/deploy/start?repository-url=https%3A%2F%2Fgithub.com%2Fmcp-use%2Fmcp-diagram-builder&branch=main&project-name=mcp-diagram-builder&port=3000&runtime=node) |
 
 ## Connect in Inspector
 

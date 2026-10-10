@@ -2,7 +2,7 @@
 
 *Read this when choosing a template for a new MCP server or deciding whether to scaffold at all.*
 
-Three templates ship with `create-mcp-use-app@2.0.0-beta.14`. Each generates a ready-to-dev project with package.json scripts, tsconfig, and a working MCP server.
+Three templates ship with `create-mcp-use-app@latest`. Each generates a ready-to-dev project with package.json scripts, tsconfig, and a working MCP server.
 
 Aliases accepted by `--template`: `starter` resolves to `mcp-server`, `apps-sdk` resolves to `mcp-apps`. `--template` also accepts a GitHub repository URL, cloned in place of a built-in name.
 
@@ -18,20 +18,20 @@ Aliases accepted by `--template`: `starter` resolves to `mcp-server`, `apps-sdk`
 
 ```bash
 # Scaffold with a template
-npx create-mcp-use-app@2.0.0-beta.14 my-project --template mcp-server
+npx create-mcp-use-app@latest my-project --template mcp-server
 
 # List available templates
-npx create-mcp-use-app@2.0.0-beta.14 --list-templates
+npx create-mcp-use-app@latest --list-templates
 
 # With flags
-npx create-mcp-use-app@2.0.0-beta.14 my-project \
+npx create-mcp-use-app@latest my-project \
   --template mcp-apps \
   --npm \
   --install \
   --skills  # Install the mcp-apps-builder skill for Cursor, Claude Code, and Codex
 ```
 
-Full flag reference: `-t, --template <template>`, `--list-templates`, `--install`/`--no-install`, `--skills`/`--no-skills`, `--no-git`, `--dev` (use workspace deps), `--sdk-version <version>` (pin `mcp-use` to an npm version or dist-tag), `--npm`/`--pnpm`/`--bun`, `-h, --help`, `-V, --version`. `--dev` and `--sdk-version` are mutually exclusive.
+Full flag reference: `-t, --template <template>`, `--list-templates`, `--install`/`--no-install`, `--skills`/`--no-skills`, ``, `--dev` (use workspace deps), `--sdk-version <version>` (pin `mcp-use` to an npm version or dist-tag), `--npm`/`--pnpm`/`--bun`, `-h, --help`, `-V, --version`. `--dev` and `--sdk-version` are mutually exclusive.
 
 Without a project name in a non-interactive shell, the CLI exits with an error rather than prompting. Without `--template` in an interactive shell, it prompts for one; non-interactively it silently falls back to `mcp-server`.
 

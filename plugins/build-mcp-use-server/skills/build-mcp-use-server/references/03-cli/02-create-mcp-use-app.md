@@ -7,7 +7,7 @@ Scaffolds a new MCP server with TypeScript, package scripts, and optional views.
 ## Usage
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 <project-name> [options]
+npx create-mcp-use-app@latest <project-name> [options]
 ```
 
 Always use the `@beta` tag for v2; stable v1 (1.x) scaffolds v1 projects.
@@ -40,27 +40,27 @@ Three templates come packaged:
 
 **Default (mcp-server template, auto-install):**
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-server
+npx create-mcp-use-app@latest my-server
 ```
 
 **With views:**
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps
+npx create-mcp-use-app@latest my-server --template mcp-apps
 ```
 
 **Minimal (blank template, skip install):**
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-server --template blank --no-install
+npx create-mcp-use-app@latest my-server --template blank --no-install
 ```
 
 **For monorepo (workspace deps):**
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-server --dev
+npx create-mcp-use-app@latest my-server --dev
 ```
 
 **List templates:**
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 --list-templates
+npx create-mcp-use-app@latest --list-templates
 ```
 
 ## Generated structure

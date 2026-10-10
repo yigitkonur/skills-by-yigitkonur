@@ -45,7 +45,7 @@ mcp-use dev --tunnel
 # [mcp-use] dev server ready
 #   ➜ MCP endpoint:  http://127.0.0.1:3000/mcp
 #   ➜ Inspector:     http://127.0.0.1:3000/mcp/inspector
-#   ➜ Tunnel:        https://happy-blue.local.mcp-use.run/mcp
+#   ➜ Tunnel:        https://happy-blue.tunnel.mcp-use.run/mcp
 ```
 
 **Headless (no browser, no Inspector):**
@@ -74,7 +74,8 @@ Access it at `http://localhost:3000/mcp/inspector`.
 
 - `$PORT` — Used if no `--port` flag
 - `$HOST` — Used if no `--host` flag
-- `$MCP_URL` — **Not** set to the tunnel URL by `--tunnel`; this is a common misconception. `dev` only sets a temporary fallback (`http://localhost:${port}`, no path) into `process.env.MCP_URL` while evaluating the server entry module, and only when `MCP_URL` is unset AND the bind host is localhost-class (`127.0.0.1`/`localhost`/`::1`) — restored afterward. The live tunnel URL is exposed separately, through the Inspector's `/inspector/api/dev/info` JSON response (`mcpUrl` field) and the `➜ Tunnel:` console line, never through `process.env.MCP_URL`.
+- `$MCP_URL` — Set by `mcp-use dev` to the tunnel URL (when `--tunnel` is used) or local server URL when unset, making the public origin available to entry modules and OAuth metadata.
+- `$NODE_ENV` — Explicitly set to `"development"` by `mcp-use dev`.
 
 ## Exit Codes
 

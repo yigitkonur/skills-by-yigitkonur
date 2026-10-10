@@ -4,7 +4,7 @@
 
 View security facts are declared on the bound tool's `view` field and emitted on the generated resource under `_meta.ui`. They apply to browser code in the sandboxed View, not to server-side tool callback traffic.
 
-## Public Types in beta.66
+## Public Types in v2.8+
 
 The package root exports `ToolViewConfig` and `UiPermissions`. It does **not** export `McpUiResourceCsp` or `McpUiResourcePermissions`.
 
@@ -162,7 +162,7 @@ const permissions: UiPermissions = {
 };
 ```
 
-Only these four standard keys exist in beta.66. A host may deny a request, so feature-detect and handle denial in the View.
+Only these four standard keys exist in v2. A host may deny a request, so feature-detect and handle denial in the View.
 
 ```typescript
 server.tool(
@@ -192,7 +192,10 @@ view: {
 - `domain` is a dedicated sandbox-origin hint. Its format and validation are host-dependent; it may not be a URL. If omitted, the host chooses its default sandbox origin.
 - `prefersBorder` is a request, not a guarantee. Set an explicit boolean when the visual boundary matters.
 
-For ChatGPT-specific submission and compatibility requirements, follow `../chatgpt-apps/01-dual-protocol.md` and `../chatgpt-apps/03-csp-differences.md`. Do not add ChatGPT-only resource extensions to standard `ToolViewConfig` snippets.
+For ChatGPT-specific submission and compatibility requirements, follow `../chatgpt-apps/01-dual-protocol.md` and `../chatgpt-apps/03-csp-differences.md`.
+
+### Claude Content-Security-Policy Sandbox Rewrite
+When serving View resources to Claude clients via `resources/read`, mcp-use automatically rewrites authored view domains to `*.claudemcpcontent.com` to conform to Claude's strict iframe content isolation policies.
 
 ## Inspect the Emitted Resource
 

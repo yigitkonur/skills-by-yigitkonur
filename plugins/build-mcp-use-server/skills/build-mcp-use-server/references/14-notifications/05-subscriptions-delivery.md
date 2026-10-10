@@ -31,7 +31,7 @@ Notifications are only delivered to clients with active `subscriptions/listen` r
 
 ## Stateless Constraints
 
-- **No backlog:** If a client connects after a notification fires, it receives nothing. Backlog requires session storage (not in v2 beta.66).
+- **No backlog:** If a client connects after a notification fires, it receives nothing. Backlog requires session storage (not in v2 v2).
 - **No queue:** Notifications are fire-and-forget. If the network drops mid-notification, it is not retried.
 - **No acknowledgment:** Clients do not send "ack" back to the server; the server has no way to know if a notification was received.
 

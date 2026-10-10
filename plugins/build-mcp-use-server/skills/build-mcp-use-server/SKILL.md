@@ -16,7 +16,7 @@ Trigger when the target code or request involves any of these:
 - *Defining tools (definition-first `{ name, description, inputSchema, outputSchema }` + callback), resources, or prompts with zod v4 / Standard Schema.*
 - *Serving Agent Skills alongside tools via directory discovery or `skills: true | false | { directory }` (SEP-2640).*
 - *Configuring Mixed Authentication (`mixedAuth: true`) and tool-level `securitySchemes: [{ type: "noauth" }]` vs `[{ type: "oauth2", scopes: [...] }]`.*
-- *Server-side `ctx` work — `ctx.auth`, `ctx.sendLog`, `ctx.reportProgress`, `ctx.sendNotification`, `ctx.client.capabilities()`, `ctx.requestState`, `ctx.elicit()` interactive elicitation.*
+- *Server-side `ctx` work — `ctx.auth`, `ctx.sendLog`, `ctx.reportProgress`, `ctx.sendNotification`, `ctx.client.capabilities()`, `ctx.requestState`, `ctx.inputResponses`, interactive elicitation (`inputRequired.elicit`, `acceptedContent`, `inputResponse`).*
 - *OAuth via `mcp-use/oauth/*` providers (clerk, auth0, workos, supabase, keycloak, better-auth, scalekit, convex), `createJwtVerifier`, or `oauthCustomProvider`.*
 - *MCP Apps / ChatGPT Apps views — `views/<name>/view.tsx`, tool `view` field, `view.entrypoints` (`global`, `thread`, `file`), native `server.settings()`, `tool.icons`, `structuredContent` props, CSP metadata, `mcp-use/react` hooks (`useToolContext`, `useCallTool`, `useDynamicTool`, `useViewTool`, `useViewState`, `useModelContext`, `useDeepLink`, `useDisplayMode`, `useHostContext`, `useViewTheme`, `useFiles`, `ToolCancelledError`).*
 - *Streamable HTTP serving — `server.listen`, `server.fetch`, `toNodeHandler` (`mcp-use/node`), `withMcpUse`/`createNextHandler` (`mcp-use/next`), `mcp-use/tanstack-start`.*
@@ -32,7 +32,7 @@ Do **not** use this skill when:
 
 ## Version stance
 
-This skill teaches **v2** (stable `mcp-use@2.8.1` on npm `latest`; exact pins and drift policy in `references/00-version-drift.md`). Detect which world the project is in before applying anything:
+This skill teaches **v2** (stable `mcp-use@2.8.2` on npm `latest`; exact pins and drift policy in `references/00-version-drift.md`). Detect which world the project is in before applying anything:
 
 - `from "mcp-use/server"` anywhere → v1 project → start at `references/28-migration/02-v1-to-v2-overview.md`.
 - Root `MCPServer` import, `views/`, `mcp-use/oauth/*` → v2 project → apply this skill directly.
@@ -69,7 +69,7 @@ Use `references/00-reference-index.md` only when the intent table is not specifi
 ## Core rules
 
 - Import `MCPServer` and server APIs from `mcp-use` (root). `mcp-use/server` does not exist in v2.
-- Install stable v2: `npm install mcp-use` (or `mcp-use@latest`), `@mcp-use/cli@latest`, scaffold with `create-mcp-use-app@latest`. Require Node >= 22.22.2 and ESM; install a `StandardSchemaWithJSON` library in the project (this skill's examples use zod v4).
+- Install stable v2: `npm install mcp-use` (or `mcp-use@latest`), `@mcp-use/cli@latest`, scaffold with `create-mcp-use-app@latest`. Require Node >= 18 and ESM; install a `StandardSchemaWithJSON` library in the project (this skill's examples use zod v4).
 - Return raw MCP result envelopes (`CallToolResult` etc.). The v1 helpers still exported are deprecated — only `references/05-responses/07-deprecated-v1-helpers.md` teaches them, for migration.
 - v2 is stateless per request: no session stores, no post-response push, no `ctx.sample()`. Cross-request state goes through the `requestState` codec or your own store.
 - Serve over Streamable HTTP only (`/mcp` by default). Strict stdio is a raw-SDK requirement — route out.
@@ -147,7 +147,7 @@ For views, verify the text fallback (`content`) and, when possible, Inspector CS
 
 - In an mcp-use server, do not mix in raw official SDK server primitives (`@modelcontextprotocol/sdk` v1 or `@modelcontextprotocol/{core,server}` v2); route a raw-SDK implementation to the matching sibling skill instead.
 - Never install `mcp-use` v1 (`from 'mcp-use/server'`); bare `npm install mcp-use` installs stable v2.
-- Never use zod v3, CommonJS, or Node < 22 with v2.
+- Never use zod v3, CommonJS, or Node < 18 with v2.
 - Never use `z.any()`/`z.unknown()` where a concrete schema is possible; `.describe()` every model-filled field.
 - Never teach or write v1 response helpers in new code; raw envelopes only.
 - Never put secrets in source, logs, `structuredContent`, view props, or view state.
@@ -199,7 +199,7 @@ Start with intent or symptoms; use the inventory only as fallback.
 - **Server config:** `references/08-server-config/01-mcp-server-constructor.md`, `references/08-server-config/02-network-basepath-and-endpoints.md`, `references/08-server-config/03-cors-and-allowed-origins.md`, `references/08-server-config/04-dns-rebinding-and-host-validation.md`, `references/08-server-config/05-middleware.md`, `references/08-server-config/06-custom-routes.md`, `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md`
 - **Transports:** `references/09-transports/01-overview.md`, `references/09-transports/02-streamable-http.md`, `references/09-transports/03-stateless-and-request-state.md`, `references/09-transports/04-runtime-adapters-node-next-fetch.md`, `references/09-transports/05-no-stdio-and-sse-history.md`
 - **Sessions/state:** `references/10-sessions/01-overview-stateless-truth.md`, `references/10-sessions/02-session-storage-roadmap.md`, `references/10-sessions/03-state-patterns-without-sessions.md`, `references/10-sessions/04-multi-instance-and-scaling.md`
-- **Auth:** `references/11-auth/01-overview.md`, `references/11-auth/02-attaching-a-provider.md`, `references/11-auth/03-ctx-auth-and-user-context.md`, `references/11-auth/04-permission-guards.md`, `references/11-auth/05-custom-provider-oauthcustomprovider.md`, `references/11-auth/06-debugging-checklist.md`, `references/11-auth/07-oauth-proxy-removed.md`, `references/11-auth/providers/01-clerk.md`, `references/11-auth/providers/02-auth0.md`, `references/11-auth/providers/03-workos.md`, `references/11-auth/providers/04-supabase.md`, `references/11-auth/providers/05-keycloak.md`, `references/11-auth/providers/06-better-auth.md`
+- **Auth:** `references/11-auth/01-overview.md`, `references/11-auth/02-attaching-a-provider.md`, `references/11-auth/03-ctx-auth-and-user-context.md`, `references/11-auth/04-permission-guards.md`, `references/11-auth/05-custom-provider-oauthcustomprovider.md`, `references/11-auth/06-debugging-checklist.md`, `references/11-auth/07-oauth-proxy-removed.md`, `references/11-auth/providers/01-clerk.md`, `references/11-auth/providers/02-auth0.md`, `references/11-auth/providers/03-workos.md`, `references/11-auth/providers/04-supabase.md`, `references/11-auth/providers/05-keycloak.md`, `references/11-auth/providers/06-better-auth.md, references/11-auth/providers/07-scalekit.md, references/11-auth/providers/08-convex.md`
 - **Elicitation:** `references/12-elicitation/01-overview.md`, `references/12-elicitation/02-form-mode.md`, `references/12-elicitation/03-url-mode.md`, `references/12-elicitation/04-multi-round-and-request-state.md`, `references/12-elicitation/05-anti-patterns.md`
 - **Sampling:** `references/13-sampling/01-sampling-removed-in-v2.md`
 - **Notifications:** `references/14-notifications/01-overview.md`, `references/14-notifications/02-ctx-sendnotification.md`, `references/14-notifications/03-progress-reporting.md`, `references/14-notifications/04-list-changed-events.md`, `references/14-notifications/05-subscriptions-delivery.md`, `references/14-notifications/canonical-anchor.md`

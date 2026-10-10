@@ -88,11 +88,10 @@ Do not add an HS256 secret to fix an ES256/JWKS failure. See `references/11-auth
 ```typescript
 import { oauthCustomProvider } from "mcp-use/oauth";
 
+// Using built-in createJwtVerifier (recommended):
+import { oauthCustomProvider, createJwtVerifier } from "mcp-use/oauth";
+
 const oauth = oauthCustomProvider({
-  createTokenVerifier: (resource) => async (token) => {
-    const payload = await verifyForResource(token, resource);
-    return { payload };
-  },
   oauthMetadata: {
     issuer: "https://auth.example.com",
     authorization_endpoint: "https://auth.example.com/oauth/authorize",
@@ -100,10 +99,14 @@ const oauth = oauthCustomProvider({
     registration_endpoint: "https://auth.example.com/oauth/register",
     jwks_uri: "https://auth.example.com/.well-known/jwks.json",
   },
-  mapAuthInfo: (authInfo) => ({
-    user: { id: String(authInfo.claims?.sub) },
-    payload: authInfo.claims ?? {},
-    permissions: [],
+  createTokenVerifier: (resource) => createJwtVerifier({
+    issuer: "https://auth.example.com",
+    jwksUrl: new URL("https://auth.example.com/.well-known/jwks.json"),
+    audience: resource.href,
+    mapUser: (payload) => ({
+      id: String(payload.sub),
+      email: typeof payload.email === "string" ? payload.email : undefined,
+    }),
   }),
 });
 ```

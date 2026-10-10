@@ -73,7 +73,7 @@ If curl works but Inspector fails:
 
 ## Request State & Elicitation
 
-For `input_required` flows, verify the shipped helper path rather than looking for `ctx.elicit()` (which does not exist in beta.66):
+For `input_required` flows, verify the shipped helper path rather than looking for `ctx.elicit()` (which does not exist in v2):
 
 1. The first call returns `inputRequired({ inputRequests, requestState? })`, whose wire envelope has `resultType: "input_required"`.
 2. Each form request is built with `inputRequired.elicit({ message, requestedSchema })`; URL requests use `.elicitUrl({ message, url })`.

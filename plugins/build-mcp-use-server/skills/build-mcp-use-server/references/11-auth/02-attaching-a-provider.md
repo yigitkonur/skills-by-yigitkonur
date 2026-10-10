@@ -39,7 +39,7 @@ Only the exact MCP transport route (`basePath`, default `/mcp`) requires `Author
   - Validation happens at the HTTP boundary via `requireBearerAuth`; callback code never runs for a rejected request.
 - **With `mixedAuth: true`:**
   - `tools/list`, `resources/list`, and `prompts/list` are public and unauthenticated.
-  - Public tools (`securitySchemes: [{ type: "noauth" }]`) and optional tools run without token verification.
+  - Public tools (`securitySchemes: [{ type: "noauth" }]`): If no token is provided, the tool runs unauthenticated. However, if the client sends a Bearer token, mcp-use strictly verifies it; if expired or invalid, the request is rejected with 401 Unauthorized before tool execution to prompt the client to refresh its stale credentials.
   - Protected tools (`securitySchemes: [{ type: "oauth2", scopes: [...] }]`) trigger dual-challenge rejections:
     - Standard MCP clients (Claude): HTTP 401/403 with `WWW-Authenticate` header.
     - ChatGPT: HTTP 200 with JSON-RPC error containing `isError: true` and `_meta["mcp/www_authenticate"]`.

@@ -245,6 +245,21 @@ Permission guards must be written explicitly; no built-in helpers.
 
 When OAuth is configured on `MCPServer`, unauthenticated requests (missing bearer token) are rejected at the endpoint level before your tool callback runs. `ctx.auth` is guaranteed present in protected callbacks.
 
+## Dual Audience Verification During Migration
+
+v2 binds every access token to origin + `basePath` (e.g. `https://mcp.example.com/mcp`), whereas v1 bound tokens to origin only (`https://mcp.example.com`). Existing clients with cached tokens will fail with `Token audience does not include the protected resource` (401) unless both audiences are accepted.
+
+Pass both identifiers to `createJwtVerifier` during the migration period:
+
+```typescript
+createTokenVerifier: (resource) => createJwtVerifier({
+  issuer: "https://auth.example.com",
+  jwksUrl: new URL("https://auth.example.com/.well-known/jwks.json"),
+  audience: [resource.href, "https://mcp.example.com"], // Accepts both v2 and legacy v1 tokens
+  mapUser: (payload) => ({ id: String(payload.sub) }),
+})
+```
+
 ---
 
 **Next**: See `06-v1-to-v2-widgets-to-views.md` for View migration.

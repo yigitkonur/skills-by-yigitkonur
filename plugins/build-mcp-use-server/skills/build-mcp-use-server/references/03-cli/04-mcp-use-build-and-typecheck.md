@@ -71,7 +71,7 @@ mcp-use typecheck -- --strict --noUnusedLocals
         └── form-<hash>.js
 ```
 
-`mcp-env.d.ts` is **never** written into `.mcp-use/build/` — it only ever exists at the project root, refreshed there by `dev`/`typecheck`/`build`. Use `mcp-use start` to serve this build locally (it reads `manifest.json` to find the entry), or deploy it to Manufact Cloud or another runtime.
+`mcp-env.d.ts` is **never** written into `.mcp-use/build/` — it only ever exists at the project root, refreshed there by `dev`/`typecheck`/`build`. Use `mcp-use start` to serve this build locally (it reads `manifest.json` to find the entry), or deploy it to mcp-use Cloud or another runtime.
 
 ## Publishing view assets to a CDN
 

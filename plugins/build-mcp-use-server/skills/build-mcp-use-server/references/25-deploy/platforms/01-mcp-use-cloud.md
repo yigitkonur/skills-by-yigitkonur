@@ -1,13 +1,13 @@
-# Manufact Cloud (mcp-use Cloud)
+# mcp-use Cloud (mcp-use Cloud)
 
 *Deploy to the official mcp-use platform for managed Node.js hosting, preview environments, and GitHub integration.*
 
 ## Prerequisites and Source Mode
 
-Build the server and sign in to a Manufact organization before deploying. Then choose one shipped CLI source mode:
+Build the server and sign in to a mcp-use organization before deploying. Then choose one shipped CLI source mode:
 
-- **GitHub (default):** deploy the current `origin`. If no origin exists, an interactive run can create a private GitHub repository; `--yes` authorizes the same repository/Git mutations without prompts. For an existing origin, push the branch you intend to deploy and ensure the Manufact GitHub App can access the repository.
-- **Managed upload:** pass `--no-github` on the first deploy. The CLI archives local source (excluding `.git`, dependencies, build output, `.mcp-use`, `.env*`, caches, coverage, OS metadata, and symlinks) and uploads at most 80 MB compressed. Linked managed projects auto-detect this source mode on later deploys.
+- **GitHub (default):** deploy the current `origin`. If no origin exists, an interactive run can create a private GitHub repository; `--yes` authorizes the same repository/Git mutations without prompts. For an existing origin, push the branch you intend to deploy and ensure the mcp-use GitHub App can access the repository.
+- **Managed upload:** pass `hub` on the first deploy. The CLI archives local source (excluding `.git`, dependencies, build output, `.mcp-use`, `.env*`, caches, coverage, OS metadata, and symlinks) and uploads at most 80 MB compressed. Linked managed projects auto-detect this source mode on later deploys.
 
 Inspect Git state before a GitHub-backed deploy:
 
@@ -17,7 +17,7 @@ git branch --show-current
 git status --short
 ```
 
-Use `--no-github` when you intentionally want the managed-upload path rather than allowing repository creation/mutation.
+Use `hub` when you intentionally want the managed-upload path rather than allowing repository creation/mutation.
 
 ## First Deploy
 
@@ -42,7 +42,7 @@ Confirm the deployment record points at the intended source branch/revision (or 
 
 After success, copy the exact MCP URL from the dashboard and perform the tools-only or View verification branch in `references/25-deploy/02-pre-deploy-checklist.md`.
 
-**Do not infer a hostname from the server slug.** No fixed URL pattern (subdomain, preview-branch format, or otherwise) is documented or guaranteed — the Manufact dashboard is the sole authoritative source for a server's generated and custom domains. Copy the exact MCP URL from the dashboard after each deploy; never construct it from the slug or branch name.
+**Do not infer a hostname from the server slug.** No fixed URL pattern (subdomain, preview-branch format, or otherwise) is documented or guaranteed — the mcp-use dashboard is the sole authoritative source for a server's generated and custom domains. Copy the exact MCP URL from the dashboard after each deploy; never construct it from the slug or branch name.
 
 `.mcp-use/cloud/link.json` saves the deployment link; commit it so CI redeploys reuse the same server.
 
@@ -54,7 +54,7 @@ After success, copy the exact MCP URL from the dashboard and perform the tools-o
 - Existing repositories require the branch to be pushed before deployment; local unpushed file changes are not the deployed source
 - `--watch-paths` and `--wait-for-ci` are available only in this source mode
 
-**Managed upload (`--no-github`):**
+**Managed upload (`hub`):**
 - CLI uploads an archive of local source to platform-managed storage
 - Platform runs the build pipeline
 - Works in CI or onboarding without GitHub integration
@@ -106,17 +106,17 @@ CLI 4 (beta.15) reads **only** `.mcp-use/cloud/link.json` — it does **not** co
 
 Safe path:
 
-1. Identify the existing server by slug in the Manufact dashboard, or by `serverId` in your deploy automation.
+1. Identify the existing server by slug in the mcp-use dashboard, or by `serverId` in your deploy automation.
 2. If you have a server ID, let the CLI regenerate the link by targeting it explicitly, or create the link file yourself at `.mcp-use/cloud/link.json` with the correct `organizationId`, `serverId`, and `serverSlug` (fields match what `mcp-use deploy` writes).
 3. Delete the stale `.mcp-use/project.json` after the new link works, then redeploy and confirm it targets the same server ID (not a new one).
 
 ## Direct cloud API automation
 
-Some production scripts bypass the CLI and call the Manufact cloud REST API directly (`https://cloud.mcp-use.com/api/v1/...`) with an `MCP_USE_API_KEY`. That is not the supported beta.15 surface: the documented, version-pinned contract is the CLI's JSON mode (`mcp-use deploy --json`, `mcp-use deployments get <id>`, `mcp-use servers ...`). If you keep direct-API automation, you must re-verify every endpoint, header, and response field against the current cloud API yourself — it can drift independently of the shipped CLI. Prefer the CLI JSON commands for CI so the client contract is the one under version control.
+Some production scripts bypass the CLI and call the mcp-use cloud REST API directly (`https://cloud.mcp-use.com/api/v1/...`) with an `MCP_USE_API_KEY`. That is not the supported beta.15 surface: the documented, version-pinned contract is the CLI's JSON mode (`mcp-use deploy --json`, `mcp-use deployments get <id>`, `mcp-use servers ...`). If you keep direct-API automation, you must re-verify every endpoint, header, and response field against the current cloud API yourself — it can drift independently of the shipped CLI. Prefer the CLI JSON commands for CI so the client contract is the one under version control.
 
 ## Connect a Client
 
-Copy the exact generated MCP URL from the Manufact dashboard — never construct it from the slug:
+Copy the exact generated MCP URL from the mcp-use dashboard — never construct it from the slug:
 
 ```bash
 export MCP_URL="PASTE_THE_GENERATED_MCP_URL"

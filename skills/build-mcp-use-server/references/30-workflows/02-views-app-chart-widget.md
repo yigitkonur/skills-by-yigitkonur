@@ -13,7 +13,7 @@
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-charts --template mcp-apps --npm --install
+npx create-mcp-use-app@latest my-charts --template mcp-apps --npm --install
 cd my-charts
 ```
 

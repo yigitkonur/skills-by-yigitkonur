@@ -6,7 +6,7 @@ Elicitation is a multi-round interaction: your tool returns an `InputRequiredRes
 
 Use when a tool cannot proceed without user data: confirmations, missing parameters, OAuth handoffs, multi-step workflows.
 
-> **`ctx.elicit(key, message, schemaOrUrl)` is documented but not shipped in 2.0.0-beta.66.** It appears in `elicitation.mdx`, `SPEC.md`, and `MCP_SERVER_MIGRATION_CHECKLIST.md`, but `RequestContextBase` in the shipped `dist/context.d.ts` has no `elicit` field, and the framework's own type test (`tests/type-level.test.ts`) asserts `// @ts-expect-error — ctx.elicit was removed; use input_required helpers` at compile time. Use the primitives below — `inputRequired()`, `inputResponse()`, `acceptedContent()` — which are the real, shipped, tested surface, re-exported from `mcp-use` root (originally from `@modelcontextprotocol/server`).
+> **`ctx.elicit()` was permanently removed in v2.4.3 (#2409).** In official `mcp-use` v2, elicitation is executed via the `input_required` protocol primitives: returning `inputRequired({ inputRequests: { [key]: inputRequired.elicit(...) } })`, reading client input responses with `inputResponse(ctx.inputResponses, key)`, and validating responses with `acceptedContent()`. `RequestContext` does not have an `elicit()` method.
 
 ## How it works
 
@@ -54,7 +54,6 @@ On re-entry, call `inputResponse(ctx.inputResponses, key)` and branch on `.kind`
 |---|---|---|
 | `"missing"` | No response for this key yet — first call, or a different key answered this round | (N/A) |
 | `"elicit"` | Client answered a form/URL request | `"accept"` (submitted, validate with `acceptedContent`) · `"decline"` (user explicitly declined) · `"cancel"` (user dismissed) |
-| `"sampling"` | Client answered a legacy `inputRequired.createMessage()` compatibility request | (N/A — read `.result` instead; see `../13-sampling/01-sampling-removed-in-v2.md`) |
 
 ```typescript
 import { acceptedContent, inputRequired, inputResponse } from "mcp-use";

@@ -64,7 +64,7 @@ export const { GET, POST, DELETE, OPTIONS } = createNextHandler(server);
 
 **Testing:** Open `http://localhost:3000/api/mcp` in an MCP client.
 
-The complete embedded example is [`packages/server/examples/nextjs`](https://github.com/mcp-use/mcp-use/tree/beta/libraries/typescript/packages/server/examples/nextjs) in the mcp-use repo — it also shows a view importing a component shared with the Next.js landing page and an image from the app's `public` directory.
+The complete embedded example is [`packages/server/examples/nextjs`](https://github.com/mcp-use/mcp-use/tree/main/libraries/typescript/packages/server/examples/nextjs) in the mcp-use repo — it also shows a view importing a component shared with the Next.js landing page and an image from the app's `public` directory.
 
 ## Standalone beside Next.js
 
@@ -111,7 +111,7 @@ mcp-use dev --path apps/web --entry ../mcp/src/server.ts --views-dir ../mcp/src/
 
 Imports from `src/mcp/` automatically resolve via the Next.js `tsconfig.json` and project aliases.
 
-The complete standalone example is [`packages/server/examples/nextjs-standalone`](https://github.com/mcp-use/mcp-use/tree/beta/libraries/typescript/packages/server/examples/nextjs-standalone) in the mcp-use repo.
+The complete standalone example is [`packages/server/examples/nextjs-standalone`](https://github.com/mcp-use/mcp-use/tree/main/libraries/typescript/packages/server/examples/nextjs-standalone) in the mcp-use repo.
 
 ## Shared code safety
 

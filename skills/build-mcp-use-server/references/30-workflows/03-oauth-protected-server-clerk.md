@@ -13,7 +13,7 @@
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-secure-server --template mcp-server --npm --install
+npx create-mcp-use-app@latest my-secure-server --template mcp-server --npm --install
 cd my-secure-server
 ```
 
@@ -137,7 +137,7 @@ mcp-use deploy \
   --env MCP_RESOURCE_URL=https://mcp.example.com/mcp
 ```
 
-If using a generated Manufact Cloud domain, use a two-phase setup: create/link the cloud server, copy its exact MCP endpoint from the dashboard, set `MCP_RESOURCE_URL` with `mcp-use servers env set <server-id-or-slug> MCP_RESOURCE_URL=<dashboard-mcp-url>`, then redeploy. Never infer a hostname from the slug.
+If using a generated mcp-use Cloud domain, use a two-phase setup: create/link the cloud server, copy its exact MCP endpoint from the dashboard, set `MCP_RESOURCE_URL` with `mcp-use servers env set <server-id-or-slug> MCP_RESOURCE_URL=<dashboard-mcp-url>`, then redeploy. Never infer a hostname from the slug.
 
 Capture the deployment ID and apply the terminal-state gate in `../25-deploy/platforms/01-mcp-use-cloud.md`: wait for that exact deployment to succeed and confirm its source revision before testing the dashboard-copied URL.
 

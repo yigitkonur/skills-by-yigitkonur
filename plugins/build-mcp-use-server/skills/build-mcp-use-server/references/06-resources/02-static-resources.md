@@ -40,7 +40,7 @@ Return the raw `{ contents: [...] }` envelope (`ReadResourceResult`). Each entry
 
 ## Deprecated response helpers
 
-Import from `"mcp-use"`. All still work — the SDK converts their `CallToolResult`-shaped output into a `ReadResourceResult` automatically — but every one is marked `@deprecated` in beta.66. Prefer the raw envelope above for new code. Full list and conversion rules: `../05-responses/07-deprecated-v1-helpers.md`.
+Import from `"mcp-use"`. All still work — the SDK converts their `CallToolResult`-shaped output into a `ReadResourceResult` automatically — but every one is marked `@deprecated` in v2. Prefer the raw envelope above for new code. Full list and conversion rules: `../05-responses/07-deprecated-v1-helpers.md`.
 
 | Helper | Use for |
 |---|---|

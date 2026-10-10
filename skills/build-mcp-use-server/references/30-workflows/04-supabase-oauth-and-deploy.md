@@ -7,14 +7,14 @@
 - Node.js >= 22
 - Supabase account (https://supabase.com)
 - Supabase project created
-- GitHub repo for the default Manufact Cloud source mode, or plan to use `mcp-use deploy --no-github` for managed upload
+- GitHub repo for the default mcp-use Cloud source mode, or plan to use `mcp-use deployhub` for managed upload
 
 ## Steps
 
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 my-supabase-mcp --template mcp-server --npm --install
+npx create-mcp-use-app@latest my-supabase-mcp --template mcp-server --npm --install
 cd my-supabase-mcp
 ```
 
@@ -163,7 +163,7 @@ git push origin main
 
 mcp-use deploy --env SUPABASE_PROJECT_ID=your-project-id-here
 # Resolves the GitHub repo from git origin and confirms GitHub App repo access;
-# creates/updates a Manufact Cloud server — never a Vercel project.
+# creates/updates a mcp-use Cloud server — never a Vercel project.
 ```
 
 **Option B: Via env file**

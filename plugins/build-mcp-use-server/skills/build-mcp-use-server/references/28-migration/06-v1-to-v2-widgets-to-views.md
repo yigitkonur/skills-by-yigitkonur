@@ -296,6 +296,32 @@ export const viewConfig: ViewConfig = {
 
 Values are hints; host decides what to honor.
 
+## Handle View URIs cached by ChatGPT
+
+v1 served widgets at `ui://widget/<name>.html`; v2 serves Views at `ui://views/<name>.html`. A published ChatGPT app caches the resource URI from the v1 tool metadata and keeps requesting the old URI after deploying v2 until resubmitted and re-approved.
+
+Add temporary Express/Hono rewrite middleware before the request reaches the MCP handler:
+
+```typescript
+// TEMPORARY: rewrite ui://widget/<name>.html to ui://views/<name>.html for legacy ChatGPT clients
+server.use(server.basePath, async (c, next) => {
+  if (c.req.method !== "POST") return next();
+  const body = await c.req.raw.clone().json().catch(() => undefined);
+  const legacyUri = body?.method === "resources/read" ? body.params?.uri : undefined;
+  if (typeof legacyUri === "string" && legacyUri.startsWith("ui://widget/")) {
+    const viewName = legacyUri.slice("ui://widget/".length).replace(/\.[^.]*\.html$/, ".html");
+    const rewrittenUri = `ui://views/${viewName}`;
+    const headers = new Headers(c.req.raw.headers);
+    headers.delete("content-length");
+    c.req.raw = new Request(c.req.raw, {
+      body: JSON.stringify({ ...body, params: { ...body.params, uri: rewrittenUri } }),
+      headers,
+    });
+  }
+  await next();
+});
+```
+
 ---
 
 **Next**: See `07-v1-to-v2-sessions-transports-stdio-sse.md` for transport and stateless model changes.

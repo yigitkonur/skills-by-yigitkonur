@@ -1,10 +1,10 @@
 # Cloud Deployment and Management
 
-*Read this to deploy to Manufact Cloud and manage cloud servers.*
+*Read this to deploy to mcp-use Cloud and manage cloud servers.*
 
 ## mcp-use deploy
 
-Deploys your server to Manufact Cloud:
+Deploys your server to mcp-use Cloud:
 
 ```bash
 mcp-use deploy [options]
@@ -26,7 +26,7 @@ mcp-use deploy [options]
 | `--dockerfile <path>` | string | No | Dockerfile path relative to the selected source root |
 | `--watch-paths <glob>` | string | Repeatable | GitHub auto-deploy path filter (GitHub-only) |
 | `--wait-for-ci` | boolean | No | Wait for other GitHub checks before auto-deploy (GitHub-only) |
-| `--no-github` | boolean | No | Skip GitHub URL detection; upload source instead |
+| `hub` | boolean | No | Skip GitHub URL detection; upload source instead |
 | `--new` | boolean | No | Create a new server instead of using the local link (requires `--yes` in JSON/non-interactive runs) |
 | `--open` | boolean | No | Open the server page after a successful deployment (cannot combine with `--json`) |
 | `-y, --yes` | boolean | No | Authorize confirmations and Git/repository mutations |
@@ -43,7 +43,7 @@ mcp-use deploy
 
 **Upload source directly (no GitHub):**
 ```bash
-mcp-use deploy --no-github
+mcp-use deployhub
 # Archives and uploads local files (max 80 MB)
 ```
 
@@ -65,7 +65,7 @@ mcp-use deploy --org acme-corp-staging
 **Non-interactive automation (headless GitHub repo creation, or managed upload):**
 ```bash
 mcp-use deploy --json --yes
-mcp-use deploy --no-github --json
+mcp-use deployhub --json
 ```
 
 ### Prerequisites
@@ -78,7 +78,7 @@ Deploy is a self-contained command — its `.mcp-use/cloud/link.json` local link
 
 ## mcp-use login
 
-Authenticate with Manufact Cloud via device code flow:
+Authenticate with mcp-use Cloud via device code flow:
 
 ```bash
 mcp-use login [options]

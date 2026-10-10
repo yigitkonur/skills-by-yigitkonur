@@ -35,7 +35,7 @@ Successful output includes a tunnel endpoint:
 [mcp-use] starting tunnel for port 3000…
   ➜ MCP endpoint:  http://localhost:3000/mcp
   ➜ Inspector:     http://localhost:3000/mcp/inspector
-  ➜ Tunnel:        https://happy-blue.local.mcp-use.run/mcp
+  ➜ Tunnel:        https://happy-blue.tunnel.mcp-use.run/mcp
 ```
 
 **Copy the value after `Tunnel:`** (including `/mcp` suffix — do not copy only the bare host). Use this in ChatGPT or Claude App config. Note that a public tunnel only exposes the MCP endpoint; `/mcp/inspector` returns 404 through the tunnel URL — Inspector stays local-only.
@@ -43,7 +43,7 @@ Successful output includes a tunnel endpoint:
 To test the tunnel works:
 
 ```bash
-npx mcp-use client connect tunnel-test https://happy-blue.local.mcp-use.run/mcp
+npx mcp-use client connect tunnel-test https://happy-blue.tunnel.mcp-use.run/mcp
 npx mcp-use client tunnel-test tools list
 ```
 
@@ -68,7 +68,7 @@ mcp-use login  # One-time OAuth
 mcp-use deploy
 ```
 
-Copy the exact generated MCP URL from the Manufact Cloud dashboard after the deployment finishes — do not infer the hostname from the server slug; the dashboard is authoritative for both generated and custom domains.
+Copy the exact generated MCP URL from the mcp-use Cloud dashboard after the deployment finishes — do not infer the hostname from the server slug; the dashboard is authoritative for both generated and custom domains.
 
 ```bash
 export MCP_URL="PASTE_THE_GENERATED_MCP_URL"

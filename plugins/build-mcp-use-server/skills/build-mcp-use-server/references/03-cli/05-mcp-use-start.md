@@ -49,7 +49,7 @@ mcp-use start --with-inspector
 mcp-use start --tunnel
 # Output:
 # mcp-use server running at http://127.0.0.1:3000/mcp
-# mcp-use public MCP URL: https://happy-blue.local.mcp-use.run/mcp
+# mcp-use public MCP URL: https://happy-blue.tunnel.mcp-use.run/mcp
 ```
 
 ## Environment Variables

@@ -97,7 +97,7 @@ await openExternal({ url: "https://example.com/docs" });
 
 Shipped `useOpenExternal()` calls the standard MCP Apps `App.openLink()` path. It does not directly call `window.openai.openExternal`, does not expose ChatGPT's `redirectUrl` option, and does not require authors to detect ChatGPT.
 
-beta.66's generated View resource builder exposes standard `view.csp`, `view.domain`, `view.permissions`, and `view.prefersBorder`, but no public arbitrary resource `_meta` authoring surface. Therefore you cannot configure `openai/widgetCSP.redirect_domains` on a generated mcp-use View through a documented public API.
+v2's generated View resource builder exposes standard `view.csp`, `view.domain`, `view.permissions`, and `view.prefersBorder`, but no public arbitrary resource `_meta` authoring surface. Therefore you cannot configure `openai/widgetCSP.redirect_domains` on a generated mcp-use View through a documented public API.
 
 If the product specifically requires ChatGPT's redirect-target feature rather than ordinary host-mediated link opening, treat it as a current framework limitation. Do not invent a `view` property, write direct `window.openai` code around an existing standard hook, or claim Inspector can validate unsupported resource metadata.
 
@@ -134,7 +134,7 @@ Inspector validates standard resource CSP. It has no verified ChatGPT protocol t
 | Embedded iframe blocked | Add its origin to `view.csp.frameDomains`; expect stricter host review |
 | Works only in Inspector Permissive mode | Re-run in Widget-Declared mode and inspect recorded policy differences |
 | Ordinary external link fails | Use `useOpenExternal()` and verify host `openLinks` capability |
-| ChatGPT redirect-target flow fails | Check real ChatGPT requirements; `redirect_domains` is not publicly configurable on generated Views in beta.66 |
+| ChatGPT redirect-target flow fails | Check real ChatGPT requirements; `redirect_domains` is not publicly configurable on generated Views in v2 |
 
 ## See Also
 

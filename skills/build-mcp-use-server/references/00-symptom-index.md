@@ -7,7 +7,7 @@
 | Symptom | Entry |
 |---|---|
 | `Cannot find module 'mcp-use/server'` or `MCPServer` import fails | `references/26-anti-patterns/01-sdk-misuse.md` — v2 imports from `mcp-use` root; a `/server` import means v1 code → `references/28-migration/02-v1-to-v2-overview.md` |
-| `require is not defined` / CJS build errors | `references/02-setup/01-prerequisites.md` — v2 is ESM-only, Node >= 22.22.2 |
+| `require is not defined` / CJS build errors | `references/02-setup/01-prerequisites.md` — v2 is ESM-only, Node >= 18 |
 | Zod version conflicts, `_zod` type errors | `references/26-anti-patterns/03-schemas.md` — v2 requires zod v4 / Standard Schema |
 | Server exits before listening, port/env errors | `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md` |
 | Installed `mcp-use` but APIs in this skill are missing | `references/00-version-drift.md` — `latest` is v1; v2 is the `beta` tag |
@@ -63,7 +63,7 @@
 | Symptom | Entry |
 |---|---|
 | `ctx.sample is not a function` | `references/13-sampling/01-sampling-removed-in-v2.md` |
-| `ctx.elicit is not a function` or TypeScript says `RequestContext` has no `elicit` | `references/12-elicitation/01-overview.md` — upstream docs describe it, but beta.66 ships `inputRequired()` / `inputResponse()` / `acceptedContent()` instead |
+| `ctx.elicit is not a function` or TypeScript says `RequestContext` has no `elicit` | `references/12-elicitation/01-overview.md` — upstream docs describe it, but v2 ships `inputRequired()` / `inputResponse()` / `acceptedContent()` instead |
 | `createRequestStateCodec({ secret })`, `requestState: codec.verify`, or `ctx.requestState.parse()` fails | `references/12-elicitation/04-multi-round-and-request-state.md` — use `{ key, ttlSeconds }`, configure `requestState: { verify }`, mint with `.mint()`, and read with `ctx.requestState<T>()` |
 | `resources/subscribe` or `resources/unsubscribe` returns `-32601 Method Not Found` | `references/06-resources/06-subscriptions-listen.md` — v2 uses `subscriptions/listen` with exact URIs in `resourceSubscriptions`; the capability bit does not wire the legacy methods |
 | Elicitation never returns / handler re-runs unexpectedly | `references/12-elicitation/01-overview.md` — v2 re-entry model |

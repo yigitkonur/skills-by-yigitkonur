@@ -9,7 +9,6 @@ v2 returns raw `CallToolResult` with `content` array — `content` is always an 
 | `"text"` | `text` | No `mimeType` field |
 | `"image"` | `data` (base64), `mimeType` | `mimeType` required, no default at the wire schema level |
 | `"audio"` | `data` (base64), `mimeType` | `mimeType` required, no default at the wire schema level |
-| `"resource_link"` | `uri`, `name` | Reference only — no inline `text`/`blob`; optional `mimeType`, `description`, `size`, `title` |
 | `"resource"` | `resource` (nested `{ uri, mimeType?, text }` or `{ uri, mimeType?, blob }`) | Embedded resource; see `04-images-audio-binary-resources.md` |
 
 Every block variant also accepts optional `annotations` and a per-block `_meta: Record<string, unknown>` (distinct from the result-level `_meta` covered in `06-meta-and-private-data.md`).

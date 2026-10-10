@@ -44,7 +44,7 @@ export const tool = server.tool(..., async (input, ctx) => {
 
 ## The full v1 session-runtime family is removed (no v2 equivalent)
 
-beta.66 ships **none** of v1's stateful transport. Every one of these is gone — there is no renamed import, only a redesign:
+v2 ships **none** of v1's stateful transport. Every one of these is gone — there is no renamed import, only a redesign:
 
 - `InMemorySessionStore`, `FileSystemSessionStore`, `RedisSessionStore`
 - `RedisStreamManager`
@@ -98,7 +98,7 @@ If you patched internal session factories (`getServerForSession`) or called `reg
 
 ## Request state codec for elicitation
 
-> **`ctx.elicit(key, message, schema)` is documented in some v2 docs but not shipped in 2.0.0-beta.66.** `RequestContextBase` in the shipped `dist/context.d.ts` has no `elicit` field. Use the real, shipped primitives below — `inputRequired()`, `inputResponse()`, `acceptedContent()` — re-exported from `mcp-use` root (originally from `@modelcontextprotocol/server`). See `../12-elicitation/01-overview.md` for the full elicitation model.
+> **`ctx.elicit(key, message, schema)` is documented in some v2 docs but not shipped in 2.8.2.** `RequestContextBase` in the shipped `dist/context.d.ts` has no `elicit` field. Use the real, shipped primitives below — `inputRequired()`, `inputResponse()`, `acceptedContent()` — re-exported from `mcp-use` root (originally from `@modelcontextprotocol/server`). See `../12-elicitation/01-overview.md` for the full elicitation model.
 
 Use `createRequestStateCodec` to persist state across input-required rounds. It mints an HMAC-signed wire string in `inputRequired({ requestState })` and verifies it on the client's retry via `ServerOptions.requestState.verify`:
 

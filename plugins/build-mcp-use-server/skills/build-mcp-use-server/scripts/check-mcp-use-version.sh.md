@@ -35,7 +35,7 @@ Local package.json mcp-use: ^1.34.5
 mcp-use npm tags:
   latest: 2.8.1 (v2 stable)
   beta: 2.0.0-beta.68 (pre-release)
-  legacy-v1: 1.34.6 (v1 maintenance)
+  v1-legacy: 1.34.8 (v1 maintenance)
 ```
 
 ## What v1 vs v2 means

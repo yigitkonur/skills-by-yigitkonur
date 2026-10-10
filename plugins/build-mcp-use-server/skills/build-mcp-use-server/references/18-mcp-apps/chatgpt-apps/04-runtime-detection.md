@@ -101,11 +101,11 @@ Do not add your own `window.openai` branch around them.
 
 ## `useFiles()` Detection Limit
 
-Shipped `view-runtime.ts` computes file support when the View runtime is created. `isSupported` requires both `window.openai.uploadFile` and `window.openai.getFileDownloadUrl`. The files channel is not updated after initialization in beta.66, so methods injected later are not reflected without recreating the runtime/iframe.
+Shipped `view-runtime.ts` computes file support when the View runtime is created. `isSupported` requires both `window.openai.uploadFile` and `window.openai.getFileDownloadUrl`. The files channel is not updated after initialization in v2, so methods injected later are not reflected without recreating the runtime/iframe.
 
 This is a runtime-capture limitation, not a reason to poll `window.openai` directly. Test the actual mounted View in real ChatGPT.
 
-The full official ChatGPT file API also includes `selectFiles()` and an upload `{ library: true }` option; beta.66 `useFiles()` does not wrap them.
+The full official ChatGPT file API also includes `selectFiles()` and an upload `{ library: true }` option; v2 `useFiles()` does not wrap them.
 
 ## Display Mode Uses Its Own Hook
 

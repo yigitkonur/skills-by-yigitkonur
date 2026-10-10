@@ -18,7 +18,7 @@ The CLI and runtime respect a small set of environment variables for port, host,
 | `CSP_RESOURCE_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed for resource loads (scripts/styles/images/fonts). |
 | `CSP_FRAME_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed in `frame-src`. |
 | `CSP_BASE_URI_DOMAINS` | server runtime (views CSP) | `CSP_URLS`, else none | Comma-separated extra domains allowed in `base-uri`. |
-| `MCP_USE_TUNNEL_API` | `mcp-use dev --tunnel` | `https://local.mcp-use.run` | Tunnel broker endpoint; override to point at a self-hosted or alternate tunnel service. |
+| `MCP_USE_API` | `mcp-use dev --tunnel` | `https://api.tunnel.mcp-use.run` | Tunnel broker endpoint; override to point at a self-hosted or alternate tunnel service. |
 
 Set them:
 
@@ -111,7 +111,7 @@ server.tool(
 
 ## Cloud-specific notes
 
-**Manufact Cloud (`npm run deploy`):**
+**mcp-use Cloud (`npm run deploy`):**
 - Set vars at deploy time via `--env` or `--env-file`
 - Secrets persist per deployment; redeploy to rotate
 - No `.env` file on deployed instance (use flags only)

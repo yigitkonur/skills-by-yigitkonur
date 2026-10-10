@@ -34,7 +34,7 @@ server.tool({ name: "link-account" }, async (_params, ctx) => {
 });
 ```
 
-There is no `ctx.elicit()` in shipped 2.0.0-beta.66 — `elicitation.mdx` and `SPEC.md` describe it, but the shipped `dist/context.d.ts` omits it and the framework's own compile-time type test asserts it does not exist. See `01-overview.md` for the full drift note.
+There is no `ctx.elicit()` method in mcp-use v2 — it was removed in v2.4.3 in favor of the standard `inputRequired({ inputRequests: { [key]: inputRequired.elicitUrl(...) } })` pattern. See `01-overview.md`.
 
 ## When to use URL mode
 

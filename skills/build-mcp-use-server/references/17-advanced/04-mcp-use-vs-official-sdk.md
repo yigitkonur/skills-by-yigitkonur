@@ -240,7 +240,7 @@ See `build-mcp-server-sdk-v2` and `convert-mcp-sdk-v1-to-v2` for detailed SDK gu
 
 ## Performance considerations
 
-- **mcp-use:** Builds directly on the official SDK's `McpServer`/`createMcpHandler`; the added layer is request routing, context translation, and view/OAuth wiring — not a second protocol implementation. No published benchmark numbers exist for either package as of beta.66; do not cite a specific per-request overhead figure without a measured source.
+- **mcp-use:** Builds directly on the official SDK's `McpServer`/`createMcpHandler`; the added layer is request routing, context translation, and view/OAuth wiring — not a second protocol implementation. No published benchmark numbers exist for either package as of v2.8; do not cite a specific per-request overhead figure without a measured source.
 - **SDK direct:** Same core dispatch path, without mcp-use's HTTP-adapter and context-translation layer. Appropriate when you need to shave that layer off, or need SDK surface mcp-use doesn't expose (e.g., raw `Server`/`Protocol` access, the `tasks/*` task-primitive and `server/discover` methods).
 - **Stateless scaling:** Both are per-request-factory models under HTTP (`McpServerFactory` in the SDK, `MCPServer` instance construction in mcp-use) — horizontal scaling comes from that shared design, not from mcp-use alone.
 

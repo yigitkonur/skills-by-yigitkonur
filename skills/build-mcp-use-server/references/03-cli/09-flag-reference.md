@@ -43,7 +43,7 @@ Two distinct dispatch groups exist in `bin/main.ts`: `dev`/`build`/`typecheck`/`
 | `--dockerfile <path>` | ✓ | | | | | | | | |
 | `--watch-paths <glob>` | ✓ | | | | | | | | |
 | `--wait-for-ci` | ✓ | | | | | | | | |
-| `--no-github` | ✓ | | | | | | | | |
+| `hub` | ✓ | | | | | | | | |
 | `--new` | ✓ | | | | | | | | |
 | `--open` | ✓ | | | | | | | | |
 | `-y, --yes` | ✓ | | ✓ | | | ✓ (delete/unset) | ✓ (stop/delete) | | |
@@ -92,8 +92,8 @@ Two distinct dispatch groups exist in `bin/main.ts`: `dev`/`build`/`typecheck`/`
 
 - `--env` repeatable; `--env A=1 --env B=2` sets multiple vars
 - `--env-file` reads `.env` format
-- `--no-github` uploads local source to a managed private repository instead of using/creating a GitHub-linked one
-- `--json` alone does not authorize mutations — pair with `--yes` for headless GitHub repo creation, or with `--no-github` for a managed upload
+- `hub` uploads local source to a managed private repository instead of using/creating a GitHub-linked one
+- `--json` alone does not authorize mutations — pair with `--yes` for headless GitHub repo creation, or with `hub` for a managed upload
 - `--open` cannot combine with `--json` (JSON mode never opens a browser)
 - `--watch-paths`/`--wait-for-ci` are GitHub-only
 - Archive size limit: 80 MB; the managed-upload archive excludes `.git`, `node_modules`, build output, `.mcp-use`, `.env*`, caches, coverage, OS metadata, and symlinks

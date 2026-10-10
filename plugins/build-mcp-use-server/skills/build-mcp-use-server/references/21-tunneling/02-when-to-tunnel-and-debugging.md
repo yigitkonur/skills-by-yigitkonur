@@ -39,7 +39,7 @@ Copy the public tunnel URL into your remote MCP client. If the remote client fai
 - The tunnel URL includes `/mcp` suffix (non-negotiable).
 - The remote client supports Streamable HTTP transport (mcp-use v2 does not serve stdio or SSE-transport).
 - If OAuth: the remote client's OAuth callback matches your server's configuration.
-- Network/firewall: the remote client can reach `https://<subdomain>.local.mcp-use.run`.
+- Network/firewall: the remote client can reach `https://<subdomain>.tunnel.mcp-use.run`.
 
 4. **Inspect view/widget rendering:**
 

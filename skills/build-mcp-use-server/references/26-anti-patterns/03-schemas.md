@@ -16,19 +16,19 @@ v2 expects Zod v4 or another Standard Schema implementation. Do not retain a Zod
 
 Install Zod v4 and verify that the dependency tree does not contain an accidental v3 copy. See `references/02-setup/01-prerequisites.md`.
 
-## Using the deprecated `schema` alias
+## Using the deprecated `schema` alias on tools
 
-This v1-style key remains an alias but should not be used in new v2 code:
+On `server.tool()`, `schema` is a legacy v1 alias and should be avoided in favor of `inputSchema`:
 
 ```typescript
+// Deprecated tool alias:
 schema: z.object({ query: z.string() })
-```
 
-Use the MCP wire-aligned key:
-
-```typescript
+// Correct tool key:
 inputSchema: z.object({ query: z.string() })
 ```
+
+**Critical distinction:** While tools use `inputSchema`, `server.prompt()` strictly requires `schema` (`PromptDefinition.schema`). Passing `inputSchema` to `server.prompt()` will fail type-checking and runtime validation.
 
 See `references/04-tools/03-schemas-standard-schema-and-zod-v4.md`.
 

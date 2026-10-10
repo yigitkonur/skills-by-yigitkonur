@@ -29,7 +29,7 @@ Raw SDK remains the better fit for cases such as:
 ## Installation
 
 ```bash
-npm install mcp-use@2.0.0-beta.66 zod@4
+npm install mcp-use@2.8.2 zod@4
 ```
 
 **Node.js requirement**: >=22.22.2, ESM only.
@@ -89,7 +89,7 @@ export default server;
 
 ## Setup checklist
 
-1. Install `mcp-use@2.0.0-beta.66` and `zod@4`.
+1. Install `mcp-use@2.8.2` and `zod@4`.
 2. Create `package.json` with `"type": "module"` and `"engines": { "node": ">=22.22.2" }`.
 3. Use the current scaffold's TypeScript baseline (or keep equivalent stricter settings):
    ```json

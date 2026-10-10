@@ -22,13 +22,13 @@ npx @mcp-use/cli@latest dev
 | **`build`** | Build server + views into `.mcp-use/build/` | Before production deployment or local testing of prod build |
 | **`typecheck`** | Refresh project-root `mcp-env.d.ts`, run TypeScript | CI/CD or local type safety check |
 | **`start`** | Serve production build from `.mcp-use/build/` | Production testing or local start after build |
-| **`login`** | Authenticate with Manufact Cloud | Enable cloud deploy/org/servers commands |
+| **`login`** | Authenticate with mcp-use Cloud | Enable cloud deploy/org/servers commands |
 | **`logout`** | Clear local cloud credentials | Sign out of cloud CLI |
 | **`whoami`** | Show authenticated user and active org | Verify login status |
 | **`org`** | Manage active organization | Subcommands: `list`, `current`, `use <id-or-slug>` (no `switch`) |
 | **`servers`** | Manage cloud servers and env vars | Configure cloud deployments |
 | **`deployments`** | Manage cloud deployments and logs | View/manage active deployments |
-| **`deploy`** | Deploy to Manufact Cloud | Ship server to cloud (GitHub or upload) |
+| **`deploy`** | Deploy to mcp-use Cloud | Ship server to cloud (GitHub or upload) |
 | **`client`** | Connect to and invoke MCP servers | Test server from CLI; save connections; run tools/prompts |
 | **`screenshot`** | Capture view screenshot | Test MCP Apps widgets without browser |
 

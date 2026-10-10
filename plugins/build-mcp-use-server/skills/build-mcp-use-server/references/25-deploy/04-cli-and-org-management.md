@@ -1,6 +1,6 @@
 # CLI and Org Management
 
-*Read this when deploying to Manufact Cloud with multiple organizations or in CI.*
+*Read this when deploying to mcp-use Cloud with multiple organizations or in CI.*
 
 ## Login
 
@@ -61,13 +61,13 @@ mcp-use deploy \
 | `--dockerfile <path>` | Dockerfile path relative to the selected source root |
 | `--watch-paths <glob>` | GitHub auto-deploy path filter (repeatable, GitHub-only) |
 | `--wait-for-ci` | Wait for other GitHub checks before auto-deploy (GitHub-only) |
-| `--no-github` | Upload local source to managed storage (no GitHub App) |
+| `hub` | Upload local source to managed storage (no GitHub App) |
 | `--new` | Create a new server instead of reusing the local link |
 | `--open` | Open the dashboard after a successful deployment |
 | `--yes` / `-y` | Authorize confirmations and Git/repository mutations (CI mode) |
 | `--json` | Emit exactly one JSON result or error; never prompt |
 
-`--json` alone does not authorize mutations — pass `--json --yes` for headless GitHub deploys, or `--json --no-github` for a managed source upload. `--open` cannot combine with `--json` (JSON mode never opens a browser). `--new` requires `--yes` in non-interactive/JSON environments. `--watch-paths` and `--wait-for-ci` only apply to GitHub-backed deployments.
+`--json` alone does not authorize mutations — pass `--json --yes` for headless GitHub deploys, or `--jsonhub` for a managed source upload. `--open` cannot combine with `--json` (JSON mode never opens a browser). `--new` requires `--yes` in non-interactive/JSON environments. `--watch-paths` and `--wait-for-ci` only apply to GitHub-backed deployments.
 
 `--name`, `--region`, `--env`, `--env-file`, and other creation settings apply when a server is created. For an existing linked server, use `mcp-use servers update <server>` for supported mutable metadata/build settings and `mcp-use servers env set|unset <server> ...` for environment variables.
 
@@ -102,4 +102,4 @@ mcp-use deployments list
 mcp-use deployments logs <deployment-id> --build --follow
 ```
 
-See `platforms/01-mcp-use-cloud.md` for complete Manufact Cloud walkthrough.
+See `platforms/01-mcp-use-cloud.md` for complete mcp-use Cloud walkthrough.

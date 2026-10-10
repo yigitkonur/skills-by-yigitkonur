@@ -1,10 +1,10 @@
 # Login and Organization
 
-*Read this to authenticate with Manufact Cloud and manage your organization context.*
+*Read this to authenticate with mcp-use Cloud and manage your organization context.*
 
 ## mcp-use login
 
-Authenticates the CLI with Manufact Cloud using a device code flow. This is a one-time setup before using cloud commands (`deploy`, `servers`, `deployments`).
+Authenticates the CLI with mcp-use Cloud using a device code flow. This is a one-time setup before using cloud commands (`deploy`, `servers`, `deployments`).
 
 ```bash
 mcp-use login [options]
@@ -51,7 +51,7 @@ For CI/CD or unattended environments:
 mcp-use login --api-key sk_live_1234567890abcdef --org acme-corp
 ```
 
-Generate API keys in your Manufact Cloud account settings.
+Generate API keys in your mcp-use Cloud account settings.
 
 ### Device code with headless CI
 

@@ -69,12 +69,12 @@ if command -v npm &>/dev/null; then
     if npm view mcp-use dist-tags --json 2>/dev/null | grep -q '"latest"'; then
         LATEST=$(npm view mcp-use dist-tags.latest 2>/dev/null)
         BETA=$(npm view mcp-use dist-tags.beta 2>/dev/null || echo "N/A")
-        LEGACY_V1=$(npm view mcp-use dist-tags.legacy-v1 2>/dev/null || echo "N/A")
+        LEGACY_V1=$(npm view mcp-use dist-tags.v1-legacy 2>/dev/null || echo "N/A")
 
         echo "mcp-use npm tags:"
         echo "  latest: $LATEST (v2 stable)"
         echo "  beta: $BETA (pre-release)"
-        echo "  legacy-v1: $LEGACY_V1"
+        echo "  v1-legacy: $LEGACY_V1"
     else
         echo "✗ Could not fetch npm tags"
     fi

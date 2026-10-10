@@ -134,7 +134,7 @@ export default function SearchView() {
 
 ## Migration steps
 
-1. Install `mcp-use@2.0.0-beta.66`, `zod@4`, React, and React DOM; require Node >=22.22.2 and ESM.
+1. Install `mcp-use@2.8.2`, `zod@4`, React, and React DOM; require Node >=22.22.2 and ESM.
 2. Replace raw Apps SDK tool/resource registration with `MCPServer` tools.
 3. Give each UI tool an `outputSchema` and `view: { name }`.
 4. Move each UI to `views/<name>/view.tsx`; delete manually registered HTML resources.

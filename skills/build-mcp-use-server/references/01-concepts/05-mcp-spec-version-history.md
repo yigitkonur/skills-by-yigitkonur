@@ -8,7 +8,7 @@
 |------|--------|---------------|---------|
 | **MCP protocol revision** | Date, `YYYY-MM-DD` | `2026-07-28` | The wire format itself (SEP process, modelcontextprotocol.io/specification) |
 | **MCP SDK npm packages** | Semver | `2.0.0` (`@modelcontextprotocol/{client,core,server}`) | The official TypeScript SDK implementing that protocol revision |
-| **`mcp-use` framework** | Semver + prerelease | `2.0.0-beta.66` (dist-tag `beta`); `1.34.x` is `latest` (v1, end-of-life) | This skill's framework, built on the SDK packages above |
+| **`mcp-use` framework** | Semver + prerelease | `2.8.2` (dist-tag `beta`); `1.34.x` is `latest` (v1, end-of-life) | This skill's framework, built on the SDK packages above |
 
 There is no "MCP protocol v2.0.0." The protocol has never used semver — it uses date-stamped revisions. `2.0.0` is the SDK package version; do not write it as a protocol version anywhere in this skill.
 
@@ -41,14 +41,14 @@ There is no "MCP protocol v2.0.0." The protocol has never used semver — it use
 - HTTP+SSE transport (deprecated since `2025-03-26`, now formally Deprecated).
 - OAuth 2.0 Dynamic Client Registration Protocol, in favor of Client ID Metadata Documents.
 
-## Feature support in mcp-use v2 (beta.66)
+## Feature support in mcp-use v2 (stable)
 
 | Protocol feature | mcp-use v2 support | Notes |
 |-------------------|---------------------|-------|
 | Tools + schemas | Native | Definition-first API; Standard Schema (Zod v4, etc.) |
 | Resources | Native | Static + URI templates; completion callbacks |
 | Prompts | Native | Completable arguments; message templates |
-| `input_required` / MRTR | Native (primitives) | `inputRequired`, `inputResponse`, `acceptedContent`, `createRequestStateCodec` exported from `mcp-use` root; a `ctx.elicit()` convenience wrapper is documented but not present in the shipped `beta.66` dist — see `04-stateless-model-and-request-state.md` |
+| `input_required` / MRTR | Native (primitives) | `inputRequired`, `inputResponse`, `acceptedContent`, `createRequestStateCodec` exported from `mcp-use` root; a `ctx.elicit()` convenience wrapper is documented but not present in the shipped `v2` dist — see `04-stateless-model-and-request-state.md` |
 | Sampling (server-initiated LLM generation) | **Removed** | Deprecated at the protocol level; host/client generates instead |
 | Roots | **Not exposed** | Deprecated at the protocol level; pass paths as tool parameters instead |
 | Streamable HTTP | Primary transport | `server.fetch` handler; stateless per request |

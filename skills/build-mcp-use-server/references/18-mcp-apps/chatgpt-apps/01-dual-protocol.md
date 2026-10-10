@@ -2,7 +2,7 @@
 
 *Read this when making an mcp-use v2 View work in both standard MCP Apps hosts and ChatGPT.*
 
-mcp-use emits **one standard MCP Apps server wire**. It does not emit a second ChatGPT payload and does not auto-translate standard metadata into a parallel proprietary protocol. ChatGPT-specific behavior exists only at narrow, verified client-runtime branches and through optional OpenAI metadata extensions that you choose explicitly.
+mcp-use emits **standard MCP Apps server wire** while providing first-class, native support for **ChatGPT Plugin Extensions (v2.8.0)**. The TypeScript SDK automatically translates your declarations (such as `tool.view.entrypoints`, `server.settings()`, and tool-level `icons`) into OpenAI extension metadata (`_meta["openai/ui"]`, `extensions["openai/settings"]`). ChatGPT-specific behavior exists only at narrow, verified client-runtime branches and through optional OpenAI metadata extensions that you choose explicitly.
 
 ## One Server Wire
 
@@ -62,7 +62,7 @@ Use `useFiles()` only when the ChatGPT-only file extension is needed and `isSupp
 
 The official OpenAI Plugin UI reference says to prefer MCP Apps standard fields and treats the `openai/*` descriptor fields as ChatGPT compatibility aliases or optional extensions. mcp-use `ToolDefinition._meta` passes author-supplied vendor keys through to `tools/list`, except framework-owned standard View/visibility keys derived from `view` and `visibility` take precedence.
 
-| Key | Classification | When to use | mcp-use v2 beta.66 authoring surface |
+| Key | Classification | When to use | mcp-use v2 v2 authoring surface |
 |---|---|---|---|
 | `_meta.ui.resourceUri` | Standard MCP Apps | Link a tool to its UI resource | Generated from `view.name`; do not set it manually |
 | `_meta.ui.visibility` | Standard MCP Apps | Make a tool model- or app-facing | Generated from top-level `visibility` |
@@ -108,7 +108,7 @@ For each field named by `openai/fileParams`, the official OpenAI reference requi
 
 ## Resource Metadata and Current Framework Limits
 
-| Key | Classification | mcp-use v2 beta.66 status |
+| Key | Classification | mcp-use v2 v2 status |
 |---|---|---|
 | `_meta.ui.domain` | Standard, host-validated | Set through `view.domain` |
 | `_meta.ui.prefersBorder` | Standard | Set through `view.prefersBorder` |
@@ -120,7 +120,7 @@ For each field named by `openai/fileParams`, the official OpenAI reference requi
 
 The official OpenAI reference requires a dedicated, unique component origin when submitting a plugin with UI. Configure the standard field with `view.domain`; do not invent a ChatGPT metadata API. Host validation and submission acceptance must be checked in real ChatGPT.
 
-`view.description` becomes the MCP resource's ordinary `description`. It does **not** author the ChatGPT-only `openai/widgetDescription` key. beta.66's generated View resource builder returns only framework-owned `_meta.ui`; therefore arbitrary resource-level OpenAI extensions are a current framework limitation.
+`view.description` becomes the MCP resource's ordinary `description`. It does **not** author the ChatGPT-only `openai/widgetDescription` key. v2's generated View resource builder returns only framework-owned `_meta.ui`; therefore arbitrary resource-level OpenAI extensions are a current framework limitation.
 
 ## File API Boundary
 
@@ -128,9 +128,9 @@ The official OpenAI reference requires a dedicated, unique component origin when
 
 - wrapped: `uploadFile(file)` and `getFileDownloadUrl({ fileId })`;
 - not wrapped: the upload `{ library: true }` option and `selectFiles()`;
-- support is captured when the View runtime is created, so late injection of `window.openai` file methods does not update `isSupported` in beta.66.
+- support is captured when the View runtime is created, so late injection of `window.openai` file methods does not update `isSupported` in v2.
 
-The standard MCP Apps protocol separately defines host-mediated `ui/download-file`, but beta.66 does not expose it through a public `mcp-use/react` hook. Do not equate that standard protocol method with `useFiles()`.
+The standard MCP Apps protocol separately defines host-mediated `ui/download-file`, but v2 does not expose it through a public `mcp-use/react` hook. Do not equate that standard protocol method with `useFiles()`.
 
 ## Verification Boundary
 

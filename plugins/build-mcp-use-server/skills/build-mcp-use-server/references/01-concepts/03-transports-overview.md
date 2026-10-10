@@ -27,7 +27,7 @@ v2 uses **Web-standard Fetch API only** — no stdio, no SSE aliases.
 | **Google Cloud Run** | CLI-built server, no direct adapter | `mcp-use start` binds `0.0.0.0` and Cloud Run's injected `PORT`; set `host: "0.0.0.0"` in `ServerConfig` |
 | **Cloudflare Workers, Vercel, Deno Deploy, Hono, Bun, Railway** | `server.fetch` | Plain Web-standard `server.fetch(request: Request): Promise<Response>` — mount under any router or platform accepting that signature. Per-platform View-asset topology differs (co-located static binding vs. `MCP_ASSETS_URL` CDN) |
 
-See `25-deploy/01-decision-matrix.md` for the full target/asset-topology matrix and `25-deploy/platforms/` for a file per platform (Manufact Cloud, Vercel, Cloudflare Workers, Google Cloud Run, Supabase, Deno, Bun, Hono, Railway).
+See `25-deploy/01-decision-matrix.md` for the full target/asset-topology matrix and `25-deploy/platforms/` for a file per platform (mcp-use Cloud, Vercel, Cloudflare Workers, Google Cloud Run, Supabase, Deno, Bun, Hono, Railway).
 
 ## No stdio in v2
 

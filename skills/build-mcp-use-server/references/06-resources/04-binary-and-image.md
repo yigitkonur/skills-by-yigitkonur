@@ -110,6 +110,6 @@ await server.listen(3000);
 
 ## Performance
 
-- Base64 increases payload size and encoding cost. For files above roughly 5 MB, prefer a separately hosted file and return a tool `resource_link` rather than embedding it in a resource read.
+- Base64 increases payload size and encoding cost. For files above roughly 5 MB, prefer a separately hosted file and return a reference URI in text or an embedded `resource` with external reference URI rather than embedding large binary blobs.
 - Cache encoded payloads if the source rarely changes.
 - Use `server.notifyResourceUpdated(uri)` to invalidate client caches when content changes — see `06-subscriptions-listen.md`.

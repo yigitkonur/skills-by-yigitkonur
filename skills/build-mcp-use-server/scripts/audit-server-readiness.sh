@@ -46,7 +46,7 @@ else
 fi
 
 # Check mcp-use version. `npm install mcp-use@beta` resolves and writes a
-# concrete semver range (e.g. "^2.0.0-beta.66"), never the literal "beta" —
+# concrete semver range (e.g. "^2.8.2"), never the literal "beta" —
 # match any "2." version token after the mcp-use key, with or without a
 # leading range operator (^, ~, >=).
 if grep -qE '"mcp-use": *"[~^>=]*2\.' package.json; then

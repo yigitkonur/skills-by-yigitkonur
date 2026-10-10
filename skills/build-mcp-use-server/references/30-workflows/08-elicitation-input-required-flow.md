@@ -2,16 +2,16 @@
 
 *Read this for an end-to-end workflow: return input_required, accept host input, and finish on handler re-entry.*
 
-> Documented but not shipped in 2.0.0-beta.66 — verify against your installed version.
+> Documented but not shipped in 2.8.2 — verify against your installed version.
 
-`ctx.elicit()` appears in v2 documentation but is absent from the shipped beta.66 context type. The shipped model uses `inputRequired.elicit()` to return an `InputRequiredResult`; the host collects input and calls the tool again with `ctx.inputResponses`.
+`ctx.elicit()` appears in v2 documentation but is absent from the shipped v2 context type. The shipped model uses `inputRequired.elicit()` to return an `InputRequiredResult`; the host collects input and calls the tool again with `ctx.inputResponses`.
 
 ## Steps
 
 ### 1. Scaffold
 
 ```bash
-npx create-mcp-use-app@2.0.0-beta.14 confirmation-server --template blank --npm --install
+npx create-mcp-use-app@latest confirmation-server --template blank --npm --install
 cd confirmation-server
 ```
 

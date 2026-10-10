@@ -16,7 +16,7 @@ mcp-use v2 is standard-first: the server emits one MCP Apps descriptor/result/re
 | View files | `useFiles()` wraps only ChatGPT upload and temporary-download-URL methods | ChatGPT-only shipped subset |
 | Other View interactions | Tool calls, follow-ups, links, display modes, size changes, View tools | Standard MCP Apps bridge |
 | OpenAI descriptor extensions | Explicit `openai/*` keys in `ToolDefinition._meta` | Optional/use-case-specific ChatGPT metadata |
-| OpenAI resource extensions | No public arbitrary generated-resource `_meta` authoring surface in beta.66 | Current framework limitation |
+| OpenAI resource extensions | No public arbitrary generated-resource `_meta` authoring surface in v2 | Current framework limitation |
 
 Server wire authority: shipped `packages/server/src/views/wire.ts`. Runtime branch authority: shipped `model-context-store.ts`, `view-runtime.ts`, and `use-files.ts`. ChatGPT extension authority: the official OpenAI Plugin UI reference.
 
@@ -110,7 +110,7 @@ The same reference documents optional resource extensions:
 - compatibility aliases `openai/widgetPrefersBorder` and `openai/widgetDomain`;
 - `openai/widgetCSP.redirect_domains` for trusted `window.openai.openExternal` redirect targets.
 
-Generated mcp-use View resources in beta.66 do not expose a public arbitrary resource `_meta` authoring surface. `view.description` is the ordinary MCP resource description, not `openai/widgetDescription`. Use standard `view.prefersBorder`, `view.domain`, and `view.csp`; treat the remaining ChatGPT-only resource keys as framework limitations rather than inventing configuration.
+Generated mcp-use View resources in v2 do not expose a public arbitrary resource `_meta` authoring surface. `view.description` is the ordinary MCP resource description, not `openai/widgetDescription`. Use standard `view.prefersBorder`, `view.domain`, and `view.csp`; treat the remaining ChatGPT-only resource keys as framework limitations rather than inventing configuration.
 
 For ordinary links, use `useOpenExternal()`, which follows the standard `App.openLink()` path. Do not replace it with direct `window.openai.openExternal` code.
 
@@ -122,9 +122,9 @@ For ordinary links, use `useOpenExternal()`, which follows the standard `App.ope
 - `getDownloadUrl({ fileId })` → ChatGPT `getFileDownloadUrl({ fileId })`;
 - `isSupported`, true only when both methods were present when the runtime was created.
 
-It does not wrap the official `{ library: true }` upload option or `selectFiles()`. Late injection does not update support in beta.66.
+It does not wrap the official `{ library: true }` upload option or `selectFiles()`. Late injection does not update support in v2.
 
-The standard MCP Apps protocol has a separate `ui/download-file` operation, but beta.66 has no public `mcp-use/react` hook for it. Do not claim `useFiles()` is a cross-host file abstraction.
+The standard MCP Apps protocol has a separate `ui/download-file` operation, but v2 has no public `mcp-use/react` hook for it. Do not claim `useFiles()` is a cross-host file abstraction.
 
 ## Verification
 

@@ -13,7 +13,6 @@ v2 requires **raw MCP envelopes**. Choose by your output:
 | **Image (PNG/JPEG)** | `CallToolResult` | `{ content: [{ type: "image", data: "base64...", mimeType: "image/png" }] }` | `04-images-audio-binary-resources.md` |
 | **Audio (MP3/WAV)** | `CallToolResult` | `{ content: [{ type: "audio", data: "base64...", mimeType: "audio/mpeg" }] }` | `04-images-audio-binary-resources.md` |
 | **Binary (PDF/ZIP/video)** | `CallToolResult` | `{ content: [{ type: "resource", resource: { uri, mimeType: "application/pdf", blob: "base64..." } }] }` | `04-images-audio-binary-resources.md` |
-| **Resource link (reference only, no embedded bytes)** | `CallToolResult` | `{ content: [{ type: "resource_link", uri, name, mimeType? }] }` | `04-images-audio-binary-resources.md` |
 | **HTML (MCP App view)** | `CallToolResult` | `{ content: [{ type: "text", text: "..." }], structuredContent: props }` (no `mimeType` field on text blocks) | `03-structured-content-and-output-schema.md` |
 | **Multiple blocks (mixed)** | `CallToolResult` | `{ content: [{ type: "text", ... }, { type: "image", ... }], ... }` | `02-text-and-content-blocks.md` |
 | **Input required (re-run)** | `InputRequiredResult` | `{ resultType: "input_required", inputRequests?: { [key]: InputRequest }, requestState?: string }` | (See 12-elicitation) |

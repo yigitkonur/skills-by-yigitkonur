@@ -2,7 +2,7 @@
 
 *Read this when you need to understand what mcp-use v2 provides as a framework over the raw MCP SDK.*
 
-`mcp-use` v2 is a TypeScript framework for building MCP (Model Context Protocol) servers. The `mcp-use` npm package (root import, `beta` dist-tag `2.0.0-beta.66`) wraps the official MCP SDK — not a single `@modelcontextprotocol/sdk` package, but the split v2 SDK packages `@modelcontextprotocol/{client,core,server}` (each pinned to `2.0.0`) plus `@modelcontextprotocol/ext-apps` — with a declarative API and production-ready integrations:
+`mcp-use` v2 is a TypeScript framework for building MCP (Model Context Protocol) servers. The `mcp-use` npm package (root import, `beta` dist-tag `2.8.2`) wraps the official MCP SDK — not a single `@modelcontextprotocol/sdk` package, but the split v2 SDK packages `@modelcontextprotocol/{client,core,server}` (each pinned to `2.0.0`) plus `@modelcontextprotocol/ext-apps` — with a declarative API and production-ready integrations:
 
 - **Declarative server API** — `MCPServer` constructor, `server.tool()`, `server.resource()`, `server.prompt()` with definition-first signatures
 - **Transports** — Streamable HTTP only (Web-standard Fetch API), optimized for edge and Node.js runtimes

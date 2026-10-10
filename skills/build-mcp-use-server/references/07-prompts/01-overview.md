@@ -116,7 +116,7 @@ See `04-completable-arguments.md` for static lists and dynamic callbacks.
 | `prompts/list` | Enumerate available prompts |
 | `prompts/get` | Render a prompt with user-supplied arguments |
 | `notifications/prompts/list_changed` | Server-pushed notification of registry change |
-| `completion/complete` | Argument autocompletion; shipped in beta.66. See `04-completable-arguments.md` |
+| `completion/complete` | Argument autocompletion; shipped in v2. See `04-completable-arguments.md` |
 
 ---
 

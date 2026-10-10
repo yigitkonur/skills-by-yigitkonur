@@ -132,7 +132,7 @@ Structured content is automatically passed to the View via `useToolContext().too
 
 ## Deprecated helpers: Full v1 → v2 mapping
 
-These helpers remain as **deprecated shims** for backward compatibility. Migrate to raw envelopes; beta.66 does not specify a removal release.
+These helpers remain as **deprecated shims** for backward compatibility. Migrate to raw envelopes; v2 does not specify a removal release.
 
 All v1 helpers took **positional arguments** (`text(content)`, `image(data, mimeType?)`, `object(data)`), not an options object. `ContentBlock`'s `text` variant is `{ type: "text", text }` only — it carries no `mimeType` field at the wire level; v1's `markdown()`/`html()`/`css()`/`javascript()`/`xml()` helpers only ever set `mimeType` on the deprecated wrapper's `_meta`, which the model does not see. Prefer plain text content in v2 and describe the format in the tool/description text instead.
 

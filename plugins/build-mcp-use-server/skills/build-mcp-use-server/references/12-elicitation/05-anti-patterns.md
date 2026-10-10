@@ -4,7 +4,7 @@
 
 | Anti-pattern | Problem | Fix |
 |---|---|---|
-| Calling `ctx.elicit()` | Does not exist in shipped 2.0.0-beta.66 — compile error | Use `inputRequired()` + `inputRequired.elicit()`/`.elicitUrl()`; read responses with `inputResponse()`/`acceptedContent()` |
+| Calling `ctx.elicit()` | Removed in v2.4.3 — does not exist on `RequestContext` | Use `inputRequired()` + `inputRequired.elicit()`/`.elicitUrl()`; read responses with `inputResponse()`/`acceptedContent()` |
 | No capability gate | Tool errors on clients without elicitation support | Always check `ctx.client.capabilities().elicitation` |
 | Ignoring `decline`/`cancel` | Tool proceeds as if the user answered, or hangs | Handle all `kind`/`action` combinations: `missing`, `elicit`+`accept`, `elicit`+`decline`, `elicit`+`cancel` |
 | Reading `ctx.inputResponses` directly | Skips schema validation; trusts unvalidated wire data | Read through `acceptedContent(ctx.inputResponses, key, schema)`, never destructure `ctx.inputResponses` by hand |
@@ -23,7 +23,7 @@
 ## Don't call `ctx.elicit()`
 
 ```typescript
-// BAD — ctx.elicit does not exist in shipped beta.66; fails to compile
+// BAD — ctx.elicit does not exist in shipped v2; fails to compile
 const result = await ctx.elicit("confirm", { schema: confirmSchema });
 
 // GOOD — the real, shipped, tested surface
@@ -177,7 +177,7 @@ await transferMoney(params.amount, params.recipient);
 
 | Item | Why |
 |---|---|
-| No `ctx.elicit()` anywhere? | It does not exist in shipped beta.66; use `inputRequired`/`inputResponse`/`acceptedContent` |
+| No `ctx.elicit()` anywhere? | It does not exist in shipped v2; use `inputRequired`/`inputResponse`/`acceptedContent` |
 | Capability gated? | Prevents crashes on unsupported clients |
 | Every `kind`/`action` handled? | Prevents hung or broken tools on `decline`/`cancel` |
 | Reads go through `acceptedContent()`? | Never trust `ctx.inputResponses` unvalidated |

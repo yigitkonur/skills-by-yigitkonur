@@ -2,14 +2,14 @@
 
 *Read this to generate a complete v2 project from template.*
 
-The `create-mcp-use-app@2.0.0-beta.14` scaffolder generates a ready-to-run MCP server with optional React views. Three templates cover the most common shapes.
+The `create-mcp-use-app@latest` scaffolder generates a ready-to-run MCP server with optional React views. Three templates cover the most common shapes.
 
 ## Command
 
 ```bash
 npm create mcp-use-app@2.0.0-beta.14 my-project --template mcp-server --install
 # or with npx
-npx create-mcp-use-app@2.0.0-beta.14 my-project --template mcp-server --install
+npx create-mcp-use-app@latest my-project --template mcp-server --install
 ```
 
 Omit `--install` to skip npm install (run manually later).
@@ -65,7 +65,7 @@ npm run dev          # Start dev server + Inspector at http://localhost:3000/mcp
 npm run typecheck    # Refresh mcp-env.d.ts + tsc --noEmit
 npm run build        # Build to `.mcp-use/build/`
 npm run start        # Serve production build
-npm run deploy       # Deploy to Manufact Cloud
+npm run deploy       # Deploy to mcp-use Cloud
 ```
 
 ## First run
@@ -80,8 +80,8 @@ npm run dev
 In another terminal:
 
 ```bash
-npx @mcp-use/cli@4.0.0-beta.15 client connect local http://localhost:3000/mcp
-npx @mcp-use/cli@4.0.0-beta.15 client local tools list
+npx @mcp-use/cli@4.3.2 client connect local http://localhost:3000/mcp
+npx @mcp-use/cli@4.3.2 client local tools list
 ```
 
 ## Package manager selection
