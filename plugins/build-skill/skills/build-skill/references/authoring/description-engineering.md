@@ -83,15 +83,15 @@ description: Advanced statistical analysis for CSV files including
 
 ## Testing your description
 
-### The Claude test
+### The empirical query evaluation method
 
-Ask Claude directly:
+Avoid asking the model directly what it thinks of your description (e.g. "When would you use this skill?"). Research on `agentskills.io` demonstrates that model self-evaluations are unreliable and prone to sycophancy or literal rationalization.
 
-```
-"When would you use the [skill-name] skill?"
-```
-
-Claude will quote the description back. If the answer doesn't match your intent, the description needs work.
+Instead, test trigger accuracy empirically:
+1. Formulate an evaluation query set of at least 10–20 realistic user queries.
+2. Include direct requests, natural paraphrases, and adjacent near-miss queries that should *not* trigger the skill.
+3. Run each query through the target agent and record whether the skill auto-invoked.
+4. Calculate the empirical trigger rate (target: ≥90% on should-trigger, 0% on should-not-trigger).
 
 ### The trigger test matrix
 
@@ -150,9 +150,7 @@ Why: Describes what happens AND how it happens, with trigger phrases embedded.
 ### Excellent — action + prerequisite + outcome
 
 ```yaml
-description: Use skill if you are creating or redesigning a Claude skill and
-  need workspace-first evidence, remote skill research, and comparison
-  before drafting.
+description: Use if creating or redesigning an agent skill adhering to agentskills.io, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows.
 ```
 
 Why: States the action, prerequisite methodology, and implied outcome.

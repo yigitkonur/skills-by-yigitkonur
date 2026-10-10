@@ -30,7 +30,7 @@ These anti-patterns show up repeatedly when operators follow the build-skill wor
 
 **Why it fails:** First command fails, requiring backtracking and context recovery. Often leads to the agent fabricating results instead of using fallback methods.
 
-**Fix:** Run `bash scripts/skill-dl --where` and `command -v npx` before the first search. The script itself is bundled (no install), but the primary search channel needs `npx`. Fallback chain: bundled skill-dl > MCP tools > manual GitHub search.
+**Fix:** Run `node scripts/skill-dl.mjs --where` and `command -v npx` before the first search. The script itself is bundled (no install), but the primary search channel needs `npx`. Fallback chain: bundled skill-dl > MCP tools > manual GitHub search.
 
 **Detection:** A tool command fails with "command not found" during execution.
 

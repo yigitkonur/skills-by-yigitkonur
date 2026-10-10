@@ -21,9 +21,7 @@ The skill exists but Claude doesn't load it when it should.
 
 ### Diagnosis
 
-Ask Claude: "When would you use the [skill-name] skill?"
-
-Compare Claude's answer to your intended trigger scenarios. The gap reveals what's missing from the description.
+Run 5+ representative user queries and paraphrased variations against the runtime. Avoid asking the model directly "When would you use this skill?" because conversational self-reports are unreliable and mask routing failures. Measure the empirical trigger rate across actual tasks to identify gaps.
 
 ### Fixes
 

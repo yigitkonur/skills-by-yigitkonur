@@ -92,11 +92,9 @@ APIs and formats change. Always:
 
 ### Trap 4: Inference from examples
 
-When official docs are sparse, developers often infer behavior from examples:
-
-- An example showing `name: my-skill` doesn't prove `name` is required
-- An example without `version` field doesn't prove `version` is unsupported
-- Test the boundary cases, don't just reproduce the examples
+- An example showing `name: my-skill` doesn't prove `name` is optional (the spec strictly requires it)
+- An example placing `version: 1.0.0` at the root frontmatter fails the specification (spec requires `metadata.version`)
+- Test the boundary cases against the official validator (`skills-ref validate`), don't just reproduce unverified blog posts
 
 ### Trap 5: AI-generated research
 
@@ -186,15 +184,16 @@ For non-trivial skills, maintain a verification log:
 ## Verification Log
 
 ### Frontmatter fields
-- `name`: Required (source: official docs, verified 2025-01)
-- `description`: Recommended, max 1024 chars (source: official docs + source code)
-- `allowed-tools`: Optional, comma-separated (source: official docs, experimental)
-- `when_to_use`: UNDOCUMENTED — likely deprecated (source: source code inspection)
+- `name`: Required (source: agentskills.io spec, 1-64 chars, must match parent directory)
+- `description`: Required, 1-1024 chars (source: agentskills.io spec, no raw XML tags)
+- `allowed-tools`: Optional, space-separated string (source: agentskills.io spec)
+- `metadata`: Optional, key-value mapping (e.g. metadata.version)
+- `when_to_use`: Non-standard / deprecated (source: spec validation)
 
 ### Directory structure
-- `references/`: Loaded on demand via Read tool (source: official docs)
-- `scripts/`: Executed via Bash, not read into context (source: deep dive blog + source)
-- `assets/`: Referenced by path only (source: deep dive blog, unverified officially)
+- `references/`: Loaded on demand via Read tool, kept 1-level deep (source: agentskills.io spec)
+- `scripts/`: Executable automation in Node.js ESM (.mjs) or Python (.py) (source: agentskills.io best practices)
+- `assets/`: Referenced by path only (templates, static resources)
 
 ### Token budgets
 - Level 1: ~100 tokens per skill (source: medium article, cross-referenced with forum)

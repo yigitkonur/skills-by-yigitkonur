@@ -63,13 +63,13 @@ The frontmatter determines whether Claude ever loads your skill.
 - [ ] Description specific enough to avoid false triggers on unrelated queries
 - [ ] Description broad enough to catch legitimate paraphrased requests
 - [ ] Negative triggers added if over-triggering risk exists ("Do NOT use for...")
-- [ ] Tested: asked Claude "When would you use [skill-name]?" and answer matches intent
+- [ ] Tested: empirical trigger rate measured across query matrix (≥90% on should-trigger, 0% on should-not-trigger)
 
 ### Optional fields (per agentskills.io spec)
 - [ ] `allowed-tools` is space-separated tool patterns (e.g. `Bash(git:*) Read`)
 - [ ] `compatibility` field set if the skill requires specific platforms, packages, or network access
 - [ ] `metadata` includes string key-value pairs (e.g. `author`, `version`)
-- [ ] Any client-specific options (e.g. `disable-model-invocation`) only added when explicitly requested by user
+- [ ] Any client-specific options placed inside `metadata` (e.g. `metadata.disable-model-invocation`) to preserve open spec compliance
 
 ---
 
@@ -178,7 +178,7 @@ Testing validates that the skill works correctly in practice.
 - [ ] 5+ queries that SHOULD trigger the skill prepared and executed live when installation was possible
 - [ ] 5+ queries that should NOT trigger the skill prepared and executed live when installation was possible
 - [ ] 3+ paraphrased variants tested live when installation was possible
-- [ ] Asked Claude "When would you use [skill-name]?" — answer matches intent
+- [ ] Empirical trigger rate benchmarked across test query set without relying on model self-evaluations
 - [ ] No conflicts with other enabled skills on the same queries
 
 ### Functional tests
