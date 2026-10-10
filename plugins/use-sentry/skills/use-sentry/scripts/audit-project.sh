@@ -140,6 +140,8 @@ check_feature "App Hang Tracking" "(enableAppHangTracking|appHangTimeoutInterval
 check_feature "MetricKit Integration" "(enableMetricKit|MXDiagnosticPayload)" "Apple Native" || true
 check_feature "Watchdog OOM Tracking" "(enableWatchdogTerminationTracking)" "Apple Native" || true
 check_feature "SwiftUI View Tracing" "(sentryTrace|SentryTracedView|reportFullyDisplayed)" "Apple Native" || true
+check_feature "macOS Uncaught NSExceptions" "(enableUncaughtNSExceptionReporting|SentryCrashExceptionApplication)" "Apple Native" || true
+check_feature "macOS Sandbox Network Client" "(com\.apple\.security\.network\.client)" "Apple Native" || true
 
 echo ""
 echo "--- Mobile & Edge Frameworks ---"

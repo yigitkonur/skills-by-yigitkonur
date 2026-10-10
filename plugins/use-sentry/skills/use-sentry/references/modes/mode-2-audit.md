@@ -46,7 +46,7 @@ Or manually check the codebase against the enterprise features:
 ### Pillar 5: Continuous Profiling & Runtime Diagnostics
 - [ ] **Continuous Profiling:** Is service-lifetime CPU profiling enabled (`profileSessionSampleRate` or manual start/stop)?
 - [ ] **Transaction Profiling (Legacy):** Is trace-coupled profiling configured via `profilesSampleRate`?
-- [ ] **Native Diagnostics (Mobile/Apple/Android):** Are Apple MetricKit, Watchdog OOM, Android ANRs, and TTID/TTFD tracked? (See `references/architectures/swift-apple-ecosystem.md` & `references/architectures/expo-mobile.md`)
+- [ ] **Native Diagnostics (macOS/iOS/Apple/Android):** Are macOS uncaught NSException reporting (`enableUncaughtNSExceptionReporting = true` or `SentryCrashExceptionApplication`), App Sandbox network entitlements (`com.apple.security.network.client`), Apple MetricKit, Watchdog OOM, Android ANRs, and TTID/TTFD tracked? Note that Session Replay is not available on native macOS. (See `references/architectures/macos-appkit-swiftui.md`, `references/architectures/swift-apple-ecosystem.md` & `references/architectures/expo-mobile.md`)
 
 ### Pillar 6: Cron & Uptime Monitors
 - [ ] **Cron Monitors:** Are scheduled cron jobs monitored via heartbeats (`withMonitor`, `captureCheckIn`, or Cloudflare Worker `scheduled` handlers)? (See `references/performance-replay/cron-monitors.md`)
@@ -55,7 +55,7 @@ Or manually check the codebase against the enterprise features:
 - [ ] **Trace-Connected Metrics:** Are application counters, distributions, and span measurements tracked (`span.setMeasurement`, OTel metrics)?
 
 ### Pillar 8: Session Replay & Privacy Redaction
-- [ ] **Session Replay:** Is DOM or mobile view recording enabled with rage/dead click detection and strict privacy shields (`mobileReplayIntegration`, `maskAllText`, `maskAllImages`)? (See `references/performance-replay/session-replay.md` & `references/architectures/expo-mobile.md`)
+- [ ] **Session Replay:** Is DOM or mobile view recording enabled with rage/dead click detection and strict privacy shields (`mobileReplayIntegration`, `maskAllText`, `maskAllImages`)? Note: Session Replay is exclusive to iOS/tvOS/web and unsupported on native macOS desktop. (See `references/performance-replay/session-replay.md` & `references/architectures/expo-mobile.md`)
 - [ ] **Privacy Redaction:** Are passwords, auth headers, and query JWTs scrubbed? (See `references/privacy-redaction/credential-redaction-rules.md` & `references/privacy-redaction/url-jwt-sanitization.md`)
 
 ### Pillar 9: AI, LLM & Model Context Protocol (MCP) Observability
@@ -63,7 +63,8 @@ Or manually check the codebase against the enterprise features:
 - [ ] **MCP Server Monitoring:** Are MCP tools auto-instrumented with stdio isolation (`mcpServerIntegration`)? (See `references/architectures/mcp-server-sentry.md`)
 - [ ] **AI Assistant Integration:** Are AI agents connected via Claude Code plugin (`getsentry/sentry-mcp`), `sentry mcp`, or remote `mcp.sentry.dev`? (See `references/architectures/sentry-mcp-integration.md`)
 
-### Pillar 10: Edge & Mobile Specialized Architecture
+### Pillar 10: Edge, Mobile & macOS Specialized Architecture
+- [ ] **Native macOS AppKit & SwiftUI:** Is `enableUncaughtNSExceptionReporting = true` enabled (or `SentryCrashExceptionApplication` in `Info.plist`, never both) to catch swallowed runloop `NSException` instances? Is `com.apple.security.network.client` set in `.entitlements`? Are CLI tools/daemons calling `SentrySDK.close()` / `flush(timeout:)`? Are dSYM uploads automated via Xcode build phase? (See `references/architectures/macos-appkit-swiftui.md`)
 - [ ] **Cloudflare Workers:** Are build-time AST instrumentation (`sentryCloudflareVitePlugin`), `nodejs_compat`, Durable Objects, and Workflows instrumented? (See `references/architectures/cloudflare-workers.md`)
 - [ ] **Expo & React Native:** Are Hermes Debug IDs (`getSentryExpoConfig`), Expo Router navigation tracing (`expoRouterIntegration`), EAS Build secrets, and OTA update sourcemaps configured? (See `references/architectures/expo-mobile.md`)
 
@@ -76,6 +77,7 @@ For every unutilized capability, explain the concrete engineering impact:
 | Missing Feature | What the Project Misses Today | Project-Level Business & Engineering Benefit |
 |---|---|---|
 | **Sourcemap Uploads** | Production stack traces show minified code (`app.min.js:1:14231`). | Engineers spend hours mapping obfuscated lines. Debug IDs pinpoint the exact source file and line. |
+| **macOS Uncaught NSExceptions** | `NSApplication` runloop catches fatal `NSException`s and drops them without terminating; 0 crashes reach Sentry. | Setting `enableUncaughtNSExceptionReporting = true` ensures full unhandled crash capture in AppKit and SwiftUI. |
 | **Custom Fingerprinting** | Database connection retries create 50 separate issue alerts. | Alert fatigue causes real bugs to be ignored. Custom fingerprinting groups them into 1 canonical issue. |
 | **System Breadcrumbs** | An API error shows "500 Internal Error" with zero clue about what led to it. | Breadcrumbs reveal the sequence: User fetched profile -> Cache missed -> External API timed out -> DB threw. |
 | **Envelope Tunneling** | Errors in restricted networks or browsers fail due to ad-blockers / DNS sinkholes. | Critical production crashes vanish silently. Tunneling guarantees 100% telemetry delivery. |

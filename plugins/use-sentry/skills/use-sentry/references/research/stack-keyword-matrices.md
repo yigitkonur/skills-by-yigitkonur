@@ -56,3 +56,8 @@ sentry cloudflare workers sentryCloudflareVitePlugin instrument.server defineClo
 ```text
 sentry react native expo config plugin getSentryExpoConfig hermes sourcemap expoRouterIntegration mobileReplay eas
 ```
+
+## 12. Native macOS Desktop (AppKit & SwiftUI)
+```text
+sentry cocoa macos appkit swiftui enableUncaughtNSExceptionReporting SentryCrashExceptionApplication sandbox network client dsym
+```

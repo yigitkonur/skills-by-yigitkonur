@@ -51,6 +51,11 @@ struct MyApp: App {
             options.enableMetricKit = true
             #endif
 
+            // macOS Uncaught NSException reporting (mandatory on macOS; do NOT combine with SentryCrashExceptionApplication)
+            #if os(macOS)
+            options.enableUncaughtNSExceptionReporting = true
+            #endif
+
             // App Hang Tracking (detects main-thread UI hangs)
             // NOTE: Sentry recommends migrating to MetricKit for hang diagnostics.
             // Disable for App Clips, Widgets, and Live Activities.
@@ -64,6 +69,7 @@ struct MyApp: App {
             options.profilesSampleRate = 1.0
 
             // Mobile Session Replay with strict privacy controls
+            // NOTE: Session Replay is supported on iOS and tvOS. It is NOT available on native macOS desktop.
             #if os(iOS) || os(tvOS)
             options.sessionReplay.sessionSampleRate = 0.1
             options.sessionReplay.onErrorSampleRate = 1.0
@@ -172,3 +178,16 @@ do {
     }
 }
 ```
+
+---
+
+## 6. Dedicated macOS AppKit & SwiftUI Blueprint
+
+For native macOS desktop applications, specific architectural invariants apply:
+- **Uncaught `NSException` Reporting**: Must enable `options.enableUncaughtNSExceptionReporting = true` so `NSApplication` runloop does not swallow unhandled exceptions.
+- **App Sandbox**: Sandboxed macOS apps MUST declare `com.apple.security.network.client = true` in `.entitlements` to allow outbound envelope delivery.
+- **Platform Scope**: Native macOS desktop does not support Session Replay.
+- **Classic AppKit & CLI Helpers**: Detailed AppDelegate lifecycles, XPC daemon flushes, and Xcode dSYM upload scripts.
+
+See the dedicated blueprint: [`references/architectures/macos-appkit-swiftui.md`](file:///Users/mac/dev/skills-by-yigitkonur/skills/use-sentry/references/architectures/macos-appkit-swiftui.md).
+

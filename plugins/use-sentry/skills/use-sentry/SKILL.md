@@ -4,14 +4,14 @@ description: "Use if setting up or auditing modern Sentry observability with Exp
 disable-model-invocation: true
 metadata:
   author: Yigit Konur
-  version: 3.3.0
+  version: 3.4.0
   category: observability
-  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, ai, llm, cloudflare-workers, cloudflare-pages, expo, react-native, mobile]
+  tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, macos, appkit, ai, llm, cloudflare-workers, cloudflare-pages, expo, react-native, mobile]
 ---
 
 # Sentry
 
-The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Expo/React Native, Cloudflare Workers & Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
+The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Expo/React Native, Cloudflare Workers & Pages, Native macOS AppKit/SwiftUI, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.
 
 ## The Enterprise Observability Pillars
 
@@ -21,11 +21,11 @@ Modern Sentry extends beyond basic error catching into a unified, full-stack obs
 3. **Continuous Profiling**: Low-overhead runtime CPU and memory profiling (`profileSessionSampleRate`, `@sentry/profiling-node`, or manual start/stop) decoupled from individual transactions. Distinguish from transaction-coupled profiling (`profilesSampleRate`, max 30s).
 4. **Cron & Uptime Monitoring**: Heartbeat check-ins and missed execution alerts for background queues and scheduled tasks (`Sentry.withMonitor`, `Sentry.captureCheckIn`).
 5. **Trace-Connected Metrics**: Real-time telemetry counters, distributions, and gauges correlated with distributed traces (`Sentry.metrics.count`, `Sentry.metrics.gauge`, `Sentry.metrics.distribution`) or OpenTelemetry measurements (`span.setMeasurement`). *(Note: Standalone Custom Metrics/DDM was sunset in favor of span-correlated metrics).*
-6. **Session Replay & Privacy Redaction**: Video-like DOM and mobile view reconstruction correlated with error traces, enforced with strict privacy shields (`maskAllText`, `blockAllMedia`) and network allowlists.
+6. **Session Replay & Privacy Redaction**: Video-like DOM and mobile view reconstruction correlated with error traces, enforced with strict privacy shields (`maskAllText`, `blockAllMedia`) and network allowlists. *(Note: Session Replay is supported on web, iOS, and tvOS, but is NOT supported on native macOS desktop).*
 7. **Structured Logging & Analytics**: Official `Sentry.logger` API, native Pino integration (`pinoIntegration()`), Log Explorer queries, live streaming (`sentry log list -f`), and Discover SQL analytics.
 8. **AI & LLM Observability**: Native integrations for OpenAI, Anthropic, and LangChain tracking token usage (prompt/completion), latency, cost, and PII-sanitized prompt pipelines.
 9. **Model Context Protocol (MCP) Ecosystem**: Out-of-the-box MCP server auto-instrumentation (`mcpServerIntegration` for `@modelcontextprotocol/server` v2 and `@modelcontextprotocol/sdk` v1) with strict stdio isolation (`recordInputs`, `recordOutputs`), and connecting AI coding assistants directly to Sentry's remote MCP server (`https://mcp.sentry.dev/mcp`, Claude Code plugin `getsentry/sentry-mcp`, or CLI `sentry mcp`).
-10. **Swift & Apple Ecosystem**: Native macOS, iOS, visionOS instrumentation via `sentry-cocoa` SPM, SwiftUI `SentryTracedView` (supporting TTID/TTFD via `waitForFullDisplay`), MetricKit OS crash/diagnostic payloads (`enableMetricKit = true`, migrating from deprecated `enableAppHangTracking`), and Watchdog OOM detection.
+10. **Swift, macOS & Apple Ecosystem**: Native macOS (AppKit, SwiftUI, CLI daemons), iOS, visionOS instrumentation via `sentry-cocoa` SPM, macOS uncaught exception handling (`enableUncaughtNSExceptionReporting = true` or `SentryCrashExceptionApplication`), App Sandbox network entitlements (`com.apple.security.network.client`), SwiftUI `SentryTracedView` (supporting TTID/TTFD via `waitForFullDisplay`), MetricKit OS crash/diagnostic payloads (`enableMetricKit = true`, migrating from deprecated `enableAppHangTracking`), and Watchdog OOM detection.
 11. **Edge & Serverless Isolates (Cloudflare Workers & Pages)**: First-class edge isolate observability (`@sentry/cloudflare`, `sentryCloudflareVitePlugin`), build-time dependency instrumentation, `AsyncLocalStorage` via `nodejs_compat`, Durable Objects (`instrumentDurableObjectWithSentry`), Workflows, and Agents SDK telemetry.
 12. **Expo & React Native Mobile Apps**: Native iOS/Android crash reporting, Hermes bytecode Debug IDs (`@sentry/react-native/metro`), Expo Config Plugin (`@sentry/react-native/expo`), Expo Router tracing (`expoRouterIntegration`), Mobile Session Replay (`mobileReplayIntegration`), and EAS Build / OTA Update source map automation.
 13. **Spotlight Local Development Overlay**: Zero-overhead local developer sidecar (`@spotlightjs/spotlight`, `spotlight: true`) for instant browser trace visibility with zero SaaS quota consumption.
@@ -35,14 +35,15 @@ Modern Sentry extends beyond basic error catching into a unified, full-stack obs
 ```
 What is your objective?
 ├── Mode 1: Sentry is NOT in the project OR user says "set up / initialize Sentry"
-│   ├── Step 1: Detect runtime, framework & architecture (Expo/React Native, Cloudflare Workers/Pages, Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
+│   ├── Step 1: Detect runtime, framework & architecture (Expo/React Native, Cloudflare Workers/Pages, macOS AppKit/SwiftUI, Node, Next.js, Fastify, MCP, Python, Go, Swift, AI/LLM)
 │   ├── Step 2: Research stack patterns via research-mcp (max 20 keywords): references/research/research-mcp-protocol.md
 │   ├── Step 3: Choose keyword matrix: references/research/stack-keyword-matrices.md
 │   ├── Step 4: Step-by-step setup guide: references/modes/mode-1-init.md
 │   ├── Step 5: Stack blueprints: references/architectures/
+│   │   ├── Native macOS (AppKit & SwiftUI): references/architectures/macos-appkit-swiftui.md
+│   │   ├── Swift / Apple Ecosystem: references/architectures/swift-apple-ecosystem.md
 │   │   ├── Expo & React Native Mobile: references/architectures/expo-mobile.md
 │   │   ├── Cloudflare Workers & Pages: references/architectures/cloudflare-workers.md
-│   │   ├── Swift / Apple: references/architectures/swift-apple-ecosystem.md
 │   │   ├── MCP Server & Remote MCP: references/architectures/sentry-mcp-integration.md & references/architectures/mcp-server-sentry.md
 │   │   ├── AI / LLM Observability: references/architectures/ai-llm-monitoring.md
 │   │   ├── Next.js App Router: references/architectures/nextjs-app-router.md
@@ -61,7 +62,7 @@ What is your objective?
 │   ├── Pillar 2 (Breadcrumbs & Rich Context): references/breadcrumbs-context/ (system, ui, tags, feedback, device)
 │   ├── Pillar 3 (Logging & Analytics): references/logging-analytics/ (structured-logs with Pino & Sentry.logger, pin-to-top, log-explorer, discover)
 │   ├── Pillar 4 (Tracing, Profiling, Crons, Replay): references/performance-replay/ (spans, continuous profiling, asynclocalstorage, replay, crons, spotlight)
-│   ├── Pillar 5 (Edge, Mobile, Swift & Special Stacks): references/architectures/ (expo-mobile, cloudflare-workers, swift-apple-ecosystem, mcp-server-sentry)
+│   ├── Pillar 5 (Edge, Mobile, Swift, macOS & Special Stacks): references/architectures/ (expo-mobile, cloudflare-workers, swift-apple-ecosystem, macos-appkit-swiftui, mcp-server-sentry)
 │   └── Pillar 6 (Privacy & Redaction): references/privacy-redaction/ (credentials, url-jwt)
 │
 └── Mode 3: "Something is broken in prod" / Triage alerts / Debug incident
@@ -150,10 +151,15 @@ Sentry Seer is an integrated AI engine analyzing traces, breadcrumbs, correlated
 - **Connecting AI Agents to Sentry (`mcp.sentry.dev`)**: Point Cursor, Claude Code, or Antigravity to the universal remote endpoint `https://mcp.sentry.dev/mcp` authenticated via Bearer token (no URL path scoping needed). Alternatively install the official Claude Code plugin (`claude plugin marketplace add getsentry/sentry-mcp`) or run `sentry mcp` locally.
 - **Monitoring Custom MCP Servers**: Modern Sentry SDKs (`@sentry/node` 9.46.0+ / 11.1.0+, Python `sentry-sdk`) auto-instrument `@modelcontextprotocol/server` (v2) and `@modelcontextprotocol/sdk` (v1) via `mcpServerIntegration({ recordInputs: true, recordOutputs: true })`. In `stdio` mode, `debug: false` is mandatory; never write non-JSON-RPC telemetry to `stdout`.
 
-### 8. Apple Platform Native Telemetry (`sentry-cocoa`)
-Native Swift / Apple apps benefit from deep OS-level diagnostics:
+### 8. Swift & Native macOS Desktop Telemetry (`sentry-cocoa`)
+Native Swift, SwiftUI, and AppKit applications benefit from deep OS-level diagnostics:
+- **macOS Uncaught NSException Reporting**: By default, `NSApplication` catches unhandled `NSException` instances in its main event runloop and logs them without terminating, preventing standard POSIX/Mach signal handlers from firing. Enable `options.enableUncaughtNSExceptionReporting = true` in SDK options or specify `SentryCrashExceptionApplication` in `Info.plist` (never use both).
+- **App Sandbox Network Entitlement**: macOS App Sandboxed binaries strictly require `com.apple.security.network.client = true` in `.entitlements`. Without this entitlement, outbound socket connections to Sentry are rejected by the macOS kernel with `EPERM`, causing silent envelope drops.
+- **Session Replay Platform Exclusion**: Session Replay is available for iOS, tvOS, and web platforms, but is **NOT supported on native macOS desktop**. Do not attempt to configure Replay on macOS targets.
 - **MetricKit Integration**: Captures Apple OS crash diagnostics, CPU spikes, thermal throttling, and disk write anomalies (`enableMetricKit = true`). Note: `enableAppHangTracking` is deprecated in Cocoa SDK v9 and scheduled for removal in v10; MetricKit is the forward path.
 - **SwiftUI View Tracing**: Primary view container is `SentryTracedView` supporting Time to Initial Display (TTID) and Time to Full Display (TTFD via `waitForFullDisplay` / `SentrySDK.reportFullyDisplayed()`).
+- **CLI Daemons & LaunchAgents**: Standalone Swift scripts and background LaunchAgents must call `SentrySDK.close()` or `SentrySDK.flush(timeout:)` before exiting to guarantee all buffered envelopes are dispatched.
+- **Crash Testing & Debugger Interception**: When testing crashes locally, uncheck "Debug executable" in the Xcode scheme Run action; otherwise LLDB intercepts Mach/POSIX signals before Sentry can record the crash envelope.
 - **Watchdog OOM Tracking**: Reports terminations caused by OS memory limits or slow startup.
 
 ### 9. Quota Bleed & Runaway Loop Circuit Breakers (Archiving/Muting ≠ Quota Relief)
@@ -203,6 +209,10 @@ Mobile apps combine the Hermes JavaScript VM with native iOS (`sentry-cocoa`) an
 | Token leak in logs | URLs logged with raw `?jwt=...` query parameters | Scrub query parameters in `beforeSend` / `beforeSendSpan` |
 | Duplicate error reports in Node.js | Manually registering `process.on('uncaughtException')` alongside SDK | Sentry Node SDK registers them automatically; configure via integrations |
 | App Hangs deprecated in Swift | `enableAppHangTracking` deprecated in Cocoa SDK v9 | Migrate to `options.enableMetricKit = true` |
+| macOS NSExceptions swallowed | `NSApplication` catches uncaught `NSException` in runloop without terminating | Set `options.enableUncaughtNSExceptionReporting = true` or `SentryCrashExceptionApplication` in `Info.plist` |
+| macOS Sandbox drops envelopes | Missing `com.apple.security.network.client` entitlement | Add `com.apple.security.network.client = true` to `.entitlements` file |
+| Crash not captured in Xcode | LLDB debugger attached to process intercepts crash signals first | Uncheck "Debug executable" in Xcode Scheme Run action or launch standalone `.app` |
+| Session Replay crash on macOS | Session Replay is not supported on macOS desktop targets | Restrict Session Replay configuration to iOS/tvOS/web targets |
 
 ## Minimal reading sets
 
@@ -237,6 +247,11 @@ Mobile apps combine the Hermes JavaScript VM with native iOS (`sentry-cocoa`) an
 - `references/architectures/mcp-server-sentry.md`
 - `references/architectures/ai-llm-monitoring.md`
 
+### "I need to build or monitor a native macOS desktop application"
+- `references/architectures/macos-appkit-swiftui.md`
+- `references/architectures/swift-apple-ecosystem.md`
+- `references/error-tracking/sourcemaps-pipeline.md`
+
 ### "I need to monitor a Swift / Apple application"
 - `references/architectures/swift-apple-ecosystem.md`
 - `references/performance-replay/session-replay.md`
@@ -257,9 +272,10 @@ Mobile apps combine the Hermes JavaScript VM with native iOS (`sentry-cocoa`) an
 | `references/modes/mode-3-debug.md` | 4-rung debugging funnel with Seer AI root cause analysis and fix planning. |
 | `references/research/research-mcp-protocol.md` | How to drive research-mcp with up to 20 keywords for stack research. |
 | `references/research/stack-keyword-matrices.md` | Ready-to-use search keyword matrices for Swift, MCP, Cloudflare, Expo, AI, Next.js, etc. |
+| `references/architectures/macos-appkit-swiftui.md` | Native macOS AppKit and SwiftUI apps: NSException reporting, App Sandbox entitlements, MetricKit, dSYM build phases, CLI daemons. |
+| `references/architectures/swift-apple-ecosystem.md` | Swift & Apple ecosystem (macOS, iOS, visionOS), SentryTracedView, TTID/TTFD, MetricKit migration. |
 | `references/architectures/expo-mobile.md` | Expo & React Native mobile apps, Hermes Debug IDs, Expo Router tracing, Mobile Replay. |
 | `references/architectures/cloudflare-workers.md` | Cloudflare Workers & Pages native isolation, Vite plugin, Durable Objects, Workflows, Agents. |
-| `references/architectures/swift-apple-ecosystem.md` | Swift & Apple ecosystem (macOS, iOS, visionOS), SentryTracedView, TTID/TTFD, MetricKit migration. |
 | `references/architectures/sentry-mcp-integration.md` | Hosted Sentry MCP (mcp.sentry.dev), Claude Code plugin, sentry mcp, and MCP server auto-instrumentation. |
 | `references/architectures/ai-llm-monitoring.md` | OpenAI, Anthropic, LangChain token tracking, latency, and prompt PII redaction. |
 | `references/architectures/mcp-server-sentry.md` | MCP Server architecture: stdio isolation, tool breadcrumbs, token redaction. |
@@ -309,6 +325,10 @@ Mobile apps combine the Hermes JavaScript VM with native iOS (`sentry-cocoa`) an
 - In Cloudflare Workers, always ensure `compatibility_flags = ["nodejs_compat"]` is configured in `wrangler.jsonc` or `wrangler.toml` so `AsyncLocalStorage` context propagates correctly.
 - In Expo and React Native projects, always use `getSentryExpoConfig` in `metro.config.js` so Hermes bytecode Debug IDs match uploaded source maps.
 - In Expo and mobile apps, never store `SENTRY_AUTH_TOKEN` in committed code or `.env`; store it as an EAS secret (`eas secret:create`) or uncommitted `.env.local`.
+- On macOS, always configure `options.enableUncaughtNSExceptionReporting = true` (or `SentryCrashExceptionApplication` in `Info.plist`, never both) to stop `NSApplication` from swallowing fatal exceptions.
+- On sandboxed macOS apps, always ensure `com.apple.security.network.client = true` is present in `.entitlements`; otherwise all outbound telemetry envelopes will fail with kernel `EPERM`.
+- Never attempt to enable Session Replay on macOS desktop targets; Replay is exclusive to iOS/tvOS/web.
+- When verifying native Apple/macOS crash handling, never test with LLDB debugger attached; run standalone or uncheck "Debug executable" in the Xcode scheme.
 - In Swift Cocoa SDK, configure `enableMetricKit = true` for OS crash diagnostics and app hang reports (`enableAppHangTracking` is deprecated in v9+).
 - In MCP integrations, connect via universal `https://mcp.sentry.dev/mcp` or `sentry mcp` rather than legacy `/sse` or manual URL path scoping.
 - In modern Sentry SDKs, use `Sentry.metrics.count(...)`, `Sentry.metrics.gauge(...)`, and `Sentry.metrics.distribution(...)` for Trace-Connected metrics or OpenTelemetry `span.setMeasurement(...)`.
