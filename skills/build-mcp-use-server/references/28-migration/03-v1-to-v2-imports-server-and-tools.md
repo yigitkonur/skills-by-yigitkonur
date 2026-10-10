@@ -1,124 +1,149 @@
-# Imports, Server, and Tool Registration
+# Imports, Server Configuration, and Tool Registration
 
-*Read this when migrating tool registration syntax from v1 to v2.*
+*Read this when migrating root imports, constructor options, Standard Schema validation, and tool registration syntax from v1 to v2.*
 
-## Step 1: Update imports
+In `mcp-use v1`, the framework exposed multiple subpaths (`mcp-use/server`), supported CommonJS and older Node runtimes, permitted method chaining on tool registration, and relied on Zod v3 schemas. 
 
-**v1**:
+`mcp-use v2` standardizes around a root import (`mcp-use`), enforces Node.js `>= 22.22.2` with pure ESM, adopts the cross-ecosystem **Standard Schema specification** (implemented natively by Zod v4), requires static `ToolRef` exports for View typechecking, and separates tool definitions from callback handlers.
+
+---
+
+## At a Glance: Imports, Server & Tools Diff
+
+| Feature / Surface | Legacy v1 (`mcp-use <= 1.34.5`) | Canonical v2 (`mcp-use >= 2.8.2`) | Impact / Action |
+|---|---|---|---|
+| **Package Import** | `import { MCPServer } from "mcp-use/server"` | `import { MCPServer } from "mcp-use"` | Root import; subpath `./server` deleted from package exports |
+| **Node.js Engine** | Node ^20.19.0 or >=22.12.0; CJS or ESM | Node >= 22.22.2; strictly ESM (`"type": "module"`) | Set `"type": "module"` in `package.json`; upgrade runtime |
+| **Schema Validation** | Zod v3 (`zod@^3.22.0`) | Standard Schema v1 (`zod@^4.0.0-alpha` or `~standard`) | Automatic schema validation against `~standard` interface |
+| **Tool Registration** | `server.tool({ name, schema, cb })` | `export const tool = server.tool({ name, inputSchema, outputSchema }, cb)` | Definition is 1st argument, callback is 2nd argument |
+| **Wire Schema Key** | `schema` | `inputSchema` (matches MCP wire protocol; `schema` is deprecated) | Rename `schema` to `inputSchema` |
+| **Output Validation** | Optional `outputSchema` | Mandatory `outputSchema` for tools bound to Views | Enables client-side View validation and typed `structuredContent` |
+| **Tool Static Export** | Not required | **Mandatory** (`export const myTool = ...`) | Required by `mcp-use typecheck` to emit `mcp-env.d.ts` |
+| **Method Chaining** | `server.tool(...).tool(...)` (returned `this`) | `server.tool(...)` returns `ToolRef` (chaining fails) | One standalone statement per tool registration |
+| **Public Origin** | Constructor `baseUrl: "https://..."` | Environment variable `MCP_URL` + constructor `basePath: "/mcp"` | Remove `baseUrl` constructor option; configure via env |
+| **CORS Keys** | `cors.allowMethods`, `cors.allowHeaders` | `cors.methods`, `cors.allowedHeaders` | Rename CORS configuration options |
+| **Root Logger** | `Logger.get()`, `Logger.configure()` | **Removed**; use own logger (`pino`, `console`) or `ctx.sendLog()` | Replace framework Logger with standard logger |
+
+---
+
+## Step 1: Update Imports
+
+### Before (v1):
 ```typescript
 import { MCPServer, text, object, error } from "mcp-use/server";
 ```
 
-**v2**:
+### After (v2):
 ```typescript
 import { MCPServer } from "mcp-use";
 import { z } from "zod";
 ```
 
-`mcp-use/server` no longer exists. Import `MCPServer` from root. Response helpers (`text`, `object`) are deprecated shims; prefer raw MCP envelopes.
+> **Warning**: Attempting to import from `mcp-use/server` in v2 triggers `Error: Cannot find module 'mcp-use/server'`. Import `MCPServer` directly from `"mcp-use"`.
 
-## Step 1b: The `Logger` root API is removed
+---
 
-v1's application logger is not exported from v2. `Logger`, `Logger.get(name)`, `Logger.configure(...)`, `Logger.setDebug(level)`, and the default `logger` instance **do not exist** in v2 — v2's only root logging exports are `requestLogger` (Fetch middleware) and the built-in `logging` constructor option.
+## Step 1b: The `Logger` Root API is Removed
 
-**v1**:
-```typescript
-import { Logger } from "mcp-use";
-const log = Logger.get("startup");
-Logger.configure({ level: "debug" });
-Logger.setDebug(2);
-log.info("Starting");
-log.warn("slow path");
-log.error("failed", err);
-```
+v1's application logger is not exported from v2. `Logger`, `Logger.get(name)`, `Logger.configure(...)`, `Logger.setDebug(level)`, and the default `logger` instance **do not exist** in v2.
 
-**v2** — pick by *where the log must go*:
-
-| v1 use | v2 destination |
+| v1 Pattern | Canonical v2 Destination |
 |---|---|
-| Server-side startup/diagnostic logs | Your own logger (`console`, `pino`, Winston, Sentry). mcp-use does not provide one. |
+| Server-side startup & diagnostic logs | Your own application logger (`pino`, Winston, `console`). mcp-use does not bundle one. |
 | HTTP request logging | Constructor `logging: { enabled?: boolean, level?: "info" \| "debug" \| "trace" }`, or env `MCP_USE_LOG_LEVEL`. |
-| Logs the *client* should see | `ctx.sendLog(level, data, loggerName?)` inside a tool callback — an MCP `notifications/message` to the connected client, not a server sink. |
-| Custom Fetch request logging | `requestLogger({...})` composed around `server.fetch` via `composeFetch` (not `server.use()`). |
+| Client-visible notifications | `await ctx.sendLog(level, data, loggerName?)` inside tool callbacks (fires MCP `notifications/message`). |
+| Custom Fetch request logging | `requestLogger({...})` composed around `server.fetch` via `composeFetch`. |
 
 ```typescript
 import { MCPServer } from "mcp-use";
 import pino from "pino";
 
-const log = pino({ name: "startup" }); // own logger, replaces Logger.get
+// Application-owned logger replaces Logger.get
+const log = pino({ name: "server" });
 
 const server = new MCPServer({
   name: "my-server",
-  version: "1.0.0",
-  logging: { level: "debug" }, // framework request logging
+  version: "2.0.0",
+  logging: { level: "debug" }, // Framework HTTP logging
 });
 
-export const work = server.tool({ name: "work", inputSchema: ..., outputSchema: ... }, async (input, ctx) => {
-  log.info("work started");                 // server-side only
-  await ctx.sendLog("info", { stage: "start" }); // delivered to the connected client
-  return { content: [...], structuredContent: {...} };
-});
+export const processTask = server.tool(
+  { name: "process-task", inputSchema: z.object({ id: z.string() }), outputSchema: z.object({}) },
+  async ({ id }, ctx) => {
+    log.info({ id }, "Processing task server-side");     // Server log sink
+    await ctx.sendLog("info", { stage: "started", id }); // MCP notification sent to client
+    return { content: [{ type: "text", text: "Done" }], structuredContent: {} };
+  }
+);
 ```
 
-`ctx.sendLog()` is client-facing and fires unconditionally — never route secrets through it. See `../15-logging/02-ctx-sendlog.md`.
+---
 
-## Step 1c: Mechanical constructor/config renames
+## Step 1c: Mechanical Constructor & Config Renames
 
-These v1 `ServerConfig` fields fail as **type errors** in v2 — an import scan will not catch them. Rename or remove:
+These v1 `ServerConfig` fields fail as TypeScript compilation errors in v2:
 
-| v1 field | v2 status | Action |
+| v1 Field | v2 Status | Action |
 |---|---|---|
-| `baseUrl` | **Removed** | Delete it. The public origin is runtime config (`MCP_URL` env or request origin), not a constructor field. The path comes from `basePath`. |
-| `cors.allowMethods` | → `cors.methods` | Rename |
-| `cors.allowHeaders` | → `cors.allowedHeaders` | Rename |
-| `cors.exposeHeaders` | **Removed** | Delete — v2 `CorsOptions` has no exposure field (`cors?: { enabled?, origin?, methods?, allowedHeaders?, credentials? }`). |
-| `sessionStore` / `streamManager` / `stateless: false` / `sessionIdleTimeoutMs` | **Removed** | See `07-v1-to-v2-sessions-transports-stdio-sse.md`. |
+| `baseUrl` | **Removed** | Delete. Public origin is runtime config (`MCP_URL` env variable), not a constructor field. Mount path is configured via `basePath`. |
+| `cors.allowMethods` | → `cors.methods` | Rename property. |
+| `cors.allowHeaders` | → `cors.allowedHeaders` | Rename property. |
+| `cors.exposeHeaders` | **Removed** | Delete. v2 `CorsOptions` has no header exposure field. |
+| `sessionStore`, `streamManager`, `stateless: false` | **Removed** | Delete. See `07-v1-to-v2-sessions-transports-stdio-sse.md`. |
 
 ```typescript
-// v1
+// v1 (Legacy)
 const server = new MCPServer({
-  name, version,
+  name: "api",
+  version: "1.0.0",
   baseUrl: "https://api.example.com",
-  cors: { allowMethods: ["POST"], allowHeaders: ["authorization"], exposeHeaders: ["mcp-session-id"] },
+  cors: { allowMethods: ["POST"], allowHeaders: ["authorization"] },
 });
 
-// v2
+// v2 (Canonical)
 const server = new MCPServer({
-  name, version,
-  basePath: "/mcp",                       // path only; origin is env/runtime
+  name: "api",
+  version: "2.0.0",
+  basePath: "/mcp",
   cors: { methods: ["POST"], allowedHeaders: ["authorization"], credentials: true },
 });
-// MCP_URL=https://api.example.com npm start   ← public origin lives here
+// Set origin via environment: MCP_URL=https://api.example.com npm start
 ```
 
-Scan for all of them: `grep -rnE 'baseUrl|allowMethods|allowHeaders|exposeHeaders|sessionStore|streamManager|sessionIdleTimeout|stateless' src/ index.ts`.
+---
 
-## Step 2: Server constructor
+## Step 2: Standard Schema (Zod v4) Adoption
 
-**v1**:
+In `mcp-use v2`, input and output validation conforms to the cross-ecosystem **Standard Schema specification** (`~standard` interface). This allows `mcp-use` to validate schemas from Zod, Valibot, ArkType, or any Standard Schema compliant library with zero overhead.
+
+### Upgrading to Zod v4
+
+Install Zod v4 (or alpha):
+
+```bash
+npm install zod@^4.0.0-alpha
+```
+
+Key Standard Schema advantages:
+- Schemas export a standard `~standard: { version: 1, vendor: "zod", validate: ... }` contract.
+- In v2, passing Zod v3 schemas (`zod@^3.22.x`) that do not implement `~standard` triggers validation warnings or type mismatches.
+- Descriptions attached via `.describe("...")` are automatically extracted and advertised as JSON Schema property descriptions in `tools/list`.
+
 ```typescript
-const server = new MCPServer({
-  name: "my-server",
-  version: "1.0.0",
-  oauth: oauthAuth0Provider(...), // import from "mcp-use/server"
+import { z } from "zod";
+
+export const QueryInputSchema = z.object({
+  query: z.string().min(1).describe("Search keywords to query the catalog"),
+  limit: z.number().int().min(1).max(50).default(10).describe("Maximum results to return"),
+  filter: z.enum(["active", "archived"]).optional().describe("Filter status"),
 });
 ```
 
-**v2**:
-```typescript
-import { MCPServer } from "mcp-use";
-// OAuth moved to separate imports — see 05-v1-to-v2-auth.md
+---
 
-const server = new MCPServer({
-  name: "my-server",
-  version: "1.0.0",
-  // oauth config here if used (see section 05)
-});
-```
+## Step 3: Tool Registration — Definition-First Callback
 
-## Step 3: Tool registration — definition-first callback
-
-**v1** — Inline schema + callback as `cb` field:
+### Before (v1): Inline Schema & Callback in Object
 ```typescript
 server.tool({
   name: "weather",
@@ -128,226 +153,200 @@ server.tool({
 });
 ```
 
-**v2** — Separate definition (arg 1) and callback (arg 2):
+### After (v2): Definition (Arg 1) + Callback (Arg 2)
 ```typescript
 export const weather = server.tool(
   {
     name: "weather",
-    description: "Get weather",
-    inputSchema: z.object({ city: z.string() }),
-    outputSchema: z.object({ forecast: z.string() }),
+    title: "Weather Forecast",
+    description: "Get current weather conditions by city",
+    inputSchema: z.object({
+      city: z.string().describe("City name"),
+    }),
+    outputSchema: z.object({
+      forecast: z.string(),
+      temperature: z.number(),
+    }),
   },
   async ({ city }) => {
-    const forecast = await fetchWeather(city);
+    const data = await fetchWeather(city);
     return {
-      content: [{ type: "text", text: JSON.stringify({ forecast }) }],
-      structuredContent: { forecast },
+      content: [{ type: "text", text: `Weather in ${city}: ${data.forecast}` }],
+      structuredContent: data,
     };
   }
 );
 ```
 
-**Changes**:
-- `schema` → `inputSchema` (matches MCP wire field name; `schema` still works as alias but is deprecated)
-- **Add `outputSchema`** (required if tool has a View; enables client-side validation)
-- **Export as const** (required for `mcp-env.d.ts` View type generation)
-- Callback is **2nd argument**, not `cb` field
-- Return raw `{ content, structuredContent }` instead of `text(...)` helper
-
-**Do not chain** `server.tool(...).tool(...)`. v1's `MCPServer.tool()` returned `this` for chaining; v2's `tool()` returns a `ToolRef` (the value you export for View typing), which has no `.tool()` method. Call `server.tool(...)` once per statement instead.
-
-## Step 4: Export every static tool
-
-All tools declared at module level must be exported:
-
-```typescript
-// ✓ Correct
-export const search = server.tool({ name: "search", ... }, async (...) => {...});
-export const details = server.tool({ name: "details", ... }, async (...) => {...});
-
-// ✗ Not exported — View typing breaks
-const dynamic = server.tool({ name: "dynamic", ... }, async (...) => {...});
-
-// ✓ Re-export from other modules
-export { getTrending } from "./tools/trending.js";
-```
-
-Dynamic tools (from loops, config, OpenAPI) cannot be exported as `ToolRef`. Call them from Views with:
-```typescript
-import { useDynamicTool } from "mcp-use/react";
-const lookup = useDynamicTool<InputType, OutputType>("tool-name");
-```
-
-## Step 5: Resources and templates
-
-Static resources: v1's static callback received only request context (`(ctx)`) and examples often used no arguments. v2 adds the requested `URL` as the first parameter and moves context to the second: `(uri, ctx)`.
-
-**v1**:
-```typescript
-server.resource(
-  { name: "settings", uri: "app://settings", mimeType: "application/json" },
-  async () => text(JSON.stringify({ theme: "dark" })),
-);
-```
-
-**v2**:
-```typescript
-server.resource(
-  { name: "settings", uri: "app://settings", mimeType: "application/json" },
-  async (uri, ctx) => ({
-    contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ theme: "dark" }) }],
-  }),
-);
-```
-
-Resource templates: v1.34.5 accepted both a legacy nested `resourceTemplate: { uriTemplate, callbacks }` shape and a newer flat `uriTemplate` + `callbacks` overload. v2 keeps only the flat form, moves `callbacks.complete` to top-level `complete`, and standardizes the reader as `(uri, params, ctx)`. Inferred template values are `string | string[]` (RFC 6570 expressions can expand to one or many).
-
-**v1**:
-```typescript
-server.resourceTemplate(
-  {
-    name: "user",
-    resourceTemplate: {
-      uriTemplate: "users://{id}",
-      callbacks: {
-        complete: { id: async (value) => ["alice", "bob"].filter((id) => id.startsWith(value)) },
-      },
-    },
-  },
-  async (uri, { id }) => text(`User ${id}`),
-);
-```
-
-**v2**:
-```typescript
-server.resourceTemplate(
-  {
-    name: "user",
-    uriTemplate: "users://{id}",              // Flattened — no nested `resourceTemplate` field
-    complete: {                                 // Flattened — no nested `callbacks` field
-      id: async (value) => ["alice", "bob"].filter((id) => id.startsWith(value)),
-    },
-  },
-  async (uri, { id }, ctx) => ({                // Canonical v2 signature
-    contents: [{ uri: uri.href, text: `User ${String(id)}` }],
-  }),
-);
-```
-
-## Step 6: Prompts
-
-v1 already deprecated the array-style `args: [{ name, type, required? }]` in favor of a single `schema` field (both existed side by side in v1). v2 drops `args` entirely — `schema` is the only option — and moves the callback to the second argument like tools:
-
-**v1**:
-```typescript
-server.prompt({
-  name: "review",
-  schema: z.object({ code: z.string() }),
-  cb: async ({ code }) => text(`Review this code:\n${code}`),
-});
-```
-
-**v2**:
-```typescript
-server.prompt(
-  { name: "review", schema: z.object({ code: z.string() }) },
-  async ({ code }, ctx) => ({
-    messages: [{ role: "user", content: { type: "text", text: `Review this code:\n${code}` } }],
-  }),
-);
-```
-
-`completable()` still works the same way, with one ordering rule: apply Zod field refinements (`.min()`, `.regex()`, etc.) **before** wrapping with `completable()`, not after — `completable()` supplies autocomplete suggestions but does not itself constrain valid values.
-
-## Step 7: Response shape — raw MCP envelopes
-
-**v1** — Helpers:
-```typescript
-return text("Result");
-return object({ count: 5, items: [] });
-return error("Something failed");
-return widget({ props: {...}, output: text("...") });
-```
-
-**v2** — Raw envelopes:
-```typescript
-// Text result
-return {
-  content: [{ type: "text", text: "Result" }],
-  structuredContent: { /* structured data matching outputSchema */ },
-};
-
-// Error
-return {
-  content: [{ type: "text", text: "Something failed" }],
-  isError: true,
-};
-
-// Multiple content blocks (markdown + object)
-return {
-  content: [
-    { type: "text", text: "## Summary\n..." },
-    { type: "text", text: JSON.stringify({ data: [...] }) },
-  ],
-  structuredContent: { data: [...] },
-};
-```
-
-**Why**: Raw envelopes are type-safe and align with MCP spec. Helpers (`text()`, `object()`, etc.) remain as **deprecated upgrade shims only**; v2 does not specify a removal release.
-
-## Step 8: Deprecated helpers — if you must use them
-
-Helpers are exported for backward compatibility only:
-
-```typescript
-import { text, object, array, error, markdown, mix, image, audio, binary } from "mcp-use";
-
-// These work but are deprecated:
-return text("Hello");  // Alias for { content: [{ type: "text", text: "Hello" }] }
-return error("Failed"); // Alias for { content: [...], isError: true }
-```
-
-Migrate away from them and prefer raw envelopes; v2 does not specify when the shims will be removed.
-
-## Step 9: Tool annotations (unchanged)
-
-Annotations remain, no syntax change:
-
-```typescript
-export const destructive = server.tool(
-  {
-    name: "delete-item",
-    inputSchema: z.object({ id: z.string() }),
-    outputSchema: z.object({}),
-    annotations: {
-      destructiveHint: true,
-      readOnlyHint: false,
-      openWorldHint: false,
-      idempotentHint: true,
-    },
-  },
-  async ({ id }) => ({ content: [...], structuredContent: {} })
-);
-```
-
-## Step 10: What about `visibility`?
-
-**New in v2**: Tool `visibility` field (for MCP Apps):
-
-```typescript
-export const hidden = server.tool(
-  {
-    name: "internal",
-    visibility: "app", // model-hidden, View-callable only
-    inputSchema: z.object({}),
-    outputSchema: z.object({}),
-  },
-  async () => ({ content: [...], structuredContent: {} })
-);
-```
-
-Values: omit the field for the host default (normally model-callable and app-visible); set `"model"` to declare model visibility explicitly; set `"app"` for an app-private helper callable from a View while the host hides it from the model.
+**Key Architectural Changes**:
+1. `schema` is renamed to **`inputSchema`** (matching the MCP wire field).
+2. **`outputSchema` is mandatory** when the tool binds to a View, and strongly recommended for all tools to enforce type-safe `structuredContent`.
+3. The callback function is passed as the **second parameter**, not as an inline `cb` property.
+4. Returns a raw **`CallToolResult` envelope** instead of deprecated `text()` or `object()` helpers.
+5. **No Method Chaining**: In v1, `server.tool()` returned `this` for chaining. In v2, it returns a typed `ToolRef`. Calling `server.tool(...).tool(...)` throws `TypeError: server.tool(...).tool is not a function`.
 
 ---
 
-**Next**: See `04-v1-to-v2-responses-and-helpers.md` for detailed response envelope patterns.
+## Step 4: Export Every Static Tool (`ToolRef`)
+
+All tools declared at module level **must be exported**:
+
+```typescript
+// ✓ Correct: ToolRef is exported
+export const search = server.tool({ name: "search", ... }, async (...) => {...});
+export const getDetails = server.tool({ name: "get-details", ... }, async (...) => {...});
+
+// ✗ Incorrect: Not exported — View typecheck cannot infer RegisteredTools
+const localTool = server.tool({ name: "local", ... }, async (...) => {...});
+
+// ✓ Correct: Re-exporting from child modules
+export { analyzeReport } from "./tools/reporting.js";
+```
+
+### Why Static Exports Are Mandatory
+When you run `npx mcp-use typecheck`, the CLI scans your server module for exported `ToolRef` instances and generates `mcp-env.d.ts`. This file maps tool names to their TypeScript input and output types, providing compile-time type safety for `useToolContext<"search">()` and `useCallTool("search")` inside React Views.
+
+---
+
+## Step 5: Resource & Template Signatures
+
+Static resources and templates have updated callback signatures in v2:
+
+### Static Resources: `(uri: URL, ctx: RequestContext)`
+```typescript
+// v2 Static Resource: First argument is parsed URL; second is context
+export const configResource = server.resource(
+  {
+    name: "App Config",
+    uri: "app://config",
+    mimeType: "application/json",
+  },
+  async (uri, ctx) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify({ environment: "production" }),
+      },
+    ],
+  })
+);
+```
+
+### Resource Templates: `(uri: URL, params: Record<string, string | string[]>, ctx: RequestContext)`
+Resource templates use flattened top-level `uriTemplate` and `complete` dictionaries:
+
+```typescript
+// v2 Resource Template: Flattened fields, autocomplete support
+export const userResource = server.resourceTemplate(
+  {
+    name: "User Record",
+    uriTemplate: "users://{id}",
+    mimeType: "application/json",
+    complete: {
+      id: async (value) => ["usr_1", "usr_2"].filter((id) => id.startsWith(value)),
+    },
+  },
+  async (uri, { id }, ctx) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify({ id: String(id), status: "active" }),
+      },
+    ],
+  })
+);
+```
+
+---
+
+## Step 6: Prompts: Single `schema` Field
+
+The deprecated v1 `args: [{ name, type }]` array is completely removed. In v2, prompts use a single Standard Schema (Zod v4 object) and pass the callback as the second argument:
+
+```typescript
+export const codeReviewPrompt = server.prompt(
+  {
+    name: "code-review",
+    title: "Code Review Assistant",
+    description: "Generate thorough code review instructions",
+    schema: z.object({
+      code: z.string().describe("Source code to review"),
+      language: z.string().default("typescript").describe("Programming language"),
+    }),
+  },
+  async ({ code, language }) => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Review the following ${language} code for safety and correctness:\n\n${code}`,
+        },
+      },
+    ],
+  })
+);
+```
+
+---
+
+## Step 7: Tool Annotations and Visibility
+
+### Tool Annotations
+Declare model execution hints via `annotations`:
+```typescript
+export const deleteRecord = server.tool(
+  {
+    name: "delete-record",
+    inputSchema: z.object({ id: z.string() }),
+    outputSchema: z.object({ success: z.boolean() }),
+    annotations: {
+      destructiveHint: true, // Warns host model before execution
+      readOnlyHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ id }) => ({ content: [...], structuredContent: { success: true } })
+);
+```
+
+### Tool Visibility (MCP Apps)
+Declare tool audience using `visibility`:
+- `"model"`: Model-callable and app-visible (standard default).
+- `"app"`: Hidden from the model's `tools/list`; callable exclusively from Views via `useCallTool()`.
+
+```typescript
+export const viewHelper = server.tool(
+  {
+    name: "view-internal-helper",
+    visibility: "app", // Hidden from LLM; accessible only by React Views
+    inputSchema: z.object({ itemId: z.string() }),
+    outputSchema: z.object({ details: z.string() }),
+  },
+  async ({ itemId }) => ({ content: [...], structuredContent: { details: "..." } })
+);
+```
+
+---
+
+## Anti-Patterns and Common Traps
+
+| Anti-Pattern | Root Mechanism & Failure Mode | Canonical v2 Fix |
+|---|---|---|
+| `import { MCPServer } from "mcp-use/server"` | `./server` subpath export removed from `package.json`. Triggers `Cannot find module 'mcp-use/server'`. | Change to `import { MCPServer } from "mcp-use"`. |
+| `server.tool(...).tool(...)` | `server.tool` returns `ToolRef`, not `this`. Method chaining throws `TypeError: server.tool(...).tool is not a function`. | Declare each tool as a separate statement: `export const a = server.tool(...)`. |
+| Unexported Tool References | Tools declared with `const tool = server.tool(...)` without `export` are not discovered by `mcp-use typecheck`. | Prepend `export const <toolName> = server.tool(...)`. |
+| Using Zod v3 Schemas | Zod v3 schemas lack the `~standard` interface required by v2 Standard Schema validation. | Upgrade to `zod@^4.0.0-alpha` or a Standard Schema compliant validator. |
+| Constructor `baseUrl` | `baseUrl` was removed from `ServerConfig`. Fails TypeScript compilation. | Mount path is set by `basePath`; origin is configured via `MCP_URL` environment variable. |
+| Passing Callback in `cb` Field | Passing callback inside the first argument object is ignored or fails schema validation. | Pass callback as the second argument: `server.tool(definition, callback)`. |
+
+---
+
+## Next Steps & Cross-References
+
+- **Response Envelopes**: See `04-v1-to-v2-responses-and-helpers.md` for constructing `CallToolResult` envelopes.
+- **Authentication Setup**: See `05-v1-to-v2-auth.md` for `mixedAuth: true` and provider adapters.
+- **Views Integration**: See `06-v1-to-v2-widgets-to-views.md` for binding tools to interactive views.

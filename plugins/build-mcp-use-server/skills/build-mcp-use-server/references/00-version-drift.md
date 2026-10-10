@@ -8,13 +8,14 @@ This skill documents **mcp-use v2** — the stable production line published on 
 
 | Artifact | Version | Facts verified against |
 |---|---|---|
-| `mcp-use` | `2.8.2` (`latest` tag) | shipped `.d.ts` type contracts and runtime source |
+| `mcp-use` | `2.8.2` (`latest` tag) | shipped `.d.ts` type contracts and runtime source (Node >= 22.22.2) |
 | `@mcp-use/cli` | `4.3.2` (`latest` tag) | shipped package + command dispatch source |
 | `create-mcp-use-app` | `2.0.10` (`latest` tag) | shipped templates |
+| `@openai/apps-sdk-ui` | `0.2.2` (`latest` tag) | official design system, 29+ Radix components, Tailwind 4 tokens |
 | `@mcp-use/inspector` | `20.3.18` (`latest` tag) | official inspector runtime |
 | npm `v1-legacy` tag | `1.34.8` (maintenance) | v1 legacy maintenance only |
 
-`npm install mcp-use` installs **v2** (`latest`). v1 is legacy maintenance (`v1-legacy` tag). `@mcp-use/react` is not an npm package — React hooks ship inside `mcp-use` at the `mcp-use/react` subpath.
+`npm install mcp-use` installs **v2** (`latest`). v1 is legacy maintenance (`v1-legacy` tag). `@mcp-use/react` is not an npm package — React hooks ship inside `mcp-use` at the `mcp-use/react` subpath. All ChatGPT apps require `@openai/apps-sdk-ui` by default for UI compliance. Node.js engine requirement is **>= 22.22.2**.
 
 ## Precedence when sources disagree
 

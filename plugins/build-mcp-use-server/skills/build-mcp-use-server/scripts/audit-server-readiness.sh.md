@@ -19,12 +19,14 @@ bash scripts/audit-server-readiness.sh
 
 | Section | Pass signs | Warning signs | Failure signs |
 |---------|-----------|---------------|---------------|
+| **Node.js engine** | Node >= 22.22.2 | — | Node < 22.22.2 (unsupported) |
 | **ESM** | `"type": "module"` in package.json | — | Missing ESM config |
 | **mcp-use version** | `2.x` range in `package.json` | `1.x` or unresolved (e.g. still says `beta`) | — |
 | **zod** | `^4.` | Not v4 | — |
 | **Entry point** | `index.ts` or `src/index.ts` found | — | No entry file |
 | **Root import** | `import { MCPServer } from "mcp-use"` | `from "mcp-use/server"` (v1) | — |
 | **views/** | Directory + `view.tsx` files | Directory missing (OK for tools-only) | — |
+| **Apps SDK UI** | `@openai/apps-sdk-ui` installed | Missing in views project (recommended for ChatGPT UI) | — |
 | **outputSchema** | Tools have `outputSchema` | No outputSchema (OK if no views) | — |
 | **OAuth** | `oauth:` config present (if needed) | Missing (OK for public servers) | — |
 | **Build** | `.mcp-use/build/index.js` present | Directory missing or no `index.js`; run `mcp-use build` | — |

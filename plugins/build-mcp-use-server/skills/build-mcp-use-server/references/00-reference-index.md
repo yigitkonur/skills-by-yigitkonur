@@ -2,6 +2,22 @@
 
 *Full inventory fallback. Prefer the intent table and symptom index in SKILL.md; come here only when you need an exact filename.*
 
+## Core Guides (v2 & OpenAI Apps SDK UI)
+
+- `references/server.md` — Complete `MCPServer` constructor options and API surface
+- `references/chatgpt-apps-ui.md` — Complete OpenAI Apps SDK UI compliance guide (29+ components, design tokens, dark mode, responsive layout)
+- `references/chatgpt-extensions.md` — Complete ChatGPT extensions guide (typed entrypoints, tool icons, plugin settings, evidence attachments)
+
+## Official Documentation Links
+
+- [Official Server Docs](https://docs.mcp-use.com/v2/typescript/server)
+- [MCPServer API Reference](https://api-reference.mcp-use.com/classes/mcp-use.index.MCPServer.html)
+- [MCP Apps Documentation](https://docs.mcp-use.com/v2/typescript/mcp-apps)
+- [ChatGPT Extensions](https://docs.mcp-use.com/v2/typescript/mcp-apps/chatgpt-extensions)
+- [OpenAI Apps SDK UI Repository](https://github.com/openai/apps-sdk-ui)
+- [OpenAI Apps SDK UI Storybook](https://openai.github.io/apps-sdk-ui/?path=/docs/overview-introduction--docs)
+
+
 
 ## 01-concepts
 
@@ -272,14 +288,16 @@
 
 ## 28-migration
 
-- `references/28-migration/01-from-modelcontextprotocol-sdk.md` — Adopting mcp-use v2 from raw SDK
-- `references/28-migration/02-v1-to-v2-overview.md` — v1 → v2 Migration Overview
-- `references/28-migration/03-v1-to-v2-imports-server-and-tools.md` — Imports, Server, and Tool Registration
-- `references/28-migration/04-v1-to-v2-responses-and-helpers.md` — Responses and Deprecated Helpers
-- `references/28-migration/05-v1-to-v2-auth.md` — Authentication and OAuth Migration
-- `references/28-migration/06-v1-to-v2-widgets-to-views.md` — Widgets to Views: Complete Rewrite
-- `references/28-migration/07-v1-to-v2-sessions-transports-stdio-sse.md` — Sessions, Transports, and Stateless Model
-- `references/28-migration/08-appssdk-to-mcp-apps.md` — Migrating OpenAI Apps SDK to MCP Apps
+- `references/28-migration/01-from-modelcontextprotocol-sdk.md` — Migrating from raw `@modelcontextprotocol/sdk` to mcp-use v2 (Server class, setRequestHandler, resources, prompts, Streamable HTTP)
+- `references/28-migration/02-v1-to-v2-overview.md` — v1 → v2 Migration Overview (top summary diff table, breaking changes, 10-step sequence, 7-rung exit gate)
+- `references/28-migration/03-v1-to-v2-imports-server-and-tools.md` — Imports, Server, and Tool Registration (root import, Standard Schema Zod v4, ToolRef export requirement)
+- `references/28-migration/04-v1-to-v2-responses-and-helpers.md` — Responses and Deprecated Helpers (raw CallToolResult envelopes, structuredContent, media blocks, error handling)
+- `references/28-migration/05-v1-to-v2-auth.md` — Authentication and OAuth Migration (mixedAuth: true, provider adapters, user.id, securitySchemes)
+- `references/28-migration/06-v1-to-v2-widgets-to-views.md` — Widgets to Views: Complete Rewrite (views/<name>/view.tsx, outputSchema, mcp-use/react hooks, state isolation)
+- `references/28-migration/07-v1-to-v2-sessions-transports-stdio-sse.md` — Sessions, Transports, and Stateless Model (Streamable HTTP, sessionStore removal, stateless request lifecycle)
+- `references/28-migration/08-appssdk-to-mcp-apps.md` — Migrating OpenAI Apps SDK to MCP Apps (@openai/apps-sdk-ui, Tailwind 4 tokens, AppsSDKUIProvider, dark mode [data-theme], typed entrypoints)
+- `references/28-migration/09-openapi-and-rest-to-tools.md` — REST APIs & OpenAPI Specifications to mcp-use v2 (fromOpenAPI, curated tool route forwarding, auth pass-through, error containment)
+- `references/28-migration/10-elicitation-and-state-evolution.md` — Interactive Elicitation & State Evolution (migrating ctx.elicit/ctx.sample to inputRequired, inputResponse, acceptedContent, and cryptographic createRequestStateCodec)
 
 ## 29-templates
 

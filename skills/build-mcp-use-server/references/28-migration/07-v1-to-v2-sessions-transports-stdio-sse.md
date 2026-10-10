@@ -1,287 +1,212 @@
-# Sessions, Transports, and Stateless Model
+# Sessions, Transports, and Stateless Serving
 
-*Read this when migrating stateful v1 servers, stdio, SSE, or Express adapters to v2.*
+*Read this when migrating stateful v1 servers, session stores, stdio listeners, SSE adapters, or Express routes to mcp-use v2.*
 
-v2 is stateless and HTTP-only. Session stores, post-response push, and stdio serving are removed. Each request is independent; state belongs in your application database.
+In `mcp-use v1`, the framework included an integrated session-affine runtime: servers maintained state across requests using `sessionStore` options (InMemory, Redis, FileSystem), allowed post-response push notifications via `sendNotificationToSession()`, exposed `ctx.session`, and supported stdio serving.
 
-## Session store removal
+`mcp-use v2` completely eliminates the stateful transport runtime. The server is strictly **stateless and HTTP-only**: each request executes independently against Streamable HTTP at `basePath: "/mcp"`, stdio listeners and Express adapters are removed, and multi-turn state must be persisted in an external database keyed by user identity (`ctx.auth.user.id`) or cryptographically passed via signed `requestState` tokens.
 
-**v1**:
+---
+
+## At a Glance: Sessions & Transports Diff
+
+| Capability / Surface | Legacy v1 (`mcp-use <= 1.34.5`) | Canonical v2 (`mcp-use >= 2.8.2`) | Impact / Action |
+|---|---|---|---|
+| **Context Model** | Session-affine; `ctx.session` holds persistent data | Stateless per-request; `ctx.session` **removed** | Key application state by `ctx.auth.user.id` or explicit trace tokens |
+| **Session Stores** | `InMemorySessionStore`, `RedisSessionStore` | **Removed**; no session store config in `MCPServer` | Remove `sessionStore` and `streamManager` constructor options |
+| **HTTP Transport** | Proprietary SSE protocol or Express bridge | MCP Streamable HTTP standard (`basePath: "/mcp"`) | Serves GET (streaming), POST (JSON-RPC), DELETE, OPTIONS |
+| **Stdio Serving** | `server.listen({ stdio: true })` | **Removed**; Streamable HTTP only | Connect clients over HTTP or use external stdio-to-HTTP bridge |
+| **Framework Bridges**| Express/Connect adapter (`server.listen({ express })`) | **Removed**; native Hono (`server.app`) or `server.fetch` | Migrate to Hono or export standard Web Fetch handler |
+| **Post-Response Push**| `sendNotificationToSession(sessionId, ...)` | **Removed**; active request notifications only (`ctx.sendNotification`) | Use long-polling, background workers, or resource subscriptions |
+| **Server-Side Sampling**| `await ctx.sample({ prompt })` | **Removed**; model generates on host; server provides tools | Eliminate server LLM calls; return deterministic tool results |
+| **Multi-Round Elicit**| Beta `ctx.elicit()` / in-memory wizard sessions | `inputRequired()` + `createRequestStateCodec` | See dedicated guide: `10-elicitation-and-state-evolution.md` |
+
+---
+
+## Session Store Removal & Migration
+
+In v1, tools accessed long-lived session state directly on the context object:
+
+### Before (v1): Stateful Transport Sessions
 ```typescript
 import { MCPServer, InMemorySessionStore, RedisSessionStore } from "mcp-use/server";
 
 const server = new MCPServer({
   name: "my-server",
   version: "1.0.0",
-  sessionStore: new RedisSessionStore({ client: redis }),
-  streamManager: new RedisStreamManager({ client: redis }),
+  sessionStore: new RedisSessionStore({ client: redisClient }),
+  streamManager: new RedisStreamManager({ client: redisClient }),
 });
 
-server.tool(..., async (input, ctx) => {
-  const sessionId = ctx.session?.sessionId;
-  const previousState = await ctx.session?.get("state");
-});
+server.tool(
+  { name: "track-progress", schema: z.object({ step: z.number() }) },
+  async ({ step }, ctx) => {
+    // Legacy session access
+    const sessionId = ctx.session?.sessionId;
+    const previous = await ctx.session?.get("lastStep");
+    await ctx.session?.set("lastStep", step);
+    return text(`Updated step for session ${sessionId}`);
+  }
+);
 ```
 
-**v2**:
+### After (v2): Stateless Architecture
 ```typescript
 import { MCPServer } from "mcp-use";
+import { z } from "zod";
 
 const server = new MCPServer({
   name: "my-server",
-  version: "1.0.0",
-  // No sessionStore or streamManager options
+  version: "2.0.0",
+  basePath: "/mcp",
+  // No sessionStore or streamManager options!
 });
 
-export const tool = server.tool(..., async (input, ctx) => {
-  // No ctx.session
-  const userId = ctx.auth?.user.id;
-  const previousState = userId ? await db.state.findByUserId(userId) : null;
-});
-```
+export const trackProgress = server.tool(
+  {
+    name: "track-progress",
+    inputSchema: z.object({
+      step: z.number(),
+      // For unauthenticated clients, pass an explicit durable correlation token:
+      correlationId: z.string().optional(),
+    }),
+    outputSchema: z.object({ success: z.boolean(), lastStep: z.number() }),
+  },
+  async ({ step, correlationId }, ctx) => {
+    // 1. Authenticated: Key state by verified identity
+    const userId = ctx.auth?.user?.id;
 
-**Migration rule**: Replace all `ctx.session` reads/writes with application-owned storage keyed by verified identity (`ctx.auth.user.id`) or explicit request parameters.
+    // 2. Unauthenticated: Key state by explicit input token
+    const stateKey = userId ?? correlationId ?? crypto.randomUUID();
 
-## The full v1 session-runtime family is removed (no v2 equivalent)
+    // Store in application-owned database (Postgres, Redis, DynamoDB)
+    const previous = await db.progress.get(stateKey);
+    await db.progress.set(stateKey, { step, updatedAt: new Date() });
 
-v2 ships **none** of v1's stateful transport. Every one of these is gone — there is no renamed import, only a redesign:
-
-- `InMemorySessionStore`, `FileSystemSessionStore`, `RedisSessionStore`
-- `RedisStreamManager`
-- `MCPServer` config keys `sessionStore`, `streamManager`, `stateless: false`, `sessionIdleTimeoutMs`
-- `ctx.session` (and `ctx.session.sessionId`)
-- Session introspection: `server.getActiveSessions()`, `server.getServerForSession()`
-- Per-session capability injection: `server.registerCapabilities(...)` / runtime capability patching
-
-Check for all of them during migration — they fail as **type/config errors**, not imports, so an import scan alone will miss them:
-
-```bash
-grep -rnE 'stateless|sessionStore|streamManager|sessionIdleTimeout|RedisSessionStore|RedisStreamManager|InMemorySessionStore|FileSystemSessionStore|ctx\.session|getActiveSessions|getServerForSession|registerCapabilities' src/ index.ts
-```
-
-**Distinguish two uses of Redis before deleting anything.** v1 protocol state (sessions, stream resume) is obsolete in v2 — remove the `RedisSessionStore`/`RedisStreamManager` that fed `MCPServer`. But an **application** Redis store (a resume cache, ledger, or idempotency store keyed by your own ID) is still valid — keep it as ordinary application state outside the server config. Do not conflate the two.
-
-**Identity key when there is no OAuth.** The rule "key storage by `ctx.auth.user.id`" only works if your server authenticates. A v1 project that used a transport session ID as its identity for unauthenticated clients needs a replacement identity:
-
-| v1 identity | v2 replacement |
-|---|---|
-| Authenticated user | `ctx.auth.user.id` (unchanged pattern) |
-| Unauthenticated, correlation needed | Client passes a durable trace/session token as a tool **input parameter** (or mint one server-side and return it; client echoes it back). Validate/sanitize like any input. |
-| Multi-round wizard state | `createRequestStateCodec` + `requestState` (signed, tamper-evident) — see below |
-| Anonymous + no correlation | Stateless — no storage |
-
-```typescript
-// Unauthenticated correlation via explicit input token
-export const run = server.tool(
-  { name: "run", inputSchema: z.object({ task: z.string(), traceId: z.string().optional() }), outputSchema: ... },
-  async ({ task, traceId }, ctx) => {
-    const id = traceId ?? crypto.randomUUID();
-    await db.ledger.append(id, task);       // application store, not a session store
-    return { content: [...], structuredContent: { traceId: id, ... } };
+    return {
+      content: [{ type: "text", text: `Updated step to ${step} for key ${stateKey}` }],
+      structuredContent: { success: true, lastStep: previous?.step ?? 0 },
+    };
   }
 );
 ```
 
-If you patched internal session factories (`getServerForSession`) or called `registerCapabilities()` at runtime, that behavior **cannot be ported** — v2 builds the per-request MCP instance from the registry and exposes no public hook. Expose the same information through tools/resources, set static capability text via the `instructions` constructor field, or drop to the low-level `@modelcontextprotocol/server` SDK only if you own the whole handler.
-
-
-## State migration patterns
-
-| v1 session use | v2 replacement |
-|---|---|
-| Wizard step / form progress | `input_required` rounds (`inputRequired()`/`inputResponse()`/`acceptedContent()`) + `createRequestStateCodec` |
-| User preferences | Database keyed by `ctx.auth.user.id` |
-| Temporary calculation cache | External cache (Redis) keyed by request or user |
-| Anonymous session | Client passes state token as tool input |
-| Cross-request workflow | Durable workflow engine or DB state machine |
-| Post-response notification | Subscription listener active on request; otherwise client polling/webhook |
-
-## Request state codec for elicitation
-
-> **`ctx.elicit(key, message, schema)` is documented in some v2 docs but not shipped in 2.8.2.** `RequestContextBase` in the shipped `dist/context.d.ts` has no `elicit` field. Use the real, shipped primitives below — `inputRequired()`, `inputResponse()`, `acceptedContent()` — re-exported from `mcp-use` root (originally from `@modelcontextprotocol/server`). See `../12-elicitation/01-overview.md` for the full elicitation model.
-
-Use `createRequestStateCodec` to persist state across input-required rounds. It mints an HMAC-signed wire string in `inputRequired({ requestState })` and verifies it on the client's retry via `ServerOptions.requestState.verify`:
-
-```typescript
-import { MCPServer, createRequestStateCodec, inputRequired, inputResponse, acceptedContent } from "mcp-use";
-import { z } from "zod";
-
-const stateCodec = createRequestStateCodec<{ orderId: string; step: number }>({
-  key: process.env.REQUEST_STATE_SECRET!, // >= 32 bytes; throws RangeError otherwise
-  ttlSeconds: 600, // defaults to 600 if omitted
-});
-
-const server = new MCPServer({
-  name: "checkout-server",
-  version: "1.0.0",
-  requestState: { verify: stateCodec.verify }, // wire the verify hook in
-});
-
-const confirmSchema = z.object({ confirmed: z.boolean() });
-
-export const checkout = server.tool(
-  { name: "checkout", inputSchema: z.object({ orderId: z.string() }), outputSchema: z.object({ ok: z.boolean() }) },
-  async ({ orderId }, ctx) => {
-    const state = ctx.requestState<{ orderId: string; step: number }>() ?? { orderId, step: 1 };
-    const response = inputResponse(ctx.inputResponses, "confirm-checkout");
-    if (response.kind === "elicit" && response.action !== "accept") {
-      return { content: [{ type: "text", text: "Cancelled" }], structuredContent: { ok: false } };
-    }
-
-    const confirmation = acceptedContent(ctx.inputResponses, "confirm-checkout", confirmSchema);
-    if (confirmation === undefined) {
-      return inputRequired({
-        inputRequests: {
-          "confirm-checkout": inputRequired.elicit({
-            message: "Confirm checkout?",
-            requestedSchema: confirmSchema,
-          }),
-        },
-        requestState: await stateCodec.mint(state),
-      });
-    }
-
-    if (!confirmation.confirmed) {
-      return { content: [{ type: "text", text: "Cancelled" }], structuredContent: { ok: false } };
-    }
-
-    // Side effects only after accept (handler re-runs from the top on input)
-    await db.orders.complete(state.orderId);
-    return { content: [{ type: "text", text: "Done" }], structuredContent: { ok: true } };
-  }
-);
-```
-
-`stateCodec.mint(payload)` returns `Promise<string>`; the verified payload is read back inside the handler as `ctx.requestState<{ orderId: string; step: number }>()` (called as a generic function, not `.decode()`/`.parse()`). A tampered or expired `requestState` fails `verify` and is rejected before your handler runs. The codec is signed, not encrypted: clients can read its payload. Signing prevents tampering but does not by itself bind a token to one authenticated user, so never use request state alone as an authorization boundary; re-check `ctx.auth` and durable ownership before side effects.
-
-**Important**: The handler re-runs from the top when the client supplies input — there is no suspended stack frame. Make side effects idempotent or execute only after `acceptedContent()` returns validated data.
-
-## Post-response push removal
-
-**v1**:
-```typescript
-await server.sendNotificationToSession(sessionId, "job/complete", { id });
-await server.sendNotification("broadcast/update", { ... });
-```
-
-**v2**:
-```typescript
-// During active request only:
-await ctx.sendNotification("job/progress", { id, progress: 50 });
-
-// Resource subscriptions (active listeners only):
-await server.notifyResourceUpdated("app://job/123");
-await server.notifyToolsChanged();
-await server.notifyPromptsChanged();
-await server.notifyResourcesChanged();
-```
-
-There is no arbitrary broadcast or session-targeted push after a request ends. For long-running jobs:
-- Return a job ID immediately.
-- Provide a `get-job-status` tool.
-- Optionally use resource subscriptions while a client is connected.
-- Use external webhooks for out-of-band notifications.
-
-## Transport migration
-
-### v1 stdio → v2 HTTP
-
-**v1**:
-```typescript
-await server.listen({ stdio: true });
-// Or auto-detected when no PORT
-```
-
-**v2**:
-```typescript
-// Node/local
-await server.listen(3000);
-
-// Edge/fetch runtimes
-export default { fetch: server.fetch };
-```
-
-No stdio transport exists in v2. Use HTTP. If a local MCP host requires stdio, run an external stdio-to-HTTP bridge (outside mcp-use) or use raw SDK.
-
-### v1 SSE → v2 Streamable HTTP
-
-v1's proprietary SSE transport is replaced by MCP Streamable HTTP. You do not configure it explicitly:
-
-```typescript
-// v2 handles Streamable HTTP automatically
-await server.listen(3000);
-// MCP endpoint: http://localhost:3000/mcp
-```
-
-Streamable HTTP supports:
-- POST for JSON-RPC requests
-- GET for server-to-client streaming
-- DELETE for session termination (stateless v2 treats this as cleanup)
-- OPTIONS for CORS preflight
-
-### Express/Connect adapters removed
-
-**v1**:
-```typescript
-await server.listen({
-  express: app,
-  router: express.Router(),
-});
-```
-
-**v2** — Use Hono or Web Fetch:
-```typescript
-// Option 1: Hono app (available as server.app)
-import { serve } from "@hono/node-server";
-serve({ fetch: server.app.fetch, port: 3000 });
-
-// Option 2: Standard fetch handler
-export default { fetch: server.fetch };
-
-// Option 3: Node adapter
-import { toNodeHandler } from "mcp-use/node";
-const handler = toNodeHandler(server);
-```
-
-## Runtime adapters
-
-| Runtime | v2 serving pattern |
-|---|---|
-| Node.js | `await server.listen(port)` |
-| Vercel/Next.js | `createNextHandler()` from `mcp-use/next` |
-| Cloudflare Workers | `export default { fetch: server.fetch }` |
-| Deno | `Deno.serve(server.fetch)` |
-| Bun | `Bun.serve({ fetch: server.fetch })` |
-| Hono | `server.app` (Hono instance) |
-| Express | **Not supported**; migrate to Hono or use `toNodeHandler` |
-
-## No server-side sampling
-
-**v1**:
-```typescript
-const completion = await ctx.sample({
-  systemPrompt: "You are a helpful assistant",
-  messages: [...],
-  maxTokens: 500,
-});
-return text(completion.content);
-```
-
-**v2**: `ctx.sample()` is removed. Redesign:
-
-```typescript
-// Server provides deterministic tool
-export const preparePrompt = server.tool(
-  { name: "prepare-prompt", inputSchema: z.object({ data: z.string() }), outputSchema: z.object({ prompt: z.string() }) },
-  async ({ data }) => ({
-    content: [{ type: "text", text: `Summarize: ${data}` }],
-    structuredContent: { prompt: `Summarize: ${data}` },
-  })
-);
-```
-
-The client/model performs generation and calls tools for deterministic operations. Do not embed LLM generation inside the MCP server.
+### Distinguishing Protocol Redis from Application Redis
+When migrating a codebase using Redis:
+- **Delete** `RedisSessionStore` and `RedisStreamManager` that fed `new MCPServer({ ... })`.
+- **Keep** your application Redis client (`ioredis`, `@upstash/redis`) outside the server config to store application-level cache, idempotency keys, and rate limits.
 
 ---
 
-**Next**: See `08-appssdk-to-mcp-apps.md` if migrating OpenAI Apps SDK code; otherwise run the validation checklist in `02-v1-to-v2-overview.md`.
+## State Identity Strategies in a Stateless World
+
+Without transport sessions, choose the appropriate identity model:
+
+| Use Case | Identity Key Strategy | Canonical v2 Implementation |
+|---|---|---|
+| **Authenticated User** | Verified account identifier | Key database records by `ctx.auth.user.id`. |
+| **Anonymous User / Correlation** | Explicit input token | Require or generate a `traceId` / `conversationId` property in `inputSchema`. |
+| **Multi-Round Elicitation Form** | Cryptographic state token | Use `createRequestStateCodec` carried in `requestState`. (See `10-elicitation-and-state-evolution.md`). |
+| **Truly Anonymous / One-Off** | No storage required | Stateless execution; handler operates purely on inputs and returns results. |
+
+---
+
+## Transport Migration: From Stdio & Proprietary SSE to Streamable HTTP
+
+### 1. Stdio Serving Removed
+In v1, calling `server.listen({ stdio: true })` bound the server to process standard input/output. In v2, **stdio is completely removed**:
+
+```typescript
+// v1 (Removed)
+await server.listen({ stdio: true });
+
+// v2 (Canonical): Node.js standalone HTTP server
+await server.listen(3000); // Listens at http://localhost:3000/mcp
+```
+
+If you must connect a legacy client that only speaks stdio (such as older Claude Desktop versions that cannot connect to HTTP endpoints), use an external stdio-to-HTTP proxy (e.g. `mcp-proxy` or `@modelcontextprotocol/sdk` CLI bridge) outside `mcp-use`.
+
+### 2. Proprietary SSE Replaced by Streamable HTTP
+In v1, servers ran proprietary Server-Sent Events endpoints. In v2, the server automatically mounts the official **MCP Streamable HTTP protocol** at `basePath` (default `/mcp`):
+- **POST `/mcp`**: Handles standard JSON-RPC requests (`tools/call`, `tools/list`, etc.).
+- **GET `/mcp`**: Establishes streaming event transport (`text/event-stream`).
+- **DELETE `/mcp`**: Handles session teardown signals gracefully.
+- **OPTIONS `/mcp`**: Manages CORS preflight handshakes.
+
+### 3. Express and Connect Adapters Removed
+In v1, servers could attach directly to an Express app. In v2, Express adapters are removed. Deploy via **Hono**, **Node HTTP adapter**, or standard **Web Fetch**:
+
+```typescript
+// Option A: Standalone Node.js HTTP server (built-in)
+await server.listen(3000);
+
+// Option B: Standard Web Fetch handler (Cloudflare Workers, Edge runtimes)
+export default { fetch: server.fetch };
+
+// Option C: Hono application instance (server.app is a pre-configured Hono app)
+import { serve } from "@hono/node-server";
+serve({ fetch: server.app.fetch, port: 3000 });
+
+// Option D: Node.js http.createServer adapter
+import { toNodeHandler } from "mcp-use/node";
+import http from "node:http";
+const httpServer = http.createServer(toNodeHandler(server));
+httpServer.listen(3000);
+```
+
+---
+
+## Post-Response Notifications Removed
+
+In v1, servers could push out-of-band notifications to specific sessions long after an HTTP request completed:
+
+```typescript
+// v1 (Removed)
+await server.sendNotificationToSession(sessionId, "job/complete", { jobId: "123" });
+await server.sendNotification("broadcast/update", { data: [...] });
+```
+
+In v2, all notifications are strictly scoped:
+- **During an active request**: Call `await ctx.sendNotification("progress", { percent: 50 })` or `await ctx.sendLog("info", { stage: "processing" })`.
+- **Resource Subscriptions**: Clients actively subscribed to a resource receive change notifications when you call `await server.notifyResourceUpdated("app://record/123")`.
+- **Tool/Prompt Updates**: Broadcast metadata changes via `await server.notifyToolsChanged()`.
+
+For long-running asynchronous tasks (e.g. 5-minute batch jobs):
+1. Tool returns immediately with `{ status: "queued", jobId: "job_99" }`.
+2. Provide a companion query tool: `get-job-status({ jobId })`.
+3. Use external webhooks for out-of-band notifications.
+
+---
+
+## Multi-Round Elicitation & State Evolution
+
+> **Notice**: While experimental v2 notes referenced `ctx.elicit()`, `ctx.elicit()` was **permanently removed in v2.4.3 (#2409)**. 
+
+For interactive multi-round workflows (such as confirmation dialogs or multi-step wizards), canonical `mcp-use v2` uses:
+1. `inputRequired({ inputRequests: { key: inputRequired.elicit(...) }, requestState })`
+2. `inputResponse(ctx.inputResponses, key)`
+3. `acceptedContent(ctx.inputResponses, key, schema)`
+4. `createRequestStateCodec<T>({ key: SECRET, ttlSeconds: 300 })`
+
+For the complete guide and runnable code transformations, see dedicated guide:  
+👉 **`10-elicitation-and-state-evolution.md`**
+
+---
+
+## Anti-Patterns and Common Traps
+
+| Anti-Pattern | Root Mechanism & Failure Mode | Canonical v2 Fix |
+|---|---|---|
+| **Passing `sessionStore` to `MCPServer`** | Option removed from `ServerConfig`. Fails TypeScript compilation. | Store state in application database keyed by `ctx.auth.user.id`. |
+| **Calling `server.listen({ stdio: true })`** | Stdio transport removed. Method throws or option is ignored. | Call `server.listen(port)` to serve over Streamable HTTP. |
+| **Attempting to Read `ctx.session`** | `ctx.session` is undefined in v2. Accessing properties throws `TypeError: Cannot read properties of undefined`. | Read identity from `ctx.auth.user.id` or input arguments. |
+| **Passing Express App to `server.listen`** | Express adapter removed in v2. | Use `server.app` (Hono), `server.fetch`, or `toNodeHandler(server)`. |
+| **Relying on `sendNotificationToSession`** | Out-of-band session push deleted. | Send progress during request via `ctx.sendNotification()`, or return a job ID and poll. |
+
+---
+
+## Next Steps & Cross-References
+
+- **Interactive Elicitation**: See `10-elicitation-and-state-evolution.md` for multi-round input forms and cryptographic request state.
+- **Master Overview**: See `02-v1-to-v2-overview.md` for the full migration checklist and exit gate.
+- **Production Deployment**: See `references/25-deploy/02-pre-deploy-checklist.md` for cloud environment hardening.

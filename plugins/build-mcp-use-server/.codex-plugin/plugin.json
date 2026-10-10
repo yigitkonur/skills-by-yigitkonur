@@ -1,7 +1,7 @@
 {
   "name": "build-mcp-use-server",
   "version": "1.0.127",
-  "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.",
+  "description": "Build TypeScript MCP servers and ChatGPT MCP Apps with mcp-use v2 — MCPServer base, OpenAI Apps SDK UI compliance by default, views, settings, entrypoints, model context, mixed auth, and official CLI.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "build-mcp-use-server",
-    "shortDescription": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.",
+    "shortDescription": "Build TypeScript MCP servers and ChatGPT MCP Apps with mcp-use v2 — MCPServer base, OpenAI Apps SDK UI compliance by default, views, settings, entrypoints, model context, mixed auth, and official CLI.",
     "longDescription": "Install only the build-mcp-use-server workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

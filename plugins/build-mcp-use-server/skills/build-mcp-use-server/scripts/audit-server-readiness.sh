@@ -38,6 +38,21 @@ check_fail() {
 
 echo "=== 1. Package Configuration ==="
 
+# Check Node version (>= 22.22.2 required for mcp-use v2)
+if command -v node &>/dev/null; then
+    NODE_VERSION=$(node -v | sed 's/^v//')
+    NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
+    NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
+    NODE_PATCH=$(echo "$NODE_VERSION" | cut -d. -f3)
+    if [ "$NODE_MAJOR" -gt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && { [ "$NODE_MINOR" -gt 22 ] || { [ "$NODE_MINOR" -eq 22 ] && [ "$NODE_PATCH" -ge 2 ]; }; }; }; then
+        check_pass "Node.js engine >= 22.22.2 (current: v$NODE_VERSION)"
+    else
+        check_fail "Node.js $NODE_VERSION is unsupported. mcp-use v2 requires Node >= 22.22.2"
+    fi
+else
+    check_fail "Node.js not found in PATH"
+fi
+
 # Check ESM "type": "module"
 if grep -q '"type": "module"' package.json; then
     check_pass "ESM-only (\"type\": \"module\")"
@@ -108,6 +123,13 @@ if [ -d "views" ]; then
     VIEW_COUNT=$(find views -name "view.tsx" -o -name "view.ts" | wc -l)
     if [ "$VIEW_COUNT" -gt 0 ]; then
         check_pass "views/ directory with $VIEW_COUNT view file(s)"
+
+        # Check for OpenAI Apps SDK UI compliance
+        if grep -q '"@openai/apps-sdk-ui"' package.json; then
+            check_pass "@openai/apps-sdk-ui installed (ChatGPT UI compliant)"
+        else
+            check_warn "No @openai/apps-sdk-ui in package.json. Recommended for ChatGPT Apps UI compliance: npm install @openai/apps-sdk-ui"
+        fi
     else
         check_warn "views/ directory exists but no view.tsx/view.ts found"
     fi
