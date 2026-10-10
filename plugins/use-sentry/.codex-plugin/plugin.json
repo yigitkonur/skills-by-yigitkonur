@@ -1,6 +1,6 @@
 {
   "name": "use-sentry",
-  "version": "1.0.119",
+  "version": "1.0.120",
   "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, or triaging production incidents using Seer AI and modern CLI recipes.",
   "author": {
     "name": "Yigit Konur",
