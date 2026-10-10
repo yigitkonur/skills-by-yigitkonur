@@ -47,3 +47,11 @@ On blockage, name the unavailable evidence/source/access and the next observatio
 that would resolve it. The orchestrator owns questions and fresh execution. On
 retry, compare prior failed explanation with what changed and new evidence;
 do not repeat the same causal assertion merely because another attempt remains.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Extended thinking traces root cause across source code, logs, and stack traces without tool timeouts. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for thorough code analysis and causal hypothesis testing.
+- **Gemini**: `gemini-3.8-flash` with `high` reasoning effort. Deep reasoning is strictly reserved for discriminating subtle bug causes and causal proof.
+

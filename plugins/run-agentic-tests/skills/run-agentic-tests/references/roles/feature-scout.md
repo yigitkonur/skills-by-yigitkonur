@@ -42,3 +42,11 @@ produced, retain the map/partial draft, report the missing source/access to the
 orchestrator, and do not invent a source reference. Retry only with new inputs or
 the supplied changed hypothesis; read `prior_context` before continuing. Workers
 do not ask the user or launch the scenario author themselves.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Fast codebase exploration and route discovery. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical feature mapping. Avoid `high`/`xhigh`.
+- **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for high-throughput discovery scans.
+

@@ -69,3 +69,11 @@ and the independent audit, not by its own prose. A blocker preserves the exact
 reason, affected dependency branch, ownership, and next actionable requirement.
 Report partial coverage when unresolved work remains. Confirm actual worker finish
 before `task close --finished true`; accepted output alone is insufficient.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical coordination. Avoid `high`/`xhigh`.
+- **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for high-throughput dispatch and reconciliation.
+

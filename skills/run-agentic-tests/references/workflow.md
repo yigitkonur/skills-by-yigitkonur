@@ -8,10 +8,10 @@ handoff; they do not take over this loop.
 Choose the workflow track based on campaign scope:
 
 ### Track A: Streamlined Fast-Path (Recommended for smoke checks, single journeys, or pre-authored suites)
-Bypasses exploratory roles (Feature scout, Planner, Plan auditor, Ticket writer) to eliminate unnecessary latency and token burn:
-1. **Wave 0 Readiness**: Verify runtime target, port leases, and specialized runner (`ego-browser`, `test-by-maestro`, `test-by-mcpc-cli`, or CLI process).
-2. **Parallel Execution**: Dispatch executors concurrently across ready test cases up to host capacity. For remote web/mobile runners, retrieve remote artifacts via `scp` to local `evidences/`.
-3. **Concurrent Verification**: When `review_count: 2` is declared, dispatch Verifier A and Verifier B **concurrently in parallel**. Reconcile verdicts immediately.
+Designed for rapid turn-around on existing test suites, smoke passes, or CI regression journeys. It **explicitly bypasses exploratory and coordination roles** (`Feature scout`, `Scenario author`, `Planner`, `Plan auditor`, `Ticket writer`):
+1. **Wave 0 Readiness**: Automated runner preflight checks the dev runtime target, confirms leased port availability, and verifies test runner presence (`ego-browser` for web, `test-by-maestro` for mobile, `test-by-mcpc-cli` for MCP, or native CLI). Refuse to start if required runners or runtimes are missing.
+2. **Parallel Execution**: Pre-authored cases (in `cases/<case-id>/specs/S001/`) are registered under a minimal plan and dispatched concurrently up to available worker capacity (`min(max_active, host_capacity)`). For remote web (`ego-browser` on `tugce`) or mobile runners, executors retrieve remote screenshots and logs via hardened `scp` (with `-O` fallback) to local `evidences/` before sealing submissions.
+3. **Concurrent Dual Verification**: When `review_count: 2` is declared, dispatch Verifier A and Verifier B **concurrently in parallel** with asymmetric lenses (Specification Conformance vs. Adversarial Scrutiny) and distinct seeds. Reconcile verdicts immediately; verified failures route directly to rapid diagnosis or developer triage without ticket-writing ceremony.
 
 ### Track B: Full Multi-Agent Campaign (Exploratory discovery, large product surfaces, or multi-team fixes)
 Follows the comprehensive 12-role lifecycle detailed below.
@@ -57,13 +57,13 @@ ready target, declared dependencies/resources, and approved plan membership.
 
 Use [Scheduling](scheduling.md). For each ready task: reserve it through the CLI,
 launch one fresh host worker with the generated handoff and narrow reading set,
-then bind its real host handle. Configure models per provider: Anthropic (`sonnet-5.5` or `haiku-5.5` or newer with `low`/`medium` reasoning, never Opus); Codex (`gpt-6-luna` with `low` reasoning for simple ops, `gpt-6.1-sol` with `medium` for evidence checks); Gemini (`gemini-3.8-flash` with `low` for simple ops, `medium` for evidence checks, `high` for diagnosis). Messages (`send_message`) enable real-time
+then bind its real host handle. Configure models per provider: Anthropic (mandate `claude-3-7-sonnet` or `claude-3-5-sonnet` with low/medium reasoning `budget_tokens: 1,024–2,048`; strictly ban `claude-3-opus`); OpenAI / Codex (`gpt-6-luna` with `low` reasoning for simple ops, `gpt-6.1-sol` with `medium` for evidence checks; ban `high`/`xhigh`); Gemini (`gemini-3.8-flash` with `low` for simple ops, `medium` for evidence checks, reserving `high` for root-cause diagnosis and DAG planning). Messages (`send_message`) enable real-time
 notifications and blocker escalation; files carry durable truth.
 
 Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.
 Execution produces observations and artifact references. The verifier opens
 those artifacts and judges each expectation. Critical cases get the declared
-blind second review dispatched concurrently in parallel with prompt/seed variance (conformance vs. adversarial lenses) to eliminate cache duplicates. Any additional experiment
+blind second review dispatched concurrently in parallel with asymmetric lenses (Specification Conformance vs. Adversarial Scrutiny) and distinct seeds (`seed: sha256(campaign_id + task_id + "slot_a")` vs `"slot_b"`) to eliminate cache duplicate completions. Any additional experiment
 is a new executor task, never an action performed by the verifier.
 
 When a failure is verified, delegate diagnosis immediately. Implementation-bound

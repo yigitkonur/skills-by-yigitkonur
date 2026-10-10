@@ -8,8 +8,16 @@ Object.assign(schema.definitions, runtimeSchema.definitions);
 schema.definitions.runtime_recovery_request.properties.source = runtimeSchema.definitions.environment.properties.source;
 const validators = new Map();
 
+export const RUNNER_ERROR_CODES = {
+  RUNNER_CLI_MISSING: 'RUNNER_CLI_MISSING',
+  RUNNER_SKILL_MISSING: 'RUNNER_SKILL_MISSING',
+  RUNNER_VERSION_UNSUPPORTED: 'RUNNER_VERSION_UNSUPPORTED',
+  JAVA_RUNTIME_MISSING: 'JAVA_RUNTIME_MISSING',
+  PLATFORM_CONSTRAINT_VIOLATED: 'PLATFORM_CONSTRAINT_VIOLATED',
+};
+
 export class CliError extends Error {
-  constructor(code, message, exitCode = 3, details = []) {
+  constructor(code, message, exitCode = (Object.values(RUNNER_ERROR_CODES).includes(code) ? 5 : 3), details = []) {
     super(message);
     this.name = 'CliError';
     this.code = code;

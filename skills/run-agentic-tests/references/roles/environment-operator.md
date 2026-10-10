@@ -61,3 +61,19 @@ recovery. Restart/fix means a new target generation, never overwrite the old one
 Read retry context before attempting recovery. State what changed, the new
 readiness hypothesis, what not to repeat, and whether leases must be reacquired.
 Stop only verified owned unused resources; retain final inspection runtimes.
+
+## Runner preflight verification (Wave 0)
+
+During Wave 0, verify that required sibling test runners exist before declaring readiness:
+- **Web**: Check `which ego-browser` and verify the `ego-browser` skill.
+- **Mobile**: Check `which maestro`, verify `maestro --version` (≥ 2.10.0 / 2.11.0), and confirm a valid Java 17+ runtime (`java -version`). On Linux hosts, verify that iOS tests are directed to Maestro Cloud or SSH rather than local simulator.
+- **MCP**: Check `which mcpc`, verify `mcpc --version` (0.7.x), and verify session-first syntax.
+Fail fast with `RUNNER_CLI_MISSING`, `RUNNER_SKILL_MISSING`, or `JAVA_RUNTIME_MISSING` if any required tool is absent.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Fast turnaround for server spin-up and port verification. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical environment probing. Avoid `high`/`xhigh`.
+- **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for rapid readiness probing.
+

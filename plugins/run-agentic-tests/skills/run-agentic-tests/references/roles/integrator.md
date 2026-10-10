@@ -55,3 +55,11 @@ action; do not invent a merge commit. Release the lease only after recording the
 real lifecycle outcome. On retry, inspect whether the earlier merge occurred
 before reissuing it, then use prior-context changes and issue/PR history. Never
 reset the repair allowance or erase pending retest because integration succeeded.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Rapid Git merge operations and conflict verification. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical merge operations. Avoid `high`/`xhigh`.
+- **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for high-throughput Git commands and target allocation.
+

@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const commands = {
-  doctor: { options: ['project', 'setup'], required: [], module: 'workflow' },
+  doctor: { options: ['project', 'setup', 'runners'], required: [], module: 'workflow' },
   init: { options: ['project', 'slug', 'mode', 'max-active', 'host-capacity', 'max-attempts', 'locale', 'github-remote'], required: ['project', 'slug'], module: 'workflow' },
   'plan accept': { options: ['campaign', 'file', 'audit'], required: ['campaign', 'file', 'audit'], module: 'workflow' },
   'finding link': { options: ['campaign', 'file'], required: ['campaign', 'file'], module: 'workflow' },
@@ -26,7 +26,7 @@ const commands = {
   'report stop': { options: ['campaign'], required: ['campaign'], module: 'report' },
 };
 
-const booleanOptions = new Set(['setup', 'finished', 'check', 'ready', 'help']);
+const booleanOptions = new Set(['setup', 'runners', 'finished', 'check', 'ready', 'help']);
 function usageError(code, message, details = []) {
   return Object.assign(new Error(message), { code, exitCode: 2, details });
 }

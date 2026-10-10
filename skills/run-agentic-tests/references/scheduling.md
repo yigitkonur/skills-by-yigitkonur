@@ -6,7 +6,7 @@ records reservations; the host provides actual worker lifecycle controls.
 ## Capacity, model sizing, and independence
 
 - **Concurrency**: Use `min(campaign max_active, actual host capacity)` active role workers. Default to realistic local concurrency (2–4 workers) to prevent OOM and port collisions.
-- **Model Economy**: Configure workers per provider to balance speed, cost, and accuracy. Anthropic: `sonnet-5.5` or `haiku-5.5` (or newer, e.g. `claude-3.7-sonnet`); never Opus. Set reasoning effort to `low` or `medium` (cap extended thinking budget to 1,024–2,048 tokens; disable for routine steps). Codex: `gpt-6-luna` with `low` reasoning for simple ops; `gpt-6.1-sol` with `medium` reasoning for evidence checks. Gemini: `gemini-3.8-flash` with `low` reasoning for simple ops, `medium` for verification, reserving `high` for root-cause diagnosis.
+- **Model Economy**: Configure workers per provider to balance speed, cost, and accuracy. Anthropic: mandate `claude-3-7-sonnet` or `claude-3-5-sonnet` with low or medium reasoning `budget_tokens: 1,024–2,048` (disable or set to 1024 for routine steps); strictly ban `claude-3-opus` to eliminate 5x cost penalties and multi-turn tool latency bottlenecks. OpenAI / Codex: `gpt-6-luna` with `reasoning_effort: "low"` for simple ops; `gpt-6.1-sol` with `reasoning_effort: "medium"` for evidence checks (ban `high`/`xhigh`). Gemini: `gemini-3.8-flash` with `low` reasoning for simple ops, `medium` for verification, reserving `high` for root-cause diagnosis and DAG planning.
 - **Independence**: Enforce author != executor, executor != verifier, distinct blind verifiers, and implementer != independent retest executor/verifier. Workers do not dispatch other workers.
 
 Sequence each launch: `task create` -> `task dispatch` -> host launch -> `task bind`.
@@ -55,7 +55,7 @@ To prevent LLM completion identicality and avoid duplicate output from provider 
 - **Prompt Variance**: Assign distinct evaluation lenses in their respective handoffs:
   - **Verifier A (Specification Conformance)**: Evaluates strict adherence to declared Given/When/Then steps and positive proof.
   - **Verifier B (Adversarial & Boundary Scrutiny)**: Evaluates edge conditions, negative assertions, subtle side effects, and potential capture gaps.
-- **Seed / Sampling Variance**: Ensure separate worker seed identities (`seed: campaign-hash + task_id`) or non-zero temperature to guarantee mathematically independent reviews.
+- **Seed / Sampling Variance**: Pass distinct seed identities (`seed: sha256(campaign_id + task_id + "slot_a")` vs `"slot_b"`) and non-zero temperature to eliminate prompt-cache identicality and guarantee mathematically independent completion trajectories.
 
 Both verifiers read only the original execution evidence allowlist, without either
 peer's result, verdict, notebook excerpt, or discussion. Running them concurrently

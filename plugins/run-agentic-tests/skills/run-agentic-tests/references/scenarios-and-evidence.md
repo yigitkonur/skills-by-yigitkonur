@@ -94,9 +94,9 @@ intermediate state needed to explain the outcome.
 
 | Interface | Runner tool | Useful evidence |
 |---|---|---|
-| Web | `ego-browser` | Screenshot of claimed state; relevant DOM/accessibility text; requests/responses or console logs |
-| Mobile | `test-by-maestro` | Flow exit code, JUnit XML (`--format JUNIT`), step screenshots, app logs |
-| MCP | `test-by-mcpc-cli` | Session receipt, tools-list/tools-call output (`--json`), exit codes (1 vs 2), server logs |
+| Web | `ego-browser` | Screenshot of claimed state (retrieved via SCP if remote); relevant DOM/accessibility text (`page.snapshot()`); requests/responses or console logs |
+| Mobile | `test-by-maestro` | Flow exit code, JUnit XML (`--format JUNIT`), 10-tool MCP server output (`inspect_screen` hierarchy JSON, bounds `[x,y,w,h]`, `take_screenshot` PNG), step screenshots, app logs |
+| MCP | `test-by-mcpc-cli` | Session receipt, `tools-list`/`tools-call` output (`--json`), `skills-list`/`skills-get` manifests, `resources-directory-read`, exit codes (1 vs 2), server logs |
 | CLI | Native process | Exact argv/cwd, exit status, stdout/stderr, resulting files/state |
 
 Bind each artifact to expectation IDs, step, target, capture time/tool where

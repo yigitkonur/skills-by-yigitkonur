@@ -68,3 +68,135 @@ export async function loadDependencies(options = {}) {
     throw failure('Installing locked dependencies failed. Check npm/network access, then retry doctor --setup.', [error.code || 'NPM_FAILED']);
   } finally { await rm(staging, { recursive: true, force: true }); }
 }
+
+export async function checkRunnerEgoBrowser() {
+  const skillPaths = [
+    path.join(homedir(), '.agents', 'skills', 'ego-browser', 'SKILL.md'),
+    path.join(root, '..', 'ego-browser', 'SKILL.md'),
+    path.join(root, 'skills', 'ego-browser', 'SKILL.md'),
+  ];
+  const skillAvailable = skillPaths.some(p => existsSync(p));
+
+  try {
+    const { stdout, stderr } = await execute('ego-browser', ['--version'], { timeout: 3000 });
+    const output = `${stdout}\n${stderr}`;
+    const versionMatch = output.match(/ego-browser\s+([\d.]+)/i);
+    return {
+      available: true,
+      cli_available: true,
+      skill_available: skillAvailable,
+      version: versionMatch ? versionMatch[1] : output.trim().split('\n')[0],
+      remote_host: output.includes('tugce') ? 'tugce' : null,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      cli_available: false,
+      skill_available: skillAvailable,
+      error: error.code || 'NOT_FOUND',
+    };
+  }
+}
+
+export async function checkRunnerMaestro() {
+  const skillPaths = [
+    path.join(root, '..', 'test-by-maestro', 'SKILL.md'),
+    path.join(root, 'skills', 'test-by-maestro', 'SKILL.md'),
+    path.join(homedir(), '.agents', 'skills', 'test-by-maestro', 'SKILL.md'),
+  ];
+  const skillAvailable = skillPaths.some(p => existsSync(p));
+
+  let javaAvailable = false;
+  let javaVersion = null;
+  try {
+    const { stdout, stderr } = await execute('java', ['-version'], { timeout: 3000 });
+    const output = `${stdout}\n${stderr}`;
+    const match = output.match(/version\s+"([\d._]+)"/i);
+    if (match && !output.includes('Unable to locate a Java Runtime')) {
+      javaAvailable = true;
+      javaVersion = match[1];
+    }
+  } catch {}
+
+  try {
+    const { stdout, stderr } = await execute('maestro', ['--version'], { timeout: 5000 });
+    const output = `${stdout}\n${stderr}`;
+    if (output.includes('Unable to locate a Java Runtime')) {
+      return {
+        available: false,
+        cli_available: true,
+        skill_available: skillAvailable,
+        supported: false,
+        java: { available: false, version: null },
+        error: 'JAVA_RUNTIME_MISSING',
+      };
+    }
+    const version = stdout.trim();
+    const versionSupported = /^2\.(1[01]|\d+)\./.test(version);
+    return {
+      available: javaAvailable && versionSupported,
+      cli_available: true,
+      skill_available: skillAvailable,
+      version,
+      supported: versionSupported,
+      java: { available: javaAvailable, version: javaVersion },
+      platform: process.platform,
+      ios_simulator_supported: process.platform === 'darwin',
+    };
+  } catch (error) {
+    return {
+      available: false,
+      cli_available: false,
+      skill_available: skillAvailable,
+      supported: false,
+      java: { available: javaAvailable, version: javaVersion },
+      error: error.code || 'NOT_FOUND',
+    };
+  }
+}
+
+export async function checkRunnerMcpc() {
+  const skillPaths = [
+    path.join(root, '..', 'test-by-mcpc-cli', 'SKILL.md'),
+    path.join(root, 'skills', 'test-by-mcpc-cli', 'SKILL.md'),
+    path.join(homedir(), '.agents', 'skills', 'test-by-mcpc-cli', 'SKILL.md'),
+  ];
+  const skillAvailable = skillPaths.some(p => existsSync(p));
+
+  try {
+    const { stdout } = await execute('mcpc', ['--version'], { timeout: 3000 });
+    const version = stdout.trim();
+    const versionSupported = /^0\.7\./.test(version);
+    return {
+      available: versionSupported,
+      cli_available: true,
+      skill_available: skillAvailable,
+      version,
+      supported: versionSupported,
+      session_first: true,
+      skills_extension: true,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      cli_available: false,
+      skill_available: skillAvailable,
+      supported: false,
+      error: error.code || 'NOT_FOUND',
+    };
+  }
+}
+
+export async function inspectAllRunners() {
+  const [egoBrowser, maestro, mcpc] = await Promise.all([
+    checkRunnerEgoBrowser(),
+    checkRunnerMaestro(),
+    checkRunnerMcpc(),
+  ]);
+  return {
+    ego_browser: egoBrowser,
+    maestro,
+    mcpc,
+  };
+}
+

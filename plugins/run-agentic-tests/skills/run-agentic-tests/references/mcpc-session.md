@@ -77,17 +77,28 @@ receipt proves attachment and discovery; it does not prove the acceptance case.
 
 ## Execute through the same client
 
-The executor uses the exact recorded client state and session using mcpc 0.7.x session-first syntax:
+The executor uses the exact recorded client state and session using **mcpc 0.7.x session-first syntax** (`mcpc @session <command>` or `mcpc <command> @session`):
 
 ```bash
-MCPC_HOME_DIR="$OWNED_STATE/client" mcpc --json "$SESSION" tools-list
-MCPC_HOME_DIR="$OWNED_STATE/client" mcpc --json "$SESSION" tools-call "$TOOL" "$ARGUMENTS_JSON"
+# Tool invocation
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session tools-list --json
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session tools-call "$TOOL" "$ARGUMENTS_JSON" --json
+
+# Official MCP Skills Extension
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session skills-list --json
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session skills-get "$SKILL_NAME" --json
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session skills-get "$SKILL_NAME" "$SPECIFIC_FILE" --json
+
+# Resources and Directory Reading
+MCPC_HOME_DIR="$OWNED_STATE/client" mcpc @session resources-directory-read "$URI" --json
 ```
 
 Save the real calls, arguments, output, exit status, and relevant protocol errors
-under the assigned evidence directory. Note exit codes: exit 1 represents CLI/transport
-failure, exit 2 represents an MCP error (`isError: true`) or timeout. The verifier
-reads those saved artifacts.
+under the assigned evidence directory. Note exit codes:
+- **Exit 0**: Clean success with valid JSON payload.
+- **Exit 1**: Transport failure, broken pipe, missing connection, or invalid CLI parameters.
+- **Exit 2**: MCP protocol-level error (`isError: true` returned by server, tool exception, or invocation timeout).
+The verifier reads those saved artifacts.
 
 ## Inspect, recover, and close
 

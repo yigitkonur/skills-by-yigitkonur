@@ -49,3 +49,11 @@ draft and return it for controller correction rather than silently excluding the
 case. For a revision, read the previous audit and `prior_context`; explain each
 changed edge, target, resource, or coverage decision. Worker completion is not
 plan acceptance.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). DAG construction, concurrency analysis, and resource lease conflict validation benefit from structured thinking depth. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for dependency DAG graph modeling and resource lease planning.
+- **Gemini**: `gemini-3.8-flash` with `high` reasoning effort. Deep reasoning is reserved for DAG planning and deadlock-free resource isolation scheduling.
+

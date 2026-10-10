@@ -56,3 +56,11 @@ If subject identity or necessary records are unavailable, submit a truthful
 notify the controller of the missing input. A repeat audit reads the previous
 findings and changed subject; do not approve an unchanged failed plan merely
 because the worker is new. Evidence supplementation belongs to a fresh executor.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Thorough reasoning ensures independent scrutiny of plan dependencies, resource leases, and closure evidence without timeouts. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for rigorous plan auditing and closure verification.
+- **Gemini**: `gemini-3.8-flash` with `medium` reasoning effort for balanced independent audit inspection.
+

@@ -53,3 +53,11 @@ notify the orchestrator of `SOURCE_SELECTION_REQUIRED` or the actual capability
 blocker. Do not reduce an expectation to match current behavior. A retry/revision
 must explain what source changed, which expectations changed, previous failure,
 and retained lineage; a new spec ID does not reset defect attempts.
+
+## Model and token guidance
+
+Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
+- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Thorough reasoning ensures rigorous Gherkin formulations, exact oracle mapping, and complete capture specifications. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for structured scenario design and expectation manifests.
+- **Gemini**: `gemini-3.8-flash` with `high` reasoning effort. Deep reasoning is justified for authoring comprehensive Given/When/Then contracts and edge-case guardrails.
+

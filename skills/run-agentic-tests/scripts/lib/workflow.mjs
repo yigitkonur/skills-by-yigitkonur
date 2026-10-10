@@ -5,8 +5,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
-import { CliError, validateRecord, validateShape } from './contracts.mjs';
-import { loadDependencies, getDependencies, dependencyLocation } from './dependencies.mjs';
+import { CliError, validateRecord, validateShape, RUNNER_ERROR_CODES } from './contracts.mjs';
+import { loadDependencies, getDependencies, dependencyLocation, inspectAllRunners, checkRunnerEgoBrowser, checkRunnerMaestro, checkRunnerMcpc } from './dependencies.mjs';
 import { readYaml, readCampaign, readRecords, writeRecord, withController, containedPath, stableStringify } from './store.mjs';
 import { renderHandoff } from './handoffs.mjs';
 import { resolveInput, inputLabel } from './inputs.mjs';
@@ -64,7 +64,21 @@ async function doctor(options) {
   let yq = null;
   try { const result = await execute('yq', ['--version'], { timeout: 3000 }); if (/mikefarah|mike farah/i.test(result.stdout)) yq = result.stdout.trim(); } catch {}
   const nodeReady = Number(process.versions.node.split('.')[0]) >= 22;
-  return { ready: nodeReady && dependencies, node: process.versions.node, dependencies, dependency_cache: dependencyLocation(), optional_yq: yq, next_actions: nodeReady && dependencies ? [] : ['Install Node >=22 and run doctor --setup.'] };
+  const runners = await inspectAllRunners();
+  const next_actions = [];
+  if (!nodeReady || !dependencies) next_actions.push('Install Node >=22 and run doctor --setup.');
+  if (!runners.ego_browser.available) next_actions.push('Web runner: install ego-browser from citrolabs/ego-lite.');
+  if (!runners.maestro.available || !runners.maestro.supported) next_actions.push('Mobile runner: install Maestro CLI >= 2.10.0 and Java 17+.');
+  if (!runners.mcpc.available || !runners.mcpc.supported) next_actions.push('MCP runner: install mcpc 0.7.x session-first CLI.');
+  return {
+    ready: nodeReady && dependencies,
+    node: process.versions.node,
+    dependencies,
+    dependency_cache: dependencyLocation(),
+    optional_yq: yq,
+    runners,
+    next_actions,
+  };
 }
 
 async function init(options) {
@@ -72,7 +86,7 @@ async function init(options) {
   const project = await realpath(required(options, 'project'));
   const slug = required(options, 'slug');
   const id = `C-${new Date().toISOString().replace(/[-:.]/g, '')}-${randomUUID().slice(0, 8)}`;
-  const config = { schema_version: 1, kind: 'campaign', record_id: id, campaign_id: id, created_at: now(), project, slug, mode: options.mode || 'interactive', max_active: Number(options['max-active'] ?? 20), host_capacity: Number(options['host-capacity'] ?? 0), max_attempts: Number(options['max-attempts'] ?? 5), active_plan_id: null, final_target_id: null, locale: options.locale || 'en', state: 'OPEN' };
+  const config = { schema_version: 1, kind: 'campaign', record_id: id, campaign_id: id, created_at: now(), project, slug, mode: options.mode || 'interactive', max_active: Number(options['max-active'] ?? 20), host_capacity: Number(options['host-capacity'] ?? 0), max_attempts: Number(options['max-attempts'] ?? 3), active_plan_id: null, final_target_id: null, locale: options.locale || 'en', state: 'OPEN' };
   const repository = await discoverRepository(project, options['github-remote'] || 'origin');
   if (options['github-remote'] && !repository) fail('GITHUB_REMOTE_REQUIRED', 'The selected tested-project remote does not identify a GitHub repository.');
   if (repository) config.github_repository = repository;
@@ -302,6 +316,20 @@ async function createTask(options, state, suppliedRequest) {
     task.target_id ||= state.config.final_target_id;
     const environment = environmentFor(state, task.target_id);
     if (!environment) fail('TARGET_NOT_FOUND', `Unknown runtime ${task.target_id}.`);
+    if (task.role === 'executor') {
+      const runtimeType = environment.record.runtime_type;
+      if (runtimeType === 'http') {
+        const ego = await checkRunnerEgoBrowser();
+        if (!ego.available) fail(RUNNER_ERROR_CODES.RUNNER_CLI_MISSING, 'ego-browser CLI is required for web testing. Install from citrolabs/ego-lite.', [{ runner: 'ego-browser', repo: 'citrolabs/ego-lite' }], 5);
+      } else if (runtimeType === 'mobile') {
+        const maestro = await checkRunnerMaestro();
+        if (!maestro.java?.available) fail(RUNNER_ERROR_CODES.JAVA_RUNTIME_MISSING, 'Java 17+ is required for Maestro mobile testing ($JAVA_HOME).', [{ runner: 'maestro' }], 5);
+        if (!maestro.available) fail(RUNNER_ERROR_CODES.RUNNER_CLI_MISSING, 'Maestro CLI >= 2.10.0 / 2.11.0 is required for mobile testing.', [{ runner: 'maestro' }], 5);
+      } else if (runtimeType === 'mcp_stdio' || runtimeType === 'mcp_http') {
+        const mcpc = await checkRunnerMcpc();
+        if (!mcpc.available) fail(RUNNER_ERROR_CODES.RUNNER_CLI_MISSING, 'mcpc 0.7.x session-first CLI is required for MCP testing.', [{ runner: 'mcpc' }], 5);
+      }
+    }
     task.plan_id = plan.record_id;
     task.purpose ||= 'initial';
     if (task.role === 'executor') {

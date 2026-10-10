@@ -12,14 +12,14 @@ const required = name => process.env[name] || fail('MISSING_IDENTITY', `The cont
 
 async function main() {
   const options = {};
-  const allowed = new Set(['state-dir', 'config', 'required-tool', 'binary', 'timeout-ms']);
+  const allowed = new Set(['state-dir', 'config', 'required-tool', 'required-skill', 'binary', 'timeout-ms']);
   const args = process.argv.slice(2);
   for (let i = 0; i < args.length; i += 2) {
     const key = args[i].slice(2);
-    if (!args[i].startsWith('--') || !allowed.has(key) || !args[i + 1] || options[key]) fail('USAGE', 'Use --state-dir ABSOLUTE --config FILE:ENTRY --required-tool NAME [--binary PATH] [--timeout-ms N].');
+    if (!args[i].startsWith('--') || !allowed.has(key) || !args[i + 1] || options[key]) fail('USAGE', 'Use --state-dir ABSOLUTE --config FILE:ENTRY [--required-tool NAME] [--required-skill NAME] [--binary PATH] [--timeout-ms N].');
     options[key] = args[i + 1];
   }
-  if (!path.isAbsolute(options['state-dir'] || '') || !options.config || !options['required-tool']) fail('USAGE', 'Declare an absolute owned state directory, config entry, and required tool.');
+  if (!path.isAbsolute(options['state-dir'] || '') || !options.config || (!options['required-tool'] && !options['required-skill'])) fail('USAGE', 'Declare an absolute owned state directory, config entry, and required tool or skill.');
   const timeout = Number(options['timeout-ms'] || 10000);
   if (!Number.isInteger(timeout) || timeout < 100 || timeout > 300000) fail('USAGE', 'timeout-ms must be an integer from 100 to 300000.');
   const action = required('AGENTIC_RUNTIME_ACTION');
@@ -44,7 +44,7 @@ async function main() {
   };
   await mkdir(state, { recursive: true, mode: 0o700 });
   const tool = { name: 'mcpc', version: (await client(['--version'])).trim() };
-  if (!/^0\.[67]\./.test(tool.version)) fail('MCPC_VERSION_UNSUPPORTED', 'This adapter supports verified MCPC 0.6.x and 0.7.x contracts. Check the installed client contract before adapting it.');
+  if (!/^0\.7\./.test(tool.version)) fail('MCPC_VERSION_UNSUPPORTED', 'This adapter requires verified MCPC 0.7.x session-first contracts (0.6.x is obsolete). Check the installed client contract before adapting it.');
   const list = async () => {
     // `mcpc --json` can reconnect crashed bridges; inspect its private state
     // without invoking a command that could change this runtime generation.
@@ -102,6 +102,14 @@ async function main() {
   }
   if (action === 'probe') {
     if (!alive) fail('MCPC_SESSION_UNAVAILABLE', 'The owned client session is not live; allocate a fresh runtime for recovery.');
+    if (options['required-skill']) {
+      const result = await json([identity.session_id, 'skills-list']);
+      const skills = Array.isArray(result) ? result : result.skills || [];
+      if (!skills.some(skill => (skill.name || skill) === options['required-skill'])) {
+        fail('MCPC_SKILL_UNAVAILABLE', 'Actual skill discovery did not expose the required skill.');
+      }
+      return receipt(true, { ready: true, evidence: { kind: 'protocol', operation: 'skills/list', result: JSON.stringify(skills) } });
+    }
     const result = await json([identity.session_id, 'tools-list']);
     const tools = Array.isArray(result) ? result : result.tools;
     if (!Array.isArray(tools) || !tools.some(tool => tool.name === options['required-tool'])) fail('MCPC_TOOL_UNAVAILABLE', 'Actual tool discovery did not expose the required tool.');

@@ -57,11 +57,11 @@ preserve historical records instead of rewriting them to claim old verification.
 
 | Runtime type | Setup and readiness |
 |---|---|
-| `http` | Owned web dev server; expected HTTP status plus nonempty application body marker; actual browser access and required assets/API/auth/WebSocket flows |
+| `http` | Owned web dev server; expected HTTP status plus nonempty application body marker; actual browser access (`ego-browser` from [citrolabs/ego-lite](https://github.com/citrolabs/ego-lite)) and required assets/API/auth/WebSocket flows. When browser runs on remote host `tugce`, remote screenshots must be pulled locally via hardened `scp` (`-O` fallback) |
 | `cli` | Exact executable argv/cwd and environment; declared process/log handshake or real safe interface probe; exit/output/file-capture capability |
-| `mcp_stdio` | Client-owned server/adapter session; actual initialization and required tool discovery; preserve stdin/stdout transport semantics |
+| `mcp_stdio` | Client-owned server/adapter session using `mcpc 0.7.x` session-first client ([test-by-mcpc-cli](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-mcpc-cli)); actual initialization and required tool/skills discovery; preserve stdin/stdout transport semantics |
 | `mcp_http` | Exact HTTP endpoint and actual MCP initialization; verify required JSON/SSE behavior and auth from the executor client |
-| `mobile` | Native build/install identity, emulator/device lease and driver access; prove app launch plus backend reachability where needed |
+| `mobile` | Native build/install identity, emulator/device lease and driver access via `test-by-maestro` ([test-by-maestro](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/test-by-maestro), Maestro CLI ≥ 2.10.0 / 2.11.0, Java 17+ prerequisite). Local iOS simulators require macOS (Darwin); Linux hosts must route iOS to Maestro Cloud or SSH. 10-tool MCP server (`maestro mcp`) |
 
 For CLI programs that exit after one invocation, use `runtime_type: cli` and a
 real, bounded readiness probe. The helper requires the declared output marker
