@@ -2,7 +2,7 @@
 
 *Read this when deploying an mcp-use server and Views to Supabase Edge Functions.*
 
-Edge Functions run on a Deno-compatible runtime. `MCPServer` exposes the Web-standard `fetch(Request)` boundary that runtime needs; the function forwards requests to `server.fetch` and never calls `listen()`. Requires Node.js >= 18 to run the `mcp-use` build, and the Supabase CLI (`supabase login`) with a linked project. Docker is required only for local bundling/serving — Supabase can also bundle server-side through its API.
+Edge Functions run on a Deno-compatible runtime. `MCPServer` exposes the Web-standard `fetch(Request)` boundary that runtime needs; the function forwards requests to `server.fetch` and never calls `listen()`. Requires Node.js >= 22.22.2 to run the `mcp-use` build, and the Supabase CLI (`supabase login`) with a linked project. Docker is required only for local bundling/serving — Supabase can also bundle server-side through its API.
 
 ## Set Up the Function
 

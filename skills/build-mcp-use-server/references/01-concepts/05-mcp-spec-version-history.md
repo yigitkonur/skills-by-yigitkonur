@@ -48,7 +48,7 @@ There is no "MCP protocol v2.0.0." The protocol has never used semver — it use
 | Tools + schemas | Native | Definition-first API; Standard Schema (Zod v4, etc.) |
 | Resources | Native | Static + URI templates; completion callbacks |
 | Prompts | Native | Completable arguments; message templates |
-| `input_required` / MRTR | Native (primitives) | `inputRequired`, `inputResponse`, `acceptedContent`, `createRequestStateCodec` exported from `mcp-use` root; a `ctx.elicit()` convenience wrapper is documented but not present in the shipped `v2` dist — see `04-stateless-model-and-request-state.md` |
+| `input_required` / MRTR | Native (primitives) | `inputRequired`, `inputResponse`, `acceptedContent`, `createRequestStateCodec` exported from `mcp-use` root; `ctx.elicit()` was permanently removed in v2.4.3 (#2409) — see `04-stateless-model-and-request-state.md` |
 | Sampling (server-initiated LLM generation) | **Removed** | Deprecated at the protocol level; host/client generates instead |
 | Roots | **Not exposed** | Deprecated at the protocol level; pass paths as tool parameters instead |
 | Streamable HTTP | Primary transport | `server.fetch` handler; stateless per request |

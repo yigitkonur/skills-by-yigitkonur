@@ -69,7 +69,7 @@ server.tool(
 
 `inputRequired.elicitUrl({ message, url })` requests URL-mode input (open a browser flow) instead of a typed form. When round state must carry signed, tamper-evident data, create a codec with `createRequestStateCodec({ key, ttlSeconds })`, pass `requestState: { verify: codec.verify }` to `MCPServer`, and read decoded state per request with `ctx.requestState<T>()`.
 
-Server docs and the beta spec also describe a convenience `ctx.elicit(key, message, schemaOrUrl)` wrapper over this same mechanism. It does not appear in the shipped `v2` `dist/context.d.ts`, the compiled `toRequestContext()` object construction, or the framework's own `examples/elicitation` source — treat it as not yet shipped and use the primitives above. See `12-elicitation/` (owned by a sibling cluster) for the full elicitation contract and status-value table.
+Legacy v2 beta documentation described a convenience `ctx.elicit(key, message, schemaOrUrl)` method on `RequestContext`, but it was permanently removed in v2.4.3 (#2409) in favor of the standard protocol primitives above. See `12-elicitation/` for the complete elicitation contract.
 
 ## Notifications (request-scoped)
 

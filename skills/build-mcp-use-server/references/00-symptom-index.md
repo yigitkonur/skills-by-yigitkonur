@@ -7,10 +7,10 @@
 | Symptom | Entry |
 |---|---|
 | `Cannot find module 'mcp-use/server'` or `MCPServer` import fails | `references/26-anti-patterns/01-sdk-misuse.md` — v2 imports from `mcp-use` root; a `/server` import means v1 code → `references/28-migration/02-v1-to-v2-overview.md` |
-| `require is not defined` / CJS build errors | `references/02-setup/01-prerequisites.md` — v2 is ESM-only, Node >= 18 |
+| `require is not defined` / CJS build errors | `references/02-setup/01-prerequisites.md` — v2 is ESM-only, Node >= 22.22.2 |
 | Zod version conflicts, `_zod` type errors | `references/26-anti-patterns/03-schemas.md` — v2 requires zod v4 / Standard Schema |
 | Server exits before listening, port/env errors | `references/08-server-config/07-lifecycle-listen-fetch-shutdown.md` |
-| Installed `mcp-use` but APIs in this skill are missing | `references/00-version-drift.md` — `latest` is v1; v2 is the `beta` tag |
+| Installed `mcp-use` but APIs in this skill are missing | `references/00-version-drift.md` — ensure `mcp-use` >= 2.8.2 on npm `latest` (v1 is `v1-legacy`) |
 
 ## Connection and transport
 

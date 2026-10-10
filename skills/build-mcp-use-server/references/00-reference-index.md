@@ -2,6 +2,22 @@
 
 *Full inventory fallback. Prefer the intent table and symptom index in SKILL.md; come here only when you need an exact filename.*
 
+## Core Guides (v2 & OpenAI Apps SDK UI)
+
+- `references/server.md` — Complete `MCPServer` constructor options and API surface
+- `references/chatgpt-apps-ui.md` — Complete OpenAI Apps SDK UI compliance guide (29+ components, design tokens, dark mode, responsive layout)
+- `references/chatgpt-extensions.md` — Complete ChatGPT extensions guide (typed entrypoints, tool icons, plugin settings, evidence attachments)
+
+## Official Documentation Links
+
+- [Official Server Docs](https://docs.mcp-use.com/v2/typescript/server)
+- [MCPServer API Reference](https://api-reference.mcp-use.com/classes/mcp-use.index.MCPServer.html)
+- [MCP Apps Documentation](https://docs.mcp-use.com/v2/typescript/mcp-apps)
+- [ChatGPT Extensions](https://docs.mcp-use.com/v2/typescript/mcp-apps/chatgpt-extensions)
+- [OpenAI Apps SDK UI Repository](https://github.com/openai/apps-sdk-ui)
+- [OpenAI Apps SDK UI Storybook](https://openai.github.io/apps-sdk-ui/?path=/docs/overview-introduction--docs)
+
+
 
 ## 01-concepts
 
