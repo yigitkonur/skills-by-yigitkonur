@@ -25,10 +25,44 @@ To prevent category errors, the 30 principles are organized into four distinct t
   - *Debunked Rule:* There is no such thing as an arbitrary linear "200px distance rule". Difficulty scales logarithmically with the ratio $D/W$, not linearly.
   - *Desktop Edge Invariant:* Desktop screen edges and corners provide *infinite target depth* ($W \to \infty$), making $ID \to 0$ and acquisition near-instantaneous.
   - *Touch Surface Reality:* On mobile touchscreens, edges do not stop fingers. Acquisition is governed by finger contact pads (8–10mm) and thumb reach zones (Natural, Stretch, Hard).
-- **Target Size Standards:**
-  - **WCAG 2.2 SC 2.5.8 (Level AA):** Minimum 24×24 CSS px (or equivalent 24px diameter clear spacing circle).
-  - **Apple HIG (iOS/iPadOS):** Minimum 44×44 pt with $\ge 8\text{pt}$ spacing.
-  - **Google Material Design 3:** Minimum 48×48 dp with $\ge 8\text{dp}$ spacing.
+- **Target Size & Spacing Standards (WCAG 2.2 SC 2.5.8 Level AA):**
+  - **Normative Minimum:** Pointer target size must be at least **24 by 24 CSS pixels**.
+  - **Spacing Circle Exception:** If a target's bounding box is smaller than 24×24 CSS px, a 24 CSS px diameter circle centered on the target must not intersect any other target or another target's spacing circle.
+    - *Center-to-Center Euclidean Distance:* For targets $A$ and $B$ at $(x_A, y_A)$ and $(x_B, y_B)$:
+      $$\sqrt{(x_A - x_B)^2 + (y_A - y_B)^2} \ge 24\text{ CSS px}$$
+    - *Edge-to-Edge Clearance Spacing:* If target $A$ has width $W < 24\text{px}$, clearance spacing $S$ to adjacent target $B$ must satisfy:
+      $$S \ge 24\text{px} - W$$
+  - **Inline Exception:** Targets within a sentence or text block (e.g., inline hyperlinks, footnote superscripts) are exempt.
+  - **User Agent Control Exception:** Unstyled native HTML controls determined entirely by the browser (e.g. default `<input type="checkbox">`).
+  - **Essential Exception:** Presentations legally or functionally essential to the information conveyed (e.g., map pins, digital piano keys, visual graphic handles).
+- **Cross-Platform Target Size Comparison Matrix:**
+
+| Standard / Design System | Minimum Interactive Target | Minimum Separation Spacing | Modality & Context |
+|---|---|---|---|
+| **WCAG 2.2 SC 2.5.8 (Level AA)** | **24 × 24 CSS px** | Spacing circle $\ge 24\text{px}$ diameter ($S \ge 24\text{px} - W$) | All pointer surfaces (mouse, touch, stylus) |
+| **WCAG 2.2 SC 2.5.5 (Level AAA)** | **44 × 44 CSS px** | None required if target $\ge 44\text{px}$ | Enhanced motor accessibility |
+| **Apple Human Interface Guidelines (HIG)** | **44 × 44 pt** | $\ge 8\text{ pt}$ padding | iOS / iPadOS touch surfaces |
+| **Google Material Design 3 (M3)** | **48 × 48 dp** | $\ge 8\text{ dp}$ spacing | Android touch / desktop surfaces |
+| **Microsoft Fluent Design System** | **32 × 32 px** (desktop) / **40 × 40 px** (touch) | $\ge 4\text{ px}$ margin | Windows / Web hybrid inputs |
+
+- **Visual Evaluation Protocol:** Inspect icon buttons, table row actions, and close buttons on mobile viewports (`390×844`, `360×800`). If interactive hit area is $< 24\text{px}$ and spacing to adjacent target is $< 12\text{px}$, flag as **Critical (WCAG 2.2 SC 2.5.8 AA)**. If target is between $24\text{px}$ and $44\text{px}$ on a touch viewport, flag as **Major (Ergonomic Touch Friction / Apple HIG / M3 Violation)**.
+
+### 1B. Dragging Movement Alternatives (WCAG 2.2 SC 2.5.7 Level AA)
+- **Principle:** All functionality that uses a dragging movement for operation must be achievable via a **single pointer without dragging**, unless dragging is essential.
+- **Dragging Definition:** An interaction where a pointer engages an element with pointer-down, moves along a path while maintaining contact, and releases on pointer-up (e.g., drag-and-drop sortable lists, kanban card movement, sliders, map panning, swipe-to-dismiss).
+- **Essential Exception:** Freeform drawing, digital signatures, or visual canvas manipulation where dragging is the intrinsic task.
+- **Single-Pointer Non-Dragging Alternatives Catalog:**
+
+| Interactive Dragging Pattern | Required Accessible Non-Dragging Alternative |
+|---|---|
+| **Sortable List / Reorderable Table** | Dedicated Up/Down arrow buttons on each item, a numeric position input field, or a "Move to position..." dropdown menu. |
+| **Kanban Board Column Transfer** | "Move to [Column Name]" dropdown button or context menu on each card. |
+| **Continuous Value Slider** | Tapping anywhere on the slider track jumps the thumb to that position, supplemented by stepper buttons (+ / -) or an editable numeric text input. |
+| **Pan & Zoom Canvas / Maps** | Dedicated directional pan buttons (North, South, East, West) and Zoom In/Out (+ / -) controls. |
+| **Swipe-to-Dismiss / Swipe-to-Action** | Persistent action buttons visible on the row (e.g., Trash / Archive button) or an overflow (More `...`) action sheet. |
+| **Range Slider (Two Thumbs)** | Two independent numeric input fields for minimum and maximum bounds. |
+
+- **Visual Evaluation Protocol:** When inspecting `default.png`, `hover.png`, and `active.png`, if an interface displays drag handles ($\equiv$, grab cursor) or slider thumbs with **no visible single-pointer tap controls**, flag as **Critical (WCAG 2.2 SC 2.5.7 Violation)**.
 
 ### 2. Hick's Law (Hick-Hyman Law, 1952–1953)
 - **Principle:** Reaction time ($RT$) increases logarithmically with the number of equally probable alternatives.
@@ -42,6 +76,26 @@ To prevent category errors, the 30 principles are organized into four distinct t
 ### 3. Weber-Fechner Law of Just Noticeable Difference
 - **Principle:** The perceived change in a stimulus is proportional to the initial magnitude of the stimulus ($\Delta I / I = k$).
 - **UI/UX Application:** Micro-interactions, volume sliders, dark-mode brightness steps, and contrast gradients must scale geometrically, not linearly, for the human eye to perceive even steps.
+
+### 3B. Spatial Frequency Contrast Sensitivity & The APCA Model (Somers, W3C Silver / WCAG 3)
+- **Sensory Biophysics Foundation:** The human eye does not perceive contrast as a flat ratio of two color hex codes. Perceptual contrast is governed by the **Contrast Sensitivity Function (CSF)** of the visual cortex, which is highly dependent on **spatial frequency** (stroke width, font weight, and character size).
+- **The Fundamental Mathematical Flaws of WCAG 2.x Relative Luminance Contrast:**
+  WCAG 2.x specifies contrast using relative luminance:
+  $$\text{Ratio} = \frac{L_1 + 0.05}{L_2 + 0.05} \quad \text{where } L = 0.2126R + 0.7152G + 0.0722B$$
+  This mathematical formula has four severe empirical defects:
+  1. **Spatial Frequency Blindness:** It evaluates color pairs in a vacuum. A 100-weight hairline font passing 4.5:1 is practically invisible to older adults or under ambient glare, whereas a 900-weight heavy headline at 3.5:1 is effortlessly legible.
+  2. **Polarity Asymmetry & Dark-Mode Retinal Halation (Irradiation):**
+     - *Positive Contrast (Dark text on light background):* The human pupil constricts under high light, increasing ocular depth of field and edge sharpness.
+     - *Negative Contrast (Light text on dark background):* The pupil dilates, which amplifies spherical aberrations and astigmatism. Pure white text (`#FFFFFF`) on pure black (`#000000`) causes **retinal halation / irradiation**—the bright text appears to bleed, glow, and distort across the retina, causing ocular fatigue.
+     - WCAG 2.x treats `#000000` on `#FFFFFF` and `#FFFFFF` on `#000000` as an identical 21:1, failing to detect dark-mode halation.
+  3. **Chromatic Inaccuracies:** Saturated blue (`#0000FF`) on black produces a low mathematical ratio (~2.44:1) despite having strong perceptual boundaries, whereas medium gray (`#767676`) on white passes 4.54:1 (AA) yet washes out completely in mobile sunlight.
+  4. **Perceptual Non-Uniformity:** A 1.5:1 delta in dark luminance ranges represents a massive perceptual jump, whereas the same delta in bright luminance is negligible.
+- **The APCA (Accessible Perceptual Contrast Algorithm) Model:**
+  APCA models human visual perception using the SAPC (S-LUV Advanced Perceptual Contrast) algorithm to calculate **Lightness Contrast ($L_c$)**:
+  - Incorporates human nonlinear photoreceptor response (power-law curve).
+  - Explicitly accounts for polarity ($L_c$ is positive for dark text on light, negative for light text on dark).
+  - Directly couples contrast requirement to spatial frequency (minimum font size and font weight pairings).
+- **Visual Evaluation Standards:** When auditing visual assets, enforce WCAG 2.2 AA (4.5:1 text, 3.0:1 UI components) as the absolute legal floor, while applying APCA Lightness Contrast ($L_c$) to detect unreadable thin weights and dark-mode retinal halation.
 
 ---
 

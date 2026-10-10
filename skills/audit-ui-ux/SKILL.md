@@ -19,6 +19,18 @@ The central architectural rule is the **Strict Vision-First Air-Gap** (`referenc
 ### Eliminating Omniscience Bias
 Human users experience digital products through light emitted from display pixels, not by reading source code. When evaluators read component source files, they suffer from omniscience bias—assuming layout rules work, forgiving poor contrast, and missing visual rendering flaws. The audit evaluates purely from rendered screenshots.
 
+### Visual-Spatial Grounding Framework
+To eliminate reliance on internal component names, IDs, or class names, evaluators ground every finding using dual-layer visual-spatial coordinates (`references/vision-air-gap.md`):
+1. **Directional Landmark Hierarchy:** `[Screen Region] > [Container Landmark] > [Relative Flow Position] > [Visual Feature Anchor]` (e.g. `Sticky Header > Right Utility Actions > Notification Bell Button`).
+2. **Normalized Bounding Coordinates:** Normalized percentage coordinates `[top%, left%, width%, height%]` and 3×3 screen quadrants (`[Top-Right]`, `[Mid-Center]`, etc.).
+
+### Anti-Omniscience Defense Vectors
+Evaluation subagents operate under strict environment boundaries forbidding:
+- Reading source code or AST files (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`, `.swift`, `.kt`).
+- Grepping or searching the workspace for text strings observed in screenshots.
+- Querying DOM trees, computed styles, or Chrome DevTools Protocol (CDP) element inspect APIs.
+- Reading design token or configuration files (`tailwind.config.*`).
+
 ```
 ┌────────────────────────────────────────────────────────┐
 │                   TARGET APPLICATION                   │
@@ -62,7 +74,7 @@ Human users experience digital products through light emitted from display pixel
 - Backend API or non-visual data layer tasks.
 
 ### Execution Modes
-The audit supports three execution modes:
+The audit supports three execution modes, documented in detail in `references/execution-modes.md`:
 - **`both` (Default):** Runs UI Lens and UX Lens concurrently over the captured screenshots.
 - **`ui`:** Runs the UI Lens only (frontend design systems, visual precision, styling tokens).
 - **`ux`:** Runs the UX Lens only (usability heuristics, cognitive ergonomics, user flows).
@@ -154,6 +166,12 @@ The audit enforces scientifically verified standards, eliminating common legacy 
 ## 7. Synthesis & Reporting Architecture
 
 When evaluation lenses conclude, the orchestrator compiles the findings into the standardized format specified in `references/reporting-format.md`:
-1. **Deduplication & Cross-Lens Clustering:** Group findings by screen slug and component.
-2. **Severity Calibration:** Catastrophe (blocker) → Critical (WCAG 2.2 AA failure, no escape hatch) → Major (token/cognitive friction) → Minor (polish).
-3. **Persist Final Report:** Write to `audit-artifacts/<YYYY-MM-DD>/AUDIT-REPORT.md` including the Executive Dashboard, Screen Inventory, Priority Action Matrix, and detailed findings.
+1. **Deduplication & Cross-Lens Clustering:** Group findings by screen slug and visual landmark.
+2. **Severity Calibration & Priority Mapping:** Catastrophe (P0 Blocker) → Critical (P1 Release Gate) → Major (P2 Sprint Priority) → Minor (P3 Polish).
+3. **Standardized 4-Field Findings:** Every finding contains:
+   - Visual bounding region and landmark coordinates (`location.landmark`, `location.bounding_box`).
+   - Severity level (`Catastrophe`, `Critical`, `Major`, `Minor`) and Priority (`P0`–`P3`).
+   - Standardized rule taxonomy ID (`rule.id`, `rule.type`).
+   - Deterministic visual fix recommendation (`visual_fix.target_visual_state`, `visual_fix.target_parameters`, `visual_fix.anti_patterns`).
+4. **Machine-Parseable Ingestion Schema:** Each finding embeds a ```yaml finding-spec``` code block allowing deterministic parsing by downstream fix agents (`build-frontend`), following the ingestion workflow in `references/reporting-format.md`.
+5. **Persist Final Report:** Write to `audit-artifacts/<YYYY-MM-DD>/AUDIT-REPORT.md` including the Executive Dashboard, Screen Inventory, Priority Action Matrix, and machine-parseable finding specifications.
