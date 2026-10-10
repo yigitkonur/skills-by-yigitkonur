@@ -237,13 +237,16 @@ Type-layer defects that dead-code analysis cannot see because the symbols in que
 | Sub-kind | Detector | Signal |
 |---|---|---|
 | Any-creep | `type-coverage --detail` | Coverage below threshold, or below the pre-flight baseline. |
-| Declaration-emit risk | `tsc -b --noEmit` | `TS4023`, `TS4060`, `TS4081`, `TS2742`, `TS2883`. |
+| Declaration-emit risk | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` (or `tsc -b --emitDeclarationOnly`) | `TS4023`, `TS4060`, `TS4081`, `TS2742`, `TS2883`. |
 | Blind assertion | `rg "as any\|as unknown as"` | Assertions masking a real type error. |
 | Implicit any parameter | `tsc --noImplicitAny` | `TS7006`, `TS7031`. |
 
 ```bash
 type-coverage --detail --strict --at-least 95
-tsc -b --noEmit
+# Single project declaration emit check:
+tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check && rm -rf /tmp/dts-check
+# Or in composite monorepos (never run tsc -b --noEmit, which fails with TS5094):
+# tsc -b --emitDeclarationOnly && tsc -b --clean
 ```
 
 Declaration-emit failures in this batch are frequently *caused* by Wave 3: internalizing a type that still appears in a public signature. Diagnose with [`../types/declaration-emit.md`](../types/declaration-emit.md); the coverage baseline comparison belongs to post-flight in [`../remediation/waves.md`](../remediation/waves.md).

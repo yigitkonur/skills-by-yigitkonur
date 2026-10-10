@@ -15,7 +15,7 @@ Run the recipe matching the detected engine. Restrict autofixes to files modifie
 
 | Engine | Full Autofix | Unused-Only Autofix | Formats? | Sorts Imports? |
 |---|---|---|---|---|
-| **Biome** | `npx @biomejs/biome check --write src/` | `--only=lint/correctness/noUnusedVariables,lint/correctness/noUnusedImports` | Yes | Yes |
+| **Biome** | `npx @biomejs/biome check --write src/` | `--only=correctness/noUnusedVariables,correctness/noUnusedImports` | Yes | Yes |
 | **Oxlint** | `npx oxlint --fix src/` | `npx oxlint --fix -D no-unused-vars src/` | No — pair with Prettier or Biome | No |
 | **ESLint** | `npx eslint --fix "src/**/*.{ts,tsx}"` | `--rule 'unused-imports/no-unused-imports: error'` | Only via `eslint-plugin-prettier` | Only via plugin |
 | **Ultracite** | `npx ultracite fix` | Not exposed — wrapper applies its bundled ruleset | Yes | Yes |
@@ -45,7 +45,7 @@ Run strictly to clean up un-export residue without modifying unrelated code:
 
 ```bash
 npx @biomejs/biome check --write \
-  --only=lint/correctness/noUnusedVariables,lint/correctness/noUnusedImports \
+  --only=correctness/noUnusedVariables,correctness/noUnusedImports \
   src/
 ```
 

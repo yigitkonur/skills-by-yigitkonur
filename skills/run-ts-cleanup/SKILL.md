@@ -9,9 +9,9 @@ disable-model-invocation: true
 A TypeScript codebase accumulates. Features get deprecated but their files stay. A refactor lands half-finished and both abstractions survive. An LLM writes `cn` for the fourth time in a fourth directory, launders types with `as any`, duplicates schemas, and blankets properties in defensive `?.` optional chains. Dependencies outlive the code that imported them. Types get exported "just in case" and never consumed. This skill sweeps all of it into a clean end state guided by **The 4 Pillars of TypeScript Project Cleanup**:
 
 1. **Reachability & Dead Code (Graph Layer):** Prune unreferenced files, dead exports, orphaned dependencies, and abandoned zombie features using Knip.
-2. **Encapsulation & Boundary Integrity (Visibility Layer):** Decouple test-only leaks, internalize in-file exports, and designate explicit public API entry points.
+2. **Encapsulation & Boundary Integrity (Visibility Layer):** Enforce interface as test surface, eliminate test-only leak exports in production files, internalize in-file exports, and designate explicit public API entry points.
 3. **Type System Rigor & Soundness (Semantic Layer):** Eradicate type laundering (`as any`, `as unknown as T`), maintain the type-coverage ratchet, enforce schema inference as single source of truth (`z.infer`), and ensure declaration-emit safety.
-4. **Architectural Deepening & Structural Health (Architecture Layer):** Eliminate barrel smog, inline shallow single-use wrappers, break cyclic dependency loops via Knip (`--cycles`) or `madge`/`dpdm`, restore tree-shaking, enforce locality/colocation, and maintain deterministic lockfiles.
+4. **Architectural Deepening & Structural Health (Architecture Layer):** Institutionalize the Deletion Test, eliminate hypothetical seams and ghost interfaces (The Seam Test), counter micro-file fragmentation via locality and feature pods, eliminate barrel smog, and break dependency cycles.
 
 - Every **dead symbol, file, export, type, and dependency** is found by a real engine, not by guesswork — and each finding is **triaged before deletion**, never deleted on the engine's word alone.
 - Every deletion lands in a **reversible causal wave** behind a passing verification gate, so any single step reverts with one `git reset` or `git revert`.
@@ -164,13 +164,13 @@ Each phase gates the next. If you are tempted to skip one, re-survey instead.
 3. Read the batch definitions and risk model in [references/detection/finding-classification.md](references/detection/finding-classification.md):
    - **Batch 1:** Unused Dependencies (Knip) → feeds Wave 5
    - **Batch 2:** Unused Files (Knip) → feeds Wave 1
-   - **Batch 3:** Dead Exports (Knip) → feeds Wave 2 (barrels) & Wave 3 (internal)
-   - **Batch 4:** Unused Exported Types (Knip) → feeds Wave 4
-   - **Batch 5:** Unused In-File Exports (Knip) → feeds Wave 3
-   - **Batch 6:** Unlisted Binaries / Missing Dependencies (Knip) → feeds Wave 5
-   - **Batch 7:** Unused Local Variables & Dead Imports (`TS6133`, Linters) → feeds Inter-wave Bridge
-   - **Batch 8:** Type Soundness Leaks & `any`-Creep (`type-coverage`) → feeds Phase 4
-   - **Batch 9:** Import Cycles (`knip --cycles` / `madge`) → feeds Wave 2
+   - **Batch 3:** Unused Exports (Barrels / Dead Re-exports) (Knip) → feeds Wave 2
+   - **Batch 4:** Test-Only Leaks (Testing Seam Violations) (Knip) → feeds Wave 3
+   - **Batch 5:** Unused Internal Exports (Knip) → feeds Wave 3
+   - **Batch 6:** Unused Types & Enums (Knip) → feeds Wave 4
+   - **Batch 7:** Unused Class Members & Locals (`TS6133`, Linters) → feeds Inter-wave Bridge
+   - **Batch 8:** Type Soundness (any, unhandled unions) (`type-coverage`) → feeds Phase 4 & Wave 4
+   - **Batch 9:** Circular Dependencies & Cycles (`knip --cycles` / `madge`) → feeds Wave 2
 
 **Gate → Phase 3 when:** `cleanup-plan.md` exists, all findings are batched (1-9), and every batch carries a risk score.
 
@@ -208,13 +208,15 @@ Deleting the symptom leaves the generator running. AI agents consistently introd
 
 | What you found | Core Architectural Principle | Remediation Action |
 |---|---|---|
-| Four copies of `cn`, duplicate `formatDate`, scattered micro-helpers | **Locality & Colocation** | Colocate single-consumer helpers in the file that uses them. Consolidate multi-consumer utilities into one canonical home. |
-| Single-use wrappers (`const fetchX = (id) => api.get(...)`) | **Deep Modules** | Inline one-line wrappers or deepen the module by hiding caching, retry, and auth logic behind the interface. |
+| Single-use wrappers (`const fetchX = (id) => api.get(...)`) | **The Deletion Test** | Apply Deletion Test: if complexity vanishes, inline wrapper; if real complexity exists, deepen module behind a small interface. |
+| Production functions exported solely for unit tests (`_helper`) | **Interface as Test Surface** | Re-target tests at public interface; un-export internal helpers during Wave 3 ("Replace, don't layer"). |
+| Ghost interfaces with 1 implementation (`IUserService` / `UserService`) | **The Seam Test** | "One adapter = hypothetical seam; two adapters = real seam." Delete single-implementation interfaces; export concrete classes/functions directly. |
+| Scattered 5-line helpers across `src/utils/` | **Locality & Anti-Fragmentation** | Colocate single-consumer helpers in consumer file (1-to-1 Rule) or feature pod. Enforce Rule of Three for global promotion. |
 | Duplicate manual interface alongside Zod / Valibot schema | **Single Source of Truth** | Replace manual interfaces with `type T = z.infer<typeof TSchema>`. Prevent silent schema drift. |
-| Java-style ghost interfaces (`IUserService` with 1 implementation) | **The Seam Test** | If an interface has exactly one implementation and no polymorphic boundary, delete the interface and expose the class/module directly. |
 | Circular `index.ts` re-exports (`export * from ...`) | **Module Graph Health** | Replace barrel re-exports with explicit direct imports; untangle cyclic dependency loops (`knip --cycles`). |
 | Type laundering (`as any`, `as unknown as T`, `!.`) | **Type Soundness** | Refactor data flow using discriminated unions or type guards. Remove escape hatches. |
-| Blind `catch (e) { return null; }` error swallowing | **Invariant Safety** | Preserve error causality; log or bubble errors with structured context. |
+| `process.env` accessed inside Cloudflare Workers handlers | **Edge Runtime Invariants** | Eradicate `process.env`; inject request-scoped `env` bindings or `this.env` in `workerd`. |
+| Background tasks floating without `ctx.waitUntil()` in workers | **Async Boundary Safety** | Wrap background promises in `ctx.waitUntil(promise)` to prevent premature isolate suspension. |
 
 Detailed patterns and code examples are cataloged in [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) and [references/remediation/structural-refactor.md](references/remediation/structural-refactor.md).
 
@@ -269,6 +271,11 @@ Five waves, in causal order. After each: **run the gate**, then commit. A wave t
 | Hardcoding `pnpm` or `bun test` in the gate | Breaks repositories or ignores `package.json` scripts | Resolve manager dynamically; run `bun run test` |
 | Dual declaration of Zod schema + manual TypeScript interface | Types drift silently when schemas are updated | Use `type T = z.infer<typeof TSchema>` as single source of truth |
 | Deleting duplicate helpers without migrating callers | Each copy had drifted; consumers depended on the differences | Consolidate, migrate, gate, *then* delete |
+| Exporting internal helpers solely for unit tests (`_helper`) | Breaks encapsulation and leaks implementation details into the public API | Test observable outcomes across the public interface, or extract an independent deep module |
+| Speculative `IUserService` interfaces with 1 implementation | Creates ghost interfaces and doubles file/type maintenance burden | Export the concrete implementation directly until a second adapter genuinely exists (Seam Test) |
+| Scattering single-consumer 5-line helpers into `src/utils/` | AI context-window fragmentation; balloons project file count and token spend | Colocate in the consumer file (<25 LOC) or feature pod (1-to-1 Rule) |
+| Accessing `process.env` in Cloudflare Workers handlers | Returns `undefined` at runtime in `workerd` isolates | Pass request-scoped `env` parameter or `this.env` |
+| Stripping `ctx.waitUntil()` as "redundant wrapper" | Kills asynchronous background promises when the fetch response settles | Preserve `ctx.waitUntil` for all edge background work |
 | Skipping Phase 0 because the repo "looks fine" | Pre-existing failures get attributed to the cleanup | Prove green first |
 
 ## Scripts
@@ -292,6 +299,7 @@ Run any script with `--help` for its full flag surface.
 - [references/detection/finding-classification.md](references/detection/finding-classification.md) — the nine batches, which engine produces each, the wave each feeds, and the risk model.
 - [references/detection/false-positive-triage.md](references/detection/false-positive-triage.md) — the Three-Question Test, framework entry catalogs, dynamic imports, public contracts, and lint/type false positives.
 - [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) — the 8 Sins of Agent-Written TypeScript, architectural origins of bloat, detection commands, and before/after remediation.
+- [references/runtimes/cloudflare-workers.md](references/runtimes/cloudflare-workers.md) — Cloudflare Workers (`workerd`) cleanup: wrangler types, RPC class preservation (DurableObject, WorkerEntrypoint), process.env eradication, and ctx.waitUntil safety.
 - [references/remediation/waves.md](references/remediation/waves.md) — **the gate**, package-manager resolution, all five waves, the linter bridge, rollback, and the post-flight metrics gate.
 - [references/remediation/structural-refactor.md](references/remediation/structural-refactor.md) — Matt Pocock architectural deepening: inlining wrappers, breaking cycles, restructuring barrels, co-locating helpers, deep modules vs shallow abstractions.
 - [references/remediation/complexity-thresholds.md](references/remediation/complexity-thresholds.md) — cyclomatic and cognitive complexity thresholds and the code-smell index, for prioritising what to refactor first.

@@ -216,8 +216,16 @@ echo "Detected package manager: $PM"
 # 4. The gate must be green BEFORE any edit
 gate || { echo "ERROR: baseline is red. Fix pre-existing failures first."; exit 1; }
 
-# 5. Declaration emit baseline (composite projects and published libraries)
-$PM_EXEC tsc -b --emitDeclarationOnly || { echo "ERROR: declaration build baseline failed."; exit 1; }
+# 5. Declaration emit baseline
+# Single-project: ephemeral directory isolation (zero disk pollution)
+# Composite monorepo: run emit check, then clean emitted artifacts to preserve pristine git tree
+# (tsc -b emits .d.ts/.tsbuildinfo onto disk and rejects --outDir, so pair with --clean to prevent dirtying the tree)
+if [ -f tsconfig.json ] && grep -q '"composite":\s*true' tsconfig*.json 2>/dev/null; then
+  $PM_EXEC tsc -b --emitDeclarationOnly || { echo "ERROR: declaration build baseline failed."; exit 1; }
+  $PM_EXEC tsc -b --clean
+else
+  $PM_EXEC tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check && rm -rf /tmp/dts-check || { echo "ERROR: declaration emit baseline failed."; exit 1; }
+fi
 
 # 6. Type coverage baseline
 $PM_EXEC type-coverage --detail > .type-coverage-baseline.txt 2>&1 || true
@@ -409,7 +417,7 @@ gate && $PM_EXEC tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check
 rm -rf /tmp/dts-check
 ```
 
-Leg 1 of the gate validates local types only. In composite projects and published libraries, `tsc -b --emitDeclarationOnly` (or emitting to `--outDir /tmp/dts-check` / using `--isolatedDeclarations`) is the check that proves `.d.ts` generation still succeeds across project references and that no now-private type leaked into a public signature (avoiding `TS5094` from `--noEmit` with `-b` and the `TS5053` option conflict). Diagnose `TS4023`, `TS4060`, `TS4081`, `TS2742`, and `TS2883` with [`../types/declaration-emit.md`](../types/declaration-emit.md).
+Leg 1 of the gate validates local types only. In composite projects and published libraries, `tsc -b --emitDeclarationOnly` followed by `tsc -b --clean` (or emitting to `--outDir /tmp/dts-check` / using `--isolatedDeclarations`) is the check that proves `.d.ts` generation still succeeds across project references and that no now-private type leaked into a public signature (avoiding `TS5094` from `--noEmit` with `-b`, `TS5065` from `--outDir` with `-b`, and the `TS5053` option conflict). Diagnose `TS4023`, `TS4060`, `TS4081`, `TS2742`, and `TS2883` with [`../types/declaration-emit.md`](../types/declaration-emit.md).
 
 ```bash
 git commit -am "refactor(cleanup): wave 4 - prune unused types, interfaces, and enum members"
@@ -470,7 +478,11 @@ Any remaining finding is either an unremediated batch or an uncodified false pos
 
 ```bash
 source .cleanup-gate.sh
-gate && $PM_EXEC tsc -b --emitDeclarationOnly || { echo "ERROR: post-flight verification failed."; exit 1; }
+if [ -f tsconfig.json ] && grep -q '"composite":\s*true' tsconfig*.json 2>/dev/null; then
+  gate && $PM_EXEC tsc -b --emitDeclarationOnly && $PM_EXEC tsc -b --clean || { echo "ERROR: post-flight verification failed."; exit 1; }
+else
+  gate && $PM_EXEC tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check && rm -rf /tmp/dts-check || { echo "ERROR: post-flight verification failed."; exit 1; }
+fi
 ```
 
 ### 3. The gate + type coverage

@@ -18,7 +18,7 @@ Knip resolves configuration from root configuration files or `package.json`. Kni
 8. `knip.config.js`
 9. `package.json` (under the `"knip"` property)
 
-### Complete Knip v5 TypeScript Configuration Schema
+### Complete Knip v5/v6 TypeScript Configuration Schema
 
 ```typescript
 // knip.ts
@@ -132,10 +132,14 @@ In Knip:
 - **Public API Exports (`includeEntryExports`)**: By default, `includeEntryExports` is `false`. This means Knip automatically treats all exports from configured `entry` files as public library APIs and will **not** report them as unused, even if nothing inside the repository imports them.
 - **Enabling Entry Export Checks**: If you want Knip to verify that entry exports are actually used (e.g. within an application or via public tags), set `includeEntryExports: true`, and exempt external library exports via JSDoc `@public` tags.
 
-### 2. Knip v6 Engine Architecture (OXC Parser & Performance)
+### 2. Knip v6 Engine Architecture (OXC Parser, Deprecations & Defaults)
 In Knip v6 (released March 2026):
-- Knip migrated its AST parser and module resolution pipeline to **OXC** (the ultra-fast Rust-based JavaScript/TypeScript tooling), delivering 10x–20x faster scan times on monorepos.
-- `classMembers` was dropped because analyzing unused class methods and properties required the full TypeScript `LanguageService` / compiler host (which was slow and bottlenecked scans). AST-level exports, types, and `namespaceMembers` remain fully supported and accelerated.
+- **OXC AST Parser & Resolver**: Knip migrated its AST parser and module resolution pipeline to **OXC** (`oxc-parser` and `oxc-resolver`, the ultra-fast Rust-based JavaScript/TypeScript tooling), delivering 10x–20x faster scan times across monorepos.
+- **Dropped `classMembers`**: Removed because analyzing unused class methods and properties required the full TypeScript `LanguageService` / compiler host (`ts.LanguageService.findReferences`). (In Knip v5, set `"classMembers": "off"`).
+- **Dropped `--isolate-workspaces`**: Workspace isolation is now the default and only behavior in Knip v6; the CLI flag is obsolete.
+- **Dropped `--include-libs`**: Standard library type inclusions are now built-in; the flag was dropped.
+- **`namespaceMembers` Rule**: Native AST detection for unused members in TypeScript namespaces (`"namespaceMembers": "error"`).
+- **Uniform Reporter Schema**: In the JSON reporter, issue types are uniformly formatted as arrays inside `issues: [...]`, and legacy root `files` was removed.
 
 ### 3. Production Mode Scoping (`--production` / `--prod`)
 Running Knip in production mode changes graph boundaries:
@@ -275,7 +279,7 @@ Recommended for large enterprise monorepos (Nx or Lerna) where individual teams 
 
 ### Workspace Isolation Safety Matrix
 
-| Monorepo Challenge | Root Cause | Knip v5 Defense / Configuration |
+| Monorepo Challenge | Root Cause | Knip v5/v6 Defense / Configuration |
 |---|---|---|
 | **Root Dependency Bleed** | Workspace imports dependency installed in root `node_modules` without listing it in its own `package.json`. | Enable `"unlisted": "error"` in root rules. Knip validates imports against the local package manifest, flagging root-hoisted packages as unlisted. |
 | **Bypassing Package `exports`** | Consuming package directly imports private internal files of a sibling library (`@repo/ui/src/button.ts`). | Restrict library package `entry` strictly to public barrel entries (`src/index.ts`) and align `package.json#exports`. Knip flags internal files not reached from entry. |
@@ -636,6 +640,7 @@ Knip provides built-in plugins that automatically detect configuration files, en
 | Waku | `waku` | `waku.config.{js,ts}` | `src/entries.tsx`, `src/routes/**/*.{tsx,jsx}` | React Server Component boundaries. |
 | RedwoodJS | `redwood` | `redwood.toml` | `web/src/Routes.{tsx,jsx}`, `api/src/functions/**/*.{ts,js}` | Multi-workspace full-stack architecture. |
 | React Router v7 | `react-router` | `react-router.config.{js,ts}` | `app/routes/**/*.{tsx,jsx}`, `app/root.tsx` | Replaces Remix configuration schema. |
+| Cloudflare Workers | `wrangler` | `wrangler.json`, `wrangler.jsonc`, `wrangler.toml` | Parses `main` module entry. Auto-detects Durable Objects, WorkerEntrypoints, Workflows. | Requires `includeEntryExports: false` or JSDoc `@public` on RPC classes; ignore `worker-configuration.d.ts` and `@cloudflare/workers-types`. |
 
 ### Testing & Verification Tools
 
@@ -759,7 +764,7 @@ In Knip's architecture, specifying a glob pattern in top-level `"ignore"` comple
 
 | Scenario | Incorrect (Harmful) Configuration | Correct (Targeted) Configuration |
 |---|---|---|
-| Auto-generated GraphQL client code has unused types | `"ignore": ["src/generated/**"]` | `"entry": ["src/generated/graphql.ts!"]` (marking as public entry) |
+| Auto-generated GraphQL client code has unused types | `"ignore": ["src/generated/**"]` | `"entry": ["src/generated/graphql.ts"]` (relying on `includeEntryExports: false` or JSDoc `@public`) |
 | Test helper exports are flagged as unused outside tests | `"ignore": ["test/helpers/**"]` | Add test helpers to `entry` or project test glob: `"project": ["src/**", "test/**"]` |
 | External CSS / Tailwind tools trigger unused dependency warnings | `"ignore": ["tailwind.config.js"]` | `"ignoreDependencies": ["autoprefixer", "postcss"]` or `"tailwind": true` |
 | Type exports are used inside their defining files | `"ignore": ["src/types/**"]` | `"ignoreExportsUsedInFile": { "interface": true, "type": true }` |

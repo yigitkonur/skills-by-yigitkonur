@@ -424,7 +424,7 @@ Never mix a functional bug fix into a structural commit — it destroys the reve
 
 ---
 
-## 8. Architectural Deepening (Matt Pocock Model)
+### 8. Architectural Deepening (Matt Pocock Model)
 
 Synthesizing Matt Pocock's `improve-codebase-architecture` and John Ousterhout's *Philosophy of Software Design* for TypeScript codebases, a cleanup operation must not merely delete dead lines — it must deepen existing modules and improve system leverage.
 
@@ -435,7 +435,7 @@ Synthesizing Matt Pocock's `improve-codebase-architecture` and John Ousterhout's
          │ Implementation: 2 lines each      │  ← Wide surface, shallow value,
          └───────────────────────────────────┘     high cognitive friction
                           vs.
-           DEEP MODULE (High Architectural Leverage)
+            DEEP MODULE (High Architectural Leverage)
          ┌───────────────────────────────────┐
          │ Interface: 1 function / command   │  ← Tiny surface, deep value,
          ├───────────────────────────────────┤     hides complexity completely
@@ -444,23 +444,307 @@ Synthesizing Matt Pocock's `improve-codebase-architecture` and John Ousterhout's
          └───────────────────────────────────┘
 ```
 
-### 1. The Deep Module Principle
-- **The Defect:** Agents create shallow pass-through modules (`apiWrapper.ts`, `dataFetcher.ts`) with wide export surfaces that simply wrap standard library or third-party SDK calls in one-liners.
-- **The Remediation:** Deepen the module. Consolidate caching, validation, retry policies, and error normalization inside the module, exposing a single, narrow entry point (`createCheckoutSession(cart: Cart): Promise<CheckoutResult>`).
+When AI agents generate code or perform automated refactoring, they systematically introduce four categories of structural bloat:
+1. **Shallow pass-through wrappers** (creating artificial call-stack hops with zero leverage).
+2. **Test-only export leaks** (breaking encapsulation by exporting private helpers solely so unit tests can spy on internal state).
+3. **Speculative seams / ghost interfaces** (introducing Java-style `IUserService` abstractions with exactly one implementation and no polymorphic variance).
+4. **Context-fragmented micro-file sprawl** (scattering 5-line single-consumer helpers into disconnected global utility folders).
 
-### 2. The Seam Test
-- **The Defect:** Speculative abstraction. Agents generate enterprise boilerplate: `interface IUserService`, `class UserServiceImpl`, `class UserDTO`, `class UserValidator` for basic operations with only one implementation.
-- **The Remediation:** Apply the Seam Test:
-  * *Is there more than one implementation in this repository?*
-  * *Does this boundary cross a physical runtime or package boundary (worker, network, process)?*
-  If the answer to both is NO, delete the redundant interface and export the concrete implementation directly.
+---
 
-### 3. The Deletion Test
-- **The Defect:** Leaky domain boundaries. A feature (`src/features/referrals/`) exports internal types and helpers into shared folders (`src/utils/`, `src/types/`), creating invisible horizontal coupling.
-- **The Remediation:** Apply the Deletion Test:
-  * *Can this entire feature directory be deleted cleanly with `git rm -r` without breaking 15 unrelated features?*
-  If deleting the feature causes cascading compiler errors in other domains, colocate those shared helpers back inside the feature directory.
+### Tenet 1: The Deletion Test
 
-### 4. Interface as the Test Surface
-- **The Defect:** Testing private plumbing. Agents export internal helper functions (`export function _computeDiscount()`) solely to write micro-unit tests against them, leaking implementation details.
-- **The Remediation:** Un-export internal helpers. Test domain behavior through the deep module's public contract. Write tests against inputs and outputs, not intermediate implementation seams.
+> **The Deletion Test:**  
+> *"Imagine deleting the module:*  
+> *- If removing it causes its complexity to vanish completely, it was a shallow module — inline it!*  
+> *- If deleting it causes complexity to reappear and duplicate across N callers, it is a true deep module that must be preserved and deepened."*
+
+Depth is not the ratio of implementation lines to interface lines. Depth is **leverage at the interface**: how much capability a caller gets per unit of API surface they have to learn.
+
+#### Application 1: Pass-Through Wrapper vs. Deep Module
+
+##### Anti-Pattern: Shallow Pass-Through Wrapper
+An agent creates a wrapper to "abstract" an HTTP client:
+
+```typescript
+// src/services/userApi.ts (SHALLOW MODULE: AVOID)
+import { apiClient } from '@/lib/apiClient';
+import type { User } from '@/types/user';
+
+// Interface: 1 function to learn
+// Implementation: 1-line pass-through with 0 added value
+export async function fetchUserById(id: string): Promise<User> {
+  return apiClient.get<User>(`/users/${id}`);
+}
+```
+
+*Applying the Deletion Test:*  
+If we delete `fetchUserById`, what happens to callers?
+```typescript
+// Caller: src/features/profile/useProfile.ts
+- const user = await fetchUserById(userId);
++ const user = await apiClient.get<User>(`/users/${userId}`);
+```
+The complexity did not reappear across callers; the complexity *vanished*. Callers already understand `apiClient.get`. The wrapper was pure indirection and cognitive drag.
+
+##### Remediated: The True Deep Module
+If `userApi.ts` is to earn its keep as a module, it must hide genuine complexity behind that small interface:
+
+```typescript
+// src/services/userApi.ts (DEEP MODULE: PRESERVE & ENHANCE)
+import { apiClient } from '@/lib/apiClient';
+import { userCache } from '@/lib/cache';
+import { UserSchema, type User } from '@/schemas/user';
+
+// Interface remains tiny: exactly 1 function, identical simple signature
+export async function fetchUserById(id: string): Promise<User> {
+  // Deep implementation hidden behind the seam:
+  // 1. In-memory cache check
+  const cached = userCache.get(id);
+  if (cached && !cached.isStale()) return cached.data;
+
+  // 2. Fetch with automatic retry and abort signal
+  const raw = await apiClient.get(`/users/${id}`, { retry: 2 });
+
+  // 3. Runtime boundary validation (Zod schema parse)
+  const validated = UserSchema.parse(raw);
+
+  // 4. Cache update
+  userCache.set(id, validated);
+  return validated;
+}
+```
+
+*Applying the Deletion Test:*  
+If we delete `fetchUserById` now, all N callers would have to re-implement caching, retry backoff, and runtime schema parsing. Real complexity reappears in N places. Therefore, this module passes the Deletion Test.
+
+#### Application 2: Subsystem & Feature-Level Deletion Test (Horizontal Coupling)
+- **Test:** Can you run `git rm -r src/features/referrals/` and have the rest of the repository compile cleanly (excluding explicit navigation links to referrals)?
+- **Violation:** If deleting `src/features/referrals/` triggers 20 compiler errors in `src/features/billing/` and `src/utils/` because referrals exported its private referral bonus calculators or referral DTOs into global directories, the feature violated subsystem locality.
+- **Remediation:** Colocate those internal symbols back into `src/features/referrals/`.
+
+---
+
+### Tenet 2: Interface as Test Surface
+
+> **The Interface as Test Surface Principle:**  
+> *"Callers and tests cross the exact same seam. If you need to test past the module's public interface, the module is the wrong shape or missing a clean internal seam. Never export private production symbols solely for unit tests."*
+
+#### The Defect: Test-Only Export Leaks
+When an agent writes unit tests, it frequently exports private helper functions to test them in isolation:
+
+```typescript
+// src/domain/pricing/calculator.ts (ENCAPSULATION LEAK: AVOID)
+export interface OrderItem {
+  id: string;
+  price: number;
+  quantity: number;
+  category: 'standard' | 'clearance';
+}
+
+// LEAK 1: Exported ONLY for unit tests
+export function _calculateItemDiscount(price: number, quantity: number, category: string): number {
+  if (category === 'clearance') return price * quantity * 0.3;
+  return quantity >= 10 ? price * quantity * 0.1 : 0;
+}
+
+// LEAK 2: Exported ONLY for unit tests
+export function _computeTierTax(subtotal: number, state: string): number {
+  const rates: Record<string, number> = { CA: 0.0825, NY: 0.08, TX: 0.0625 };
+  return subtotal * (rates[state] ?? 0.05);
+}
+
+// The ONLY true public interface
+export function calculateOrderTotal(items: OrderItem[], state: string): { subtotal: number; tax: number; total: number } {
+  const subtotal = items.reduce((sum, item) => {
+    const discount = _calculateItemDiscount(item.price, item.quantity, item.category);
+    return sum + (item.price * item.quantity - discount);
+  }, 0);
+  const tax = _computeTierTax(subtotal, state);
+  return { subtotal, tax, total: subtotal + tax };
+}
+```
+
+```typescript
+// src/domain/pricing/calculator.test.ts (FRAGILE PLUMBING TEST)
+import { _calculateItemDiscount, _computeTierTax, calculateOrderTotal } from './calculator';
+
+test('_calculateItemDiscount applies 30% for clearance', () => {
+  expect(_calculateItemDiscount(100, 1, 'clearance')).toBe(30);
+});
+```
+
+#### Why This Breaks Systems
+1. **Knip Detection:** Knip flags `_calculateItemDiscount` and `_computeTierTax` as Batch 4 (Test-Only Leaks) or unused exports under `--production`.
+2. **Refactoring Paralysis:** If the developer refactors the internal discount engine to use a strategy pattern or rule engine, the unit tests fail, even though `calculateOrderTotal` behaves identically!
+3. **API Bloat:** Autocomplete in IDEs exposes `_calculateItemDiscount` to unrelated production consumers.
+
+#### Remediation Protocol: "Replace, Don't Layer"
+1. **Un-export the private helpers:** Remove `export` from `_calculateItemDiscount` and `_computeTierTax`.
+2. **Re-target test suite at the public interface:** Test behavior through observable inputs and outputs of `calculateOrderTotal`.
+3. **If internal logic is independently complex:** Extract a separate deep module (`DiscountPolicy`) with its own small interface and separate unit tests.
+
+```typescript
+// src/domain/pricing/calculator.ts (CLEAN ENCAPSULATION)
+export interface OrderItem {
+  id: string;
+  price: number;
+  quantity: number;
+  category: 'standard' | 'clearance';
+}
+
+// Internal implementation details: strictly un-exported
+function calculateItemDiscount(price: number, quantity: number, category: string): number {
+  if (category === 'clearance') return price * quantity * 0.3;
+  return quantity >= 10 ? price * quantity * 0.1 : 0;
+}
+
+function computeTierTax(subtotal: number, state: string): number {
+  const rates: Record<string, number> = { CA: 0.0825, NY: 0.08, TX: 0.0625 };
+  return subtotal * (rates[state] ?? 0.05);
+}
+
+// Public Interface
+export function calculateOrderTotal(
+  items: OrderItem[],
+  state: string
+): { subtotal: number; tax: number; total: number } {
+  const subtotal = items.reduce((sum, item) => {
+    const discount = calculateItemDiscount(item.price, item.quantity, item.category);
+    return sum + (item.price * item.quantity - discount);
+  }, 0);
+  const tax = computeTierTax(subtotal, state);
+  return { subtotal, tax, total: subtotal + tax };
+}
+```
+
+```typescript
+// src/domain/pricing/calculator.test.ts (RESILIENT TEST SURFACE)
+import { calculateOrderTotal } from './calculator';
+
+describe('calculateOrderTotal', () => {
+  it('applies clearance discount through the public interface', () => {
+    const result = calculateOrderTotal(
+      [{ id: '1', price: 100, quantity: 1, category: 'clearance' }],
+      'CA'
+    );
+    expect(result.subtotal).toBe(70);
+    expect(result.tax).toBeCloseTo(5.775);
+    expect(result.total).toBeCloseTo(75.775);
+  });
+});
+```
+
+---
+
+### Tenet 3: The Seam Test
+
+> **The Seam Test:**  
+> *"One adapter = hypothetical seam (YAGNI & indirection). Two adapters = real seam.*  
+> *Do not introduce an interface, abstract class, or port unless at least two concrete adapters exist in the repository (e.g. production + test in-memory fake, or multi-provider drivers)."*
+
+#### The Defect: Ghost Interfaces & Speculative Polymorphism
+AI agents habitually write Enterprise Java patterns in TypeScript:
+
+```typescript
+// src/services/user/IUserService.ts (GHOST INTERFACE: AVOID)
+export interface IUserService {
+  getUser(id: string): Promise<User>;
+  updateUser(id: string, data: UpdateUserData): Promise<User>;
+  deleteUser(id: string): Promise<void>;
+}
+
+// src/services/user/UserService.ts
+import type { IUserService } from './IUserService';
+
+export class UserService implements IUserService {
+  async getUser(id: string): Promise<User> { /* ... */ }
+  async updateUser(id: string, data: UpdateUserData): Promise<User> { /* ... */ }
+  async deleteUser(id: string): Promise<void> { /* ... */ }
+}
+```
+
+#### Why This is Toxic in TypeScript
+- **Structural Typing:** TypeScript has structural typing. You do **not** need `implements IUserService` to mock or substitute `UserService` in tests! Any object matching the shape `{ getUser: ... }` satisfies consumers.
+- **Maintenance Burden:** Adding a parameter requires updating both `IUserService.ts` and `UserService.ts`.
+- **Zero Polymorphic Value:** There is only one implementation in the entire repo.
+
+#### The Seam Decision Matrix
+```
+Is there more than 1 adapter in the codebase?
+       │
+       ├─► NO  ──► HYPOTHETICAL SEAM:
+       │           Delete the interface. Export concrete functions/class directly.
+       │
+       └─► YES ──► REAL SEAM:
+                   Where does the seam live?
+                     ├─► Internal Seam: (e.g. PGLite stand-in for Postgres)
+                     │   Keep interface private to module; do NOT leak to public exports.
+                     │
+                     └─► External Seam: (e.g. Stripe vs MockPaymentGateway)
+                         Expose port at module boundary; accept dependencies via arguments.
+```
+
+#### Remediation Protocol
+1. Search for interfaces implemented by exactly one class or function:
+   ```bash
+   rg -n 'export\s+interface\s+I[A-Z]\w*' src/
+   rg -n 'class\s+\w+\s+implements\s+\w+' src/
+   ```
+2. Verify with `rg` that no second adapter (mock, in-memory fake, secondary vendor) implements the interface.
+3. Delete `IUserService.ts`.
+4. Remove `implements IUserService` from `UserService.ts` and export `UserService` directly.
+5. If consumers imported `type { IUserService }`, update their type annotations to `type { UserService }` or infer from the implementation.
+
+---
+
+### Tenet 4: Locality & Anti-Fragmentation
+
+> **Locality & Anti-Fragmentation Principle:**  
+> *"Code that changes together must live together. Counter AI-agent context-window fragmentation by collocating single-consumer helpers in feature pods rather than scattering them into horizontal global layers."*
+
+#### The Defect: Agent Micro-File Sprawl
+When LLMs generate features, they have a strong cognitive bias toward micro-modularization across global directory layers:
+
+```
+SPRAWL ARCHITECTURE (High Token Cost & High Friction):
+src/
+├── components/
+│   └── UserProfileCard.tsx            (25 lines)
+├── hooks/
+│   └── useUserProfileData.ts          (12 lines, 1 caller)
+├── types/
+│   └── userProfileCard.ts             (6 lines, 1 caller)
+├── utils/
+│   ├── formatUserInitials.ts          (4 lines, 1 caller)
+│   └── formatMemberSince.ts           (5 lines, 1 caller)
+└── styles/
+    └── userProfileCard.module.css
+```
+Total: 6 files, 5 directory traversals, 5 roundtrips for any AI agent or human to understand one simple card component. When `UserProfileCard.tsx` is deleted, the other 4 files become zombie orphans.
+
+#### The Rules of Locality
+
+##### 1. The 1-to-1 Colocation Rule
+If a helper, type, or hook has **exactly one consumer**:
+- **Under ~25 LOC:** Move it into the consumer file as a non-exported private declaration.
+- **Over 25 LOC or requires its own test file:** Keep it in the same directory as a sibling file (`UserProfileCard.helpers.ts`).
+
+##### 2. The Rule of Three (Global Promotion Threshold)
+Do **NOT** promote a utility to `src/utils/` or `src/lib/` unless **all three** criteria are met:
+1. Consumed by **at least 3 distinct domain features** (not just 3 call sites in 1 feature).
+2. Purely **domain-agnostic** (math, date formatting, string normalization, array operations).
+3. Accompanied by **its own dedicated unit tests**.
+
+##### 3. Directory Depth Ceiling
+- Cap nesting at **4 levels below `src/`**.
+- Ban single-child folders (e.g. `src/features/billing/components/cards/subscription-card/button/Button.tsx`). Flatten into feature pods.
+
+##### Remediated: The Feature Pod Pattern
+```
+CO-LOCATED FEATURE POD (Atomic, Navigable, Zero Sprawl):
+src/features/user-profile/
+├── UserProfileCard.tsx            (contains inline formatters & prop types)
+├── UserProfileCard.test.tsx       (tests component through public surface)
+└── useUserProfileData.ts          (sibling hook, if complex enough to warrant extraction)
+```

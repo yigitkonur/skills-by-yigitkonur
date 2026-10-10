@@ -25,25 +25,22 @@ npx type-coverage                            # global percentage only
 npx type-coverage --detail                   # every untyped identifier
 npx type-coverage --strict --detail          # count catch + dynamic-index any
 npx type-coverage -p tsconfig.build.json     # non-root tsconfig
-npx type-coverage --json-output              # machine-readable
+npx type-coverage --at-least 95              # exit non-zero if below ratchet
 ```
 
 ### Verified Flag Surface
 
 | Flag | Effect |
 |---|---|
-| `-p, --project` | Path to the `tsconfig.json` to analyze |
+| `-p, --project <path>` | Path to the `tsconfig.json` to analyze |
 | `--detail` | Print every untyped identifier with file, line, and column |
 | `--at-least <n>` | Exit non-zero when the coverage rate falls below `n` |
 | `--strict` | Stricter counting; includes catch-clause and dynamic-index `any` |
 | `--ignore-catch` | Exclude catch-clause variables from the score |
 | `--ignore-files <glob>` | Exclude files from analysis |
-| `--ignore-unread` | Permit writes to variables with implicit `any` |
 | `--cache` | Cache results between runs for speed |
 | `--update` | Write the current rate into the `typeCoverage` block in `package.json` |
-| `--json-output` | Emit results as JSON |
-| `--history-file <path>` | Append the score to a history file for trend tracking |
-| `--report-semantic-error` | Surface TypeScript semantic errors alongside the score |
+| `--update-if-higher` | Update `typeCoverage` in `package.json` only if coverage increased |
 
 ### Read the Output
 
@@ -127,6 +124,15 @@ In `knip.jsonc`:
   }
 }
 ```
+
+#### Knip v6 Engine Architecture & Behavioral Changes
+In Knip v6:
+- **Rust-Based OXC Engine**: Replaced TypeScript's AST parser and module resolution host with `oxc-parser` and `oxc-resolver`, delivering 10x–20x faster scans across large repositories.
+- **Dropped `classMembers` Rule**: Removed because tracking unused class properties and methods required TypeScript's `ts.LanguageService.findReferences`, which cannot run within the OXC engine.
+- **Dropped `--isolate-workspaces`**: Workspace isolation is now the default and only behavior in Knip v6; the CLI flag was dropped.
+- **Dropped `--include-libs`**: Standard library type inclusions are now built-in.
+- **Native `namespaceMembers` Support**: Direct AST detection for unreferenced TypeScript namespace members (`"namespaceMembers": "error"`).
+- **Uniform Reporter Schema**: Issue types are uniformly formatted as arrays inside `issues: [...]` in the JSON reporter.
 
 ### Specialized Alternatives: `madge` & `dpdm`
 

@@ -210,7 +210,7 @@ class Finding:
 
 
 class KnipReportParser:
-    """Parses arbitrary Knip JSON outputs and classifies findings into 6 batches."""
+    """Parses arbitrary Knip JSON outputs and classifies findings into 9 batches."""
 
     def __init__(self, raw_data: Any, project_dir: Path | None = None) -> None:
         self.raw_data = raw_data
@@ -249,7 +249,7 @@ class KnipReportParser:
                     else:
                         self._parse_flat_issue_dict(item)
 
-        # Sort findings: Batch 1 to 6, then High -> Medium -> Low risk, then file path
+        # Sort findings: Batch 1 to 9, then High -> Medium -> Low risk, then file path
         risk_order = {"High": 0, "Medium": 1, "Low": 2}
         self.findings.sort(key=lambda f: (f.batch, risk_order.get(f.risk_score, 3), f.file, f.line or 0))
 
@@ -272,7 +272,7 @@ class KnipReportParser:
             name = item.get("name", file_path) if isinstance(item, dict) else str(item)
             self._add_unreferenced_file(name)
 
-        # 2. dependencies & devDependencies & unlisted & binaries & unresolved
+        # 2. dependencies & devDependencies & unlisted & binaries & unresolved & catalog
         for dep in issue_obj.get("dependencies", []):
             self._add_dependency_finding(file_path, "dependencies", dep)
 
@@ -291,12 +291,19 @@ class KnipReportParser:
         for unresolved in issue_obj.get("unresolved", []):
             self._add_dependency_finding(file_path, "unresolved", unresolved)
 
+        for cat in (issue_obj.get("catalog", []) + issue_obj.get("catalogReferences", [])):
+            self._add_dependency_finding(file_path, "catalog", cat)
+
         # 3. exports & duplicates & nsExports
         for exp in issue_obj.get("exports", []):
             self._classify_export(file_path, "exports", exp)
 
         for dup in (issue_obj.get("duplicates", []) + issue_obj.get("duplicateExports", [])):
-            self._classify_export(file_path, "duplicateExports", dup)
+            if isinstance(dup, list):
+                for sub_dup in dup:
+                    self._classify_export(file_path, "duplicateExports", sub_dup)
+            else:
+                self._classify_export(file_path, "duplicateExports", dup)
 
         for ns in (issue_obj.get("namespaceMembers", []) + issue_obj.get("nsExports", [])):
             self._classify_export(file_path, "nsExports", ns)
@@ -326,7 +333,7 @@ class KnipReportParser:
             self._add_unreferenced_file(name)
 
         # dependencies
-        for rule in ("dependencies", "devDependencies", "unlisted", "optionalPeerDependencies", "binaries", "unresolved"):
+        for rule in ("dependencies", "devDependencies", "unlisted", "optionalPeerDependencies", "binaries", "unresolved", "catalog", "catalogReferences"):
             entries = data.get(rule, {})
             if isinstance(entries, dict):
                 for file_path, items in entries.items():
@@ -345,7 +352,11 @@ class KnipReportParser:
                 for file_path, items in entries.items():
                     if isinstance(items, list):
                         for it in items:
-                            self._classify_export(file_path, norm_rule, it)
+                            if isinstance(it, list):
+                                for sub_it in it:
+                                    self._classify_export(file_path, norm_rule, sub_it)
+                            else:
+                                self._classify_export(file_path, norm_rule, it)
 
         # types
         for rule in ("types", "nsTypes", "enumMembers"):
@@ -374,6 +385,10 @@ class KnipReportParser:
             risk = "High"
             rationale = "Unresolvable module specifier; broken import path."
             action = f"Fix broken import specifier or install missing dependency: {name}"
+        elif rule in ("catalog", "catalogReferences"):
+            risk = "Medium"
+            rationale = "Monorepo catalog dependency unused in local workspace."
+            action = f"Remove unused catalog dependency from package manifest: {name}"
         elif rule == "dependencies":
             risk = "Medium"
             rationale = "Production dependency removal; verify no dynamic imports or runtime reflection before deletion."
@@ -604,12 +619,17 @@ class KnipReportParser:
     # -------------------------------------------------------------------------
     def _add_cycle_finding(self, item: Any) -> None:
         if isinstance(item, list):
-            cycle_chain = " -> ".join(str(node) for node in item)
-            root_file = str(item[0]) if item else "unknown"
+            nodes = [n.get("name", str(n)) if isinstance(n, dict) else str(n) for n in item]
+            cycle_chain = " -> ".join(nodes)
+            root_file = nodes[0] if nodes else "unknown"
         elif isinstance(item, dict):
             root_file = str(item.get("file") or item.get("name") or "unknown")
             chain_nodes = item.get("chain") or item.get("cycle") or [root_file]
-            cycle_chain = " -> ".join(str(n) for n in chain_nodes) if isinstance(chain_nodes, list) else str(chain_nodes)
+            if isinstance(chain_nodes, list):
+                nodes = [n.get("name", str(n)) if isinstance(n, dict) else str(n) for n in chain_nodes]
+                cycle_chain = " -> ".join(nodes)
+            else:
+                cycle_chain = str(chain_nodes)
         else:
             root_file = str(item)
             cycle_chain = str(item)
@@ -728,13 +748,13 @@ class ReportEmitter:
 
     def generate_markdown(self) -> str:
         """Produce clean Markdown table summary."""
-        is_filtered = len(self.active_batches) < 6
+        is_filtered = len(self.active_batches) < 9
         filter_note = f" (Filtered to Batch: {', '.join(str(b) for b in sorted(self.active_batches))})" if is_filtered else ""
         lines: list[str] = [
-            f"# TypeScript Dead Code Audit: 6-Batch Remediation Plan{filter_note}",
+            f"# TypeScript Dead Code Audit: 9-Batch Remediation Plan{filter_note}",
             "",
             "> Systematic classification and risk assessment for detected dead-code violations.",
-            "> Remediation must proceed in strict dependency order (Batch 1 through Batch 6).",
+            "> Remediation must proceed in strict dependency order (Batch 1 through Batch 9).",
             f"> Gate commands rendered for the detected package manager: **{self.manager}**.",
             "",
             "## 1. Executive Summary",
@@ -872,7 +892,7 @@ def execute_knip(cwd: Path) -> tuple[int, str, str]:
 def main() -> int:
     """CLI Entrypoint for batch-findings."""
     parser = argparse.ArgumentParser(
-        description="Batch and prioritize dead-code findings into 6 contextual batches with risk scores.",
+        description="Batch and prioritize dead-code findings into 9 contextual remediation batches with risk scores.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

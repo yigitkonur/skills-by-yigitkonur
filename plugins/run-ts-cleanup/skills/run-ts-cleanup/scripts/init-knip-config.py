@@ -7,7 +7,7 @@ framework-tuned knip.jsonc or knip.json configuration avoiding broad ignores
 while enabling targeted rules and automated plugins.
 
 Supported Frameworks & Tooling:
-    - Web Frameworks: Next.js, Remix, Vite, Astro, Nuxt, SvelteKit, NestJS, Express
+    - Web Frameworks: Next.js, Remix, Vite, Astro, Nuxt, SvelteKit, NestJS, Express, Cloudflare Workers / Wrangler
     - Testing Frameworks: Vitest, Jest, Cypress, Playwright, Storybook
     - Linters & Styling: Tailwind CSS, ESLint, Prettier
     - Monorepo Engines: pnpm-workspace.yaml, package.json workspaces, lerna.json, turbo.json, nx.json
@@ -366,6 +366,17 @@ class ProjectScanner:
         ):
             result.frameworks.add("prettier")
 
+        # 17. Cloudflare Workers / Wrangler
+        if (
+            "wrangler" in deps
+            or "@cloudflare/workers-types" in deps
+            or "@cloudflare/vitest-pool-workers" in deps
+            or self._has_file("wrangler.json")
+            or self._has_file("wrangler.jsonc")
+            or self._has_file("wrangler.toml")
+        ):
+            result.frameworks.add("wrangler")
+
 
 class ConfigGenerator:
     """Builds optimal Knip configuration tailored to discovered frameworks."""
@@ -392,7 +403,20 @@ class ConfigGenerator:
             config["project"] = self._build_project_pattern()
 
         # Targeted ignores (strictly avoid broad top-level "ignore")
-        config.update(DEFAULT_TARGETED_IGNORES)
+        targeted_ignores: dict[str, Any] = {
+            "ignoreExportsUsedInFile": {
+                "interface": True,
+                "type": True,
+            },
+            "ignoreDependencies": list(DEFAULT_TARGETED_IGNORES["ignoreDependencies"]),
+            "ignoreBinaries": list(DEFAULT_TARGETED_IGNORES["ignoreBinaries"]),
+        }
+        if "wrangler" in self.scan.frameworks:
+            for dep in ("@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"):
+                if dep not in targeted_ignores["ignoreDependencies"]:
+                    targeted_ignores["ignoreDependencies"].append(dep)
+            config["includeEntryExports"] = False
+        config.update(targeted_ignores)
 
         # Strict rules configuration
         try:
@@ -447,11 +471,48 @@ class ConfigGenerator:
 
         return config
 
+    def _extract_wrangler_entry(self) -> str | None:
+        """Extract 'main' entry point from wrangler.json, wrangler.jsonc, or wrangler.toml."""
+        target = self.scan.target_dir
+        for cfg_name in ("wrangler.json", "wrangler.jsonc"):
+            cfg_path = target / cfg_name
+            if cfg_path.is_file():
+                try:
+                    content = cfg_path.read_text(encoding="utf-8")
+                    clean = re.sub(r'//[^\r\n]*|/\*[\s\S]*?\*/', '', content)
+                    data = json.loads(clean)
+                    main = data.get("main")
+                    if main and isinstance(main, str):
+                        return main.replace("\\", "/").lstrip("./")
+                except Exception:
+                    pass
+
+        toml_path = target / "wrangler.toml"
+        if toml_path.is_file():
+            try:
+                content = toml_path.read_text(encoding="utf-8")
+                match = re.search(r'^\s*main\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+                if match:
+                    return match.group(1).replace("\\", "/").lstrip("./")
+            except Exception:
+                pass
+        return None
+
     def _build_entries(self) -> list[str]:
         """Collect entry points tailored to discovered frameworks and existing files."""
         entries: list[str] = []
         fw = self.scan.frameworks
         target = self.scan.target_dir
+
+        if "wrangler" in fw:
+            w_entry = self._extract_wrangler_entry()
+            if w_entry:
+                entries.append(w_entry)
+            else:
+                for candidate in ("src/index.ts", "src/worker.ts", "worker/index.ts", "src/index.js", "src/worker.js"):
+                    if (target / candidate).is_file():
+                        entries.append(candidate)
+                        break
 
         if "next" in fw:
             # Next.js App Router and Pages Router conventions
@@ -549,6 +610,8 @@ class ConfigGenerator:
             plugins["svelte"] = True
         if "nest" in fw:
             plugins["nest"] = True
+        if "wrangler" in fw:
+            plugins["wrangler"] = True
 
         # Testing tools
         if "vitest" in fw:

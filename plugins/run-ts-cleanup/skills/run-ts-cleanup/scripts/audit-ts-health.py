@@ -65,6 +65,7 @@ IGNORED_DIRS = {
     ".output",
     "storybook-static",
     "vendor",
+    ".wrangler",
 }
 
 SOURCE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
@@ -164,6 +165,28 @@ class SlopDetector:
         self.re_zod_infer = re.compile(
             r"z\.infer<\s*typeof\s+([A-Za-z0-9_$]+Schema)\s*>"
         )
+        self.is_cf_worker = self._detect_cloudflare_worker()
+        self.re_process_env = re.compile(r"\bprocess\.env(?:\.([A-Za-z0-9_$]+)|\[['\"]([^'\"]+)['\"]]?)")
+
+    def _detect_cloudflare_worker(self) -> bool:
+        pkg_json = self.target_dir / "package.json"
+        deps: set[str] = set()
+        if pkg_json.is_file():
+            try:
+                import json
+                data = json.loads(pkg_json.read_text(encoding="utf-8"))
+                for field in ("dependencies", "devDependencies"):
+                    sec = data.get(field, {})
+                    if isinstance(sec, dict):
+                        deps.update(sec.keys())
+            except Exception:
+                pass
+        if "wrangler" in deps or "@cloudflare/workers-types" in deps or "@cloudflare/vitest-pool-workers" in deps:
+            return True
+        for cfg in ("wrangler.json", "wrangler.jsonc", "wrangler.toml"):
+            if (self.target_dir / cfg).is_file():
+                return True
+        return False
 
     def scan(self) -> list[SlopFinding]:
         self.findings = []
@@ -196,13 +219,52 @@ class SlopDetector:
             # 5. Check Schema Drift (zod schema without z.infer)
             self._scan_schema_drift(rel_file, content)
 
-            # 6. Collect utility declarations
+            # 6. Check Runtime Leakage (process.env in Cloudflare Workers)
+            self._scan_runtime_leakage(rel_file, content)
+
+            # 7. Collect utility declarations
             self._collect_utilities(rel_file, content, utility_declarations)
 
-        # 7. Analyze utility duplication across files
+        # 8. Analyze utility duplication across files
         self._analyze_utility_duplication(utility_declarations)
 
         return self.findings
+
+    def _scan_runtime_leakage(self, file_path: str, content: str) -> None:
+        """Detect process.env leakage in Cloudflare Workers source files."""
+        if not self.is_cf_worker:
+            return
+
+        path_lower = file_path.lower()
+        if any(path_lower.endswith(cfg) for cfg in (
+            "vitest.config.ts", "vitest.config.js",
+            "vite.config.ts", "vite.config.js",
+            "wrangler.config.ts", "wrangler.config.js",
+            "build.ts", "build.js",
+        )) or path_lower.startswith("scripts/") or "test" in path_lower:
+            return
+
+        for m in self.re_process_env.finditer(content):
+            line_no = content[:m.start()].count("\n") + 1
+            matched_prop = m.group(1) or m.group(2) or ""
+            prop_suffix = f".{matched_prop}" if matched_prop else ""
+            snippet = f"process.env{prop_suffix}"
+            self.findings.append(
+                SlopFinding(
+                    id=self._next_id(),
+                    category="Runtime Leakage",
+                    rule="process-env-in-worker",
+                    file=file_path,
+                    line=line_no,
+                    risk="High",
+                    snippet=snippet,
+                    action=(
+                        "Replace 'process.env' with request-scoped 'env' parameter "
+                        "(e.g. env.VAR) or 'this.env' in Durable Objects / WorkerEntrypoint. "
+                        "Cloudflare Workers runtime (workerd) does not populate process.env."
+                    ),
+                )
+            )
 
     def _find_source_files(self) -> list[Path]:
         files: list[Path] = []
@@ -1435,6 +1497,13 @@ class AuditReporter:
         if dupe_utils:
             recs.append(
                 f"**Consolidate Utilities**: Merge duplicate helpers ({len(dupe_utils)} utilities) into canonical modules (e.g. `src/lib/utils.ts`)."
+            )
+
+        cf_leaks = sum(1 for f in self.slop_findings if f.rule == "process-env-in-worker")
+        if cf_leaks > 0:
+            recs.append(
+                f"**Eradicate Runtime Leakage**: Replace {cf_leaks} instance(s) of 'process.env' in Cloudflare Workers "
+                "handlers with request-scoped 'env' bindings."
             )
 
         # tsconfig
