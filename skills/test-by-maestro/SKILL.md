@@ -1,49 +1,169 @@
 ---
 name: test-by-maestro
 description: "Use if writing, running, or debugging Maestro E2E test flows on iOS Simulators, Android, or Web, including MCP agent automation and CI suites."
-disable-model-invocation: true
 ---
 
 # Test Mobile and Web UI with Maestro
 
-Author, validate, execute, and diagnose E2E tests with Maestro across iOS Simulators, Android emulators or physical devices, and Web (Chromium). This skill owns declarative YAML test flow authoring, offline syntax verification, local and remote execution over SSH, Model Context Protocol (MCP) server automation, artifact retrieval, and failure diagnosis. It does not own building the application binary, managing cloud provider accounts, or configuring backend test fixtures.
+Author, validate, execute, and diagnose E2E tests with Maestro across iOS Simulators (macOS host or Maestro Cloud), Android emulators or physical devices (Linux, macOS, Windows), and Web (Chromium). This skill owns declarative YAML test flow authoring, individual interactive action execution via Model Context Protocol (MCP), offline syntax verification, local and cloud/SSH execution, artifact retrieval, and failure diagnosis. It does not own building the application binary, managing cloud provider billing, or configuring backend test fixtures.
 
 ## When to use this skill
 
 - Writing declarative Maestro YAML flows for iOS Simulators, Android emulators/devices, or Web applications
-- Running UI test suites locally or from a Linux authoring host over SSH to a macOS simulator host
-- Driving tests via Maestro's native Model Context Protocol server (`maestro mcp`) with AI coding agents
-- Debugging failing tests, broken element selectors, or accessibility tree mismatches with `maestro hierarchy`
-- Verifying workspace syntax and modular subflow references offline without touching a physical device via `maestro check-syntax`
-- Managing local virtual test devices with `maestro start-device` and `maestro list-devices`
+- Driving tests interactively via Maestro's native Model Context Protocol server (`maestro mcp`) with AI coding agents (Claude Code, Cursor, Codex, Gemini CLI)
+- Taking individual exploratory actions on a live mobile device cleanly via MCP `run` using inline YAML commands
+- Running UI test suites locally on macOS (iOS & Android) or Linux (Android & Web locally; iOS via Maestro Cloud or SSH to macOS)
+- Creating modular, reusable test flows (`runFlow`), lifecycle hooks (`onFlowStart`, `onFlowComplete`), and parameterized suites (`env`)
+- Debugging failing tests, broken element selectors, or accessibility tree mismatches with `maestro hierarchy` or MCP `inspect_screen`
+- Validating flow YAML syntax offline via `maestro check-syntax` (or automatically inside MCP `run`)
+- Managing local virtual test devices with `maestro start-device`, `maestro list-devices`, and cloud devices with `maestro list-cloud-devices`
 - Collecting and interpreting test artifacts including JUnit XML reports, console logs, and failure screenshots
 
 ## Do NOT use this skill when
 
 - Writing unit or component tests (e.g., Jest or Vitest for React Native components)
-- Interactive exploratory web browsing without declarative YAML regression requirements (prefer `ego-browser`)
+- Interactive exploratory web browsing without mobile/declarative YAML regression requirements (prefer `ego-browser`)
 - Building, compiling, or refactoring application source code
 - Automating physical iOS devices locally (Maestro 2.11.0 explicitly fails fast with `"Physical iOS devices are not yet supported"`)
 - Testing raw MCP server implementations directly (use `test-by-mcpc-cli`; use this skill when driving Maestro's built-in `maestro mcp` server)
 
 ## Source of truth
 
-1. Confirm installed CLI: run `maestro --version` (install if missing: `curl -fsSL "https://get.maestro.mobile.dev" | bash`). Tested baseline is `2.11.0` / `2.10.0`.
-2. Inspect scoped command options with `maestro --help`, `maestro test --help`, `maestro hierarchy --help`, `maestro start-device --help`, `maestro list-devices --help`, and `maestro mcp --help`. Note that `check-syntax` takes only `<file>` or `-` without `--help`.
-3. Maestro Studio status: in Maestro 2.6.0+, Studio was unbundled from the CLI into a standalone desktop application (`https://studio.maestro.dev/`); interactive terminal and agent inspection uses `maestro hierarchy`, `maestro test --continuous` (`-c`), and `maestro mcp`.
-4. iOS Simulators require macOS with Xcode (`xcode-select -p`); Android requires ADB and Java 17+ (`java -version`). Maestro packages pinned `applesimutils` internally (unpacked to `~/.maestro/deps/applesimutils` for permissions); manual Homebrew installation is not required. Web testing requires Chrome/Chromium and supports `--headless` and `css:` locators.
+1. Confirm installed CLI: run `maestro --version` (install if missing: `curl -fsSL "https://get.maestro.mobile.dev" | bash`). Tested baseline is `2.11.0` / `2.10.0` (requires Java 17+ via `$JAVA_HOME`).
+2. Inspect scoped command options with `maestro --help`, `maestro test --help`, `maestro cloud --help`, `maestro hierarchy --help`, `maestro start-device --help`, `maestro list-devices --help`, and `maestro mcp --help`. Note that `check-syntax` takes only `<file>` or `-` (stdin) without `--help`.
+3. Maestro Studio & Viewer: in Maestro 2.6.0+, Studio was unbundled from the CLI into a standalone desktop application (`https://studio.maestro.dev/`). For coding agents, Maestro embeds the **Maestro Viewer** (`open_maestro_viewer` in MCP), enabling real-time visual streaming of the device screen and commands. Terminal inspection uses `maestro hierarchy` (default JSON, or `--compact` CSV) and `maestro test --continuous` (`-c`).
+4. Platform boundaries:
+   - **macOS Workstations**: Can run iOS Simulators (requires Xcode `xcode-select -p`), Android emulators/devices (requires ADB), and Web (Chromium). Maestro packages pinned `applesimutils` internally (`~/.maestro/deps/applesimutils`) for simulator permissions.
+   - **Linux Hosts**: Can run Android emulators (with `/dev/kvm`), physical Android devices, and Web locally. **Linux cannot run iOS Simulators locally**; for iOS testing on Linux, upload binaries to **Maestro Cloud** (`maestro cloud` / MCP `run_on_cloud`) or orchestrate remote runs over SSH to a macOS host.
+   - **Physical Devices**: Android physical devices are fully supported via ADB. Physical iOS devices are not supported locally in Maestro 2.11.0.
 
 ## Load-bearing rules
 
 | # | Rule | Why |
 |---|---|---|
-| 1 | Export explicit remote environment | Non-interactive SSH omits user profile paths; always export `JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"` and `PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"` alongside `DEVELOPER_DIR`. |
-| 2 | Uniquely select target device | Parse `xcrun simctl list devices --json` or `adb devices`; require exactly one booted match or explicit caller target (or comma-separated IDs for sharded runs). |
-| 3 | Coordinate exclusive host driver lease | Acquire atomic lock directory before driver operations to prevent port 22087 and XCUITest session collisions across processes. |
-| 4 | Copy complete workspace | Transfer self-contained root including `config.yaml`, subflows, scripts, and referenced media; never copy only a bare flow. |
-| 5 | Choose reset by runtime and session | Standalone builds may use `clearState` or `clearKeychain`; running Expo Dev Client sessions must omit launch and use deep links. |
-| 6 | Hierarchy-backed selectors and state waits | Inspect `maestro hierarchy` or MCP `inspect_screen` on locator failures; note `text:` performs a full-string regex match (use `.*Text.*` for partial copy). |
-| 7 | Preserve exit status and full artifacts | Transport logs, JUnit XML, screenshots, and `manifest.json` (with `startedAtEpochMs`); never convert execution failure to success. |
+| 1 | Individual actions via MCP `run` | In Maestro 2.5.0+, granular tool wrappers (`tap_on`, `input_text`) were consolidated into the declarative `run` tool. For single exploratory actions, pass inline YAML: `{ "device_id": "...", "yaml": "- tapOn: \"Log In\"" }`. |
+| 2 | Respect Linux vs macOS platform realities | iOS Simulators require Darwin/Xcode. When authoring on Linux, execute iOS tests via Maestro Cloud (`maestro cloud` / `run_on_cloud`) or remote macOS SSH; never attempt local `xcrun simctl` or local iOS boots on Linux. |
+| 3 | Export explicit remote/non-interactive environment | Non-interactive SSH and agent shells omit user profile paths; always export `JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/java}"` and `PATH="$JAVA_HOME/bin:$HOME/.maestro/bin:/opt/homebrew/bin:$PATH"` alongside `DEVELOPER_DIR`. |
+| 4 | Uniquely select target device | Parse `xcrun simctl list devices --json` or `adb devices`; require exactly one booted match or explicit caller target (`--device <id>`). Multi-device parallel runs on macOS use dynamic ports (`SIMCTL_CHILD_PORT`) since Maestro 2.6.0. |
+| 5 | Design reusable subflows with parameterized `env` | Encapsulate repeated routines (auth, onboarding, teardown) into `subflows/`. Pass context via `runFlow.env`; access via `${VARIABLE}`. Use `onFlowStart` and `onFlowComplete` hooks to guarantee state hygiene. |
+| 6 | Hierarchy-backed selectors and regex wildcards | Inspect `maestro hierarchy` or MCP `inspect_screen` on failures; note `text:` performs a **full-string regex match** (`IGNORE_CASE`). Use `.*Text.*` for partial copy matching. Never pass `start:` or `end:` in element selectors (2.11.0 breaking rule). |
+| 7 | Choose reset strategy by runtime and session | Standalone builds use `clearState: true` and `clearKeychain: true` (iOS). Running Expo Dev Client sessions must omit `launchApp` to preserve Metro bundler connections and use deep links instead. |
+| 8 | Preserve exit status and full artifacts | Transport logs, JUnit XML, screenshots, and `manifest.json` (with `startedAtEpochMs`); never convert test failure into success. |
+
+## Interactive Agent Automation via MCP (`maestro mcp`)
+
+Maestro embeds a Model Context Protocol (MCP) server over STDIO (`maestro mcp`), exposing 10 tools for coding agents:
+
+### Agent Setup Commands (`https://maestro.dev/mcp`)
+
+- **Claude Code**: `claude mcp add maestro -- maestro mcp`
+- **Cursor IDE / CLI**: Add to `~/.cursor/mcp.json` or `.cursor/mcp.json`:
+  ```json
+  {
+    "mcpServers": {
+      "maestro": {
+        "command": "maestro",
+        "args": ["mcp"]
+      }
+    }
+  }
+  ```
+- **Codex CLI**: `codex mcp add maestro -- maestro mcp`
+- **Gemini CLI / Antigravity**: `gemini mcp add maestro maestro mcp` or in `settings.json`:
+  ```json
+  {
+    "mcpServers": {
+      "maestro": {
+        "command": "maestro",
+        "args": ["mcp"],
+        "env": { "JAVA_HOME": "/path/to/java17+" }
+      }
+    }
+  }
+  ```
+
+### Taking Individual Actions Cleanly
+
+Coding agents should follow an exploratory iterative loop:
+1. **Identify Device**: Call `list_devices` to retrieve the active `device_id` (e.g. `emulator-5554` or simulator UDID).
+2. **Inspect Screen**: Call `inspect_screen` with `device_id` to inspect the compact view hierarchy and locate target `id` or `text`.
+3. **Execute Action**: Call `run` with inline YAML in the `yaml` argument:
+   ```json
+   {
+     "device_id": "emulator-5554",
+     "yaml": "- tapOn: \"Sign In\""
+   }
+   ```
+   Or chain related atomic actions:
+   ```json
+   {
+     "device_id": "emulator-5554",
+     "yaml": "- inputText: \"user@example.com\"\n- hideKeyboard: { optional: true }\n- tapOn: \"Continue\""
+   }
+   ```
+4. **Visual Stream**: Call `open_maestro_viewer` to launch the live embedded web viewer in browser/IDE.
+5. **Persist Test**: Once the flow passes interactively, save the commands into a permanent YAML flow file in `.maestro/flows/`.
+
+## Authoring Reusable and Ready-Made Tests
+
+Structure test workspaces to maximize modularity and regression stability:
+
+```text
+.maestro/
+├── config.yaml               # Global suite config, tags, and execution order
+├── flows/                    # Top-level end-to-end flows
+│   ├── 01-auth-smoke.yaml
+│   └── 02-checkout.yaml
+├── subflows/                 # Reusable building blocks
+│   ├── login-user.yaml
+│   └── clear-cart.yaml
+└── scripts/                  # Synchronous GraalJS helpers
+    └── generate-test-data.js
+```
+
+### 1. Ready-Made Reusable Subflow (`subflows/login-user.yaml`)
+```yaml
+# subflows/login-user.yaml
+# Parameterized login subflow with fallback defaults
+- tapOn:
+    id: "login_email_input"
+- inputText: ${USER_EMAIL || "testuser@example.com"}
+- tapOn:
+    id: "login_password_input"
+- inputText: ${USER_PASSWORD || "Password123!"}
+- hideKeyboard:
+    optional: true
+- tapOn: "Sign In"
+- assertVisible: "Dashboard"
+```
+
+### 2. Main Test Flow with Hooks and Parameters (`flows/02-checkout.yaml`)
+```yaml
+appId: com.example.shop
+tags:
+  - smoke
+  - checkout
+env:
+  CHECKOUT_ITEM: "Wireless Headphones"
+onFlowStart:
+  - launchApp:
+      clearState: true
+      clearKeychain: true
+  - runFlow:
+      file: ../subflows/login-user.yaml
+      env:
+        USER_EMAIL: "shopper@example.com"
+onFlowComplete:
+  - runFlow: ../subflows/clear-cart.yaml
+---
+- tapOn: ${CHECKOUT_ITEM}
+- tapOn: "Add to Cart"
+- tapOn: "Cart"
+- assertVisible: ${CHECKOUT_ITEM}
+- tapOn: "Proceed to Checkout"
+- assertVisible: "Order Confirmation"
+- takeScreenshot: artifacts/checkout_success
+```
 
 ## Minimal read sets
 
@@ -84,7 +204,7 @@ appId: com.example.demo
 Validate syntax offline, then run:
 
 ```bash
-# Offline syntax check (no simulator required)
+# Offline syntax check (single file or stdin)
 maestro check-syntax flows/smoke.yaml
 
 # Local execution with JUnit report and artifact collection
@@ -100,11 +220,11 @@ Successful runs return exit code 0 and populate `artifacts/` with logs, JUnit XM
 ## Standard workflow
 
 1. **Preflight**: Verify `maestro --version` and target runtime availability (`java -version`, `adb devices`, or `xcrun simctl`).
-2. **Author and Check**: Draft declarative YAML flows; run `maestro check-syntax <flow>` to catch schema errors offline.
-3. **Target and Lease**: Resolve target UDID, ADB serial, or `--platform=web`; acquire host-wide driver lease when executing remotely or in shared environments.
-4. **Execute**: Run `maestro test` with `--test-output-dir` and `--format JUNIT --output <path>` (or connect via `maestro mcp`).
+2. **Author and Check**: Draft declarative YAML flows; run `maestro check-syntax <flow>` (or use MCP `run` which validates syntax automatically).
+3. **Target and Lease**: Resolve target UDID, ADB serial, or `--platform=web`; ensure target device is available.
+4. **Execute**: Run `maestro test` with `--test-output-dir` and `--format JUNIT --output <path>` (or execute interactively via `maestro mcp`).
 5. **Retrieve and Inspect**: On remote runs, fetch the full artifact directory; inspect `maestro hierarchy` or MCP `inspect_screen` if an element is missed.
-6. **Release**: Release host driver lease and report binary pass/fail evidence.
+6. **Release**: Report binary pass/fail evidence and retain telemetry.
 
 ## Output contract
 
@@ -121,4 +241,4 @@ Every test execution report must specify:
 - Never steal an existing driver lock without coordinating with device operators.
 - Do not reboot devices, reinstall drivers, or wipe simulator runtimes automatically on a test failure.
 - Never hardcode environment secrets, personal names, or static IP/UDID strings into flow files.
-- If remote SSH transport succeeds but the test exits non-zero, report test failure and preserve retrieved logs.
+- If remote SSH or Maestro Cloud transport succeeds but the test exits non-zero, report test failure and preserve retrieved logs.

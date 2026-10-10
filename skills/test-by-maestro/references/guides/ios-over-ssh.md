@@ -1,8 +1,15 @@
-# Remote iOS Simulator Testing over SSH
+# Remote iOS Simulator Testing (Maestro Cloud vs. SSH)
 
-Executing iOS Simulator tests from a Linux or headless authoring host requires orchestrating commands over SSH to a macOS runner machine with Xcode. Linux cannot drive iOS Simulators directly.
+Linux hosts cannot execute iOS Simulators locally because Apple's Simulator runtime strictly requires macOS Darwin and Xcode (`xcrun simctl`). When developing or running CI from Linux, you have two primary architectural paths:
 
-## Remote Execution Topology
+1. **Maestro Cloud (`maestro cloud` / MCP `run_on_cloud`) — Recommended First-Party Path**:
+   Upload application binaries (`.app`, `.ipa`, or `.zip`) and test flows directly to Maestro Cloud. Runs across hosted cloud devices in parallel with automated video recordings, artifact retention, and zero self-hosted Apple hardware maintenance.
+2. **Remote macOS Host over SSH — Self-Hosted Infrastructure Path**:
+   Orchestrate execution from the Linux authoring host to an owned macOS runner (e.g. Mac mini / EC2 Mac) using SSH transport.
+
+---
+
+## Remote Execution Topology over SSH
 
 ```text
 ┌────────────────────────┐         SSH         ┌────────────────────────┐
@@ -41,8 +48,8 @@ assert len(devices) == 1, 'Require exactly one booted available simulator'
 target_udid = devices[0]['udid']
 ```
 
-### 3. Coordinated Host-Wide Driver Lease
-Maestro runs an XCUITest runner (`dev.mobile.maestro-driver-iosUITests.xctrunner`) with a Swift `FlyingFox` HTTP server (fallback port 22087, or ephemeral dynamic port passed via `SIMCTL_CHILD_PORT`). Multiple concurrent OS processes on the same host targeting the same simulator will collide and preempt each other's test sessions. Implement an atomic filesystem mutex using `mkdir` with parent directory creation, stale lock recovery, and clean signal exit codes:
+### 3. Coordinated Device-Specific Driver Lease
+Maestro runs an XCUITest runner (`dev.mobile.maestro-driver-iosUITests.xctrunner`) with an embedded Swift `FlyingFox` HTTP server. While Maestro 2.6.0+ supports parallel iOS simulator execution across different simulators using dynamic ephemeral ports passed via `SIMCTL_CHILD_PORT`, multiple concurrent OS processes on the same host targeting the **exact same simulator UDID** will collide and preempt each other's test sessions. Implement an atomic filesystem mutex per UDID using `mkdir` with parent directory creation, stale lock recovery, and clean signal exit codes:
 
 ```bash
 lock="$HOME/.cache/test-by-maestro/driver.lock"
