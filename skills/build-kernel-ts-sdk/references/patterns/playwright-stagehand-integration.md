@@ -38,15 +38,15 @@ Required runtime: **Node 20+**. Bun has known CDP flakiness with Playwright — 
 | `await browser.close()` as cleanup | Browser keeps running until `timeout_seconds` | `kernel.browsers.deleteByID(session.session_id)` |
 | Skipping `stealth: true` | Bot-detection trips on commercial sites | Default `stealth: true` for non-trivial work |
 | Setting `headless: true` and expecting live view | `browser_live_view_url` is undefined | Use headful for live view / replays |
-| Awaiting downloads via `page.waitForEvent('download')` only | The CDP event fires before the file is written to Kernel's `fs` | Also poll `kernel.browsers.fs.listFiles` |
+| Awaiting downloads via `page.waitForEvent('download')` only | The file lives in the VM filesystem, not on your machine | Read it with `kernel.browsers.fs.readFile` before deleting the browser; see [files-and-replays.md](../troubleshooting/files-and-replays.md) |
 
 ## Stagehand v4 (current — what an unpinned `npm i @browserbasehq/stagehand` gives you)
 
-Latest is **4.0.1**. v4 rewrote the entry point: the `Stagehand` constructor is `private`, `init()` is gone, and `env` / `localBrowserLaunchOptions` / `modelClientOptions` no longer exist. You connect the browser first with the exported `localBrowser` factory, then hand the handle to `Stagehand.create`. Stagehand still connects to Kernel via **local CDP**, **not** the Browserbase API — never pass `apiKey`/`projectId` as Browserbase credentials.
+Latest is **4.2.0**. v4 rewrote the entry point: the `Stagehand` constructor is `private`, `init()` is gone, and `env` / `localBrowserLaunchOptions` / `modelClientOptions` no longer exist. You connect the browser first with the exported `localBrowser` factory, then hand the handle to `Stagehand.create`. Stagehand still connects to Kernel via **local CDP**, **not** the Browserbase API — never pass `apiKey`/`projectId` as Browserbase credentials.
 
-Stagehand 4.0.1 declares `engines: { node: '>=22.18.0' }` — higher than the Node 20 floor above.
+Stagehand 4.2.0 declares `engines: { node: '>=22.18.0' }` — higher than the Node 20 floor above.
 
-**v4 runs as a Chrome extension.** When `localBrowser.connect` is called without an `extensionId`, Stagehand loads the extension into the running browser over CDP by reading it from a path on *that browser's* filesystem. Against a remote Kernel browser you must push the extension there first with `kernel.browsers.fs.uploadZip`.
+**v4 runs as a Chrome extension.** `localBrowser.connect` looks for an already-installed, enabled Stagehand extension in the running browser; if there is none it loads the unpacked extension over CDP (`Extensions.loadUnpacked`) from `dist/extension/` inside the package, read as a path on *that browser's* filesystem. (`extensionId` is a deprecated, ignored option in 4.2.0.) Against a remote Kernel browser you must push the extension there first with `kernel.browsers.fs.uploadZip`.
 
 ```ts
 import Kernel from '@onkernel/sdk';
@@ -60,16 +60,18 @@ const stagehandDist = dirname(fileURLToPath(import.meta.resolve('@browserbasehq/
 
 const kernel = new Kernel();
 const session = await kernel.browsers.create({ stealth: true, timeout_seconds: 600 });
+let browser: Awaited<ReturnType<typeof localBrowser.connect>> | undefined;
 
 try {
-  // 1. Mirror the Stagehand extension onto the Kernel browser's filesystem.
+  // 1. Mirror the Stagehand extension onto the Kernel browser's filesystem. dest_path must equal the absolute
+  //    path Stagehand reads on the browser (same string as on your machine).
   await kernel.browsers.fs.uploadZip(session.session_id, {
     dest_path: join(stagehandDist, 'extension'),
     zip_file: createReadStream(join(stagehandDist, 'assets/stagehand-extension.zip')),
   });
 
-  // 2. Connect. `connect` takes { cdpUrl, extensionId? } and nothing else.
-  const browser = await localBrowser.connect({ cdpUrl: session.cdp_ws_url });
+  // 2. Connect. `connect` takes `{ cdpUrl }` (`extensionId` is deprecated and ignored).
+  browser = await localBrowser.connect({ cdpUrl: session.cdp_ws_url });
 
   // 3. `model` is optional; Stagehand.create({ browser }) alone type-checks.
   //    modelName is provider-namespaced in v4 — a bare 'gpt-4o' is not a valid value.
@@ -79,7 +81,8 @@ try {
   });
 
   // act/extract/observe live on the Stagehand instance. There is no `stagehand.page`.
-  const [page] = await browser.context.pages();          // existing page — same rule as Playwright
+  const page = await browser.context.activePage();       // async in v4; existing page — same rule as Playwright
+  if (!page) throw new Error('No active page in the Kernel browser');
   await page.goto('https://example.com');
   await stagehand.act('click the sign-in button');
   const { data } = await stagehand.extract(
@@ -89,7 +92,11 @@ try {
 
   await stagehand.close();
 } finally {
-  await kernel.browsers.deleteByID(session.session_id);   // the only real cleanup
+  try {
+    await browser?.close();   // v4: stagehand.close() leaves the browser handle open; this sends CDP Browser.close and drops the connection (Stagehand 4.2.0 source)
+  } finally {
+    await kernel.browsers.deleteByID(session.session_id);   // the only real cleanup
+  }
 }
 ```
 
@@ -124,7 +131,7 @@ const data = await stagehand.extract(
 
 In v3 `apiKey` / `projectId` at the top level are the **Browserbase** credentials — leave them unset for Kernel. The model key goes inside `model`.
 
-`stagehand.close()` does the same thing as `browser.close()` — it severs the local connection but does not delete the Kernel browser. Always call `deleteByID`. This is true in both versions.
+In v3, `stagehand.close()` does the same thing as `browser.close()` — it severs the local connection but does not delete the Kernel browser. In v4, `stagehand.close()` does not even close the connected browser handle (see the `finally` above). Neither version deletes the Kernel browser: always call `deleteByID`.
 
 ## Stagehand template
 

@@ -10,7 +10,9 @@ bash scripts/scaffold-kernel-app.sh --mode deploy --dir ./kernel-deploy-demo
 ## Modes
 
 - `--mode embed` creates `src/index.ts`, an embedded SDK script that creates a browser, connects through Playwright CDP, writes `shot.png`, and deletes the browser in `finally`.
-- `--mode deploy` creates `src/app.ts`, a Kernel App with one `analyze` action. The action tags browsers with `invocation_id`, returns a small JSON result, and deletes the browser in `finally`.
+- `--mode deploy` creates `app.ts` at the project root (next to `package.json`, because `kernel deploy` uploads the entrypoint's directory), a Kernel App with one `analyze` action. The action tags browsers with `invocation_id`, returns a small JSON result, and deletes the browser in `finally`.
+
+Deploy flow: `npm install` (creates the lockfile the deploy needs), `npm run deploy`, then `npm run invoke` (an async invocation that follows logs until it finishes). Both modes depend on `playwright-core` (the browser runs on Kernel, so no local browser download).
 
 ## Files created
 
@@ -18,7 +20,7 @@ bash scripts/scaffold-kernel-app.sh --mode deploy --dir ./kernel-deploy-demo
 - `tsconfig.json` for strict NodeNext TypeScript.
 - `.gitignore` that excludes `.env`, `node_modules/`, build output, and the screenshot artifact.
 - `.env.example` with placeholders only. The script never creates `.env` and never writes a real `KERNEL_API_KEY`.
-- `src/index.ts` for embed mode or `src/app.ts` for deploy mode.
+- `src/index.ts` for embed mode or `app.ts` (project root) for deploy mode.
 
 ## Flags
 

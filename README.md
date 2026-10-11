@@ -41,7 +41,7 @@ npx -y skills add yigitkonur/skills-by-yigitkonur -y -g -a universal      # glob
 | [build-cloudflare-access-sso](skills/build-cloudflare-access-sso/) | protecting a subdomain with Cloudflare Access + Google SSO, or locking an origin against Access bypass. |
 | [build-cloudflare-email-sending](skills/build-cloudflare-email-sending/) | sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email. |
 | [build-effect-ts-v3](skills/build-effect-ts-v3/) | building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream. |
-| [build-kernel-ts-sdk](skills/build-kernel-ts-sdk/) | building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools. |
+| [build-kernel-ts-sdk](skills/build-kernel-ts-sdk/) | building browser-automation apps on the Kernel TS SDK, CLI, or MCP server — browsers, pools. |
 | [build-langchain-ts-app](skills/build-langchain-ts-app/) | building TypeScript apps with langchain/@langchain — agents, RAG, structured output. |
 | [build-licenseseat-swift](skills/build-licenseseat-swift/) | integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats. |
 | [build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/) | building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod. |

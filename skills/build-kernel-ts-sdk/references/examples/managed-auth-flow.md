@@ -9,7 +9,7 @@ Source note: Verified against Kernel docs, `@onkernel/sdk@0.123.0`, and `@onkern
 ## Backend route — start a connection
 
 ```ts
-// app/api/auth/[...slug]/route.ts
+// app/api/auth/connect/route.ts
 import Kernel from '@onkernel/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -100,6 +100,8 @@ useEffect(() => {
 }, []);
 ```
 
+To send the user back to your app after the hosted page, build the URL in the backend: `const url = new URL(login.hosted_url); url.searchParams.set('success_url', 'https://app.example.com/connected'); url.searchParams.set('error_url', 'https://app.example.com/connect-failed');`. `success_url` gets `profile_name` and `domain` appended; `error_url` gets `code` (when present) and `message`. Set both only from your backend.
+
 Do not expose `KERNEL_API_KEY` to this client component. The backend creates the auth connection and login session; the frontend receives only the connection id and short-lived handoff code.
 
 ## Backend — confirm the connection completed
@@ -129,7 +131,14 @@ export async function GET(
 }
 ```
 
-For long polls, prefer `kernel.auth.connections.follow(id)` (SSE) over re-polling `retrieve` from the client.
+For long waits, prefer `kernel.auth.connections.follow(id)` (SSE) over re-polling `retrieve`. The stream is a union; narrow on `ev.event` (`managed_auth_state` | `error` | `sse_heartbeat`) before reading `flow_status`:
+
+```ts
+for await (const ev of await kernel.auth.connections.follow(connectionId)) {
+  if (ev.event === 'error') throw new Error(ev.error.message);
+  if (ev.event === 'managed_auth_state' && ev.flow_status !== 'IN_PROGRESS') break;
+}
+```
 
 ## Launch a browser with the saved profile
 
@@ -166,27 +175,29 @@ export async function POST() {
 
 ## When the session goes stale
 
-If a browser launch shows the login page instead of the authenticated content, the connection's `status` is `NEEDS_AUTH`. Re-run the flow:
+If a browser launch shows the login page instead of the authenticated content, the connection's `status` is `NEEDS_AUTH` (or `status` lags the real session). Re-run the flow:
 
 ```ts
 const state = await kernel.auth.connections.retrieve(connectionId);
-if (state.status === 'NEEDS_AUTH') {
-  await kernel.auth.connections.login(connectionId);
-  // redirect or re-mount the React component again
+if (state.status === 'NEEDS_AUTH' || state.flow_status !== 'IN_PROGRESS') {
+  const login = await kernel.auth.connections.login(connectionId);
+  // redirect to login.hosted_url or re-mount the React component with login.handoff_code
 }
 ```
 
-Most sessions remain valid for days; Kernel auto-refreshes when possible.
+Do not call `login` while a flow is `IN_PROGRESS`: it cancels that flow. If the flow is waiting on the user, send them to the same `hosted_url`. `ensureAuthenticated` in `references/guides/managed-auth.md` § "Verify before starting work" covers this check before each task.
+
+Most sessions remain valid for days; auto-refresh needs `health_checks` and `auto_reauth` (both default true).
 
 ## Important caveats
 
 - The React component is a **client component**. Mark the file `'use client'` in App Router; it will not render server-side.
-- `auth.connections.create` returns 409 on duplicate `(domain, profile_name)`. Either reuse the existing connection or pick a new `profile_name`.
-- Treat `handoff_code` as short-lived. Re-`login` if the user lingers before completing.
+- `auth.connections.create` returns 409 on duplicate `(domain, profile_name)`. Either reuse the existing connection or pick a new `profile_name`. Profile names are 1-255 characters of letters, numbers, `.`, `_`, `-`; do not build them from raw emails.
+- Treat `handoff_code` as short-lived. Once the flow is terminal (`EXPIRED`, `CANCELED`), `login` again for a fresh one; `login` cancels a flow still in progress.
 - To keep auth traffic same-origin (cookies, CSP, observability), set `baseUrl=""` on the component and proxy the four endpoints it hits — `POST /auth/connections/:id/exchange`, `GET /auth/connections/:id`, `POST /auth/connections/:id/submit`, `GET /auth/connections/:id/events` — through Next `rewrites()`. There is no iframe: the component renders on your origin as normal DOM, so `connect-src`/CORS is what matters, not `X-Frame-Options`.
 - Store only the auth connection id and profile name needed by your app; do not store handoff codes after exchange.
 - When finishing a Managed Auth task, report auth connection id, profile name, final `flow_status`/`status`, and whether a browser was launched with that profile.
 
 ## Programmatic flow alternative
 
-If you need full UI control instead of embedding, drive the flow yourself — see `references/guides/managed-auth.md` § "Programmatic — your own UI".
+If you need full UI control instead of embedding, drive the flow yourself — see `references/guides/managed-auth.md` § "Programmatic: your own UI".

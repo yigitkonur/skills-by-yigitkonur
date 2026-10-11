@@ -36,7 +36,7 @@ await kernel.browsers.fs.setFilePermissions(id, { path: '/tmp/a', mode: '0644' }
 // Watch for changes — note watch.events and watch.stop take watch_id as
 // the FIRST positional arg (the browser session id goes in params). Also
 // note: `watch.start` returns `watch_id` as OPTIONAL — guard before use.
-const watch = await kernel.browsers.fs.watch.start(id, { path: '/tmp' });
+const watch = await kernel.browsers.fs.watch.start(id, { path: '/tmp', recursive: true });
 if (!watch.watch_id) throw new Error('watch.start did not return a watch_id');
 for await (const evt of await kernel.browsers.fs.watch.events(watch.watch_id, { id_or_name: id })) {
   // evt.type is the uppercase enum: 'CREATE' | 'WRITE' | 'DELETE' | 'RENAME'
@@ -47,25 +47,40 @@ await kernel.browsers.fs.watch.stop(watch.watch_id, { id_or_name: id });
 
 ## Common file-I/O issues
 
-### `readFile` returns empty / partial body
+### Where downloads land and how to read them
 
-**Cause:** The file was written by the browser (e.g. via Playwright's download) but Kernel's `fs` has not yet seen it. CDP `download` events fire **before** the file is durably written to the VM's filesystem.
+Files exist only while the browser session is alive; deleting the browser (or its timeout) permanently deletes everything in the VM, so read them out first.
 
-**Fix:**
+A user-initiated download (a click) is saved to the default download directory, `/home/kernel/Downloads` (also what Stagehand v4 gets with no configuration). With CDP, enable download events and read the final path from `Browser.downloadProgress`:
 
 ```ts
-// After triggering a download via CDP
-async function waitForFile(id: string, path: string, timeoutMs = 10_000) {
+const client = await context.newCDPSession(page);
+await client.send('Browser.setDownloadBehavior', { behavior: 'default', eventsEnabled: true });
+// client.on('Browser.downloadProgress', e => e.state === 'completed' ? e.filePath : …)
+```
+
+A download triggered programmatically (JavaScript, not a click) is blocked by Chromium under `'default'`: use `behavior: 'allow'` with a `downloadPath` such as `/tmp/downloads`.
+
+Then poll the VM filesystem until the file is listed (skip in-progress `*.crdownload` files) and read it:
+
+```ts
+import { dirname, basename } from 'node:path';
+
+async function waitForFile(id: string, filePath: string, timeoutMs = 30_000) {
+  const dir = dirname(filePath);
+  const name = basename(filePath);
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    try {
-      const files = await kernel.browsers.fs.listFiles(id, { path: '/tmp' });
-      if (files.some(i => i.path === path)) return;   // listFiles returns bare array
-    } catch { /* ignore */ }
-    await new Promise(r => setTimeout(r, 200));
+    const files = await kernel.browsers.fs.listFiles(id, { path: dir }); // bare array
+    if (files.some(f => f.name === name)) return;
+    await new Promise(r => setTimeout(r, 500));
   }
-  throw new Error(`file ${path} not visible within ${timeoutMs}ms`);
+  throw new Error(`file ${filePath} not visible within ${timeoutMs}ms`);
 }
+
+await waitForFile(id, '/home/kernel/Downloads/report.pdf');
+const resp = await kernel.browsers.fs.readFile(id, { path: '/home/kernel/Downloads/report.pdf' });
+fs.writeFileSync('./report.pdf', Buffer.from(await resp.arrayBuffer()));
 ```
 
 ### Multipart upload errors
@@ -113,7 +128,9 @@ await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), { path: '/tmp/data.j
 
 ```ts
 const r = await kernel.browsers.replays.start(session.session_id, {
-  record_audio: true, // optional: capture audio in headful sessions
+  record_audio: true,            // optional, default false (video only)
+  framerate: 30,                 // optional; values above 20 require gpu: true on the browser
+  max_duration_in_seconds: 600,  // optional
 });
 // … session work …
 await kernel.browsers.replays.stop(r.replay_id, { id_or_name: session.session_id });
@@ -126,9 +143,9 @@ fs.writeFileSync(`./replay-${r.replay_id}.mp4`, Buffer.from(await dl.arrayBuffer
 
 ## Replay-specific issues
 
-### `replays.start` errors with `headless` browsers
+### `replays.start` on `headless` browsers
 
-**Cause:** Replays require headful — same constraint as live view and GPU. Headless browsers cannot record.
+**Cause:** Replays are not available in headless mode (same as live view). GPU also requires headful.
 
 **Fix:** Create the browser with `headless: false`.
 
@@ -153,7 +170,7 @@ async function waitForReplay(sessionId: string, replayId: string, timeoutMs = 60
 
 ### Multiple replays per session and MP4 Chapter Markers
 
-You can `start`/`stop` multiple times in a single session — each call returns a fresh `replay_id`. Use `replays.list(session_id)` to enumerate. Furthermore, Kernel natively stamps named markers into replay recordings as MP4 container chapters, allowing standard video players to jump directly to key milestones inside a single continuous recording without fragmenting into multiple files.
+You can `start`/`stop` multiple times in a single session — each call returns a fresh `replay_id`. Use `replays.list(session_id)` to enumerate. Kernel can embed named markers in recordings as MP4 chapters (docs changelog, Jul 31), but no SDK or CLI call for creating a marker is documented. Each `list` item has `replay_id`, `replay_view_url`, `started_at`, `finished_at`; `replay_view_url` can be embedded in an iframe (treat the URL as sensitive; the docs' `frame-src` is `https://*.kernel.sh:8443 https://*.onkernel.com:8443 https://kernel-api-prod.s3.us-east-1.amazonaws.com`, plus `allow="fullscreen"`).
 
 ### Replay file handles after browser delete
 

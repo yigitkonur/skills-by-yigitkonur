@@ -1,6 +1,8 @@
 # Browser control surfaces
 
-Kernel exposes a Chromium browser in a unikernel VM. Eight surfaces drive it. Pick the right surface for your workload — mixing surfaces in the same session is supported because they all share the same browser VM and session state.
+Kernel exposes a Chromium browser in a unikernel VM. Seven surfaces plus WebDriver BiDi drive it. Pick the right surface for your workload — mixing surfaces in the same session is supported because they all share the same browser VM and session state.
+
+Kernel's own guidance: `playwright.execute` is the default when you know the page steps; computer controls are the recommended fallback (and the stronger option on aggressive-detection sites, because they open no CDP connection); WebMCP when the site registers tools; the REPL when an agent writes reusable helpers; raw CDP when you already have a Playwright/Puppeteer suite (it adds a protocol fingerprint and a network hop).
 
 ## Decision tree
 
@@ -13,7 +15,7 @@ What are you doing?
 ├── Vision-loop / VLM-driven agent (computer use)
 │   └─► `kernel.browsers.computer.*` — screenshot + mouse/keyboard primitives
 ├── HTTP from the browser's TLS fingerprint (no DOM needed)
-│   └─► `kernel.browsers.curl(id, { url })` or `kernel.browsers.fetch(id, url)`
+│   └─► `kernel.browsers.curl(id, { url })` (small, buffered) or `kernel.browsers.fetch(id, url)` (streaming/large)
 ├── WebDriver BiDi client (Vibium etc.)
 │   └─► Pass `session.webdriver_ws_url` instead of CDP
 ├── Persistent interactive Node.js scripting in VM across calls
@@ -54,7 +56,7 @@ const res = await kernel.browsers.playwright.execute(session.session_id, {
     const links = await page.$$eval('a', els => els.map(el => el.href));
     return { title, links };
   `,
-  timeout_sec: 60,                            // default 60, max 300
+  timeout_sec: 60,                            // default 60, max 300 (keep the client timeout above it, see client-and-config.md)
   executor: 'worker-1',                       // named persistent executor (up to 8 processes)
 });
 
@@ -64,14 +66,17 @@ const { title, links } = res.result as { title: string; links: string[] };
 
 // Manage named executors (CLI: kernel browsers playwright executors list|delete <id>)
 const execList = await kernel.browsers.playwright.executors.list(session.session_id);
-await kernel.browsers.playwright.executors.delete('worker-1', { id_or_name: session.session_id });
+await kernel.browsers.playwright.executors.delete('worker-1', { id_or_name: session.session_id, close_tab: true });
 ```
 
 When to use:
 
 - Bulk extraction or scripted multi-step operations
-- Anywhere CDP latency adds up — the script runs in the browser VM with `page`, `context`, and `browser` already in scope
+- Anywhere CDP latency adds up — the script runs in the browser VM with `page`, `context`, `browser`, and `webmcp` (browser-wide WebMCP helper) already in scope; Patchright is the default engine
 - Returning structured results without serialising every value over CDP
+- Accessibility snapshot for agents: `return await page.ariaSnapshot({ mode: 'ai' })` yields a ref-based YAML tree; act on a node later with `page.locator('aria-ref=f1e3')`
+
+Executors: calls on one executor run in order, different executors run concurrently and fail independently; the default executor binds `page` to the active tab, a named executor (`^[A-Za-z0-9_-]{1,64}$`) owns a background tab it opens on first use. A ninth named executor returns `409` listing the current ones; delete finished executors (deleting `default` restarts it). Named executors are not removed automatically while the browser runs (only at shutdown), so delete the ones you are done with.
 
 Caveats:
 
@@ -82,23 +87,31 @@ Caveats:
 ## Surface 3 — Computer controls
 
 ```ts
-// Screenshot returns a raw Response — wire to a VLM directly
+// Screenshot returns a raw Response — wire to a VLM directly. Optional { region: { x, y, width, height } }.
+// Faster than CDP Page.captureScreenshot (no CDP hop).
 const resp = await kernel.browsers.computer.captureScreenshot(session.session_id);
 const png = Buffer.from(await resp.arrayBuffer());
 
-// Mouse
+// Mouse. clickMouse: button 'left'|'right'|'middle'|'back'|'forward', click_type 'down'|'up'|'click',
+// num_clicks, hold_keys (modifiers).
 await kernel.browsers.computer.clickMouse(session.session_id, { x: 100, y: 200, button: 'left' });
-await kernel.browsers.computer.moveMouse(session.session_id, { x: 400, y: 300 });
+// moveMouse and dragMouse follow human-like Bezier paths by default (smooth: true);
+// duration_ms: moveMouse 50-5000, dragMouse 50-10000; smooth: false -> instant move / linear drag
+// (dragMouse steps_per_segment default 10, step_delay_ms default 50, ignored when smooth is true).
+await kernel.browsers.computer.moveMouse(session.session_id, { x: 400, y: 300, duration_ms: 800 });
 // dragMouse takes an ordered path of [x, y] pairs (>= 2 points)
 await kernel.browsers.computer.dragMouse(session.session_id, {
   path: [[100, 100], [300, 300]],
 });
+const pos = await kernel.browsers.computer.getMousePosition(session.session_id); // { x, y }
 
 // Keyboard
 await kernel.browsers.computer.typeText(session.session_id, {
-  text: 'hello world',
-  delay: 30,                  // optional ms between keystrokes
+  text: 'hello world',        // default typing is human-like (variable timing)
 });
+// `delay` (ms between keystrokes) only applies when smooth typing is off. The docs add
+// `smooth: false` and `typo_chance` (0-0.10) for typeText; they are NOT in @onkernel/sdk@0.123.0
+// types (nor CLI 0.47.0), so `{ text, smooth: false }` is a TS error until the SDK ships them.
 // pressKey takes a `keys` array; each item is ONE press, emitted in sequence.
 // A chord must therefore be a SINGLE combined item in xdotool keysym syntax,
 // e.g. 'Ctrl+l' or 'Ctrl+Shift+Tab' — `keys: ['Ctrl', 'l']` taps Ctrl, then l.
@@ -138,7 +151,7 @@ await kernel.browsers.computer.batch(session.session_id, {
 
 When to use:
 
-- Vision-loop agents (Claude computer-use, OpenAI computer-use, custom VLM)
+- Vision-loop agents (Claude computer-use, OpenAI computer-use, custom VLM). They sit on the same VM display, so they can see native dialogs, canvas, iframes, and PDFs
 - Sites that defeat DOM-based automation but accept human-like input
 - Demos / human-handoff flows where the user watches via live view
 
@@ -166,6 +179,15 @@ const res2 = await kernel.browsers.curl(session.session_id, {
 });
 ```
 
+Response: `{ status, headers (string[] per name), body, duration_ms }`; `url` must be http(s); `method` is one of GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS. `curl` buffers the **whole** body inside the browser process, so a large or unknown-size response can OOM the VM. Use `kernel.browsers.fetch` for those:
+
+```ts
+// Streams the body; only works for a session this client created/retrieved/listed (route cache), else KernelError.
+const streamed: Response = await kernel.browsers.fetch(session.session_id, 'https://example.com/big.zip', { method: 'GET' });
+```
+
+Response `Set-Cookie` headers update the browser's cookie jar (and profile).
+
 When to use:
 
 - API calls from inside the browser's network stack (cookies, proxy, fingerprint all preserved)
@@ -189,7 +211,7 @@ const initRes = await kernel.browsers.repl(session.session_id, {
 
 // Response is `BrowserReplResult`:
 // { repl_id, success, content?, content_truncated?, duration_ms?, error?, repl_terminated?, stack? }
-console.log('REPL ID:', initRes.repl_id); // stable CUID2 across calls
+console.log('REPL ID:', initRes.repl_id); // stable across calls until reset, timeout, crash/OOM, or API restart
 for (const item of initRes.content ?? []) {
   if (item.type === 'text') {
     // item.channel: 'write' (from repl.write) | 'stdout' | 'stderr'
@@ -208,6 +230,8 @@ const extractRes = await kernel.browsers.repl(session.session_id, {
 });
 ```
 
+A call that exceeds `timeout_sec` (default 60, max 300) destroys the REPL: check `repl_terminated`; every top-level binding is then gone and the next call gets a new `repl_id`. The REPL is JavaScript only (no TypeScript, static `import`, top-level `return`) and is unrestricted code execution in the VM — never feed it page content or other untrusted input.
+
 CLI counterpart: `kernel browsers repl <session_id>` executes code in the VM REPL.
 
 When to use:
@@ -217,7 +241,7 @@ When to use:
 
 ## Surface 6 — WebMCP (Model Context Protocol)
 
-WebMCP bridges web page actions and CDP tools into Model Context Protocol tools that LLMs can discover and invoke naturally. Page-declared tools, polyfills (`navigator.modelContext`), and custom tools are automatically discovered. See `references/patterns/webmcp.md`.
+WebMCP lets a site's registered tools (WebMCP is a W3C Web Machine Learning CG draft) be discovered and invoked instead of scraping the DOM. `listTools` returns a snapshot across every open tab and frame, including polyfill-registered and custom tools. See `references/patterns/webmcp.md`, including the no-retry rule for `invokeTool`.
 
 ```ts
 // 1. Discover tools (query: { exclude_custom?: boolean })
@@ -229,11 +253,12 @@ for (const item of tools) {
 // 2. Invoke a discovered tool by tool_ref
 const toolToInvoke = tools.find(t => t.tool.name === 'searchProducts');
 if (toolToInvoke) {
-  const result = await kernel.browsers.webmcp.invokeTool(session.session_id, {
-    tool_ref: toolToInvoke.tool_ref,
-    input: { query: 'laptop' },
-    timeout_sec: 30,
-  });
+  // Never retry an invocation: it can have side effects even if the response is lost.
+  const result = await kernel.browsers.webmcp.invokeTool(
+    session.session_id,
+    { tool_ref: toolToInvoke.tool_ref, input: { query: 'laptop' }, timeout_sec: 30 }, // 1-120, default 60
+    { maxRetries: 0 },
+  );
   console.log('Status:', result.status, 'Output:', result.output);
 }
 ```
@@ -255,7 +280,7 @@ kernel browsers webmcp custom-tools list|add|remove <session_id>
 ```
 
 When to use:
-- Websites exposing native AI agent interfaces or `navigator.modelContext` polyfills
+- Websites that register WebMCP tools (native or `navigator.modelContext` polyfill)
 - Exposing DOM extraction or CDP actions to agent LLMs with strict JSON schemas
 - Uniform tool contracts across complex web applications
 
@@ -289,12 +314,18 @@ if (proc.process_id) {
 }
 ```
 
-CLI counterpart: `kernel browsers process <session_id> --command "uname -a"`.
+Also available: `process.stdin(pid, { id_or_name, data_b64 })`, `process.stdoutStream(pid, { id_or_name })` (SSE `{ stream, data_b64 }`, final `{ event: 'exit', exit_code }`), `process.resize(pid, { id_or_name, cols, rows })` (PTY processes only). `process.status` reports `mem_bytes` only for processes started with `spawn` and no CPU. The VM already listens on 8080, 9222-9225, 8888, 10001, 10002; pick other ports for servers you spawn.
+
+CLI counterpart: `kernel browsers process exec <session_id> -- uname -a` (trailing args run via `/bin/bash -c`) or `--command uname --args -a`; `--args` values are split on commas, so use the SDK for commas inside a `sh -c` string.
 
 When to use:
 - Running local diagnostic or inspection tools in the VM (e.g. measuring memory via `free -m`)
 - Interacting with Linux filesystem utilities or downloading binaries
 - Executing standalone CLI tools co-located with the browser
+
+## Lower-level access: SSH
+
+`kernel browsers ssh <session_id>` opens a shell in the VM (needs `websocat` locally; ephemeral ed25519 key unless `-i`), with `-L`/`-R` port forwarding, e.g. `-R 3000:localhost:3000` exposes a local dev server to the remote browser. SSH is not browser activity: set `--timeout` on create or keep live view open. `--setup-only` configures SSH and prints the connection command.
 
 ## WebDriver BiDi
 

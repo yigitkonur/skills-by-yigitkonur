@@ -1,6 +1,6 @@
 # build-kernel-ts-sdk
 
-Building TypeScript code with Kernel browsers, Apps, profiles, Managed Auth, browser pools, or CDP/Playwright wiring via @onkernel/sdk.
+Building browser-automation apps on the Kernel TS SDK (@onkernel/sdk), CLI, or MCP server — browsers, pools.
 
 **Category:** development
 

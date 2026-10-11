@@ -11,7 +11,7 @@ Usage:
   scaffold-kernel-app.sh [--mode embed|deploy] [--dir DIR] [--force]
 
 Options:
-  --mode    embed creates src/index.ts; deploy creates src/app.ts.
+  --mode    embed creates src/index.ts; deploy creates app.ts at the project root.
   --dir     target directory to create or populate. Default: kernel-app.
   --force   allow writing into a non-empty directory.
   -h, --help
@@ -98,13 +98,14 @@ process.stdout.write(`^${version}`);
 }
 
 sdk_range="$(latest_range @onkernel/sdk)"
-playwright_range="$(latest_range playwright)"
+playwright_range="$(latest_range playwright-core)"
 tsx_range="$(latest_range tsx)"
 typescript_range="$(latest_range typescript)"
 types_node_range="$(latest_range @types/node)"
 cli_range="$(latest_range @onkernel/cli)"
 
-mkdir -p "$target_dir/src"
+mkdir -p "$target_dir"
+if [ "$mode" = "embed" ]; then mkdir -p "$target_dir/src"; fi
 
 cat > "$target_dir/.gitignore" <<'EOF'
 node_modules/
@@ -121,7 +122,14 @@ KERNEL_API_KEY=replace_with_your_kernel_api_key
 # KERNEL_PROJECT=proj_replace_me
 EOF
 
-cat > "$target_dir/tsconfig.json" <<'EOF'
+if [ "$mode" = "embed" ]; then
+  ts_include='"src/**/*.ts"'
+else
+  # kernel deploy zips the entrypoint's directory, so the app lives next to package.json.
+  ts_include='"*.ts"'
+fi
+
+cat > "$target_dir/tsconfig.json" <<EOF
 {
   "compilerOptions": {
     "target": "ES2022",
@@ -132,7 +140,7 @@ cat > "$target_dir/tsconfig.json" <<'EOF'
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": [$ts_include]
 }
 EOF
 
@@ -149,7 +157,7 @@ if [ "$mode" = "embed" ]; then
   },
   "dependencies": {
     "@onkernel/sdk": "$sdk_range",
-    "playwright": "$playwright_range"
+    "playwright-core": "$playwright_range"
   },
   "devDependencies": {
     "@types/node": "$types_node_range",
@@ -161,7 +169,7 @@ EOF
 
   cat > "$target_dir/src/index.ts" <<'EOF'
 import Kernel from '@onkernel/sdk';
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 
 const kernel = new Kernel();
@@ -200,12 +208,12 @@ else
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "deploy": "kernel deploy src/app.ts --version 0.1.0",
-    "invoke:sync": "kernel invoke kernel-scaffold analyze --sync --payload '{\"url\":\"https://example.com\"}'"
+    "deploy": "kernel deploy app.ts --version 0.1.0",
+    "invoke": "kernel invoke kernel-scaffold analyze --version 0.1.0 --payload '{\"url\":\"https://example.com\"}'"
   },
   "dependencies": {
     "@onkernel/sdk": "$sdk_range",
-    "playwright": "$playwright_range"
+    "playwright-core": "$playwright_range"
   },
   "devDependencies": {
     "@onkernel/cli": "$cli_range",
@@ -216,9 +224,9 @@ else
 }
 EOF
 
-  cat > "$target_dir/src/app.ts" <<'EOF'
+  cat > "$target_dir/app.ts" <<'EOF'
 import Kernel, { type KernelContext } from '@onkernel/sdk';
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
 
 const kernel = new Kernel();
 const app = kernel.app('kernel-scaffold');
@@ -256,10 +264,10 @@ EOF
 fi
 
 printf 'Created %s Kernel scaffold in %s\n' "$mode" "$target_dir"
-printf 'Pinned ranges: @onkernel/sdk %s, playwright %s\n' "$sdk_range" "$playwright_range"
+printf 'Pinned ranges: @onkernel/sdk %s, playwright-core %s\n' "$sdk_range" "$playwright_range"
 printf 'Next: cd %s && npm install && npm run check\n' "$target_dir"
 if [ "$mode" = "embed" ]; then
   printf 'Run with: export KERNEL_API_KEY=... && npm run start\n'
 else
-  printf 'Deploy with: export KERNEL_API_KEY=... && npm run deploy\n'
+  printf 'Deploy with: export KERNEL_API_KEY=... && npm install && npm run deploy, then npm run invoke\n'
 fi

@@ -118,6 +118,30 @@ const existing = await kernel.browsers.list({ tags, status: 'active' });
 
 For invocations, narrow with `kernel.invocations.list({ app_name: 'my-agent', status: 'running' })`.
 
+## Timeouts and retries on long or side-effecting calls
+
+`Kernel.DEFAULT_TIMEOUT` is 60 000 ms and `maxRetries` is 2. A request is retried on a timeout, `408`, `409`, `429`, any status `>= 500`, or `x-should-retry: true`. Calls that the SDK routes straight to the browser VM (`playwright.execute`, `computer.*`, `process.*`, `fs.*`, `curl`, `telemetry.stream`, `logs.stream`) and the ones that go through the API (`repl`, `webmcp.*`, `telemetry.events`) all use the same client, so the same timeout and retry policy apply.
+
+Consequences:
+
+- A `timeout_sec` above ~50 (`playwright.execute` and `repl` accept up to 300) outlives the 60 s client timeout. The client aborts, retries, and the script can run again.
+- A retry after a lost response repeats clicks, form submissions, `webmcp.invokeTool`, `invocations.create`, `deployments.create`, and `search.create`. Kernel's own docs and CLI disable retries for these calls.
+
+```ts
+// Long in-VM script: client timeout above timeout_sec, no retry.
+await kernel.browsers.repl(
+  session.session_id,
+  { code, timeout_sec: 120 },
+  { timeout: 135_000, maxRetries: 0 },
+);
+
+// Side-effecting call: never retry.
+const noRetry = kernel.withOptions({ maxRetries: 0 });
+await noRetry.browsers.webmcp.invokeTool(session.session_id, { tool_ref, input: {}, timeout_sec: 30 });
+```
+
+`kernel.browsers.fetch(id, url)` only works for a session this client already saw through `create`, `retrieve`, or `list` (it throws `KernelError` otherwise).
+
 ## Errors
 
 All error classes are reachable as `Kernel.*` and importable:
@@ -188,7 +212,7 @@ await kernel.deployments.create({
 });
 
 // Buffer / Uint8Array:
-await kernel.extensions.upload({ file: await toFile(buffer, 'ext.zip') });
+await kernel.extensions.upload({ file: await toFile(buffer, 'ext.zip'), name: 'my-ext' }); // name: optional, unique per project
 ```
 
 Multipart is wired automatically — do not hand-build a `FormData`.
@@ -211,7 +235,7 @@ The SDK sets `Accept: text/event-stream` and `stream: true` automatically.
 Org-wide API keys see all projects unless you scope each request. Use the first-class client option — the SDK sets `X-Kernel-Project-Id` itself:
 
 ```ts
-const kernel = new Kernel({ projectID: 'proj_…' });   // or project: 'my-project' → X-Kernel-Project
+const kernel = new Kernel({ projectID: 'proj_…' });   // or project: 'proj_…' | 'exact-project-name' → X-Kernel-Project
 ```
 
 Or per-request:
@@ -230,7 +254,7 @@ ctx.authorization.credential_scope.project_id;  // null = organization-wide
 ctx.authorization.effective_scope.project_id;   // scope selected for this request
 ```
 
-In the CLI, the global `--project <project_id>` flag and `KERNEL_PROJECT` environment variable strictly accept a project ID (`proj_...`), NOT a project name. Project names are only accepted by project-management commands that take `<id-or-name>` arguments (e.g. `kernel projects get`).
+`projectID` sends `X-Kernel-Project-Id` (ID only); `project` sends `X-Kernel-Project`, which accepts a project ID or an exact project name. In the CLI, the global `--project` flag and `KERNEL_PROJECT` send `X-Kernel-Project` as-is, so both an ID and an exact name work in v0.47.0 (the CLI projects docs page still says IDs only; the CLI source wins). Project-management commands take `<id-or-name>` arguments (e.g. `kernel projects get`).
 
 > **REST Routing Note:** Project endpoints are routed under `/org/projects/*` (e.g. `GET /org/projects`, `POST /org/projects`, `GET /org/projects/{id}`). The legacy `/projects/*` routes are `@deprecated`.
 
@@ -270,27 +294,37 @@ await kernel.apiKeys.delete('key_old');
 
 ## Audit Logs & Export Destinations
 
-Download audit logs or configure continuous S3 streaming:
+Search and download need the Start-Up or Enterprise plan; continuous S3 export needs Enterprise. Events are retained 1 year, API pages hold up to 100 events, and one download covers a window of up to 30 days.
 
 ```ts
-// Helper with SHA-256 chunk checksum verification:
-await kernel.auditLogs.download({
-  start: '2026-10-01T00:00:00Z',
-  end: '2026-10-09T00:00:00Z',
-}, './audit-logs.jsonl.gz');
+// Helper with per-chunk verification. The 2nd argument is any object with write(chunk: Uint8Array),
+// not a path; the SDK does not close it, and a failed download can leave a partial file.
+import { open } from 'node:fs/promises';
 
-// Continuous S3 export destinations CRUD:
-// kernel.auditLogs.exportDestinations.{create,retrieve,list,update,delete,pause,resume,test}
+const file = await open('./audit-logs.jsonl.gz', 'w');
+try {
+  await kernel.auditLogs.download(
+    { start: '2026-10-01T00:00:00Z', end: '2026-10-09T00:00:00Z' },
+    file,
+  );
+} finally {
+  await file.close();
+}
+
+// Continuous S3 export destinations: create, retrieve, list, update, delete, test.
+// There is no pause/resume method: destinations are created paused; activate or pause with
+// kernel.auditLogs.exportDestinations.update(id, { status: 'active' | 'paused' }).
 ```
 
 ## Web Search API
 
-Perform autonomous web searches and fetch page contents:
+Searches are billable; the CLI sends `search.create` with retries disabled to avoid duplicate billable searches. See [search.md](search.md).
 
 ```ts
-const search = await kernel.search.create({
-  query: 'Kernel browser automation',
-});
+const search = await kernel.search.create(
+  { query: 'Kernel browser automation' },
+  { maxRetries: 0 },
+);
 for (const item of search.results) {
   console.log(item.title, item.url);
 }
@@ -298,7 +332,7 @@ for (const item of search.results) {
 
 ## Runtime support
 
-- Node 20+ with `tsconfig.json` `target: 'es2017'+` and TypeScript ≥ 4.9
+- Node 20 LTS+ and TypeScript ≥ 4.9
 - Deno 1.28+, Bun 1.0+ (set `KERNEL_SUPPRESS_BUN_WARNING=true` if Playwright + Bun is intentional)
 - Cloudflare Workers, Vercel Edge, Nitro 2.6+
 - Jest 28+ with the `node` test environment (jsdom is unsupported by `fetch`)
@@ -314,6 +348,7 @@ for (const item of search.results) {
 - For dedicated CLI reference: `references/guides/cli-reference.md`
 - For vaults, autofill, and payments: `references/patterns/vaults-and-payments.md`
 - For session telemetry and OTLP: `references/guides/telemetry.md`
+- For stealth, the config registry, Web Bot Auth, and SSH: `references/guides/stealth-and-config-registry.md`
 - For `deployments.*` / `invocations.*`: `references/guides/apps-deploy-invoke.md`
 - For typical errors and root causes: `references/troubleshooting/pitfalls.md`
 

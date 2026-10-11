@@ -22,7 +22,7 @@ async function main() {
   const session = await kernel.browsers.create({
     stealth: true,
     timeout_seconds: 300,
-    viewport: { width: 1280, height: 800 },
+    viewport: { width: 1280, height: 800 }, // a custom viewport restarts Chromium at create (several seconds); omit for the 1920x1080@25 default
   });
 
   try {
@@ -79,18 +79,18 @@ if (!res.success) throw new Error(res.error);
 const { title, bytes } = res.result as { title: string; bytes: number };
 ```
 
-`result` is the JSON-serialised return value. To get the screenshot bytes back, write to the browser VM's `fs` and read out via `kernel.browsers.fs.readFile`:
+`result` is the JSON-serialised return value. To get the screenshot bytes back, return them base64-encoded:
 
 ```ts
-await kernel.browsers.playwright.execute(session.session_id, {
+const shot = await kernel.browsers.playwright.execute(session.session_id, {
   code: `
     await page.goto('https://example.com');
-    const buf = await page.screenshot();
-    await require('fs/promises').writeFile('/tmp/shot.png', buf);
+    const buf = await page.screenshot({ type: 'png', fullPage: true });
+    return buf.toString('base64');
   `,
 });
-const resp = await kernel.browsers.fs.readFile(session.session_id, { path: '/tmp/shot.png' });
-fs.writeFileSync('./shot.png', Buffer.from(await resp.arrayBuffer()));
+if (!shot.success) throw new Error(shot.error);
+fs.writeFileSync('./shot.png', Buffer.from(shot.result as string, 'base64'));
 ```
 
 **Computer-controls (no Playwright):**
@@ -98,6 +98,8 @@ fs.writeFileSync('./shot.png', Buffer.from(await resp.arrayBuffer()));
 ```ts
 const resp = await kernel.browsers.computer.captureScreenshot(session.session_id);
 fs.writeFileSync('./shot.png', Buffer.from(await resp.arrayBuffer()));
+
+// Optional region: captureScreenshot(id, { region: { x: 0, y: 0, width: 800, height: 600 } })
 ```
 
 For navigation via computer-controls, type the URL into the address bar:
