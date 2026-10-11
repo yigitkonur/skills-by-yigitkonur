@@ -2,23 +2,24 @@
 
 *Authoritative reference for building ChatGPT MCP Apps compliant with `@openai/apps-sdk-ui` by default.*
 
-Primary sources:
+Official resources:
 - [OpenAI Apps SDK UI Repository](https://github.com/openai/apps-sdk-ui)
-- [Apps SDK UI Storybook](https://openai.github.io/apps-sdk-ui/?path=/docs/overview-introduction--docs)
+- [Apps SDK UI Storybook Docs](https://openai.github.io/apps-sdk-ui/?path=/docs/overview-introduction--docs)
 - [mcp-use ChatGPT Plugin Extensions](https://docs.mcp-use.com/v2/typescript/mcp-apps/chatgpt-extensions)
+- [mcp-use MCP Apps Quickstart](https://docs.mcp-use.com/v2/typescript/mcp-apps/quickstart)
 
 ---
 
 ## 1. Prerequisites & Package Installation
 
-Apps SDK UI is designed specifically for building ChatGPT apps. It requires **React 18 or 19** and **Tailwind 4**.
+Apps SDK UI is designed specifically for building ChatGPT apps. It requires **React 18 or 19** and **Tailwind CSS 4**.
 
 ```bash
 npm install @openai/apps-sdk-ui tailwindcss @tailwindcss/vite
 ```
 
 ### Setup Stylesheet Foundations
-Add the foundation styles and Tailwind 4 layers to the top of your view stylesheet (e.g. `views/main.css`):
+Add the foundation styles and Tailwind 4 layers to your view stylesheet (e.g. `views/main.css`):
 
 ```css
 @import "tailwindcss";
@@ -29,7 +30,7 @@ Add the foundation styles and Tailwind 4 layers to the top of your view styleshe
 /* Application-specific styles below */
 ```
 
-In `views/<name>/view.tsx`, import your stylesheet before importing or rendering components:
+In `views/<name>/view.tsx`, import your stylesheet before rendering components:
 
 ```tsx
 import "./main.css";
@@ -40,21 +41,24 @@ import React from "react";
 
 ## 2. Root Provider & Router Configuration (`AppsSDKUIProvider`)
 
-`<AppsSDKUIProvider>` configures router link resolution across components such as `<TextLink>` and `<ButtonLink>`:
+`<AppsSDKUIProvider>` configures router link resolution across components such as `<TextLink>` and `<ButtonLink>`.
+
+> [!IMPORTANT]
+> The `linkComponent` prop is **required** by TypeScript on `<AppsSDKUIProvider>`. For standard anchor tags, use `linkComponent="a"`.
 
 ```tsx
 import { AppsSDKUIProvider } from "@openai/apps-sdk-ui/components/AppsSDKUIProvider";
 
 export function AppRoot({ children }: { children: React.ReactNode }) {
   return (
-    <AppsSDKUIProvider>
+    <AppsSDKUIProvider linkComponent="a">
       {children}
     </AppsSDKUIProvider>
   );
 }
 ```
 
-If your view uses client-side routing (e.g. `react-router`), pass the router `Link` component:
+If your view uses client-side routing (e.g. `react-router`), pass the router's `Link` component:
 
 ```tsx
 import { AppsSDKUIProvider } from "@openai/apps-sdk-ui/components/AppsSDKUIProvider";
@@ -69,7 +73,7 @@ import { Link } from "react-router";
 
 ## 3. Dark Mode & Theme Synchronization
 
-Apps SDK UI styles adapt to light and dark themes using a `[data-theme]` attribute on the root HTML element or container.
+Apps SDK UI styles adapt to light and dark themes using a `[data-theme]` attribute on the root HTML element.
 
 ### Synchronize with `mcp-use` Host Theme
 In an `mcp-use` view, the host communicates theme changes via `useViewTheme()`. Synchronize with `@openai/apps-sdk-ui/theme`:
@@ -77,7 +81,7 @@ In an `mcp-use` view, the host communicates theme changes via `useViewTheme()`. 
 ```tsx
 import { useEffect } from "react";
 import { useViewTheme } from "mcp-use/react";
-import { applyDocumentTheme, useDocumentTheme } from "@openai/apps-sdk-ui/theme";
+import { applyDocumentTheme, useDocumentTheme, getDocumentTheme } from "@openai/apps-sdk-ui/theme";
 
 export function ThemeSync() {
   const { theme } = useViewTheme(); // "light" | "dark"
@@ -99,11 +103,19 @@ export function ThemeSync() {
 
 ---
 
-## 4. Complete Component Inventory
+## 4. Complete Component Inventory (29 Official Components)
 
 All components are imported directly from `@openai/apps-sdk-ui/components/<Component>`.
 
-### Feedback & Status Components
+> [!NOTE]
+> There is **no `Card` component** in `@openai/apps-sdk-ui`. Surface cards are standard `<div>` elements styled with Tailwind semantic classes:
+> ```tsx
+> <div className="w-full rounded-2xl border border-default bg-surface p-4 shadow-sm">
+>   {/* Card content */}
+> </div>
+> ```
+
+### 1. Feedback & Status Components
 
 #### `Alert`
 Inline feedback banners for alerts, notifications, and confirmations.
@@ -158,13 +170,13 @@ import { ShimmerText } from "@openai/apps-sdk-ui/components/ShimmerText";
 
 ---
 
-### Actions & Navigation
+### 2. Actions & Navigation
 
 #### `Button` & `ButtonLink`
 Accessible action buttons with variants and icons.
 ```tsx
-import { Button } from "@openai/apps-sdk-ui/components/Button";
-import { Plus } from "@openai/apps-sdk-ui/components/Icon";
+import { Button, ButtonLink, CopyButton } from "@openai/apps-sdk-ui/components/Button";
+import { Plus, Check } from "@openai/apps-sdk-ui/components/Icon";
 
 <Button color="primary" variant="solid" onClick={handleCreate}>
   <Plus className="size-4" />
@@ -174,6 +186,8 @@ import { Plus } from "@openai/apps-sdk-ui/components/Icon";
 <Button color="secondary" variant="soft">
   Cancel
 </Button>
+
+<CopyButton value="INV-2026-99" text="Copy invoice ID" />
 ```
 - `variant`: `solid` | `soft` | `outline` | `ghost`
 - `color`: `primary` | `secondary` | `danger`
@@ -181,7 +195,7 @@ import { Plus } from "@openai/apps-sdk-ui/components/Icon";
 
 ---
 
-### Form Controls & Inputs
+### 3. Form Controls & Inputs
 
 #### `Input`
 Single-line text entry with validation and icon slots.
@@ -245,6 +259,13 @@ import { RadioGroup, RadioGroupItem } from "@openai/apps-sdk-ui/components/Radio
 </RadioGroup>
 ```
 
+#### `Slider`
+```tsx
+import { Slider } from "@openai/apps-sdk-ui/components/Slider";
+
+<Slider value={[threshold]} onValueChange={([val]) => setThreshold(val)} min={0} max={100} step={1} />
+```
+
 #### `SegmentedControl`
 Tabbed toggle control for switching view filters or modes.
 ```tsx
@@ -300,7 +321,7 @@ import { DateRangePicker } from "@openai/apps-sdk-ui/components/DateRangePicker"
 
 ---
 
-### Overlays & Menus
+### 4. Overlays & Menus
 
 #### `Menu`
 Contextual or action dropdown menus.
@@ -323,51 +344,60 @@ Anchored floating cards for detailed controls.
 import { Popover, PopoverContent, PopoverTrigger } from "@openai/apps-sdk-ui/components/Popover";
 ```
 
-#### `Tooltip` & `CopyTooltip`
+#### `Tooltip`
 ```tsx
 import { Tooltip } from "@openai/apps-sdk-ui/components/Tooltip";
-import { CopyTooltip } from "@openai/apps-sdk-ui/components/Tooltip";
 
-<CopyTooltip text="INV-2026-99" content="Copy invoice ID" />
+<Tooltip content="Quick summary of item details">
+  <span className="text-secondary cursor-help">Hover for info</span>
+</Tooltip>
 ```
 
 ---
 
-### Media, Identity & Icons
+### 5. Media, Identity & Icons
 
-#### `Avatar` & `AvatarGroup`
+#### `Avatar`
+User profiles and avatars.
 ```tsx
-import { Avatar, AvatarGroup } from "@openai/apps-sdk-ui/components/Avatar";
+import { Avatar } from "@openai/apps-sdk-ui/components/Avatar";
 
 <Avatar src="/avatars/user.jpg" name="Alex Doe" size="md" />
-<AvatarGroup>
+
+{/* Multiple avatars are styled using standard flex utilities */}
+<div className="flex -space-x-2 overflow-hidden">
   <Avatar src="/u1.png" name="User 1" />
   <Avatar src="/u2.png" name="User 2" />
-</AvatarGroup>
+</div>
+```
+
+#### `Image`
+Aspect-ratio and fallback-safe image component.
+```tsx
+import { Image } from "@openai/apps-sdk-ui/components/Image";
+
+<Image src="/catalog/photo.jpg" alt="Product Image" className="rounded-lg object-cover" />
 ```
 
 #### `Icon` (700+ Native Monochrome SVGs)
-Import any icon from `@openai/apps-sdk-ui/components/Icon`:
+Import any icon from `@openai/apps-sdk-ui/components/Icon`. Standard names include `Check`, `CheckCircle`, `Search`, `Settings`, `Plus`, `ArrowRight`, `ChevronDown`, `Calendar`, etc.
 ```tsx
 import {
-  Cart,
-  Checkmark,
-  Calendar,
-  Invoice,
+  Check,
+  CheckCircle,
   Search,
   Settings,
-  User,
-  Warning,
+  Plus,
   ArrowRight,
   ChevronDown
 } from "@openai/apps-sdk-ui/components/Icon";
 
-<Cart className="size-4 text-primary" />
+<Check className="size-4 text-primary" />
 ```
 
 ---
 
-### Typography & Content
+### 6. Typography & Content
 
 #### `Markdown`
 Render formatted markdown directly inside the app.
@@ -394,19 +424,57 @@ import { TextLink } from "@openai/apps-sdk-ui/components/TextLink";
 
 ---
 
-### Motion & Transitions
+### 7. Motion & Transitions
 
 Import layout animation utilities from `@openai/apps-sdk-ui/components/Transition`:
 - `Animate`: Smooth height or opacity fade transitions.
 - `AnimateLayout`: Automatic layout morphing when siblings resize.
+- `SlotTransitionGroup`: Slot-based transitions.
 - `TransitionGroup`: Staggered entry and exit lists.
 
 ---
 
-## 5. Design Tokens Reference
+## 5. Official Hooks Suite (`@openai/apps-sdk-ui/hooks`)
+
+Import reactive hooks directly from `@openai/apps-sdk-ui/hooks`:
+
+| Hook | Purpose |
+|---|---|
+| `useBreakpoints()` | Returns active breakpoint booleans (`{ xs, sm, md, lg, xl, 2xl }`) matching screen widths. |
+| `useAnimatedScrollTo()` | Programmatic smooth scrolling with cancel tokens. |
+| `useAutoGrowTextarea()` | Dynamic height calculation for multi-line inputs. |
+| `useCharactersPerSecond()` | Measure typing or LLM token streaming speed. |
+| `useDocumentVisible()` | Detects iframe visibility changes. |
+| `useEscCloseStack()` | Stack-ordered Escape key handling for nested modals and popovers. |
+| `useIsMounted()` | Detects component mount status to prevent stale state updates. |
+| `useLatestValue(val)` | Mutable ref keeping latest value without triggering re-render. |
+| `usePrevious(val)` | Returns value from previous render. |
+| `useScrollable()` | Tracks scroll position and boundary reaches. |
+| `useSimulatedProgress()` | Simulated progress incrementer for long-running tool calls. |
+| `useStableCallback(fn)` | Memoized callback ref that survives re-renders. |
+| `useTextSelection()` | Tracks highlighted text within the component. |
+| `useTrailingValue(val, delay)` | Debounced trailing edge value listener. |
+
+Example using `useBreakpoints`:
+```tsx
+import { useBreakpoints } from "@openai/apps-sdk-ui/hooks/useBreakpoints";
+
+export function ResponsiveView() {
+  const { md, lg } = useBreakpoints();
+
+  return (
+    <div>
+      {md ? <DesktopLayout /> : <CompactMobileLayout />}
+    </div>
+  );
+}
+```
+
+---
+
+## 6. Design Tokens Reference
 
 ### Typography Scales
-Apply utility classes directly in JSX:
 - Headings: `heading-5xl` (72px), `heading-4xl` (60px), `heading-3xl` (48px), `heading-2xl` (36px), `heading-xl` (32px), `heading-lg` (24px), `heading-md` (20px), `heading-sm` (16px), `heading-xs` (14px).
 - Body Text: `text-lg` (18px), `text-md` (16px), `text-sm` (14px), `text-xs` (12px), `text-2xs` (11px).
 
@@ -417,7 +485,6 @@ Apply utility classes directly in JSX:
 - Accents: `bg-primary`, `text-primary`, `bg-success`, `bg-danger`, `bg-warning`, `bg-info`
 
 ### Responsive Breakpoints
-Follow mobile-first responsive design:
 | Breakpoint | Minimum Width | Common Device / Context |
 |---|---|---|
 | `xs` | `380px` | Portrait mobile |
@@ -426,5 +493,3 @@ Follow mobile-first responsive design:
 | `lg` | `1024px` | Laptop / fullscreen ChatGPT view |
 | `xl` | `1280px` | Desktop display |
 | `2xl` | `1536px` | Widescreen |
-
-Use `useBreakpoint("md")` from `@openai/apps-sdk-ui/hooks/useBreakpoint` for conditional rendering based on viewport width.

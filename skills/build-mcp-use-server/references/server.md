@@ -1,191 +1,140 @@
-# MCPServer Class Reference
+# Server
 
-*Authoritative API reference for `MCPServer` in mcp-use v2.*
+*Authoritative guide for mcp-use v2 TypeScript MCP Servers.*
 
-Primary sources:
-- [MCPServer API Documentation](https://api-reference.mcp-use.com/classes/mcp-use.index.MCPServer.html)
-- [mcp-use Server Guide](https://docs.mcp-use.com/v2/typescript/server)
+Official documentation:
+- [Server Overview](https://docs.mcp-use.com/v2/typescript/server)
+- [MCPServer API Reference](https://api-reference.mcp-use.com/classes/mcp-use.index.MCPServer.html)
+- [Server Tools](https://docs.mcp-use.com/v2/typescript/server/tools)
+- [Server Resources](https://docs.mcp-use.com/v2/typescript/server/resources)
+- [Server Prompts](https://docs.mcp-use.com/v2/typescript/server/prompts)
+- [Server Middleware](https://docs.mcp-use.com/v2/typescript/server/middleware)
+- [Server Examples](https://docs.mcp-use.com/v2/typescript/server/examples)
 
 ---
 
-## 1. Constructor
+## Project & Lifecycle
 
-```typescript
+Import `MCPServer` from `mcp-use`. Default-export the server entry so `mcp-use dev`, `mcp-use build`, and `mcp-use start` can own the listener and View pipeline. Call `server.listen()` only in an explicitly standalone program, or use `server.fetch()` for Web-standard Edge runtimes.
+
+```bash
+npx create-mcp-use-app@latest my-server --template mcp-server
+```
+
+### Server Configuration Surface (`ServerConfig`)
+
+```ts
 import { MCPServer } from "mcp-use";
 
-const server = new MCPServer<TUser = never, TEnv extends Env = Env>(config: ServerConfig<TUser>);
-```
-
-### Constructor Options (`ServerConfig`)
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `name` | `string` | *(required)* | Unique server identifier reported during negotiation. |
-| `version` | `string` | *(required)* | Semantic version reported to clients. |
-| `title` | `string` | `name` | Display title shown in host client interfaces. |
-| `description` | `string` | `undefined` | Server description exposed in client metadata. |
-| `instructions` | `string` | `undefined` | System-level workflow guidance returned during init. |
-| `basePath` | `string` | `"/mcp"` | URL pathname route prefix where the MCP endpoint is mounted. |
-| `host` | `string` | `"127.0.0.1"` | Bind host for `listen()`. Set `"0.0.0.0"` to serve publicly. |
-| `port` | `number` | `3000` | Port for `listen()`. Pass `0` for an ephemeral port. |
-| `favicon` | `string` | `undefined` | Local path relative to `public/`, or URL served at `/favicon.ico`. |
-| `icons` | `Icon[]` | `undefined` | Array of MCP icons reported in implementation metadata. |
-| `websiteUrl` | `string` | `undefined` | Documentation or homepage URL. |
-| `allowedHosts` | `string[]` | `undefined` | Additional hostnames for DNS-rebinding protection. Setting this also activates Host validation on `server.fetch`. |
-| `allowedOrigins` | `string[]` | `undefined` | Extra origins for Origin validation on non-GET/HEAD calls. |
-| `legacy` | `"stateless" \| "reject"` | `"stateless"` | Behavior for legacy 2025 non-envelope requests. |
-| `publicLandingPage`| `boolean` | `false` | When OAuth is active, allows viewing landing page without bearer token. |
-| `logging` | `LoggingOptions` | `{ level: "info" }` | Request logger settings. Level can be `"info"`, `"debug"`, or `"trace"`. |
-| `skills` | `boolean \| SkillsOptions` | `true` (auto) | Automatic discovery of `skills/` directory. |
-| `requestState` | `ServerOptions["requestState"]` | `undefined` | Codec for cryptographic verification of `ctx.requestState`. |
-| `cors` | `CorsOptions` | `undefined` | Automatic CORS header injection across endpoints. |
-| `mixedAuth` | `boolean` | `false` | When true with OAuth configured, enables public `tools/list` discovery. |
-| `oauth` | `OAuthProvider<TUser>` | `undefined` | OAuth 2.1 identity provider adapter. |
-
----
-
-## 2. Server Methods
-
-### `server.tool(definition, callback)`
-Registers a callable MCP tool. Returns a `ToolRef<Name, Input, Output>` object carrying phantom types for compile-time view type safety.
-
-```typescript
-export const myTool = server.tool(
-  {
-    name: "calculate-total",
-    title: "Calculate Order Total",
-    description: "Computes subtotal, taxes, and shipping fees.",
-    icons: [{ src: "icons/calc.svg", mimeType: "image/svg+xml" }],
-    inputSchema: z.object({
-      items: z.array(z.object({ price: z.number(), qty: z.number() })),
-      taxRate: z.number().default(0.08),
-    }),
-    outputSchema: z.object({ total: z.number(), tax: z.number() }),
-    annotations: { readOnlyHint: true, openWorldHint: false },
-    visibility: "model", // "model" (default) or "app"
-    view: { name: "order-summary" },
-  },
-  async ({ items, taxRate }, ctx) => {
-    const subtotal = items.reduce((acc, i) => acc + i.price * i.qty, 0);
-    const tax = subtotal * taxRate;
-    const total = subtotal + tax;
-    return {
-      content: [{ type: "text", text: `Total: $${total.toFixed(2)}` }],
-      structuredContent: { total, tax },
-    };
-  }
-);
-```
-
-### `server.settings(options)`
-Registers native ChatGPT plugin settings tools (`settings.read` and `settings.update`) and advertises the `openai/settings` capability.
-
-```typescript
-server.settings({
-  fields: {
-    currency: { schema: z.enum(["USD", "EUR", "GBP"]), title: "Default Currency" },
-  },
-  read: async (ctx) => ({ currency: "USD" }),
-  update: async (patch, ctx) => ({ currency: patch.currency ?? "USD" }),
-});
-```
-
-### `server.resource(definition, callback)`
-Registers a static resource reachable at a stable URI:
-
-```typescript
-server.resource(
-  {
-    uri: "config://application",
-    name: "Application Config",
-    mimeType: "application/json",
-  },
-  async (uri, ctx) => ({
-    contents: [{ uri, mimeType: "application/json", text: JSON.stringify({ env: "production" }) }],
-  })
-);
-```
-
-### `server.resourceTemplate(definition, callback)`
-Registers a parameterized resource template with variable substitution:
-
-```typescript
-server.resourceTemplate(
-  {
-    uriTemplate: "users://{userId}/profile",
-    name: "User Profile",
-    mimeType: "application/json",
-  },
-  async (uri, { userId }, ctx) => ({
-    contents: [{ uri, mimeType: "application/json", text: JSON.stringify({ userId, role: "admin" }) }],
-  })
-);
-```
-
-### `server.prompt(definition, callback)`
-Registers a model prompt template with arguments schema:
-
-```typescript
-server.prompt(
-  {
-    name: "code-review",
-    title: "Conduct Code Review",
-    schema: z.object({
-      language: z.string().describe("Programming language"),
-      code: z.string().describe("Code snippet"),
-    }),
-  },
-  async ({ language, code }, ctx) => ({
-    messages: [
-      {
-        role: "user",
-        content: { type: "text", text: `Review this ${language} code:\n\n${code}` },
-      },
+const server = new MCPServer({
+  name: "catalog-server",
+  version: "1.0.0",
+  title: "Product Catalog",
+  description: "Manage product catalog, stock levels, and search items.",
+  instructions: "Use lookup-inventory before creating an order. Confirm stock availability.",
+  basePath: "/mcp", // default route
+  host: "127.0.0.1", // "0.0.0.0" for public hosting
+  port: 3000,
+  legacy: "stateless", // "stateless" (default) or "reject"
+  branding: {
+    websiteUrl: "https://example.com",
+    icons: [
+      { src: "icons/logo.svg", mimeType: "image/svg+xml", sizes: ["20x20"] }
     ],
-  })
-);
-```
-
-### `server.use("mcp:<method>", middleware)`
-Registers request-scoped MCP protocol middleware:
-
-```typescript
-server.use("mcp:tools/call", async (ctx, next) => {
-  const start = Date.now();
-  const res = await next();
-  console.log(`${ctx.params.name} completed in ${Date.now() - start}ms`);
-  return res;
+  },
+  skills: true, // Auto-discover skills/ directory (or { directory: "custom" })
+  cors: {
+    origin: "*",
+    credentials: true,
+  },
 });
+
+export default server;
 ```
-
-### Notification Invalidation Methods
-Publish changes to subscribed clients over Streamable HTTP SSE:
-- `await server.notifyToolsChanged()`
-- `await server.notifyResourcesChanged()`
-- `await server.notifyPromptsChanged()`
-- `await server.notifyResourceUpdated(uri: string)`
-
-### `server.listen(port?, options?)`
-Starts the Node HTTP listener:
-```typescript
-const { port, url } = await server.listen(3000);
-```
-
-### `server.fetch(request, env?, executionCtx?)`
-Standard web-fetch handler for serverless environments (Cloudflare Workers, Vercel, Supabase Functions, Hono).
 
 ---
 
-## 3. Request Context (`RequestContext`)
+## Tools
 
-Every callback receives a request-scoped `ctx` object:
-- `ctx.signal`: `AbortSignal` aborted if client disconnects or host cancels.
-- `ctx.client.capabilities()`: Returns client capabilities object.
-- `ctx.client.user()`: Returns client-reported OpenAI user hints (`locale`, `userAgent`, `location`).
-- `ctx.client.supportsViews()`: Returns `true` if client supports MCP Apps UI.
-- `ctx.auth`: Populated when OAuth is active (`ctx.auth.user`, `ctx.auth.scopes`, `ctx.auth.permissions`, `ctx.auth.accessToken`).
-- `ctx.inputResponses`: Responses from prior `input_required` rounds.
-- `ctx.requestState`: Opaque state round-tripped across `input_required` turns.
-- `await ctx.reportProgress(progress, total?, message?)`: Send tool execution progress.
-- `await ctx.sendLog(level, data, logger?)`: Send MCP log messages during execution.
-- `await ctx.sendNotification(method, params?)`: Send custom one-way notifications.
+Use a Standard Schema-compatible validator such as Zod, ArkType, or Valibot. Describe fields when the description helps a client or model choose valid input. Always export static tool refs (`export const myTool = server.tool(...)`).
+
+```ts
+import { MCPServer } from "mcp-use";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "inventory", version: "1.0.0" });
+
+export const lookupInventory = server.tool(
+  {
+    name: "lookup-inventory",
+    title: "Lookup Inventory",
+    description: "Return available inventory for one SKU",
+    icons: [
+      { src: "icons/inventory.svg", mimeType: "image/svg+xml", sizes: ["20x20"] },
+    ],
+    inputSchema: z.object({ sku: z.string().describe("Inventory SKU") }),
+    outputSchema: z.object({ sku: z.string(), available: z.number().int() }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    visibility: "model", // "model" (default) or "app" (hidden from LLM, visible to Views)
+    view: {
+      name: "inventory-card",
+      description: "Interactive stock display",
+    },
+  },
+  async ({ sku }, ctx) => {
+    // Expected operational failure
+    if (!sku.startsWith("SKU-")) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Invalid SKU format: ${sku}` }],
+      };
+    }
+
+    const data = { sku, available: 42 };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      structuredContent: data,
+      _meta: { lastSync: Date.now() },
+    };
+  },
+);
+
+export default server;
+```
+
+### Result Channels
+- Put concise model-readable output in `content`.
+- Put schema-validated JSON in `structuredContent` when `outputSchema` exists.
+- Put invocation-specific, View-only data in result `_meta`; validate or narrow it in the View.
+- Return `isError: true` with useful `content` for expected operational failures.
+- Throw only for unexpected failures that should surface as protocol errors.
+
+---
+
+## Resources & Prompts
+
+- `server.resource(definition, callback)`: for one stable URI.
+- `server.resourceTemplate(definition, callback)`: for a URI family with parameters.
+- Return `{ contents: [...] }`; each entry must include its URI and either text or a base64 blob.
+- `server.prompt(definition, callback)`: for model-ready messages. Prompt arguments use `schema` (not `inputSchema`), and the callback returns `{ messages: [...] }`. Wrap a string field with `completable()` when clients should receive suggestions without restricting other valid strings.
+
+---
+
+## MCP Middleware & Request Context
+
+Register protocol middleware with `server.use("mcp:<method>", handler)`:
+
+```ts
+server.use("mcp:tools/call", async (ctx, next) => {
+  const startedAt = Date.now();
+  const result = await next();
+  console.log(`${ctx.params.name}: ${Date.now() - startedAt}ms`);
+  return result;
+});
+```
+
+Tool, resource, and prompt callbacks receive request-scoped context:
+- `ctx.signal`: cancellation signal.
+- `ctx.client`: self-reported client capabilities (`ctx.client.views`, `ctx.client.roots`).
+- `ctx.auth`: verified identity and grants when OAuth is configured. Never use client metadata for authorization.
+- `ctx.requestState`: request-scoped storage.
