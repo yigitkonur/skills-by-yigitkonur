@@ -23,7 +23,7 @@ fi
 if "$MCP_USE_PATH" --version 2>/dev/null | grep -qE '^(4\.|5\.)'; then
     echo "✓ mcp-use CLI: v2 (version 4.x or later)"
     CLI_VERSION="v2"
-elif "$MCP_USE_PATH" --version 2>/dev/null | grep -qE '^(3\.|2\.1)'; then
+elif "$MCP_USE_PATH" --version 2>/dev/null | grep -qE '^(3\.)'; then
     echo "✓ mcp-use CLI: v1 (version 3.x or earlier)"
     CLI_VERSION="v1"
 else

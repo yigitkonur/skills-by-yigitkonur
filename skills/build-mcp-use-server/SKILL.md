@@ -1,6 +1,7 @@
 ---
 name: build-mcp-use-server
-description: Build, modify, debug, migrate, review, or verify TypeScript MCP servers and ChatGPT MCP Apps with mcp-use v2. Grounded on MCPServer, OpenAI Apps SDK UI compliance, Views, ChatGPT Plugin Extensions, mixed auth, elicitation, and Skills over MCP.
+description: Use if building, modifying, debugging, or verifying TypeScript MCP servers and ChatGPT Apps with mcp-use v2, MCPServer, Apps SDK UI, Views, and Plugin Extensions.
+disable-model-invocation: true
 ---
 
 # Build with mcp-use & ChatGPT Apps
@@ -52,15 +53,14 @@ This skill grounds on the official [`MCPServer`](https://api-reference.mcp-use.c
 
 - **Never import non-existent `@openai/apps-sdk-ui` components**:
   - `Card` does **not** exist in `@openai/apps-sdk-ui`. Surface cards are standard `<div>` elements styled with Tailwind utility classes (`rounded-2xl border border-default bg-surface p-4 shadow-sm`).
-  - `AvatarGroup` does **not** exist; use standard flex containers (`<div className="flex -space-x-2">`) with `<Avatar />`.
-  - `CopyTooltip` does **not** exist; use `CopyButton` from `@openai/apps-sdk-ui/components/Button`.
+  - `AvatarGroup` and `CopyTooltip` **are** official `@openai/apps-sdk-ui` components (from `@openai/apps-sdk-ui/components/Avatar` and `@openai/apps-sdk-ui/components/Tooltip`).
   - `Cart` and `Checkmark` do **not** exist in `@openai/apps-sdk-ui/components/Icon`. Use `Check`, `CheckCircle`, `Search`, `Plus`, `Settings`, etc.
 - **Never omit `linkComponent` on `<AppsSDKUIProvider>`**: The TypeScript contract requires `linkComponent` (e.g. `<AppsSDKUIProvider linkComponent="a">`).
 - **Never read `useToolContext().toolOutput` un-narrowed**: `useToolContext()` is a discriminated union. When `status === "pending"`, `toolOutput` is `undefined`. Always handle `status === "pending"` and `status === "error"` before accessing `toolOutput`. Narrow `error instanceof ToolCancelledError` for cancelled actions.
-- **Never put `websiteUrl`, `icons`, or `logging` at the top level of `MCPServer`**:
-  - Website URL and server icons belong in `branding: { websiteUrl, icons: [...] }`.
-  - Server logging level is configured via environment variables (`LOG_LEVEL`) or middleware.
-- **Never use removed `ctx.elicit()`**: Use official elicitation primitives `inputRequired`, `inputRequired.elicit`, `inputRequired.elicitUrl`, `inputResponse`, and `acceptedContent`.
+- **Configure `websiteUrl`, `icons`, and `logging` at the top level of `MCPServer`**:
+  - `icons?: Icon[]`, `websiteUrl?: string`, and `logging?: LoggingOptions` are top-level properties on `ServerConfig`. Do not nest them in a fictitious `branding: { ... }` object (`server.branding` is a read-only getter).
+  - Server logging level is configured via `logging: { enabled: true, level: "info" }` or overridden by the `MCP_USE_LOG_LEVEL` environment variable.
+- **Never use legacy v1 `ctx.elicit()`**: Removed in v2.0.0 during the transition to the stateless request model. Use official protocol primitives: `inputRequired`, `inputRequired.elicit`, `inputRequired.elicitUrl`, `inputResponse`, and `acceptedContent`.
 - **Never use wrong CLI commands**:
   - Client connect syntax: `mcp-use client connect <name> <url> [options]` (e.g. `npx mcp-use client connect dev http://localhost:3000/mcp`).
   - Screenshot syntax: `mcp-use screenshot (--server <name> | --mcp <url>) --tool <name> [args...] [options]`.
@@ -84,12 +84,11 @@ const server = new MCPServer({
   host: "127.0.0.1", // "0.0.0.0" for public hosting
   port: 3000,
   legacy: "stateless", // "stateless" (default) or "reject"
-  branding: {
-    websiteUrl: "https://example.com",
-    icons: [
-      { src: "icons/logo.svg", mimeType: "image/svg+xml", sizes: ["20x20"] }
-    ],
-  },
+  websiteUrl: "https://example.com",
+  icons: [
+    { src: "icons/logo.svg", mimeType: "image/svg+xml", sizes: ["20x20"] }
+  ],
+  logging: { enabled: true, level: "info" }, // Overridden by MCP_USE_LOG_LEVEL env var
   skills: true, // Auto-discover conventional skills/ directory
   cors: {
     origin: "*",
@@ -203,7 +202,7 @@ export const viewConfig = {
 
 export default function ProductCardView() {
   const { status, toolInput, toolOutput, error } = useToolContext<"get-product">();
-  const { theme } = useViewTheme();
+  const theme = useViewTheme();
   const { add } = useModelContext();
 
   // Synchronize host theme with Apps SDK UI data-theme attribute
@@ -241,10 +240,9 @@ export default function ProductCardView() {
           <Button
             color="primary"
             onClick={() => {
-              // Attach verified evidence to next ChatGPT model turn
-              void add("selected:product", {
+              // Attach verified evidence to next ChatGPT model turn (synchronous void)
+              add("selected:product", {
                 type: "text",
-                title: toolOutput.title,
                 text: `Selected SKU ${toolOutput.sku}: $${toolOutput.price}`,
               });
             }}
@@ -276,11 +274,10 @@ All imported from `@openai/apps-sdk-ui/components/<Component>`:
 | **Providers** | `AppsSDKUIProvider` | Root context providing router `linkComponent` configuration. |
 
 ### 4. Official Hooks Suite (`@openai/apps-sdk-ui/hooks`)
-- `useBreakpoints()`: Responsive breakpoint matches (`{ xs, sm, md, lg, xl, 2xl }`).
+- `useBreakpoint(size: BreakpointName)`: Responsive breakpoint match boolean (e.g. `useBreakpoint("md")`).
 - `useAutoGrowTextarea()`: Dynamic auto-growing textarea heights.
 - `useAnimatedScrollTo()`: Smooth programmatic scrolling with cancellation.
 - `useDocumentVisible()`: Tracks iframe visibility.
-- `useEscCloseStack()`: Escape key handling stack for nested overlays.
 - `useIsMounted()`, `useLatestValue()`, `usePrevious()`, `useScrollable()`, `useSimulatedProgress()`, `useStableCallback()`, `useTextSelection()`, `useTrailingValue()`.
 
 ---
@@ -314,22 +311,18 @@ export const openCsvViewer = server.tool(
 ```
 
 ### 2. Native Plugin Settings (`server.settings`)
-Register native ChatGPT plugin settings with typed fields and layout groups:
+Register native ChatGPT plugin settings with typed fields and layout sections:
 
 ```typescript
 server.settings({
   fields: {
-    theme: { schema: z.enum(["light", "dark", "system"]), title: "Theme" },
-    autoSync: { schema: z.boolean(), title: "Automatic Sync" },
+    theme: { type: "string", label: "Theme", default: "system" },
+    autoSync: { type: "boolean", label: "Automatic Sync", default: true },
   },
   layout: [
     {
-      kind: "group",
       title: "Preferences",
-      items: [
-        { kind: "property", property: "theme" },
-        { kind: "property", property: "autoSync" },
-      ],
+      fields: ["theme", "autoSync"],
     },
   ],
   read: async (ctx) => ({ theme: "system", autoSync: true }),
@@ -348,17 +341,22 @@ export function AppRouter() {
 ```
 
 ### 4. Selected Model Context (`useModelContext`)
-Manage evidence attachments sent with the next user model turn:
+Manage evidence attachments sent with the next user model turn (`attachments` is `Record<string, ModelContextBlock>`, `add` is synchronous void):
 ```tsx
 import { useModelContext } from "mcp-use/react";
 
 const { attachments, add, remove, clearAttachments } = useModelContext();
 
-// Attach text summary
-await add("summary", { type: "text", title: "Order Summary", text: "Total: $120.00" });
+// Attach text summary (synchronous void, no title)
+add("summary", { type: "text", text: "Order Summary: Total $120.00" });
 
-// Attach image (PNG/JPEG/GIF/WebP, max 10MB)
-await add("receipt", { type: "image", title: "Receipt", src: "/receipts/101.png" });
+// Attach image with Base64 data (PNG/JPEG/GIF/WebP, max 10MB)
+add("receipt", { type: "image", data: receiptBase64, mimeType: "image/png" });
+
+// Enumerate attached blocks
+Object.entries(attachments).map(([key, block]) => (
+  <span key={key}>{key}: {block.type}</span>
+));
 ```
 
 ---
@@ -415,7 +413,7 @@ Supported Providers: Clerk (`mcp-use/oauth/clerk`), Auth0 (`mcp-use/oauth/auth0`
 
 Documentation: [Elicitation](https://docs.mcp-use.com/v2/typescript/server/elicitation) | [Advanced Features](references/advanced-features.md)
 
-`ctx.elicit()` was removed in v2.4.3. Use official protocol primitives:
+`ctx.elicit()` was removed in v2.0.0 during the transition to the stateless request model. Use official protocol primitives:
 
 ```typescript
 import { MCPServer, inputRequired, inputResponse, acceptedContent } from "mcp-use";

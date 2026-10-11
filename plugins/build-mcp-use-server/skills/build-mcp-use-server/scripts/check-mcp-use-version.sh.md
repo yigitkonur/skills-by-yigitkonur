@@ -17,7 +17,7 @@ bash scripts/check-mcp-use-version.sh
 ```
 ✓ mcp-use found at: ./node_modules/.bin/mcp-use
 ✓ mcp-use CLI: v2 (version 4.x or later)
-Local package.json mcp-use: ^2.8.1
+Local package.json mcp-use: ^2.8.2
   → Detected v2 package (root MCPServer export, ESM only, no "./server")
 ```
 
@@ -33,7 +33,7 @@ Local package.json mcp-use: ^1.34.5
 
 ```
 mcp-use npm tags:
-  latest: 2.8.1 (v2 stable)
+  latest: 2.8.2 (v2 stable)
   beta: 2.0.0-beta.68 (pre-release)
   v1-legacy: 1.34.8 (v1 maintenance)
 ```

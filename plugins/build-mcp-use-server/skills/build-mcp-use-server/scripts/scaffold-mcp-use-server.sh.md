@@ -114,7 +114,7 @@ my-mcp-server/
 ## Key features
 
 - **Non-interactive:** No prompts; all flags explicit in command line
-- **Beta versions:** Uses `@2.0.0-beta.14` scaffolder (matches CLI 4.0.0-beta.15)
+- **Production versions:** Uses `create-mcp-use-app@latest` (stable 2.0.10+, matching `@mcp-use/cli@4.3.2` and `mcp-use@2.8.2`)
 - **Auto-install:** `--install` flag runs package manager after generation
 - **Safe:** Refuses to overwrite existing directories
 - **Guided output:** Prints next steps and deploy instructions

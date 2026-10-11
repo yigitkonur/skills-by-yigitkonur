@@ -172,7 +172,7 @@
     {
       "name": "build-kernel-ts-sdk",
       "source": "./",
-      "description": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools.",
+      "description": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk), CLI, or MCP server — browsers, pools.",
       "version": "1.0.127",
       "category": "skills",
       "strict": false,
@@ -249,7 +249,7 @@
     {
       "name": "build-mcp-use-server",
       "source": "./",
-      "description": "Use skill if you are building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.",
+      "description": "Use if building, modifying, debugging, or verifying TypeScript MCP servers and ChatGPT Apps with mcp-use v2, MCPServer, Apps SDK UI, Views, and Plugin Extensions.",
       "version": "1.0.127",
       "category": "skills",
       "strict": false,
@@ -326,7 +326,7 @@
     {
       "name": "convert-to-natural-writing",
       "source": "./",
-      "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
+      "description": "Use if auditing or converting text into natural human cadence, eliminating Turkish translationese and synthetic AI writing patterns.",
       "version": "1.0.127",
       "category": "skills",
       "strict": false,
@@ -623,7 +623,7 @@
     {
       "name": "use-sentry",
       "source": "./",
-      "description": "Use if setting up or auditing modern Sentry observability with OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes.",
+      "description": "Use if setting up or auditing modern Sentry observability with Expo/React Native, Cloudflare Workers/Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes.",
       "version": "1.0.127",
       "category": "skills",
       "strict": false,

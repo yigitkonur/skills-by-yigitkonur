@@ -1,6 +1,6 @@
 # build-mcp-use-server
 
-Building TypeScript MCP servers with mcp-use v2 — MCPServer tools, views, oauth providers, mixed auth, ChatGPT extensions, Skills over MCP, or migrating v1 servers.
+Use if building, modifying, debugging, or verifying TypeScript MCP servers and ChatGPT Apps with mcp-use v2, MCPServer, Apps SDK UI, Views, and Plugin Extensions.
 
 **Category:** development
 

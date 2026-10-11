@@ -22,11 +22,12 @@ bash scripts/audit-server-readiness.sh
 | **Node.js engine** | Node >= 22.22.2 | — | Node < 22.22.2 (unsupported) |
 | **ESM** | `"type": "module"` in package.json | — | Missing ESM config |
 | **mcp-use version** | `2.x` range in `package.json` | `1.x` or unresolved (e.g. still says `beta`) | — |
-| **zod** | `^4.` | Not v4 | — |
+| **Schema library** | Standard Schema v1 (Zod, Valibot, ArkType) present | Missing schema library | — |
 | **Entry point** | `index.ts` or `src/index.ts` found | — | No entry file |
 | **Root import** | `import { MCPServer } from "mcp-use"` | `from "mcp-use/server"` (v1) | — |
 | **views/** | Directory + `view.tsx` files | Directory missing (OK for tools-only) | — |
 | **Apps SDK UI** | `@openai/apps-sdk-ui` installed | Missing in views project (recommended for ChatGPT UI) | — |
+| **Exported tools** | Tools exported as static constants (`export const ... = server.tool(...)`) | Tools not exported (breaks `mcp-env.d.ts` live typing) | — |
 | **outputSchema** | Tools have `outputSchema` | No outputSchema (OK if no views) | — |
 | **OAuth** | `oauth:` config present (if needed) | Missing (OK for public servers) | — |
 | **Build** | `.mcp-use/build/index.js` present | Directory missing or no `index.js`; run `mcp-use build` | — |
@@ -37,17 +38,18 @@ bash scripts/audit-server-readiness.sh
 ```
 ✓ ESM-only ("type": "module")
 ✓ mcp-use v2 (2.x)
-✓ zod v4 (correct)
+✓ Standard Schema v1 library (zod)
 ✓ Entry file: index.ts
 ✓ Root MCPServer import (✓ v2)
 ✓ views/ directory with 2 view file(s)
-✓ Found 5 tool(s) defined
+✓ Found 5 tool(s) defined across scanned files
+✓ 5 tool(s) exported as static constants (✓ mcp-env.d.ts live typing)
 ✓ 4 tool(s) with outputSchema (used by views)
 ✓ .mcp-use/build/ directory exists
 ✓ Build output present (.mcp-use/build/index.js)
 ✓ mcp-env.d.ts generated at project root (tool types for views)
 
-✓ Pass: 11
+✓ Pass: 12
 ```
 
 ### Example: server needing fixes
@@ -55,12 +57,13 @@ bash scripts/audit-server-readiness.sh
 ```
 ✗ Not ESM. Add "type": "module" to package.json
 ⚠ mcp-use may be v1. Verify: npm list mcp-use
-⚠ zod not v4. Add: npm install zod@^4
+⚠ No Standard Schema library (zod, valibot, arktype) found in package.json
 ✗ Found mcp-use/server import (v1 pattern). Change to: import { MCPServer } from "mcp-use"
+⚠ No exported static tool constants found. Export tools (export const myTool = server.tool(...)) for View type safety.
 ⚠ No .mcp-use/build/. Run: mcp-use build
 
 ✓ Pass: 5
-⚠ Warnings: 2
+⚠ Warnings: 3
 ✗ Failures: 2
 
 Fix failures above before deploying.
@@ -74,7 +77,8 @@ Fix failures above before deploying.
 | `mcp-use/server import` | Change: `import { MCPServer } from "mcp-use"` |
 | `No .mcp-use/build/index.js` | Run: `npm run build` or `mcp-use build` |
 | `No mcp-env.d.ts at project root` | Run: `npm run typecheck` or `mcp-use typecheck` |
-| `Deprecated helpers` | Replace `text(...)` with `{ content: [...], structuredContent: ... }` |
+| `Deprecated helpers` | Replace `text(...)`, `object(...)`, `widget(...)`, `array(...)` with `{ content: [...], structuredContent: ... }` |
+| `Unexported tools` | Assign static tools to exported constants: `export const myTool = server.tool(...)` |
 
 ## Exit codes
 

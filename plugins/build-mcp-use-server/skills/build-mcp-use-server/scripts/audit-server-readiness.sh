@@ -70,11 +70,12 @@ else
     check_warn "mcp-use may be v1. Verify: npm list mcp-use"
 fi
 
-# Check zod v4
-if grep -qE '"zod": *"[~^>=]*4\.' package.json; then
-    check_pass "zod v4 (correct)"
+# Check Standard Schema v1 library (zod, valibot, arktype)
+if grep -qE '"(zod|valibot|arktype)":' package.json; then
+    SCHEMA_LIB=$(grep -oE '"(zod|valibot|arktype)"' package.json | head -1 | tr -d '"')
+    check_pass "Standard Schema v1 library ($SCHEMA_LIB)"
 else
-    check_warn "zod not v4. Add: npm install zod@^4"
+    check_warn "No Standard Schema library (zod, valibot, arktype) found in package.json"
 fi
 
 echo ""
@@ -156,29 +157,66 @@ fi
 echo ""
 echo "=== 5. Tool Definitions ==="
 
+# Gather tool candidate files: ENTRY and any files in src/tools or tools
+TOOL_FILES=""
 if [ -n "$ENTRY" ] && [ -f "$ENTRY" ]; then
-    # `grep -c` always prints a count (0 or more) and only exits nonzero on
-    # zero matches; `|| echo "0"` there would print a second "0" line and
-    # break the numeric comparison below, so swallow the exit status instead.
-    TOOL_COUNT=$(grep -c 'server\.tool(' "$ENTRY" || true)
-    if [ "$TOOL_COUNT" -gt 0 ]; then
-        check_pass "Found $TOOL_COUNT tool(s) defined"
+    TOOL_FILES="$ENTRY"
+fi
+if [ -d "src/tools" ]; then
+    SRC_TOOL_FILES=$(find src/tools -maxdepth 2 \( -name "*.ts" -o -name "*.js" \) 2>/dev/null || true)
+    TOOL_FILES="$TOOL_FILES $SRC_TOOL_FILES"
+fi
+if [ -d "tools" ]; then
+    EXTRA_TOOL_FILES=$(find tools -maxdepth 2 \( -name "*.ts" -o -name "*.js" \) 2>/dev/null || true)
+    TOOL_FILES="$TOOL_FILES $EXTRA_TOOL_FILES"
+fi
 
-        # Check for outputSchema
-        OUT_SCHEMA=$(grep -c 'outputSchema:' "$ENTRY" || true)
-        if [ "$OUT_SCHEMA" -gt 0 ]; then
-            check_pass "$OUT_SCHEMA tool(s) with outputSchema (used by views)"
-        else
-            check_warn "No tools with outputSchema. Views require outputSchema to receive data."
-        fi
+TOOL_COUNT=0
+OUT_SCHEMA_COUNT=0
+EXPORTED_TOOL_COUNT=0
+HAS_DEPRECATED_HELPERS=false
 
-        # Check for deprecated v1 helpers
-        if grep -q 'return text(' "$ENTRY" 2>/dev/null || grep -q 'return object(' "$ENTRY" 2>/dev/null; then
-            check_warn "Using deprecated response helpers (text(), object(), etc.). Prefer raw envelopes: { content: [...], structuredContent: ... }"
+for file in $TOOL_FILES; do
+    if [ -f "$file" ]; then
+        # Count tool definitions
+        COUNT=$(grep -c 'server\.tool(' "$file" 2>/dev/null || true)
+        TOOL_COUNT=$((TOOL_COUNT + COUNT))
+
+        # Count outputSchema
+        SCHEMA_COUNT=$(grep -c 'outputSchema:' "$file" 2>/dev/null || true)
+        OUT_SCHEMA_COUNT=$((OUT_SCHEMA_COUNT + SCHEMA_COUNT))
+
+        # Count exported static tool constants (required for mcp-env.d.ts typing)
+        EXP_COUNT=$(grep -cE 'export\s+const\s+[a-zA-Z0-9_]+\s*=\s*server\.tool\(' "$file" 2>/dev/null || true)
+        EXPORTED_TOOL_COUNT=$((EXPORTED_TOOL_COUNT + EXP_COUNT))
+
+        # Check for deprecated response helpers: text(), object(), array(), image(), widget(), error(), mix()
+        if grep -qE 'return\s+(text|object|array|image|widget|error|mix)\(' "$file" 2>/dev/null; then
+            HAS_DEPRECATED_HELPERS=true
         fi
-    else
-        check_warn "No tools found. Is this intentional?"
     fi
+done
+
+if [ "$TOOL_COUNT" -gt 0 ]; then
+    check_pass "Found $TOOL_COUNT tool(s) defined across scanned files"
+
+    if [ "$EXPORTED_TOOL_COUNT" -gt 0 ]; then
+        check_pass "$EXPORTED_TOOL_COUNT tool(s) exported as static constants (✓ mcp-env.d.ts live typing)"
+    else
+        check_warn "No exported static tool constants found. Export tools (export const myTool = server.tool(...)) for View type safety."
+    fi
+
+    if [ "$OUT_SCHEMA_COUNT" -gt 0 ]; then
+        check_pass "$OUT_SCHEMA_COUNT tool(s) with outputSchema (used by views)"
+    else
+        check_warn "No tools with outputSchema. Views require outputSchema to receive structured data."
+    fi
+
+    if [ "$HAS_DEPRECATED_HELPERS" = true ]; then
+        check_warn "Using deprecated response helpers (text(), object(), widget(), array(), etc.). Prefer raw envelopes: { content: [...], structuredContent: ... }"
+    fi
+else
+    check_warn "No tools found in $ENTRY or tools directories. Is this intentional?"
 fi
 
 echo ""

@@ -15,7 +15,7 @@ Import provider adapters from explicit subpaths in `mcp-use/oauth/*`:
 
 - Clerk: `import { oauthClerkProvider } from "mcp-use/oauth/clerk"`
 - Auth0: `import { oauthAuth0Provider } from "mcp-use/oauth/auth0"`
-- WorkOS: `import { oauthWorkosProvider } from "mcp-use/oauth/workos"`
+- WorkOS: `import { oauthWorkOSProvider } from "mcp-use/oauth/workos"`
 - Supabase: `import { oauthSupabaseProvider } from "mcp-use/oauth/supabase"`
 - Keycloak: `import { oauthKeycloakProvider } from "mcp-use/oauth/keycloak"`
 - Better Auth: `import { oauthBetterAuthProvider } from "mcp-use/oauth/better-auth"`
@@ -37,8 +37,12 @@ import { z } from "zod";
 const server = new MCPServer({
   name: "store-server",
   version: "1.0.0",
-  oauth: oauthAuth0Provider({ domain: process.env.AUTH0_DOMAIN! }),
-  mixedAuth: true, // Enables public tools/list discovery
+  // Declaring requiredScopes sets baseline requirement for protected tools, prompts, and resources
+  oauth: oauthAuth0Provider({
+    domain: process.env.AUTH0_DOMAIN!,
+    requiredScopes: ["read:data"],
+  }),
+  mixedAuth: true, // Enables public capabilities negotiation and tools/list discovery
 });
 
 // 1. Public tool (No authentication required)
@@ -49,7 +53,9 @@ export const searchProducts = server.tool(
     securitySchemes: [{ type: "noauth" }],
   },
   async ({ query }, ctx) => {
-    // ctx.auth is optional (present if client sent a valid token)
+    // ctx.auth is undefined when called without a token.
+    // NOTE: If a client sends an invalid or expired token, the server strictly returns HTTP 401.
+    // A token that is sent is ALWAYS cryptographically verified, even on noauth tools.
     return { content: [{ type: "text", text: `Results for ${query}` }] };
   },
 );
@@ -86,49 +92,99 @@ export const checkout = server.tool(
 export default server;
 ```
 
+### ChatGPT HTTP 200 Authentication Challenge
+
+In standard OAuth protected resource flows, unauthenticated requests to protected endpoints return `HTTP 401 Unauthorized` with a `WWW-Authenticate: Bearer ...` header. However, when ChatGPT (`User-Agent: ChatGPT/1.0`) invokes a protected tool without a bearer token on a `mixedAuth` server, receiving an HTTP 401 causes ChatGPT to abruptly abort the conversation and report a fatal error.
+
+To ensure seamless conversational user authorization, `mcp-use` detects ChatGPT requests and automatically intercepts missing-token invocations on protected tools, returning `HTTP 200 OK` with an error `CallToolResult` envelope:
+- `isError: true`
+- `content: [{ type: "text", text: "Please sign in to continue." }]`
+- `_meta: { "mcp/www_authenticate": "Bearer scope=\"...\"" }`
+
+This allows ChatGPT to render its inline interactive OAuth sign-in card directly in the chat interface without breaking the active chat session. Once the user authenticates, ChatGPT retries the tool invocation with a valid bearer token.
+
 > [!NOTE]
-> On a `mixedAuth` server, resources, resource templates, and prompts **always require sign-in**. Tool views load signed out so ChatGPT can preview the UI during connector creation.
+> On a `mixedAuth` server:
+> - Tools that omit `securitySchemes` require the provider's `requiredScopes`.
+> - Resources, resource templates, and prompts **always require sign-in** with `requiredScopes`.
+> - Tool views load signed out by default so ChatGPT can preview the UI during connector creation.
+> - A token that is sent is always verified; an invalid or expired token yields HTTP 401, even on `noauth` tools.
 
 ---
 
-## 3. Verified Request Identity (`ctx.auth`)
+## 3. Verified Request Identity (`ctx.auth`) vs Client Hints (`ctx.client.user()`)
 
-When OAuth is configured and verified, callbacks receive:
-- `ctx.auth.user`: Normalized identity. Built-in users always have `id`.
+### Verified Identity (`ctx.auth`)
+When OAuth is configured and verified, callbacks receive `OAuthAuth<TUser>`:
+- `ctx.auth.user`: Provider-normalized identity. Built-in users always have `id`.
 - `ctx.auth.scopes`: Array of granted scopes.
 - `ctx.auth.permissions`: Array of mapped application permissions.
-- `ctx.auth.payload`: Verified token claims.
+- `ctx.auth.payload`: Verified token claims (raw decoded JWT claims).
 - `ctx.auth.accessToken`: Bearer token (for intentional downstream API delegation only).
-- `ctx.auth.clientId`, `expiresAt`, `resource`.
+- `ctx.auth.clientId`: Client ID claim from `azp` or `client_id`.
+- `ctx.auth.expiresAt`: Unix expiration in seconds.
+- `ctx.auth.resource`: Protected resource identity URL.
 
 Authorize specific permissions rather than checking only that a user exists:
 ```ts
 if (!ctx.auth.permissions.includes("documents:delete")) {
-  return { isError: true, content: [{ type: "text", text: "Forbidden" }] };
+  return { isError: true, content: [{ type: "text", text: "Forbidden: documents:delete required" }] };
 }
 ```
+
+### Unverified Client Hints (`ctx.client.user()`)
+`ctx.client.user()` returns client-reported, unverified metadata (`locale`, `location`, `userAgent`, `conversationId`, `subject`, `organizationId`).
+
+> [!CAUTION]
+> **Security Mandate:** Never treat `ctx.client.user()` or `ctx.client.info()` as authenticated identity. It is self-reported by the client, unverified, and trivial to spoof. Always use `ctx.auth.user` and `ctx.auth.permissions` for authentication, authorization, and tenant isolation.
 
 ---
 
 ## 4. Custom Provider (`oauthCustomProvider`)
 
-```ts
-import { oauthCustomProvider } from "mcp-use/oauth";
+Custom OAuth providers must implement the strict v2 provider interfaces:
+- `createTokenVerifier`: Receives canonical MCP protected resource `resource: URL` and returns `OAuthTokenVerifier`.
+- `mapAuthInfo`: Receives `OAuthAuthInfo` and returns `OAuthExtra<TUser>`. Must return `{ user, payload, permissions }`.
 
-const customProvider = oauthCustomProvider({
+```ts
+import { oauthCustomProvider, type OAuthAuthInfo, type OAuthExtra } from "mcp-use/oauth";
+
+interface CustomUser {
+  id: string;
+  email?: string;
+}
+
+const customProvider = oauthCustomProvider<CustomUser>({
   oauthMetadata: {
     issuer: "https://auth.example.com",
     authorization_endpoint: "https://auth.example.com/oauth/authorize",
     token_endpoint: "https://auth.example.com/oauth/token",
   },
-  createTokenVerifier: () => {
-    // Return async token verification function
-    return async (token) => ({ sub: "user-123", scope: "read write" });
+  // Receives the canonical MCP protected resource URL
+  createTokenVerifier: (resource: URL) => {
+    return async (token: string): Promise<OAuthAuthInfo> => {
+      // Verify token signature, expiry, and audience matching resource.origin
+      const claims = await verifyJwt(token, { audience: resource.origin });
+      return {
+        token,
+        claims,
+        scopes: typeof claims.scope === "string" ? claims.scope.split(" ") : [],
+      };
+    };
   },
-  mapAuthInfo: (claims) => ({
-    user: { id: claims.sub },
-    scopes: claims.scope.split(" "),
-  }),
+  // Maps verified auth info to OAuthExtra<CustomUser> (user, payload, and permissions are required)
+  mapAuthInfo: (authInfo: OAuthAuthInfo): OAuthExtra<CustomUser> => {
+    const claims = authInfo.claims as Record<string, unknown>;
+    const scopes = authInfo.scopes ?? [];
+    return {
+      user: {
+        id: String(claims.sub),
+        email: claims.email as string | undefined,
+      },
+      payload: claims,
+      permissions: scopes.map((scope) => `perm:${scope}`),
+    };
+  },
   // Optional mount hook introduced in v2.7.0
   setup: (host) => {
     // host.mixedAuth reports whether mixedAuth is active
@@ -140,6 +196,6 @@ const customProvider = oauthCustomProvider({
 
 ## 5. Security Invariants
 - Never treat `ctx.client.user()`, locale, conversation ID, or other client-sent metadata as authenticated identity.
-- Keep authorization next to sensitive operations or in narrowly scoped MCP middleware.
+- Keep authorization next to sensitive operations or in narrowly scoped MCP middleware (`server.use("mcp:tools/call", ...)`).
 - Never log, echo, or store raw bearer tokens or client secrets.
 - Multi-request state belongs in an external database, not in module globals or in-memory session registries.
