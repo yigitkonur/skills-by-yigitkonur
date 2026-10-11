@@ -55,7 +55,7 @@ Each corrective attempt preserves the original finding and issue history.
 ## Model and token guidance
 
 Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
-- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Balanced thinking depth ensures precise code patches and developer check validation without timeout bottlenecks. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **Anthropic**: Mandate `claude-sonnet-5-5` with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Balanced thinking depth ensures precise code patches and developer check validation without timeout bottlenecks. **Strictly prohibit `claude-opus-5-5`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
 - **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for code refactoring and targeted developer checks.
 - **Gemini**: `gemini-3.8-flash` with `medium` reasoning effort for balanced implementation and test execution.
 

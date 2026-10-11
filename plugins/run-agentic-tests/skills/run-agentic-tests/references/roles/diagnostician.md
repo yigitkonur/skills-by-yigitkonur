@@ -51,7 +51,7 @@ do not repeat the same causal assertion merely because another attempt remains.
 ## Model and token guidance
 
 Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
-- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Extended thinking traces root cause across source code, logs, and stack traces without tool timeouts. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **Anthropic**: Mandate `claude-sonnet-5-5` with `medium` reasoning budget (`budget_tokens: 1,024–2,048`). Extended thinking traces root cause across source code, logs, and stack traces without tool timeouts. **Strictly prohibit `claude-opus-5-5`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
 - **OpenAI / Codex**: `gpt-6.1-sol` with `reasoning_effort: "medium"` for thorough code analysis and causal hypothesis testing.
 - **Gemini**: `gemini-3.8-flash` with `high` reasoning effort. Deep reasoning is strictly reserved for discriminating subtle bug causes and causal proof.
 

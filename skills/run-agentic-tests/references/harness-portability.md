@@ -16,11 +16,11 @@ The harness verifies these prerequisites during preflight and refuses to start i
 Automated test loops require fast turnaround, accurate tool invocation, and token discipline. Configure models strictly per provider:
 
 1. **Anthropic**:
-   - **Mandate Sonnet**: Mandate Anthropic Sonnet—`claude-3-7-sonnet` (primary) or `claude-3-5-sonnet` (proven stable baseline).
+   - **Mandate Sonnet**: Mandate Anthropic Sonnet—`claude-sonnet-5-5` (primary workhorse) or `claude-haiku-5-5` (fast compact tier for routine execution).
    - **Reasoning Budget**: Formalize extended thinking with the Anthropic API parameter `thinking: { type: "enabled", budget_tokens: <number> }`.
      - *Simple ops* (Executor, Environment operator, Ticket writer, Integrator): Disabled (`type: "disabled"`) or minimal (`budget_tokens: 1024`). Browser navigation, CLI commands, and log tailing require rapid turn-around (<3 seconds per tool step).
      - *Evidence checks, verification & diagnosis* (Verifier, Diagnostician, Plan auditor, Implementer, Scenario author, Planner): Set to `medium` (`budget_tokens: 1,024–2,048`). Balanced thinking depth ensures rigorous cross-referencing of screenshots and structured logs without hitting tool-call timeouts.
-   - **Strict Opus Prohibition**: **STRICTLY PROHIBIT `claude-3-opus`** in automated test loops. Opus incurs a 5x cost penalty ($15.00/$75.00 per MTok input/output vs $3.00/$15.00 for Sonnet), introduces crippling first-token and tool-call latency across 20–50 turn automated loops (causing harness timeouts), and yields zero assertion accuracy improvements over Sonnet.
+   - **Strict Opus Prohibition**: **STRICTLY PROHIBIT `claude-opus-5-5`** in automated test loops. Opus incurs a 5x cost penalty ($10.00/$50.00 or $15.00/$75.00 per MTok input/output vs $2.00/$10.00 for Sonnet 5.5), introduces crippling first-token and tool-call latency across 20–50 turn automated loops (causing harness timeouts), and yields zero assertion accuracy improvements over Sonnet.
 
 2. **OpenAI / Codex**:
    - **Simple ops** (routine execution, CLI commands, basic UI navigation, environment probes): `gpt-6-luna` with **`low`** reasoning effort (`reasoning_effort: "low"`). Avoid `high`/`xhigh`, which burns 10,000+ reasoning tokens on routine commands and exhausts context windows.

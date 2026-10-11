@@ -76,7 +76,7 @@ Any artifact referenced in `execution.yaml` that is missing from local disk will
 ## Model and token guidance
 
 Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
-- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Multi-step browser navigation and CLI steps require fast turn-around (<3s per turn). **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **Anthropic**: Mandate `claude-sonnet-5-5` (or `claude-haiku-5-5`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Multi-step browser navigation and CLI steps require fast turn-around (<3s per turn). **Strictly prohibit `claude-opus-5-5`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
 - **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical execution. Avoid `high`/`xhigh`.
 - **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for high-throughput browser/CLI action loops.
 

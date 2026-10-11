@@ -57,7 +57,7 @@ ready target, declared dependencies/resources, and approved plan membership.
 
 Use [Scheduling](scheduling.md). For each ready task: reserve it through the CLI,
 launch one fresh host worker with the generated handoff and narrow reading set,
-then bind its real host handle. Configure models per provider: Anthropic (mandate `claude-3-7-sonnet` or `claude-3-5-sonnet` with low/medium reasoning `budget_tokens: 1,024–2,048`; strictly ban `claude-3-opus`); OpenAI / Codex (`gpt-6-luna` with `low` reasoning for simple ops, `gpt-6.1-sol` with `medium` for evidence checks; ban `high`/`xhigh`); Gemini (`gemini-3.8-flash` with `low` for simple ops, `medium` for evidence checks, reserving `high` for root-cause diagnosis and DAG planning). Messages (`send_message`) enable real-time
+then bind its real host handle. Configure models per provider: Anthropic (mandate `claude-sonnet-5-5` or `claude-haiku-5-5` with low/medium reasoning `budget_tokens: 1,024–2,048`; strictly ban `claude-opus-5-5`); OpenAI / Codex (`gpt-6-luna` with `low` reasoning for simple ops, `gpt-6.1-sol` with `medium` for evidence checks; ban `high`/`xhigh`); Gemini (`gemini-3.8-flash` with `low` for simple ops, `medium` for evidence checks, reserving `high` for root-cause diagnosis and DAG planning). Messages (`send_message`) enable real-time
 notifications and blocker escalation; files carry durable truth.
 
 Reconcile accepted outputs and inspect `next_actions`; the CLI never spawns agents.

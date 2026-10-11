@@ -54,7 +54,7 @@ history. Linked aliases may already have a ticket; preserve those references.
 ## Model and token guidance
 
 Configure this role per provider to balance turnaround speed, assertion accuracy, and token economics (see [Model selection](../../SKILL.md#model-selection--reasoning-configuration-per-provider)):
-- **Anthropic**: Mandate `claude-3-7-sonnet` (or `claude-3-5-sonnet`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Rapid markdown formatting and CLI issue publication. **Strictly prohibit `claude-3-opus`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
+- **Anthropic**: Mandate `claude-sonnet-5-5` (or `claude-haiku-5-5`) with low/minimal reasoning (`budget_tokens: 1024` or disabled). Rapid markdown formatting and CLI issue publication. **Strictly prohibit `claude-opus-5-5`** to eliminate 5x cost and multi-turn tool latency bottlenecks.
 - **OpenAI / Codex**: `gpt-6-luna` with `reasoning_effort: "low"` for fast and economical ticket creation. Avoid `high`/`xhigh`.
 - **Gemini**: `gemini-3.8-flash` with `low` reasoning effort for high-throughput GitHub issue writing.
 
