@@ -288,6 +288,47 @@ rg -n 'function\s+[A-Za-z0-9_$]+\s*\([^)]*\)\s*:\s*\w+\s+is\s+' src/
 
 ---
 
+### Pattern 8: Shallow Wrappers & Passthrough Indirection (The Deletion Sin)
+
+Agents frequently invent 1-to-2 line functions that do nothing except forward parameters to an underlying library or API method (`const getUser = (id: string) => api.get(`/users/${id}`)`). They create artificial indirection layers, adding file hops and cognitive overhead without encapsulating any real complexity or policy.
+
+```bash
+# Detect single-expression wrapper functions
+rg -n 'export\s+const\s+[A-Za-z0-9_$]+\s*=\s*\([^)]*\)\s*=>\s*[A-Za-z0-9_$]+\.[A-Za-z0-9_$]+\([^)]*\);' src/
+```
+
+**Remediation:** Apply Matt Pocock's **Deletion Test**: *"If this function were deleted, what would break?"* If the answer is "callers would call the underlying method directly and code would become clearer", delete the wrapper and inline the call. If genuine domain complexity exists (retry, auth, caching), deepen the module behind a clean interface.
+
+---
+
+### Pattern 9: Utility Dumping Ground vs. Locality
+
+Lacking holistic architectural sense, agents dump every 3-line string, date, or formatting helper into a global `src/utils/` or `src/shared/` directory. This creates context-window fragmentation, micro-file sprawl, and massive circular dependency webs.
+
+```bash
+# Grep for tiny helper files in utils
+find src/utils -type f -name '*.ts' | xargs wc -l | sort -n
+```
+
+**Remediation:** Follow the **1-to-1 Rule**: if a helper is consumed by only one file/feature and is under 25 lines of code, colocate it directly inside the consumer file. Enforce the **Rule of Three**: a helper may only be promoted to a shared utility module if it is actively consumed by at least three independent domain modules.
+
+---
+
+### Pattern 10: Non-Erasable TypeScript Syntax
+
+Agents frequently generate legacy TypeScript runtime syntax: `enum`, `namespace`, and constructor parameter properties (`constructor(public name: string)`). In modern toolchains that use transpilers (esbuild, SWC, Vite, Bun, Node 23+ `--experimental-strip-types`), non-erasable syntax requires heavy AST transformation, slows down builds, and breaks type-stripping runtimes.
+
+```bash
+# Detect runtime TS syntax
+rg -n '^\s*export\s+(?:const\s+)?enum\s+' src/
+rg -n '^\s*namespace\s+[A-Za-z0-9_$]+' src/
+rg -n 'constructor\s*\([^)]*\b(public|private|protected|readonly)\b' src/
+```
+
+**Remediation:** Ensure compliance with `--erasableSyntaxOnly` (introduced in TypeScript 5.8). Replace enums with string literal unions and const objects (`as const`), replace namespaces with standard ES modules, and declare class properties explicitly.
+
+---
+
 ## 2.1 Code-Level Syntax & Structural Slop Manifestations
 
 Beyond the 7 core agent architectural patterns, models repeatedly generate four mechanical slop manifestations:

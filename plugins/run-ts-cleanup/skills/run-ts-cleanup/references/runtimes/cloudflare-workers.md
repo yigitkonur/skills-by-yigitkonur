@@ -362,7 +362,7 @@ Complete, production-tested Knip configuration for Cloudflare Workers projects:
 
 ```jsonc
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // Wrangler plugin automatically parses wrangler.json / wrangler.toml
   "wrangler": true,
   // Vitest plugin parses vitest.config.ts

@@ -639,8 +639,7 @@ Knip provides built-in plugins that automatically detect configuration files, en
 | SolidStart | `solid` | `app.config.{js,ts}` | `src/app.tsx`, `src/routes/**/*.{tsx,jsx}` | Route actions and RPC exports. |
 | Waku | `waku` | `waku.config.{js,ts}` | `src/entries.tsx`, `src/routes/**/*.{tsx,jsx}` | React Server Component boundaries. |
 | RedwoodJS | `redwood` | `redwood.toml` | `web/src/Routes.{tsx,jsx}`, `api/src/functions/**/*.{ts,js}` | Multi-workspace full-stack architecture. |
-| React Router v7 | `react-router` | `react-router.config.{js,ts}` | `app/routes/**/*.{tsx,jsx}`, `app/root.tsx` | Replaces Remix configuration schema. |
-| Cloudflare Workers | `wrangler` | `wrangler.json`, `wrangler.jsonc`, `wrangler.toml` | Parses `main` module entry. Auto-detects Durable Objects, WorkerEntrypoints, Workflows. | Requires `includeEntryExports: false` or JSDoc `@public` on RPC classes; ignore `worker-configuration.d.ts` and `@cloudflare/workers-types`. |
+| Cloudflare Workers | `wrangler` | `wrangler.json`, `wrangler.jsonc`, `wrangler.toml` | Parses `main` module entry only. Does NOT auto-detect Durable Objects, WorkerEntrypoints, or Workflows. | Must specify RPC entrypoints in `entry` or use `includeEntryExports: false` / JSDoc `@public`; protect `worker-configuration.d.ts` and `@cloudflare/workers-types`. |
 
 ### Testing & Verification Tools
 

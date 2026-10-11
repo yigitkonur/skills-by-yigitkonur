@@ -6,12 +6,15 @@ disable-model-invocation: true
 
 # Run TS Cleanup
 
-A TypeScript codebase accumulates. Features get deprecated but their files stay. A refactor lands half-finished and both abstractions survive. An LLM writes `cn` for the fourth time in a fourth directory, launders types with `as any`, duplicates schemas, and blankets properties in defensive `?.` optional chains. Dependencies outlive the code that imported them. Types get exported "just in case" and never consumed. This skill sweeps all of it into a clean end state guided by **The 4 Pillars of TypeScript Project Cleanup**:
+A TypeScript codebase accumulates. Features get deprecated but their files stay. A refactor lands half-finished and both abstractions survive. An LLM writes `cn` for the fourth time in a fourth directory, launders types with `as any`, duplicates schemas alongside manual interfaces, and blankets properties in defensive `?.` optional chains. Dependencies outlive the code that imported them. Types get exported "just in case" and never consumed. In edge environments like Cloudflare Workers (`workerd`), agents hallucinate `process.env`, strip `ctx.waitUntil()` as "redundant", or delete `worker-configuration.d.ts` as an "unreferenced file".
 
-1. **Reachability & Dead Code (Graph Layer):** Prune unreferenced files, dead exports, orphaned dependencies, and abandoned zombie features using Knip.
-2. **Encapsulation & Boundary Integrity (Visibility Layer):** Enforce interface as test surface, eliminate test-only leak exports in production files, internalize in-file exports, and designate explicit public API entry points.
-3. **Type System Rigor & Soundness (Semantic Layer):** Eradicate type laundering (`as any`, `as unknown as T`), maintain the type-coverage ratchet, enforce schema inference as single source of truth (`z.infer`), and ensure declaration-emit safety.
-4. **Architectural Deepening & Structural Health (Architecture Layer):** Institutionalize the Deletion Test, eliminate hypothetical seams and ghost interfaces (The Seam Test), counter micro-file fragmentation via locality and feature pods, eliminate barrel smog, and break dependency cycles.
+This skill sweeps all of it into a clean, robust end state guided by **The 5 Pillars of TypeScript Project Cleanup**:
+
+1. **Runtime & Platform Invariants (Platform Layer):** Preserve execution-model contracts — request-scoped `env`, async `ctx.waitUntil()` boundaries, ambient types (`worker-configuration.d.ts`), and RPC actor entry points (`DurableObject`, `WorkerEntrypoint`, `WorkflowEntrypoint`).
+2. **Reachability & Dead Code (Graph Layer):** Prune unreferenced files, dead exports, orphaned dependencies, and abandoned zombie features using Knip with scoped, wave-safe fixes.
+3. **Encapsulation & Boundary Integrity (Visibility Layer):** Enforce interface as test surface, eliminate test-only leak exports in production files, internalize in-file exports, and designate explicit public API entry points.
+4. **Type System Rigor & Soundness (Semantic Layer):** Eradicate type laundering (`as any`, `as unknown as T`), maintain the type-coverage ratchet, enforce schema inference as single source of truth (`z.infer`), eliminate non-erasable syntax (`--erasableSyntaxOnly`), and ensure declaration-emit safety.
+5. **Architectural Deepening & Structural Health (Architecture Layer):** Institutionalize Matt Pocock's Deletion Test, eliminate hypothetical seams and ghost interfaces (The Seam Test), counter micro-file fragmentation via locality and feature pods, eliminate barrel smog, and break dependency cycles.
 
 - Every **dead symbol, file, export, type, and dependency** is found by a real engine, not by guesswork — and each finding is **triaged before deletion**, never deleted on the engine's word alone.
 - Every deletion lands in a **reversible causal wave** behind a passing verification gate, so any single step reverts with one `git reset` or `git revert`.
@@ -19,6 +22,8 @@ A TypeScript codebase accumulates. Features get deprecated but their files stay.
 - The codebase ends **more navigable and structurally sound than it started**, for the next agent and the next human, without a single unintended behavioral change.
 
 This is a *finishing* tool. Run it on a green main branch, not mid-feature.
+
+---
 
 ## When To Use
 
@@ -28,6 +33,7 @@ Trigger on phrases and repo states like:
 - *"find unused dependencies"*, *"prune unused exports"*, *"delete orphaned files"*
 - *"there's too much AI slop in here"*, *"tighten up the types"*, *"untangle these imports"*
 - *"set up knip"*, *"run knip"*, *"why is this bundle so big"*
+- *"audit this Cloudflare Worker"*, *"clean up workerd TypeScript"*, *"fix broken worker types"*
 - Repo state: after a feature deprecation, a framework migration, or a long LLM-driven build-out.
 
 Do **NOT** use this skill for:
@@ -38,6 +44,8 @@ Do **NOT** use this skill for:
 - *A dirty working tree* — commit or stash first; Phase 0 refuses to start otherwise.
 - *A red baseline* — fix the failing build or tests first. Cleanup on a broken repo cannot tell your breakage from its own.
 
+---
+
 ## Modes
 
 Pick the mode explicitly at the start, from the user's ask. Announce which one you picked. Escalating mid-run is fine; silently doing more than was asked is not.
@@ -46,7 +54,9 @@ Pick the mode explicitly at the start, from the user's ask. Announce which one y
 |---|---|---|
 | **Sweep** | Phase 0-1, then lint autofix and Wave 1 only | *"tidy this up quickly"*, *"drop the dead files"* |
 | **Standard** | Phases 0-3, then Waves 1-5 | *"clean up the dead code"* — **the default** |
-| **Deep** | Standard, plus Phase 4 root-cause work, type hardening, and structural refactor | *"the codebase is a mess"*, *"make this maintainable"* |
+| **Deep** | Standard, plus Phase 4 root-cause work, type hardening, and structural refactor | *"the codebase is a mess"*, *"make this maintainable"*, *"improve codebase architecture"* |
+
+---
 
 ## The Engines
 
@@ -54,14 +64,16 @@ No single tool finds everything. Each engine sees one scope and is blind to the 
 
 | Engine | Finds | Scope | Autofix? |
 |---|---|---|---|
-| **Knip (v5/v6)** | Unused files, exports, types, dependencies, unlisted binaries, import cycles | Module graph | Yes — native `--fix` (`--fix-type dependencies,exports,types,files`, `--allow-remove-files`) |
-| **Biome / Oxlint / ESLint / Ultracite** | Unused locals (`TS6133`), dead imports, correctness lint | File AST | Yes — native autofix per engine |
-| **`tsc`** | Type errors, declaration-emit breakage (`TS4023`, `TS2742`) | Program | No — diagnostic verification gate |
-| **`type-coverage`** | `any`-creep score and untyped identifier coordinates | Program | No — numeric ratchet measurement |
-| **`dpdm` / `madge`** | Circular dependency visualization & type-only vs runtime cycles | Import graph | No — inspection & verification |
-| **anti-slop rules** | LLM-generated antipatterns (`as any`, schema drift, duplicate helpers) | File AST | Partial — targeted linters & scripts |
+| **Knip (v5/v6)** | Unused files, exports, types, dependencies, unlisted binaries, import cycles | Module graph | Yes — scoped per wave (`--fix-type files`, `exports`, `types`, `dependencies`) with native `--format` via Formatly |
+| **Biome / Oxlint / ESLint / Ultracite** | Unused locals (`TS6133`), dead imports, correctness lint | File AST | Yes — native autofix per engine (`oxlint --fix-dangerously`, `biome check --write`) |
+| **`tsc`** | Type errors, declaration-emit breakage (`TS4023`, `TS2742`), non-erasable syntax | Program | No — diagnostic verification gate (`tsc --noEmit` or `tsc -b --clean && tsc -b`) |
+| **`type-coverage`** | `any`-creep score and untyped identifier coordinates | Program | No — numeric ratchet measurement (`--detail --strict`) |
+| **`dpdm` / `madge`** | Circular dependency visualization & type-only vs runtime cycles | Import graph | No — inspection & verification (Knip also supports `--cycles`) |
+| **anti-slop rules** | LLM-generated antipatterns (`as any`, schema drift, duplicate helpers) | File AST | Partial — targeted linters & ripgrep sweeps |
 
 Knip and the linters are complements, not alternatives: Knip finds a file nothing imports, a linter finds an import nothing uses. Read [references/engines/engine-matrix.md](references/engines/engine-matrix.md) for the full matrix and the auto-detection protocol.
+
+---
 
 ## Pinned Defaults
 
@@ -69,23 +81,199 @@ Decided once; override per-project only if the repo says otherwise (`AGENTS.md` 
 
 | Key | Default | Why |
 |---|---|---|
-| **the gate** | `tsc --noEmit` (or `tsc -b --emitDeclarationOnly` / `--isolatedDeclarations` for composite projects) → `test` → `build` | The single verification barrier. Defined once in [references/remediation/waves.md](references/remediation/waves.md); every "Run the gate" in this skill means exactly that. |
+| **the gate** | `tsc --noEmit` (or `tsc -b` with `--clean` / `--outDir /tmp/dts-check` for composite projects) → `test` → `build` | The single verification barrier. Defined once in [references/remediation/waves.md](references/remediation/waves.md); every "Run the gate" in this skill means exactly that. |
 | **branch** | `chore/ts-cleanup` | Never work on `main`. |
-| **config file** | `knip.jsonc` (fallback `knip.json`) | JSONC carries comments explaining why each entry exists. Schema: `https://unpkg.com/knip@5/schema-jsonc.json` (or `knip@6`). |
-| **package manager** | Detected from `packageManager` field, else lockfile | Never hardcode `pnpm` or run `bun test` where `bun run test` is required. See waves.md §1.2. |
+| **config file** | `knip.jsonc` (fallback `knip.json`) | JSONC carries comments explaining why each entry exists. Schema: `https://unpkg.com/knip@6/schema-jsonc.json` (or `@5`). |
+| **package manager** | Detected from `packageManager` field, else lockfile | Never hardcode `pnpm` or run bare `npx tsc` (which can invoke obsolete `tsc@2.0.4`). Always use `$PM_EXEC tsc`. |
 | **wave order** | Files → Barrels/Cycles → Encapsulation → Types → Dependencies | Causal order: pruning leaves first eliminates dead import branches; dependencies pruned last avoids TS2307 crashes. |
 | **commit unit** | One commit per wave | Each wave reverts independently. |
 | **suppression** | Targeted keys only | `ignoreDependencies`, `ignoreBinaries`, `ignoreExportsUsedInFile`, explicit `entry`. |
+
+---
 
 ## Non-Negotiable Safety Rails
 
 1. **Start green.** Verify `git status --porcelain` is empty, the typecheck passes, and the test suite passes before touching anything. A cleanup that begins on a red baseline cannot distinguish its own damage from pre-existing damage.
 2. **Suppress false positives with targeted keys.** Reach for `ignoreDependencies`, `ignoreBinaries`, `ignoreExportsUsedInFile`, or an explicit `entry` — each one silences exactly the finding it names. A broad top-level `ignore` severs graph edges instead, so files the ignored code imports start reporting as dead and get deleted.
-3. **Triage every finding before deleting it.** Apply the Three-Question Verification Test to each one. An engine reports what it cannot see a reference to; framework entry points, dynamic imports, and published API surfaces are all invisible to it.
-4. **Delete in causal wave order.** Files first, then barrels and cycles, then internalizing exports, then unused types, then dependencies and lockfile sync.
-5. **Run the gate after every wave, before every commit.** A wave that fails the gate is reverted or fixed, never committed.
-6. **Prove declaration-emit safety before un-exporting.** `tsc --noEmit` builds the implementation graph and never the declaration graph, so it passes on code that `tsc -b` will reject. Use `--outDir /tmp/dts-check` (avoiding the `TS5053` flag conflict) or `--isolatedDeclarations`. Never run `tsc -b --noEmit` (fails with `TS5094`). See [references/types/declaration-emit.md](references/types/declaration-emit.md).
-7. **Fix the cause, then the symptom.** Consolidate the four copies of `cn` before deleting three of them; migrate the call sites before pruning the abstraction.
+3. **Triage every finding before deleting it.** Apply the Three-Question Verification Test to each one. Framework entry points, dynamic imports, and RPC bindings are invisible to naive static analysis.
+4. **Never run all-in-one `knip --fix`.** Running `--fix` with all fix types simultaneously deletes files, prunes exports, and mutates `package.json` in one un-audited pass. Always scope `--fix-type` to the specific wave (`--fix-type files` in Wave 1, `--fix-type exports` in Wave 3, etc.) and leverage `--format`.
+5. **Delete in causal wave order.** Files first, then barrels and cycles, then internalizing exports, then unused types, then dependencies and lockfile sync.
+6. **Run the gate after every wave, before every commit.** A wave that fails the gate is reverted or fixed, never committed.
+7. **Prove declaration-emit safety before un-exporting.** `tsc --noEmit` checks the implementation graph, not the declaration graph. For composite projects or published libraries, prove `.d.ts` emit using `--declaration --emitDeclarationOnly --outDir /tmp/dts-check` or `tsc -b --clean && tsc -b`. In TS 5.8+, `tsc -b --noEmit` is supported, but CLI `--outDir` remains forbidden on `-b`.
+8. **Preserve Cloudflare Workers (`workerd`) invariants.** Never delete `worker-configuration.d.ts`, never prune `@cloudflare/workers-types`, never strip `ctx.waitUntil()`, and never access `process.env` in worker handlers.
+9. **Fix the cause, then the symptom.** Consolidate duplicate copies of `cn` before deleting them; migrate callers before pruning an abstraction.
+
+---
+
+## Priority Section: Cloudflare Workers (`workerd`) Invariants
+
+Cloudflare Workers runs on Cloudflare's open-source `workerd` V8 isolate runtime, not Node.js. AI agents and generic cleanup tools consistently make catastrophic mistakes in Workers codebases due to assuming Node.js runtime behavior. When auditing or cleaning up a Workers project, prioritize these non-negotiable rules:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   CLOUDFLARE WORKERS (WORKERD) INVARIANTS               │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│ 1. Ambient Types Protection      │ 2. Platform Lifecycle & RPC Classes │
+│    • worker-configuration.d.ts   │    • ExportedHandler (fetch/queue)  │
+│    • @cloudflare/workers-types   │    • DurableObject, WorkerEntrypoint│
+│    • @cloudflare/vitest-pool     │    • WorkflowEntrypoint classes     │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 3. Runtime Environment Isolation │ 4. Async Boundary Safety            │
+│    • No global process.env       │    • ctx.waitUntil(promise)         │
+│    • Request-scoped env binding  │    • Zero floating background tasks │
+│    • this.env in RPC classes     │    • Prevent isolate suspension     │
+└──────────────────────────────────┴─────────────────────────────────────┘
+```
+
+### 1. Ambient Type & Dependency Protection (`wrangler types`)
+- **`worker-configuration.d.ts` (or `env.d.ts`)**: Generated by running `npx wrangler types`. It contains ambient type declarations for KV, D1, R2, Queues, and secrets. Because it contains no imports or exports, **naive dead-file sweeps will flag it as unreferenced**. You must protect it in `knip.jsonc` (`entry: ["src/index.ts", "worker-configuration.d.ts"]` or in `ignore`). **Never delete this file.**
+- **`@cloudflare/workers-types` & `@cloudflare/vitest-pool-workers`**: These dependencies are configured in `tsconfig.json` (`compilerOptions.types`) and `vitest.config.ts`, not imported in application source files. Knip will report them as unused dependencies. Always add them to `ignoreDependencies` in `knip.jsonc`.
+
+### 2. Platform Entry Points & RPC Actor Protection
+- **`ExportedHandler<Env>`**: The root handler in `src/index.ts` default-exports an object implementing `fetch`, `scheduled`, `queue`, `email`, or `tail`. These methods are invoked by the platform runtime upon cron or queue events, not by local TypeScript imports. Never strip these lifecycle exports.
+- **RPC & Stateful Classes**: Classes extending `DurableObject`, `WorkerEntrypoint`, or `WorkflowEntrypoint` are referenced in `wrangler.json` (e.g. `"bindings": [{"name": "COUNTER", "class_name": "Counter"}]`) and called via service bindings or RPC.
+  > [!CRITICAL]
+  > **Knip's built-in `wrangler` plugin only inspects `config.main`.** It does NOT inspect `durable_objects`, `workflows`, or service bindings in `wrangler.json`. Any RPC class in a separate file (e.g. `src/objects/counter.ts` or `src/workflows/order.ts`) will be reported as an unused file or unused export!
+  > **Defense:** Protect them by adding them to `entry` in `knip.jsonc` (e.g. `"entry": ["src/index.ts", "src/workflows/**/*.ts!"]`) or marking their exports with JSDoc `/** @public */` alongside `"includeEntryExports": false`.
+
+### 3. `process.env` Eradication & Request-Scoped `env`
+In `workerd`, `process.env` is **not** populated with bindings or secrets. At runtime, `process.env.MY_SECRET` returns `undefined`, leading to silent authentication failures or crashes:
+```typescript
+// ❌ WRONG (Node.js leak — crashes in workerd):
+export async function getDb() {
+  return drizzle(process.env.DB_URL!); // Returns undefined!
+}
+
+// ✅ CORRECT (Edge-native request-scoped env drilling):
+export function getDb(env: Env) {
+  return drizzle(env.PROD_DB);
+}
+```
+In `DurableObject` and `WorkerEntrypoint` classes, access bindings via `this.env`:
+```typescript
+export class AnalyticsWorker extends WorkerEntrypoint<Env> {
+  async record(event: string) {
+    await this.env.ANALYTICS_KV.put(event, Date.now().toString());
+  }
+}
+```
+
+### 4. Async Boundary Safety (`ctx.waitUntil`)
+In `workerd`, when the Promise returned by `fetch()` settles with a `Response`, the V8 isolate is immediately suspended or terminated. Un-awaited background promises are aborted mid-flight:
+```typescript
+// ❌ WRONG (Floating promise killed when Response is returned):
+export default {
+  async fetch(req, env, ctx) {
+    env.AUDIT_QUEUE.send({ url: req.url }); // Aborted mid-flight!
+    return new Response("OK");
+  }
+} satisfies ExportedHandler<Env>;
+
+// ✅ CORRECT (Protects background work until complete):
+export default {
+  async fetch(req, env, ctx) {
+    ctx.waitUntil(env.AUDIT_QUEUE.send({ url: req.url }));
+    return new Response("OK");
+  }
+} satisfies ExportedHandler<Env>;
+```
+Never strip or unwrap `ctx.waitUntil()` calls as "redundant wrappers".
+
+### 5. Canonical `knip.jsonc` for Cloudflare Workers
+```jsonc
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  "wrangler": true,
+  "vitest": true,
+  "entry": [
+    "src/index.ts",
+    "worker-configuration.d.ts",
+    "src/workflows/**/*.ts!"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
+  "includeEntryExports": false,
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "ignoreDependencies": [
+    "@types/*",
+    "@cloudflare/workers-types",
+    "@cloudflare/vitest-pool-workers"
+  ],
+  "ignore": [".wrangler/**"]
+}
+```
+
+---
+
+## The 10 Sins of Agent-Written TypeScript
+
+AI agents introduce structural bloat due to bounded context windows, lack of cross-file memory, and pressure to make compiler checks green at all costs:
+
+1. **Type Laundering & Cast Cascades:** Reaching for `as any`, `as unknown as T`, or chained non-null assertions (`x!.y!.z!`) when encountering complex generics or external API payloads.
+   - *Fix:* Parse boundaries using runtime schemas (`zod.safeParse()`) or validate internal object shapes using `satisfies`.
+2. **Schema-Type Dual Declaration Drift:** Manually declaring an `interface User` right next to `const UserSchema = z.object({...})`. Over time, one drifts from the other.
+   - *Fix:* Enforce Single Source of Truth: `export type User = z.infer<typeof UserSchema>;`.
+3. **Defensive Null Paranoia & Optional Chaining Smog:** Writing `a?.b?.c?.d` 4 levels deep or `if (x && x.y && x.y.z)` on strictly typed internal models.
+   - *Fix:* Trust domain models; restrict optional chaining to unvalidated external inputs or genuinely optional fields.
+4. **Barrel Smog & Circular Dependency Loops:** Creating `index.ts` with `export * from './...'` in every folder, then importing siblings back through that barrel.
+   - *Fix:* Ban internal files from importing through their own directory barrel; use direct relative imports and explicit named exports.
+5. **Mock & Test Utility Bleed into Production:** Exporting `mockUserData`, `createTestClient`, or private `_helper` from production files so unit tests can import them.
+   - *Fix:* Relocate mocks to `test/` or `__mocks__/`; test observable behavior through the public module interface ("Replace, don't layer").
+6. **Phantom Interfaces & Speculative Generics (The Seam Sin):** Creating `interface IUserService` with exactly one class `UserService`, or generic abstractions `function run<T = unknown>()` "just in case".
+   - *Fix:* Apply the Seam Test: "One implementation = hypothetical seam; two implementations = real seam." Delete single-implementation interfaces.
+7. **Anemic Type Guards & Unsound Narrowing:** Writing `val is User` with `typeof val === 'object' && val !== null` without checking mandatory fields.
+   - *Fix:* Validate all required properties or delegate to `UserSchema.safeParse(val).success`.
+8. **Shallow Wrappers & Passthrough Indirection (The Deletion Sin):** Creating 1-line functions that do nothing but pass arguments to another function (`const getX = (id) => api.get(id)`).
+   - *Fix:* Apply the Deletion Test: if deleting the wrapper causes zero complexity loss, inline it into the caller.
+9. **Utility Dumping Ground vs. Locality:** Dumping 3-line string, date, or styling functions into `src/utils/` instead of keeping them local to their feature.
+   - *Fix:* Follow the 1-to-1 Rule: colocate single-consumer helpers in the consumer file (< 25 LOC). Enforce the Rule of Three before promoting to shared utilities.
+10. **Non-Erasable TypeScript Syntax:** Using enums, namespaces, and constructor parameter properties in projects targeting modern bundlers (esbuild, SWC, Vite) that strip types without full type checking.
+    - *Fix:* Comply with `--erasableSyntaxOnly` (introduced in TS 5.8). Replace enums with string literal unions (`type Status = 'active' | 'inactive'`) and use explicit property declarations.
+
+---
+
+## Architectural Deepening (Matt Pocock / AIHero Framework)
+
+In **Deep mode**, cleanup is not just line deletion; it is structural improvement. We integrate Matt Pocock's architecture deepening philosophy into pure Markdown reports (`codebase-health.md`):
+
+### 1. YAGNI Hot-Spot Scoping
+Do not waste time refactoring cold, dormant files that haven't changed in months. Target modules with active churn:
+```bash
+git log --oneline -n 100 -- src/
+```
+Focus structural refactoring where development velocity is actively impeded.
+
+### 2. Recommendation Strength Badges
+Classify every architectural proposal with explicit confidence ratings:
+- `[STRONG]`: Clear win with concrete precedent and immediate payoff (e.g. inlining single-use pass-through wrapper, removing cyclic barrel).
+- `[WORTH EXPLORING]`: Worth considering; has architectural trade-offs that benefit from team alignment (e.g. grouping micro-files into feature pods).
+- `[SPECULATIVE]`: High risk or only beneficial at massive scale; defer unless current pain is severe (e.g. introducing hexagonal ports and adapters).
+
+### 3. The Deletion Test & The Seam Test
+- **The Deletion Test:** *"If you deleted this layer/wrapper, what would break?"* If the answer is "nothing, or the code becomes simpler and more direct", delete and inline it. If real complexity spills out into callers, deepen the module behind a clean interface.
+- **The Seam Test:** *"Is this interface hiding a real variation, or a hypothetical one?"* One adapter is a hypothetical seam (cognitive bloat); two adapters is a genuine seam. Export concrete classes/functions directly until a second implementation exists.
+
+### 4. Before / After Architecture Diagrams
+In `codebase-health.md`, illustrate structural transformations with Mermaid flowcharts:
+
+```mermaid
+flowchart TD
+    subgraph Before["Before: Shallow Wrappers & Circular Barrel Smog"]
+        C[Consumer] --> B[Barrel: index.ts]
+        B --> W[Shallow Wrapper: fetchUser]
+        W --> S[Core API Service]
+        S --> B
+    end
+
+    subgraph After["After: Deep Module & Direct Boundary"]
+        C2[Consumer] --> D[Deep User Module]
+        D --> E[Direct External API]
+    end
+```
+
+---
 
 ## The Six Phases
 
@@ -94,163 +282,70 @@ Decided once; override per-project only if the repo says otherwise (`AGENTS.md` 
                               │
    Phase 0 — Baseline: clean tree, green typecheck, green tests, branch cut
                               │
-   Phase 1 — Engine setup: detect the stack, configure each engine, resolve the manager
+   Phase 1 — Engine setup: detect stack, resolve manager, configure knip v6
                               │
-   Phase 2 — Survey: run every engine, batch findings (1-9), score risk
+   Phase 2 — Survey: run engines, batch findings (1-9), detect cycles
                               │
-   Phase 3 — Triage: every finding gets a verdict — dead, false-positive, or deferred
+   Phase 3 — Triage: apply Three-Question Test, classify verdicts
                               │
-   Phase 4 — Architectural Deepening & Root Cause: consolidate duplicates, inline wrappers, [Deep]
-             unify schemas via z.infer, enforce locality, generate codebase-health.md
+   Phase 4 — Architectural Deepening: inlining, seams, zod inference, [Deep]
+             workerd invariants, codebase-health.md
                               │
-   Phase 5 — Waves: delete in causal order, gate after each, one commit per wave
+   Phase 5 — Waves: scoped deletions, verification gate, one commit per wave
                               │
-     zero dead code · green gate · one revertable commit per wave · a report you trust
+     zero dead code · green gate · one revertable commit per wave · clean repo
 ```
 
-Each phase gates the next. If you are tempted to skip one, re-survey instead.
+### Phase 0 — Baseline
+1. Verify clean git working tree: `test -z "$(git status --porcelain)"`
+2. Cut branch: `git checkout -b chore/ts-cleanup`
+3. Resolve package manager ($PM_EXEC) and verify baseline gate: `$PM_EXEC tsc --noEmit && $PM_EXEC test`
+4. Record baseline metrics (finding counts, `type-coverage` %, cycle count).
 
----
+### Phase 1 — Engine Setup
+1. Detect installed engines using `python3 scripts/audit-ts-health.py --target .`
+2. Generate/review Knip config: `python3 scripts/init-knip-config.py --format jsonc`
+3. If Cloudflare Workers: verify ambient type preservation (`worker-configuration.d.ts`), RPC entrypoints, and `@cloudflare/workers-types` ignores.
+4. Ensure zero broad top-level `ignore` patterns in configuration.
 
-## Phase 0 — Baseline
-
-**Think first:** *"Is this repo green right now, and can I prove it?"*
-
-1. Refuse to proceed on a dirty tree:
-   ```bash
-   test -z "$(git status --porcelain)" || { echo "Dirty tree — commit or stash first."; exit 1; }
-   ```
-2. Cut the working branch: `git checkout -b chore/ts-cleanup`
-3. Resolve the package manager and write the gate script once — [references/remediation/waves.md](references/remediation/waves.md) §1.2-1.4 gives the detection snippet.
-4. **Run the gate.** Record that it passed. This is the baseline every later gate is compared against.
-5. Capture the starting metrics for the final report: finding counts per engine, `type-coverage` percentage, cycle count.
-
-**Gate → Phase 1 when:** the tree is clean, the branch exists, the gate passes, and baseline metrics are recorded.
-
----
-
-## Phase 1 — Engine Setup
-
-**Think first:** *"Which engines does this repo already have, and which does it need?"*
-
-1. Detect what is installed — Biome, Oxlint, ESLint, Prettier, Ultracite, Knip, madge, type-coverage:
-   ```bash
-   python3 scripts/audit-ts-health.py --target .
-   ```
-   With no `--check-*` flag it runs all four audits. Passing any `--check-*` flag narrows it to just those.
-2. Generate or review the Knip config:
-   ```bash
-   python3 scripts/init-knip-config.py --dry-run     # inspect first
-   python3 scripts/init-knip-config.py --format jsonc
-   ```
-   It detects frameworks and monorepo layout, and stamps the valid `$schema` URL (`https://unpkg.com/knip@5/schema-jsonc.json` or `knip@6`).
-3. Resolve configuration hints before trusting any finding. Knip reports config hints ahead of issues; a hint left unresolved produces a cascade of false findings downstream. Tune entry points until the hints are gone — [references/engines/knip-configuration.md](references/engines/knip-configuration.md) has the plugin catalog, monorepo patterns, and built-in compiler settings.
-4. Confirm zero broad top-level `ignore` patterns in the config.
-
-**Gate → Phase 2 when:** every engine the mode needs is runnable, config hints are resolved, and no broad ignores remain.
-
----
-
-## Phase 2 — Survey
-
-**Think first:** *"What does every engine see, and how much of it is worth acting on?"*
-
-1. Run the dead-code engine and batch its output:
+### Phase 2 — Survey
+1. Batch dead-code findings:
    ```bash
    python3 scripts/batch-findings.py --run --output markdown --out-file cleanup-plan.md
    ```
-   Batches 1-6 come from Knip, each with a risk score and a gate rendered for the detected manager.
-2. Run the remaining engines the mode calls for — linters, `type-coverage`, and cycle detection (`knip --cycles` or `madge`). Their findings form Batches 7-9. Commands in [references/engines/lint-engines.md](references/engines/lint-engines.md) and [references/engines/analysis-engines.md](references/engines/analysis-engines.md).
-3. Read the batch definitions and risk model in [references/detection/finding-classification.md](references/detection/finding-classification.md):
-   - **Batch 1:** Unused Dependencies (Knip) → feeds Wave 5
-   - **Batch 2:** Unused Files (Knip) → feeds Wave 1
-   - **Batch 3:** Unused Exports (Barrels / Dead Re-exports) (Knip) → feeds Wave 2
-   - **Batch 4:** Test-Only Leaks (Testing Seam Violations) (Knip) → feeds Wave 3
-   - **Batch 5:** Unused Internal Exports (Knip) → feeds Wave 3
-   - **Batch 6:** Unused Types & Enums (Knip) → feeds Wave 4
-   - **Batch 7:** Unused Class Members & Locals (`TS6133`, Linters) → feeds Inter-wave Bridge
-   - **Batch 8:** Type Soundness (any, unhandled unions) (`type-coverage`) → feeds Phase 4 & Wave 4
-   - **Batch 9:** Circular Dependencies & Cycles (`knip --cycles` / `madge`) → feeds Wave 2
+2. Survey import cycles: `knip --cycles` or `npx madge --circular --extensions ts,tsx src/`
+3. Measure type soundness: `$PM_EXEC type-coverage --detail`
+4. Audit slop markers: chained casts (`as any`), schema drift, `process.env` in workers.
 
-**Gate → Phase 3 when:** `cleanup-plan.md` exists, all findings are batched (1-9), and every batch carries a risk score.
-
----
-
-## Phase 3 — Triage
-
-**Think first:** *"Which of these findings would break production if I deleted it?"*
-
+### Phase 3 — Triage
 Apply the **Three-Question Verification Test** to every finding:
+1. **Framework lifecycle?** Invoked by convention without import (Next.js route, Worker `fetch`/`scheduled`, Remix loader)?
+2. **Dynamic invocation?** Reached via string-keyed registry, `import()`, or RPC service binding?
+3. **Public contract?** Exported to external consumers or ambient declaration table?
 
-1. **Framework lifecycle?** Does a convention invoke this without importing it — a Next.js `page.tsx` / `route.ts`, a Remix `loader`, an Astro content config, a Playwright fixture?
-2. **Dynamic invocation?** Is it reached through a template-literal `import()`, a string-keyed registry, or runtime reflection?
-3. **Public contract?** Is it exported to consumers outside this repo's static graph, via `exports` or `typesVersions`?
+Mark each item in `cleanup-plan.md` as `dead`, `false-positive`, or `deferred`.
 
-Verify with the codebase, not from memory:
+### Phase 4 — Architectural Deepening & Root Cause (Deep Mode)
+1. Colocate single-consumer helpers into feature pods (< 25 LOC).
+2. Apply the Deletion Test to inline shallow passthrough wrappers.
+3. Apply the Seam Test to delete single-implementation ghost interfaces.
+4. Replace manual interfaces with `z.infer<typeof Schema>`.
+5. Break barrel cycles by replacing `export *` with direct named imports.
+6. Eradicate `process.env` in worker handlers and wrap background tasks in `ctx.waitUntil()`.
+7. Generate `codebase-health.md` with Mermaid before/after diagrams.
 
-```bash
-rg -g '!node_modules' -g '!dist' 'symbolOrPackageName'
-```
+### Phase 5 — The 5 Causal Waves
 
-Codify each confirmed false positive back into config as a targeted key — never as a broad ignore. Framework entry catalogs, dynamic-import patterns, and lint/type false positives are in [references/detection/false-positive-triage.md](references/detection/false-positive-triage.md).
+Each wave runs behind a passing verification gate and is committed atomically:
 
-**Gate → Phase 4 when:** every finding in `cleanup-plan.md` carries an explicit `verdict` of `dead`, `false-positive`, or `deferred`. Zero blanks. Count them and state the number.
-
----
-
-## Phase 4 — Architectural Deepening & Root Cause
-
-**Think first:** *"Why did this bloat appear, and what stops it coming back?"*
-
-Deep mode only. Sweep and Standard skip to Phase 5.
-
-Deleting the symptom leaves the generator running. AI agents consistently introduce shallow abstractions, micro-file sprawl, and type escapes. Synthesizing Matt Pocock's architectural principles (deep modules, locality, seams, deletion test) into pure Markdown analysis, generate `codebase-health.md` and address the root causes:
-
-| What you found | Core Architectural Principle | Remediation Action |
-|---|---|---|
-| Single-use wrappers (`const fetchX = (id) => api.get(...)`) | **The Deletion Test** | Apply Deletion Test: if complexity vanishes, inline wrapper; if real complexity exists, deepen module behind a small interface. |
-| Production functions exported solely for unit tests (`_helper`) | **Interface as Test Surface** | Re-target tests at public interface; un-export internal helpers during Wave 3 ("Replace, don't layer"). |
-| Ghost interfaces with 1 implementation (`IUserService` / `UserService`) | **The Seam Test** | "One adapter = hypothetical seam; two adapters = real seam." Delete single-implementation interfaces; export concrete classes/functions directly. |
-| Scattered 5-line helpers across `src/utils/` | **Locality & Anti-Fragmentation** | Colocate single-consumer helpers in consumer file (1-to-1 Rule) or feature pod. Enforce Rule of Three for global promotion. |
-| Duplicate manual interface alongside Zod / Valibot schema | **Single Source of Truth** | Replace manual interfaces with `type T = z.infer<typeof TSchema>`. Prevent silent schema drift. |
-| Circular `index.ts` re-exports (`export * from ...`) | **Module Graph Health** | Replace barrel re-exports with explicit direct imports; untangle cyclic dependency loops (`knip --cycles`). |
-| Type laundering (`as any`, `as unknown as T`, `!.`) | **Type Soundness** | Refactor data flow using discriminated unions or type guards. Remove escape hatches. |
-| `process.env` accessed inside Cloudflare Workers handlers | **Edge Runtime Invariants** | Eradicate `process.env`; inject request-scoped `env` bindings or `this.env` in `workerd`. |
-| Background tasks floating without `ctx.waitUntil()` in workers | **Async Boundary Safety** | Wrap background promises in `ctx.waitUntil(promise)` to prevent premature isolate suspension. |
-
-Detailed patterns and code examples are cataloged in [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) and [references/remediation/structural-refactor.md](references/remediation/structural-refactor.md).
-
-Consolidation is a code change like any other: run the gate and commit it before starting Wave 1.
-
-**Gate → Phase 5 when:** duplicates are consolidated, single-use wrappers are inlined, schemas are inferred, cycles are broken, and the gate passes.
-
----
-
-## Phase 5 — Waves
-
-**Think first:** *"What is the smallest deletion I can make, prove, and commit right now?"*
-
-Five waves, in causal order. After each: **run the gate**, then commit. A wave that fails the gate gets fixed or reverted — never committed. Full protocol, per-wave scope, and rollback in [references/remediation/waves.md](references/remediation/waves.md).
-
-| Wave | Deletes | Additional check | Commit |
-|---|---|---|---|
-| **1** | Orphaned and unreferenced files (`git rm`) | — | `chore: remove unreferenced files` |
-| **2** | Dead barrel re-exports; break cycles and repoint consumers | Import cycles (`knip --cycles` / `madge`) | `refactor: prune dead barrel re-exports and cycles` |
-| **3** | Test-only leaks and in-file-only exports (strip `export`) | — | `refactor: internalize private exports` |
-| **BRIDGE** | Linter autofix and formatter pass (between Wave 3 & 4) | Clears unused locals (`TS6133`) and formats | `chore: linter autofix and format after un-export` |
-| **4** | Unused types, interfaces, enum members | Declaration emit (`--outDir /tmp/dts-check` or `tsc -b --emitDeclarationOnly`) | `refactor: prune dead types` |
-| **5** | Unused dependencies, then refresh the lockfile | Lockfile synchronization (`npm`, `pnpm`, `yarn`, `bun install`) | `chore(deps): prune unused dependencies and sync lockfile` |
-
-**Wave 3 needs the linter bridge.** Stripping an `export` turns unused in-module bindings into unused locals (`TS6133`). Run the detected engine's autofix immediately after — recipes in [references/engines/lint-engines.md](references/engines/lint-engines.md), timing rationale in waves.md §8. Note: linters clean file-local un-export residue; any consumer actively referencing a stripped export must be refactored in Wave 3 directly. Verify declaration emit before stripping anything reachable from a public signature: [references/types/declaration-emit.md](references/types/declaration-emit.md).
-
-### Post-flight
-
-1. Re-run every engine. Confirm zero remaining findings, or an explicit deferred list.
-2. Diff the metrics against the Phase 0 baseline: findings removed, `type-coverage` delta, cycle count delta, dependency count delta.
-3. Remove scratch artifacts: `cleanup-plan.md`, `.cleanup-gate.sh`, any baseline JSON. Keep `codebase-health.md` if Deep mode was requested.
-4. Report what was deleted, what was deferred and why, and the metric deltas.
-
-**Gate → done when:** every wave is committed, the gate passes on the final commit, engines report clean, and the report is delivered.
+| Wave | Deletes | Scoped Knip Autofix | Gate Verification | Commit Message |
+|---|---|---|---|---|
+| **1** | Unreferenced files | `knip --fix-type files --allow-remove-files --format` | Full gate | `chore: remove unreferenced files` |
+| **2** | Barrel re-exports & cycles | Manual refactor / direct imports | Full gate + cycle check | `refactor: prune dead barrels and break cycles` |
+| **3** | Test leaks & private exports | `knip --fix-type exports --format` | Full gate | `refactor: internalize private exports` |
+| **BRIDGE** | Linter cleanup | Biome / Oxlint / ESLint | Clears `TS6133` unused locals | `chore: linter autofix after un-export` |
+| **4** | Unused types & enums | `knip --fix-type types --format` | Full gate + declaration emit check | `refactor: prune dead types` |
+| **5** | Unused dependencies | `knip --fix-type dependencies --format` | Full gate + lockfile sync | `chore(deps): prune unused dependencies` |
 
 ---
 
@@ -258,25 +353,23 @@ Five waves, in causal order. After each: **run the gate**, then commit. A wave t
 
 | Mistake | Consequence | Instead |
 |---|---|---|
-| Running `tsc -b --noEmit` | Fails immediately with fatal error TS5094 | Use `tsc -b --emitDeclarationOnly` or `--outDir /tmp/dts-check` (or `--isolatedDeclarations`) |
-| Passing `--no-eslintrc` in ESLint v9 | Fails immediately with `Unknown option '--no-eslintrc'` | Flat Config is the default in v9; use `--no-config-lookup` or a custom flat config |
-| Pointing `$schema` to `overview/schema.json` | 404 Not Found error on schema fetch | Use `https://unpkg.com/knip@5/schema-jsonc.json` (or `knip@6`) |
-| Broad top-level `"ignore": ["src/legacy/**"]` | Knip stops traversing those files, so their imports report as dead and get deleted | Use `ignoreDependencies` / `ignoreBinaries` / `ignoreExportsUsedInFile` / explicit `entry` |
-| Acting on findings before resolving config hints | Every downstream finding is suspect; you triage noise | Clear hints in Phase 1, then survey |
-| Suffixing entries with `!` to suppress unused export reports | `!` marks production code for `--production` mode, not public API status | Use `includeEntryExports: false` or JSDoc `@public` tags |
-| Using dummy compilers like `(text) => text` | Passes raw template markup into JS parser, causing syntax parse crashes | Use Knip's built-in compilers: `"compilers": { "astro": true, "mdx": true, "svelte": true, "vue": true }` |
-| One big cleanup commit | No bisect, no partial revert, unreviewable | One commit per wave |
-| Deleting dependencies before pruning dead files | Orphaning transitive packages and triggering TS2307 on unreferenced code | Wave order: files → barrels → exports → types → dependencies |
-| Trusting `tsc --declaration --emitDeclarationOnly --noEmit` | Fails immediately with error TS5053 option conflict | Use `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` or `--isolatedDeclarations` |
-| Hardcoding `pnpm` or `bun test` in the gate | Breaks repositories or ignores `package.json` scripts | Resolve manager dynamically; run `bun run test` |
+| Running all-in-one `knip --fix` | Deletes files, exports, and packages in one un-audited pass; causes unbisectable breakage | Scope `--fix-type` per wave (`files`, `exports`, `types`, `dependencies`) and use `--format` |
+| Assuming Knip's wrangler plugin protects RPC classes | It only parses `config.main`; DurableObjects, WorkerEntrypoints, and Workflows get deleted | Protect RPC classes via `entry` in `knip.jsonc` or mark with JSDoc `/** @public */` |
+| Deleting `worker-configuration.d.ts` in Cloudflare Workers | Destroys ambient bindings; `env: Env` immediately fails typecheck across worker | Protect in `knip.jsonc` `entry` or `ignore`; never delete ambient declarations |
+| Accessing `process.env` in Cloudflare Workers | Returns `undefined` at runtime in `workerd` isolates; causes silent production crashes | Drill request-scoped `env` parameter or access `this.env` in RPC classes |
+| Stripping `ctx.waitUntil()` as "redundant wrapper" | Isolate suspends on response settle; background logs, queues, and metrics are aborted | Preserve `ctx.waitUntil()` for all edge background work |
+| Running bare `npx tsc` | If typescript is not in local node_modules, invokes obsolete `tsc@2.0.4` published in 2017 | Always use `$PM_EXEC tsc` (e.g. `pnpm exec tsc`, `bun x tsc`, or `npx -p typescript tsc`) |
+| Passing `--no-config-lookup` in ESLint v9 for TS | Disables config resolution entirely; defaults to basic JS parser and fails on `.ts` files | Use flat config (`eslint.config.mjs`) or invoke targeted linter rules |
+| Trusting `tsc -b --noEmit` on older TS versions | Fails with fatal error `TS5094` in TypeScript < 5.8 | In TS < 5.8, use `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
+| Passing `--isolatedDeclarations` without `--declaration` | Fails with `TS5069: Option isolatedDeclarations cannot be specified without declaration` | Pair with `--declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
+| Broad top-level `"ignore": ["src/legacy/**"]` in Knip | Knip halts graph traversal; imports within those files report as dead and get deleted | Use targeted keys: `ignoreDependencies`, `ignoreBinaries`, `ignoreExportsUsedInFile` |
 | Dual declaration of Zod schema + manual TypeScript interface | Types drift silently when schemas are updated | Use `type T = z.infer<typeof TSchema>` as single source of truth |
-| Deleting duplicate helpers without migrating callers | Each copy had drifted; consumers depended on the differences | Consolidate, migrate, gate, *then* delete |
-| Exporting internal helpers solely for unit tests (`_helper`) | Breaks encapsulation and leaks implementation details into the public API | Test observable outcomes across the public interface, or extract an independent deep module |
-| Speculative `IUserService` interfaces with 1 implementation | Creates ghost interfaces and doubles file/type maintenance burden | Export the concrete implementation directly until a second adapter genuinely exists (Seam Test) |
-| Scattering single-consumer 5-line helpers into `src/utils/` | AI context-window fragmentation; balloons project file count and token spend | Colocate in the consumer file (<25 LOC) or feature pod (1-to-1 Rule) |
-| Accessing `process.env` in Cloudflare Workers handlers | Returns `undefined` at runtime in `workerd` isolates | Pass request-scoped `env` parameter or `this.env` |
-| Stripping `ctx.waitUntil()` as "redundant wrapper" | Kills asynchronous background promises when the fetch response settles | Preserve `ctx.waitUntil` for all edge background work |
-| Skipping Phase 0 because the repo "looks fine" | Pre-existing failures get attributed to the cleanup | Prove green first |
+| Exporting internal helpers solely for unit tests (`_helper`) | Leaks implementation details into public API; breaks encapsulation | Test observable outcomes across public interface ("Replace, don't layer") |
+| Single-implementation `IUserService` interfaces | Creates ghost interfaces and doubles file/type maintenance burden | Export concrete implementation directly until a second adapter genuinely exists (Seam Test) |
+| Dumping single-consumer helpers into `src/utils/` | Context fragmentation; creates circular webs and junk drawers | Colocate in consumer file (< 25 LOC) or feature pod (1-to-1 Rule) |
+| Using enums / namespaces with modern transpilers | Fails `--erasableSyntaxOnly` (TS 5.8+); causes bundler transpile friction | Use string literal unions and standard classes |
+
+---
 
 ## Scripts
 
@@ -285,28 +378,29 @@ Python 3 stdlib only — no dependencies, no network beyond the engines they inv
 | Script | Phase | Purpose | Mutates? |
 |---|---|---|---|
 | `scripts/audit-ts-health.py` | 1, 4 | Detects linters and formatters, audits `tsconfig.json` flags, finds import cycles, flags AI slop markers & schema drift. | No |
-| `scripts/init-knip-config.py` | 1 | Scans frameworks and monorepo layout; emits `knip.jsonc`/`knip.json` with a valid, version-matched `$schema` and built-in compilers. | Yes — `--dry-run` to preview, `--force` to overwrite |
-| `scripts/batch-findings.py` | 2 | Runs or parses the dead-code and analysis engines; batches findings across all 9 batches, scores risk, renders gates for the detected manager. | Only with `--out-file` |
+| `scripts/init-knip-config.py` | 1 | Scans frameworks and monorepo layout; emits `knip.jsonc`/`knip.json` with a valid `$schema` (`knip@6`) and built-in compilers. | Yes — `--dry-run` to preview, `--force` to overwrite |
+| `scripts/batch-findings.py` | 2 | Runs or parses the dead-code and analysis engines; batches findings across all 9 batches, scores risk, renders gates. | Only with `--out-file` |
 
-Run any script with `--help` for its full flag surface.
+---
 
 ## References
 
-- [references/engines/engine-matrix.md](references/engines/engine-matrix.md) — which engine finds which class of problem, at what scope and speed; the auto-detection protocol.
-- [references/engines/knip-configuration.md](references/engines/knip-configuration.md) — Knip config formats, schema, monorepo workspace isolation, built-in compilers, the plugin catalog, and targeted-vs-broad ignores.
-- [references/engines/lint-engines.md](references/engines/lint-engines.md) — Biome, Oxlint, ESLint (Flat Config v9), and Ultracite recipes; safe formatting rules versus mutations to avoid mid-remediation.
-- [references/engines/analysis-engines.md](references/engines/analysis-engines.md) — `type-coverage`, native Knip cycles (`knip --cycles`), `madge`, and the anti-slop rules: install, invoke, read the output.
+- [references/engines/engine-matrix.md](references/engines/engine-matrix.md) — which engine finds which problem, at what scope and speed; auto-detection protocol.
+- [references/engines/knip-configuration.md](references/engines/knip-configuration.md) — Knip v6 config formats, schema, monorepo isolation, compilers, plugin catalog, and targeted ignores.
+- [references/engines/lint-engines.md](references/engines/lint-engines.md) — Biome, Oxlint (`--fix-dangerously`), ESLint (Flat Config v9), and Ultracite recipes.
+- [references/engines/analysis-engines.md](references/engines/analysis-engines.md) — `type-coverage`, native Knip cycles (`knip --cycles`), `madge`, and anti-slop rules.
 - [references/detection/finding-classification.md](references/detection/finding-classification.md) — the nine batches, which engine produces each, the wave each feeds, and the risk model.
-- [references/detection/false-positive-triage.md](references/detection/false-positive-triage.md) — the Three-Question Test, framework entry catalogs, dynamic imports, public contracts, and lint/type false positives.
-- [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) — the 8 Sins of Agent-Written TypeScript, architectural origins of bloat, detection commands, and before/after remediation.
-- [references/runtimes/cloudflare-workers.md](references/runtimes/cloudflare-workers.md) — Cloudflare Workers (`workerd`) cleanup: wrangler types, RPC class preservation (DurableObject, WorkerEntrypoint), process.env eradication, and ctx.waitUntil safety.
+- [references/detection/false-positive-triage.md](references/detection/false-positive-triage.md) — the Three-Question Test, framework entry catalogs, dynamic imports, public contracts, and false positives.
+- [references/detection/code-slop-catalog.md](references/detection/code-slop-catalog.md) — the 10 Sins of Agent-Written TypeScript, architectural origins of bloat, detection commands, and before/after remediation.
+- [references/runtimes/cloudflare-workers.md](references/runtimes/cloudflare-workers.md) — Cloudflare Workers (`workerd`) deep guide: wrangler types, RPC class preservation (DurableObject, WorkerEntrypoint), process.env eradication, and ctx.waitUntil safety.
 - [references/remediation/waves.md](references/remediation/waves.md) — **the gate**, package-manager resolution, all five waves, the linter bridge, rollback, and the post-flight metrics gate.
 - [references/remediation/structural-refactor.md](references/remediation/structural-refactor.md) — Matt Pocock architectural deepening: inlining wrappers, breaking cycles, restructuring barrels, co-locating helpers, deep modules vs shallow abstractions.
-- [references/remediation/complexity-thresholds.md](references/remediation/complexity-thresholds.md) — cyclomatic and cognitive complexity thresholds and the code-smell index, for prioritising what to refactor first.
-- [references/types/strict-migration.md](references/types/strict-migration.md) — eliminating `any`-creep, the type-coverage ratchet, incremental strict-mode migration, type tidying.
-- [references/types/declaration-emit.md](references/types/declaration-emit.md) — why un-exporting breaks `tsc -b`, compiler flag conflicts (TS5094/TS5053), `--isolatedDeclarations`, the TS4023/4081/4082/4060/2742/2883 matrix, and the pre-un-export checklist.
+- [references/remediation/complexity-thresholds.md](references/remediation/complexity-thresholds.md) — cyclomatic and cognitive complexity thresholds and code-smell index.
+- [references/types/strict-migration.md](references/types/strict-migration.md) — eliminating `any`-creep, type-coverage ratchet, incremental strict-mode migration, type tidying.
+- [references/types/declaration-emit.md](references/types/declaration-emit.md) — declaration emit safety, TS 5.8+ build options, `--isolatedDeclarations`, TS4023/4081/4082/4060/2742/2883 matrix, and pre-un-export checklist.
+
+---
 
 ## Bottom Line
 
-Prove green → configure the engines → survey every scope across all 9 batches → triage with the Three-Question Test → deepen architecture & fix the cause → delete in five gated waves → report the deltas.
-
+Prove green → configure engines & protect platform invariants → survey all scopes across 9 batches → triage with Three-Question Test → deepen architecture & address root causes → delete in five scoped, gated waves → report the deltas.

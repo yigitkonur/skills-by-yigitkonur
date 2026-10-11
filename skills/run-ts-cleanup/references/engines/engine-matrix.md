@@ -9,8 +9,7 @@ Map the TypeScript cleanup toolchain: which engine finds which class of problem,
 Six engines drive a TypeScript cleanup. Each answers a question no other engine can answer.
 
 | Engine | What It Finds | Scope | Speed | Autofix? | Detail |
-|---|---|---|---|---|---|
-| **Knip** | Unused files, unused exports, unused types, unused dependencies, unused binaries, import cycles | Whole-project module graph | Seconds (batch, whole repo) | Yes — native `--fix` (`--fix-type dependencies,exports,types,files`, `--allow-remove-files`); also manual/waved cleanup | [`./knip-configuration.md`](./knip-configuration.md) |
+| **Knip** | Unused files, unused exports, unused types, unused dependencies, unused binaries, import cycles | Whole-project module graph | Seconds (batch, whole repo) | Yes — scoped per wave (`--fix-type files`, `exports`, `types`, `dependencies`) with native `--format`; never all-in-one | [`./knip-configuration.md`](./knip-configuration.md) |
 | **Biome** | Unused locals, dead imports, correctness lint, formatting, import order | Single-file AST | Sub-second (Rust, parallel) | Yes — `check --write` | [`./lint-engines.md`](./lint-engines.md) |
 | **Oxlint** | Unused locals, dead imports, correctness lint | Single-file AST | Sub-second (Rust, parallel) | Yes — `--fix` | [`./lint-engines.md`](./lint-engines.md) |
 | **ESLint** | Unused locals, dead imports, correctness lint, type-aware rules (Flat Config v9 default) | Single-file AST (+ project types when type-aware) | Seconds to minutes | Yes — `--fix` | [`./lint-engines.md`](./lint-engines.md) |
@@ -83,7 +82,7 @@ No single engine sees the whole picture. Cleanup requires all three scopes becau
 | "This export may be dead" | Knip | `npx knip --include exports,types` |
 | "This import is unused" | Lint engine | `npx oxlint --fix` (or detected equivalent) |
 | "Compilation broke after a removal" | `tsc` | `npx tsc --noEmit` |
-| "Public `.d.ts` emit broke" | `tsc` | `npx tsc -b --emitDeclarationOnly` (or `--isolatedDeclarations`) |
+| "Public `.d.ts` emit broke" | `tsc` | `$PM_EXEC tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` (or `tsc -b --clean && tsc -b`) |
 | "`any` is creeping back in" | `type-coverage` | `npx type-coverage --detail` |
 | "Modules import each other in a loop" | Knip / `madge` | `npx knip --cycles` or `npx madge --circular --extensions ts,tsx src/` |
 | "This code reads like LLM output" | anti-slop + ripgrep | `npx oxlint` + [`../detection/code-slop-catalog.md`](../detection/code-slop-catalog.md) |

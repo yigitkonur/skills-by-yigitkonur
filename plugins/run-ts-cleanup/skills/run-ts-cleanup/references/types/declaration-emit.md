@@ -10,11 +10,9 @@ Run this gate before committing any change that strips an `export` keyword or de
 
 Declaration emit risk activates when any of these conditions hold:
 
-| Condition | tsconfig / package signal | Verification command |
-|---|---|---|
 | Project emits declaration files | `"declaration": true`, `"emitDeclarationOnly": true` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
-| Package is a composite project reference | `"composite": true` | `tsc -b --emitDeclarationOnly` (never `--noEmit`, triggers `TS5094`) |
-| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --noEmit` or `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
+| Package is a composite project reference | `"composite": true` | `tsc -b --clean && tsc -b --emitDeclarationOnly && tsc -b --clean` (or in TS 5.8+: `tsc -b --noEmit`) |
+| Project enforces isolated declarations (TS 5.5+) | `"isolatedDeclarations": true` | `tsc --declaration --emitDeclarationOnly --isolatedDeclarations --outDir /tmp/dts-check` |
 | Package ships types to consumers | `package.json` `"types"`, `"typings"`, or `exports["."].types` | `tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check` |
 
 Detect exposure before assuming the gate is optional:
@@ -195,17 +193,19 @@ Under `isolatedDeclarations`, every exported symbol needs an explicit, locally-r
 
 `tsc --noEmit` does not check declaration emit diagnostics. Furthermore:
 - Passing `tsc --declaration --emitDeclarationOnly --noEmit` triggers `error TS5053: Option 'emitDeclarationOnly' cannot be specified with option 'noEmit'`.
-- Passing `tsc -b --noEmit` triggers `error TS5094: Compiler option '--noEmit' may not be used with '--build'`.
+- In TypeScript < 5.8, passing `tsc -b --noEmit` triggered `error TS5094: Compiler option '--noEmit' may not be used with '--build'`. In TypeScript 5.8+, `--noEmit` and `--emitDeclarationOnly` are supported build options, but `tsc -b` still prohibits `--outDir` (`TS5065`).
+- Passing `--isolatedDeclarations` without `--declaration` triggers `error TS5069`.
 
 To run a fast, side-effect-free declaration check without polluting the project source tree, redirect emit output to an ephemeral temporary directory:
 
 ```bash
 # 1. Single project: verify declaration graph without polluting the workspace
-npx tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check
+$PM_EXEC tsc --declaration --emitDeclarationOnly --outDir /tmp/dts-check
 
-# 2. Composite monorepo: rebuild the full project-reference graph from scratch
-#    (--clean is mandatory; stale .tsbuildinfo masks fresh emit failures)
-npx tsc -b --clean && npx tsc -b --emitDeclarationOnly
+# 2. Composite monorepo: rebuild and clean to preserve pristine working tree
+#    (--clean is mandatory; stale .tsbuildinfo masks fresh emit failures,
+#    and uncleaned emit leaves .d.ts files scattered across source directories)
+$PM_EXEC tsc -b --clean && $PM_EXEC tsc -b --emitDeclarationOnly && $PM_EXEC tsc -b --clean
 
 # 3. Clean up the ephemeral probe directory after verification
 rm -rf /tmp/dts-check
