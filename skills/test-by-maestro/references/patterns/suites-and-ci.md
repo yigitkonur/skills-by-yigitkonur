@@ -144,7 +144,7 @@ Grow the suite from interactive exploration through Maestro MCP (`maestro mcp`):
 boot device ─▶ list_devices (connected:true) ─▶ inspect_screen
       │                                              │
       ▼                                              ▼
-run inline YAML (one step or a short chain) ─▶ verify via inspect_screen / take_screenshot
+run inline YAML with appId header (one step or a short chain) ─▶ verify via inspect_screen / take_screenshot
       │
       ▼
 append passing steps to .maestro/flows/<flow>.yaml (appId header + `---`)

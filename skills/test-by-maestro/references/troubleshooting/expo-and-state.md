@@ -14,6 +14,10 @@ Managing application state, authentication tokens, runtime permissions, and deve
 
 Maestro's own Expo development-build article starts its flow with `- launchApp` and then handles the launcher screen with a conditional `runFlow`. There is no Maestro or Expo source for the claim that `launchApp` severs Metro or forces a bundle recompile; if you observe that in your project, treat it as a local finding and prefer `openLink` to re-enter the app.
 
+Observed on Maestro 2.11.0 with an Expo SDK 57 dev-client build on an Android 14 emulator: `launchApp` (via `maestro test` and via MCP `run`) relaunched the app and, with Metro still running, the dev client reconnected on its own and returned to the app screen after about 30 s, without any extra step. With no Metro running it stays on the launcher ("DEVELOPMENT SERVERS", `npx expo start`).
+
+Deep-link gotcha: the dev-client scheme is `exp+<expo.slug>`, not your custom `scheme`. For slug `aura` and scheme `auracareers` the app registers `exp+aura`, so `exp+auracareers://expo-development-client/...` does nothing, while `exp+aura://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081` connects. Check with `adb shell dumpsys package <appId> | grep Scheme`. On an emulator run `adb reverse tcp:8081 tcp:8081` so `localhost:8081` reaches the host's Metro.
+
 ```yaml
 # Dev Client: launch, then enter the dev server if the launcher appears
 appId: com.example.demo

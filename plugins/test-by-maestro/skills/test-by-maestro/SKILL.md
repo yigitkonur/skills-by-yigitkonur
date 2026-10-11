@@ -55,7 +55,7 @@ Read [iOS over SSH](references/guides/ios-over-ssh.md) for the route details and
 
 | # | Rule | Why |
 |---|---|---|
-| 1 | Single actions go through MCP `run` with inline YAML | Since 2.5.0 the granular tools (`tap_on`, `input_text`, ...) are gone; `run` takes `{ "device_id": "...", "yaml": "- tapOn: \"Log In\"" }` and validates syntax first. |
+| 1 | Single actions go through MCP `run` with inline YAML | Since 2.5.0 the granular tools (`tap_on`, `input_text`, ...) are gone; `run` takes `{ "device_id": "...", "yaml": "appId: com.example.app\n---\n- tapOn: \"Log In\"" }` and validates syntax first. Inline YAML must carry the `appId:` header and `---`; a bare command list fails with `Config Section Required` (verified on 2.11.0, despite the tool description showing a bare example). |
 | 2 | Boot the device before any MCP call | No MCP tool boots a device. `list_devices` also lists launchable devices; use only entries with `connected: true`. |
 | 3 | Never plan local iOS on Linux | iOS Simulators need macOS + Xcode (`xcrun simctl`, `xcodebuild`). Route to Maestro Cloud or a Mac. |
 | 4 | Export the toolchain explicitly in non-interactive shells | SSH, agent shells, and MCP clients skip profile files. Set `JAVA_HOME` to a 17+ JDK and put `~/.maestro/bin` on `PATH`. On a Mac also check `xcode-select -p` points at full Xcode. |
@@ -86,12 +86,12 @@ Maestro embeds an MCP server over STDIO exposing 10 tools: `list_devices`, `insp
 
 1. **Boot and identify**: start the emulator/simulator yourself, then call `list_devices` and take a `device_id` with `connected: true` (e.g. `emulator-5554`, a simulator UDID, or `chromium`).
 2. **Look first**: call `inspect_screen` (compact `ui_schema` + `elements`). Copy `txt` into `text:` or `rid` into `id:`; `a11y` is not a selector key.
-3. **Act**: call `run` with one command or a short chain. Mobile YAML should declare `appId` and start with `launchApp` when the app is not already open; a bare command list also works for steps in an open app.
+3. **Act**: call `run` with one command or a short chain. Inline YAML **must** start with the `appId:` header and `---` (a bare `- tapOn:` list is rejected with `Config Section Required`). Add `- launchApp` only when the app is not already open; omit it to act on the screen that is showing.
    ```json
-   { "device_id": "emulator-5554", "yaml": "- tapOn: \"Sign In\"" }
+   { "device_id": "emulator-5554", "yaml": "appId: com.example.app\n---\n- tapOn: \"Sign In\"" }
    ```
    ```json
-   { "device_id": "emulator-5554", "yaml": "- tapOn:\n    id: \"email_input\"\n- inputText: \"user@example.com\"\n- hideKeyboard\n- tapOn: \"Continue\"" }
+   { "device_id": "emulator-5554", "yaml": "appId: com.example.app\n---\n- tapOn:\n    id: \"email_input\"\n- inputText: \"user@example.com\"\n- hideKeyboard\n- tapOn: \"Continue\"" }
    ```
    The result is JSON (`success`, `commands_executed`); `isError` means the step failed.
 4. **Verify**: `inspect_screen` again, or `take_screenshot` (JPEG, max 2000 px).
