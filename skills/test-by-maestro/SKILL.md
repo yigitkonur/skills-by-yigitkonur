@@ -49,7 +49,7 @@ iOS needed while authoring on Linux:
 2. **A Mac you control** (owned Mac, GitHub `macos-*` runner, EC2 Mac): run the Maestro CLI there, typically over SSH. This SSH recipe is this skill's own construction, not a documented Maestro mode.
 3. Otherwise run only the Android and Web parts and say iOS was not covered.
 
-Read [iOS over SSH](references/guides/ios-over-ssh.md) for the route details and [Android and Local iOS](references/guides/android-and-local-ios.md) for the Linux headless emulator setup.
+On a Linux agent host the cleanest iOS setup is a `maestro-ios` MCP server whose command is `ssh <mac> ... maestro mcp` (verified), with Metro on Linux tunnelled to the Mac's `localhost:8081`. Read [iOS over SSH](references/guides/ios-over-ssh.md) for the route details and [Android and Local iOS](references/guides/android-and-local-ios.md) for the Linux headless emulator setup.
 
 ## Load-bearing rules
 

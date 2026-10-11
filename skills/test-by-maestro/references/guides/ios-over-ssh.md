@@ -14,6 +14,29 @@ Unofficial third-party routes exist (e.g. Software Mansion Argent `sim-remote`, 
 
 ---
 
+## Preferred: run the Maestro MCP server on the Mac, over SSH
+
+Verified on Maestro 2.11.0 with a Linux agent host, a MacBook (macOS 26, Xcode 27, iOS 27 simulator), and an Expo dev-client app. MCP uses stdio, which passes through `ssh -T` unchanged, so the agent on Linux can use all 10 MCP tools against a simulator that lives on the Mac. The Maestro process must run where the simulator is; the Mac needs full Xcode, Java 17+, and Maestro (`curl -fsSL "https://get.maestro.mobile.dev" | bash`).
+
+```json
+{
+  "mcpServers": {
+    "maestro-ios": {
+      "type": "stdio",
+      "command": "ssh",
+      "args": ["-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "mac-host",
+        "env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer JAVA_HOME=<jdk17+ home> PATH=<jdk>/bin:$HOME/.maestro/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin $HOME/.maestro/bin/maestro mcp --working-dir $HOME/maestro-flows"]
+    }
+  }
+}
+```
+
+- Use a **dedicated simulator** so you never disturb the Mac owner's devices: `xcrun simctl create my-maestro com.apple.CoreSimulator.SimDeviceType.iPhone-17 com.apple.CoreSimulator.SimRuntime.iOS-27-0`, then `xcrun simctl bootstatus <udid> -b` (boots if needed). Pass its UDID as `device_id`.
+- `files`/`dir`/`app_file` resolve on the **Mac** (`--working-dir`), so sync flows there (`rsync`); inline `yaml` needs no sync.
+- The app must be a **simulator build** (`DTPlatformName = iphonesimulator`, arm64). Build it on a Mac (`xcodebuild -sdk iphonesimulator`, or `eas build --profile <p>` with `ios.simulator: true`) and install with `xcrun simctl install <udid> App.app`. An existing build from another Xcode 27 Mac installed fine.
+- Do not build inside someone else's working checkout; copy the `.app` instead. Check free disk first (a native build needs several GB).
+- Use `ssh -o BatchMode=yes` everywhere; avoid `pkill -f`/`pgrep -f` patterns that also appear in your own command line (they match and kill your own shell).
+
 ## Remote Execution Topology over SSH
 
 ```text

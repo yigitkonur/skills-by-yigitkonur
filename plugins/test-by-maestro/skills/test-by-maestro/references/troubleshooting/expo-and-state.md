@@ -33,6 +33,48 @@ appId: com.example.demo
 
 ---
 
+## iOS Dev Client with Metro on a Different Machine
+
+Verified: Linux host runs Metro, a Mac runs the iOS simulator and Maestro.
+
+1. **App Transport Security blocks `http://<tailscale-or-lan-ip>:8081`.** The dev client shows `Error loading app ... App Transport Security policy requires the use of a secure connection`, and Metro logs no request. ATS allows `localhost`, so forward Metro to the Mac's loopback: from the Linux host, `ssh -N -R 127.0.0.1:8081:127.0.0.1:8081 mac-host` (keep it running), and use `http://localhost:8081`.
+2. **Use port 8081 on the Mac side.** Metro's manifest hard-codes its own port in the bundle URL; a tunnel on another port fetches the manifest and then fails with `Could not connect to development server ... URL: http://127.0.0.1:8081/...bundle`.
+3. **Connect with the launcher's URL field**, which is reliable: `tapOn: "Enter URL manually"`, `inputText: "http://localhost:8081"`, `tapOn: "Connect"`. An `openLink: "exp+<slug>://expo-development-client/?url=..."` works only if you also handle the system prompt below.
+4. **iOS asks `Open in "<App>"?`** for a custom-scheme `openLink`; the flow waits forever until you `tapOn: "Open"`.
+5. **First launch shows the dev-menu intro sheet** ("This is the developer menu...") over the app. A `tapOn: "Board"` on a tab underneath still reports `ok` but nothing happens. After connecting, dismiss it with `tapOn: "Continue"` (guard with `runFlow: when: visible: ".*developer menu.*"`).
+
+**An `ok` tap is not proof of navigation.** Always assert content unique to the destination screen (for example `assertVisible: "Aaron Okafor"` after tapping Profile), and keep one negative control (`assertVisible` of nonexistent text must fail) to prove assertions are live.
+
+A reusable connect flow:
+
+```yaml
+appId: com.example.app
+---
+- launchApp
+- runFlow:
+    when:
+      visible: "Enter URL manually"
+    commands:
+      - tapOn: "Enter URL manually"
+      - tapOn:
+          text: "http://.*"
+          optional: true
+      - inputText: "http://localhost:8081"
+      - hideKeyboard:
+          optional: true
+      - tapOn: "Connect"
+- extendedWaitUntil:
+    visible: "Feed"            # a screen unique to the running app
+    timeout: 120000
+- runFlow:
+    when:
+      visible: ".*developer menu.*"
+    commands:
+      - tapOn: "Continue"
+```
+
+---
+
 ## The iOS Keychain Persistence Gotcha
 
 A common failure mode in iOS testing involves auth token persistence:
