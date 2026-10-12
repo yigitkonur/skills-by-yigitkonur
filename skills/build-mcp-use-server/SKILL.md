@@ -28,6 +28,7 @@ This skill grounds on the official [`MCPServer`](https://api-reference.mcp-use.c
    - [Authentication](references/auth.md): OAuth provider adapters, `mixedAuth: true`, tool-level `securitySchemes`, and verified identity on `ctx.auth`.
    - [Skills over MCP](references/skills-over-mcp.md): Reusable agent workflows and conventions under `skills/`.
    - [Advanced Features](references/advanced-features.md): OpenAPI (`fromOpenAPI`), proxying, notifications, subscriptions, and interactive elicitation (`inputRequired`).
+   - [Multi-Host & Archestra](references/archestra-and-multi-host.md): Deploying to ChatGPT, Claude Desktop, and Archestra (installed-server route vs owned apps).
    - [Migration](references/migration.md): Upgrading legacy v1 patterns, deprecated imports, and obsolete helpers to v2.
    - [Verification](references/verification.md): Verification loop with `mcp-use typecheck`, `mcp-use dev`, `mcp-use client`, and `mcp-use screenshot`.
 4. **Implement Against Installed Types**: Always export static tool references and default-export the server instance.

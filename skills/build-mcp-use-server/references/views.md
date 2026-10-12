@@ -9,6 +9,7 @@ Official documentation:
 - [Generative UI](https://docs.mcp-use.com/v2/typescript/mcp-apps/generative-ui)
 - [Model Context](https://docs.mcp-use.com/v2/typescript/mcp-apps/model-context)
 - [Content Security Policy](https://docs.mcp-use.com/v2/typescript/mcp-apps/content-security-policy)
+- [Multi-Host Deployment & Archestra Architecture](archestra-and-multi-host.md)
 
 ---
 
@@ -279,3 +280,18 @@ When building or serving views, `mcp-use` computes the final CSP string followin
 +-------------------------------------------------------------------+
 ```
 All domains are normalized to protocol and origin, validated against CSP Level 3 rules, and deduplicated.
+
+---
+
+## 7. Multi-Host Deployment: ChatGPT, Claude Desktop & Archestra
+
+Because `mcp-use` views conform to the standard MCP Apps specification (`ui://views/<name>.html`), the same view codebase can run across different host platforms:
+
+- **ChatGPT**: Interacts with the view inside an iframe. Leverages `@openai/apps-sdk-ui` styling, `<AppsSDKUIProvider linkComponent="a">`, `useViewTheme()`, and conversational evidence injection via `useModelContext()`.
+- **Claude Desktop**: Renders standard tool views within its sandboxed preview iframe, receiving `structuredContent` and executing secondary actions via `useCallTool()`.
+- **Archestra**: Fully supported via the **Installed-Server (Native Portable) Route** ([Archestra Guide](archestra-and-multi-host.md)):
+  - Discovered automatically by Archestra and displayed under **"Apps from installed MCP servers"** in the gallery (`page.client.tsx`).
+  - Tool calls execute through Archestra's session proxy (`POST /api/mcp/server/:mcpServerId`) using the installation's upstream credentials.
+  - Production case studies (Ahrefs, SEMrush, Screaming Frog) confirm installed portable views as the modern, unified path over legacy platform-owned HTML.
+
+For detailed cross-host capability matrices and Archestra diagnostic sequences, see the [Multi-Host & Archestra Architecture Guide](archestra-and-multi-host.md).
