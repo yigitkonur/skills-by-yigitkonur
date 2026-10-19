@@ -1,8 +1,7 @@
 name: ci-cd-optimize validation
 
-# Non-mutating branch/PR validation for the ci-cd-optimize skill and its
-# shared packaging. Never bumps versions, never commits back, never writes
-# to the repository. Release mutation stays exclusively in version-bump.yml.
+# Non-mutating branch/PR validation for the ci-cd-optimize skill. Never
+# commits back, never writes to the repository.
 
 on:
   push:

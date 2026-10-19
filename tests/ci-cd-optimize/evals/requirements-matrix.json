@@ -265,14 +265,6 @@
    "test_ids": [
     "contract-no-stale-pins"
    ]
-  },
-  {
-   "id": "d85-11",
-   "defect": "README description did not follow repository derivation rules",
-   "requirement": "Retired: per-skill README files were removed from the pack, so no README derivation rule applies.",
-   "test_ids": [
-    "contract-readme-alignment"
-   ]
   }
  ],
  "audit_waves": [

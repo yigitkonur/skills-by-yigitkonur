@@ -126,10 +126,10 @@ def check_matrix(doc) -> list[str]:
         if not row.get("acceptance"):
             errors.append(f"requirements-matrix.json[{row.get('id')}]: missing acceptance check")
     defect_rows = doc.get("defect_rows", [])
-    expected_defects = {f"d85-{n}" for n in range(1, 12)}
+    expected_defects = {f"d85-{n}" for n in range(1, 11)}
     got_defects = {row.get("id") for row in defect_rows}
     if got_defects != expected_defects:
-        errors.append("requirements-matrix.json: defect_rows must cover exactly d85-1..d85-11")
+        errors.append("requirements-matrix.json: defect_rows must cover exactly d85-1..d85-10")
     for row in defect_rows:
         if not row.get("requirement") or not row.get("test_ids"):
             errors.append(f"requirements-matrix.json[{row.get('id')}]: defect needs requirement and test_ids")

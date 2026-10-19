@@ -22,7 +22,7 @@ README.md                 one section per skill, with its install command
 Run `python3 scripts/validate-skills.py` before every push. CI runs it too.
 
 - Frontmatter `name` equals the directory name. `description` is at most 30 words.
-- Every skill is manual-only: `disable-model-invocation: true` in the `SKILL.md` frontmatter (Claude Code, Cursor, VS Code) and `agents/openai.yaml` with `allow_implicit_invocation: false` (Codex ignores the frontmatter key).
+- Every skill is manual-only: `disable-model-invocation: true` in the `SKILL.md` frontmatter (Claude Code, Cursor, VS Code) and an `agents/openai.yaml` file (the validator checks that it exists; its content must be `policy.allow_implicit_invocation: false`, Codex ignores the frontmatter key).
 - Every file under `references/` is linked from `SKILL.md`. Links to files that do not exist fail.
 - `SKILL.md` stays short: aim for 500 lines, the validator fails above 1000. Put detail in `references/`.
 - No junk (`.DS_Store`, `.swp`), no `evals/` or `__pycache__/` directories, no `LICENSE` or `CHANGELOG.md` inside a skill.
