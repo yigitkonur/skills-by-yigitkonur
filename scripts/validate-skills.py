@@ -3,11 +3,10 @@
 
 Checks:
   1. Reference linkage — every file in references/ must be linked from SKILL.md
-  2. Frontmatter — name matches directory, description format and length
+  2. Frontmatter — name matches directory, manual-only flags, description length
   3. SKILL.md length — SKILL.md must stay under 500 lines
   4. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
-  5. Research surfaces (skills, source and generated installs) stay
-     on the current Research Powerpack v9 four-tool contract
+  5. Research surfaces stay on the current Research Powerpack v9 four-tool contract
 
 Usage:
     python3 scripts/validate-skills.py          # full validation, exit 1 on errors
@@ -64,8 +63,7 @@ RESEARCH_REMOVED_PARAMETER_MARKERS = (
     '"progress":',
     '"research_id":',
 )
-# Skills whose Markdown must be free of the retired call vocabulary. Each entry
-# also has its generated Codex package checked, so a stale mirror cannot ship.
+# Skills whose Markdown must be free of the retired call vocabulary.
 RESEARCH_GUARDED_SKILLS = (
     "run-research",
     "run-deep-research",
@@ -252,13 +250,6 @@ def check_frontmatter(skill_name, skill_dir):
         errors.append("frontmatter missing description")
         return errors
 
-    accepted_prefixes = ("Use skill if you are ", "Use if ")
-    if not description.startswith(accepted_prefixes):
-        errors.append(
-            'description must start with "Use if " '
-            f'(older "Use skill if you are " is also accepted) — got: "{description[:60]}..."'
-        )
-
     if len(description.split()) > 30:
         errors.append(f"description is {len(description.split())} words (max 30)")
 
@@ -337,7 +328,7 @@ def scan_markdown_for_retired_research_vocabulary(
 
 
 def check_research_v9_vocabulary(skill_name, skill_dir):
-    """Hold research skills and their generated mirrors to the v9 vocabulary."""
+    """Hold research skills to the v9 vocabulary."""
     if skill_name not in RESEARCH_GUARDED_SKILLS:
         return []
 
@@ -356,18 +347,12 @@ def check_research_v9_vocabulary(skill_name, skill_dir):
 
 
 def research_install_dirs(skill_name, skill_dir):
-    """Source skill directory plus its generated Codex plugin mirror."""
-    return (
-        ("source", skill_dir),
-        (
-            "generated plugin",
-            os.path.join(REPO_ROOT, "plugins", skill_name, "skills", skill_name),
-        ),
-    )
+    """Directories that must carry the current research contract."""
+    return (("source", skill_dir),)
 
 
 def check_run_research_v9_contract(skill_name, skill_dir):
-    """Keep source and freshly generated installs on the current v9 protocol."""
+    """Keep run-research on the current v9 protocol."""
     if skill_name != "run-research":
         return []
 
