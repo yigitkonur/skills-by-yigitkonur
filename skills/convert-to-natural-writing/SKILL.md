@@ -1,6 +1,7 @@
 ---
 name: convert-to-natural-writing
 description: "Use if auditing or converting text into natural human cadence, eliminating Turkish translationese and synthetic AI writing patterns."
+disable-model-invocation: true
 ---
 
 # Convert to Natural Writing

@@ -1,6 +1,6 @@
 ---
 name: run-research
-description: "Use skill if you are researching one current technical question with source-grounded web evidence. Do not use for five-plus-entity corpora, GitHub-repository discovery, local-only answers, or web-forbidden requests."
+description: "One current technical question answered from cited web evidence (web-search, extract-evidence tools). Not for multi-entity corpora, repo discovery or local-only answers."
 disable-model-invocation: true
 ---
 

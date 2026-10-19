@@ -1,12 +1,12 @@
 ---
 name: use-sentry
-description: "Use if setting up or auditing modern Sentry observability with Expo/React Native, Cloudflare Workers/Pages, OpenTelemetry, Continuous Profiling, Crons, Metrics, Replay, Spotlight, Swift/Apple, AI/LLM, MCP, or triaging incidents using Seer AI and CLI recipes."
-disable-model-invocation: true
+description: "Sentry setup, audit or incident triage (Seer AI, CLI). Use for Expo/React Native, Cloudflare Workers, OpenTelemetry, Swift/Apple, AI/LLM or MCP telemetry."
 metadata:
   author: Yigit Konur
   version: 3.4.0
   category: observability
   tags: [sentry, monitoring, error-tracking, tracing, debugging, mcp, opentelemetry, profiling, seer-ai, swift, apple, macos, appkit, ai, llm, cloudflare-workers, cloudflare-pages, expo, react-native, mobile]
+disable-model-invocation: true
 ---
 
 # Sentry
