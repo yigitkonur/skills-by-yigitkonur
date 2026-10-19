@@ -67,7 +67,6 @@ npx -y skills add yigitkonur/skills-by-yigitkonur -y -g -a universal      # glob
 | [publish-npm-package](skills/publish-npm-package/) | publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release. |
 | [run-agent-browser](skills/run-agent-browser/) | driving agent-browser for webpage interaction, screenshots, @ref snapshots, tabs, UI verification, CDP attach, Steel Browser, or cloud providers… |
 | [run-agent-device](skills/run-agent-device/) | testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage. |
-| [run-agentic-tests](skills/run-agentic-tests/) | orchestrating multi-agent E2E campaigns with independent evidence review, isolated runtimes, and defect fix/retest loops. |
 | [run-astro-audit](skills/run-astro-audit/) | conducting comprehensive Astro audits, running multi-wave subagent remediation, validating AST rules with Astro Sentinel, or managing serial merge… |
 | [run-deep-research](skills/run-deep-research/) | running deep multi-file research over 5+ entities or a market — wave-dispatched corpus. |
 | [run-railway](skills/run-railway/) | running railway CLI — deploys, logs, env vars, link, ssh, db shells, scaling. |
