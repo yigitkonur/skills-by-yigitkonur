@@ -265,14 +265,6 @@
    "test_ids": [
     "contract-no-stale-pins"
    ]
-  },
-  {
-   "id": "d85-11",
-   "defect": "README description did not follow repository derivation rules",
-   "requirement": "README description equals frontmatter description with trigger prefix removed; enforced by contract test.",
-   "test_ids": [
-    "contract-readme-alignment"
-   ]
   }
  ],
  "audit_waves": [

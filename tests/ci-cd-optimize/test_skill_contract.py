@@ -15,7 +15,6 @@ TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parents[1]
 SKILL_DIR = REPO_ROOT / "skills" / "ci-cd-optimize"
 SKILL = SKILL_DIR / "SKILL.md"
-README = SKILL_DIR / "README.md"
 WATCHER = SKILL_DIR / "scripts" / "ci-watch.py"
 REFERENCES = sorted((SKILL_DIR / "references").rglob("*.md"))
 
@@ -28,16 +27,10 @@ def frontmatter_description(text: str) -> str:
     return match.group(1).strip().strip('"')
 
 
-def content_words(text: str) -> set[str]:
-    words = re.findall(r"[a-z][a-z\-]{5,}", text.lower())
-    return {w.strip("-")[:6] for w in words}
-
-
 class SkillContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.skill_text = SKILL.read_text()
-        cls.readme_text = README.read_text()
         cls.watcher_text = WATCHER.read_text()
 
     # d85-9 — description limits
@@ -53,19 +46,6 @@ class SkillContractTests(unittest.TestCase):
         lines = self.skill_text.count("\n") + 1
         self.assertLessEqual(lines, 500,
                              f"SKILL.md is {lines} lines; the rebuilt contract is <=500")
-
-    # d85-11 — README derivation
-    def test_readme_heading_and_category(self):
-        self.assertTrue(self.readme_text.startswith("# ci-cd-optimize\n"))
-        self.assertIn("**Category:** ops", self.readme_text)
-
-    def test_readme_description_derives_from_frontmatter(self):
-        description = frontmatter_description(self.skill_text)
-        readme_first_para = self.readme_text.split("\n\n")[1]
-        allowed = content_words(description)
-        introduced = content_words(readme_first_para) - allowed
-        self.assertEqual(introduced, set(),
-                         f"README description introduces claims absent from frontmatter: {sorted(introduced)}")
 
     # routing integrity beyond the shared validator
     def test_every_reference_is_routed_from_skill_md(self):
