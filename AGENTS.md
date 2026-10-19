@@ -26,7 +26,6 @@ Run `python3 scripts/validate-skills.py` before every push. CI runs it too.
 - Every file under `references/` is linked from `SKILL.md`. Links to files that do not exist fail.
 - `SKILL.md` stays short: aim for 500 lines, the validator fails above 1000. Put detail in `references/`.
 - No junk (`.DS_Store`, `.swp`), no `evals/` or `__pycache__/` directories, no `LICENSE` or `CHANGELOG.md` inside a skill.
-- `run-research` follows the Research Powerpack v9 tool names; the validator rejects the retired ones.
 
 ## Naming
 
@@ -36,7 +35,7 @@ Run `python3 scripts/validate-skills.py` before every push. CI runs it too.
 - Name the thing acted on, in the ecosystem's own words (`mcpc`, `tsgo`). Keep a distinctive method in the name (`-by-derailment`, `-to-nextjs`, `-sdk-v1`).
 - Two or three words after the verb. No `-guide`, `-helper`, `-util`. No version suffix unless the versions are different products.
 - Never put "claude" or "anthropic" in a skill name. Keep `<` and `>` out of frontmatter values. The validator does not check these two.
-- Two names predate this pattern and stay for install-path compatibility: `herdr` (upstream's name, invoked as `/herdr`) and `ci-cd-optimize`. New skills do not copy them.
+- `ci-cd-optimize` predates this pattern and stays for install-path compatibility. New skills do not copy it.
 
 ## Writing a skill
 
