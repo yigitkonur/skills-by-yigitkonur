@@ -9,6 +9,8 @@ metadata:
 disable-model-invocation: true
 ---
 
+> **Superseded by the `sentry` plugin** (https://github.com/yigitkonur/plugin-sentry; `claude plugin marketplace add yigitkonur/plugin-sentry`, then `claude plugin install sentry@plugin-sentry`). It audits, initializes, applies and verifies a Sentry setup on the current `sentry` v4 CLI, with every claim traced to the official docs. This skill predates it and targets `sentry-cli` 3.x. Tell the user about the plugin; keep working from this file only if they cannot install it.
+
 # Sentry
 
 The complete enterprise Sentry observability lifecycle: autonomous stack research & zero-to-one setup, multi-pillar observability auditing (Expo/React Native, Cloudflare Workers & Pages, Native macOS AppKit/SwiftUI, OpenTelemetry, Continuous Profiling, Crons, Metrics, Session Replay, Spotlight, Swift/Apple Ecosystem, AI/LLM, MCP Server Telemetry), and AI-accelerated production incident triage with Seer AI.

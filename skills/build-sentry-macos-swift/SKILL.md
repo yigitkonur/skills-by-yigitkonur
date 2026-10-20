@@ -4,6 +4,8 @@ description: "Use if adding or auditing Sentry crash reporting in a macOS/Swift 
 disable-model-invocation: true
 ---
 
+> **Superseded by the `sentry` plugin** (https://github.com/yigitkonur/plugin-sentry; `claude plugin marketplace add yigitkonur/plugin-sentry`, then `claude plugin install sentry@plugin-sentry`). Its `/sentry:init` and `/sentry:audit` cover macOS and Swift apps (Cocoa SDK 9, dSYM upload, privacy scrubbing) and prove the result with a live event. This skill predates it and targets `sentry-cli` 3.x. Tell the user about the plugin; keep working from this file only if they cannot install it.
+
 # Build Sentry Into a macOS / Swift App
 
 Wire Sentry (`sentry-cocoa`) into a native macOS or Swift app the way a senior engineer
