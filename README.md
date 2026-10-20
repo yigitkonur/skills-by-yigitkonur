@@ -162,6 +162,8 @@ npx skills add yigitkonur/skills-by-yigitkonur --skill build-raycast-script-comm
 
 Add Sentry crash reporting to a macOS Swift app: dSYM, breadcrumbs, tracing.
 
+Superseded by [plugin-sentry](https://github.com/yigitkonur/plugin-sentry), a Claude Code plugin on the current `sentry` v4 CLI.
+
 ```
 npx skills add yigitkonur/skills-by-yigitkonur --skill build-sentry-macos-swift
 ```
@@ -409,6 +411,8 @@ npx skills add yigitkonur/skills-by-yigitkonur --skill use-cloudflare-tunnel
 ### use-sentry
 
 Set up Sentry, audit an existing setup, or triage production errors.
+
+Superseded by [plugin-sentry](https://github.com/yigitkonur/plugin-sentry), a Claude Code plugin on the current `sentry` v4 CLI.
 
 ```
 npx skills add yigitkonur/skills-by-yigitkonur --skill use-sentry
