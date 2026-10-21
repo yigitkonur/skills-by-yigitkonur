@@ -10,7 +10,7 @@ Discovery channels:
 
 1. **Primary** — `npx -y skills find <keyword>` per keyword. No API key required; searches the open `skills.sh` registry.
 2. **GitHub Intelligence** — `gh search code` or `gh search repos` for real-world production implementations and patterns.
-3. **Deep Research Grounding** — `skills/run-research` for multi-source consensus search across authoritative documentation and specs.
+3. **Deep Research Grounding** — `/research:deep` (from the `research` plugin) for multi-source consensus search across authoritative documentation and specs.
 
 ```bash
 # Basic search — pass 3–20 keywords
@@ -56,7 +56,7 @@ for cmd in node git npx; do command -v "$cmd" >/dev/null || echo "MISSING: $cmd"
 **Fallback chain (when `npx` is unavailable):**
 1. `node scripts/skill-dl.mjs ...` (default) — requires `npx` for registry search.
 2. GitHub CLI (`gh search code "filename:SKILL.md <topic>"`) — search public skills directly on GitHub.
-3. Deep research via `run-research` — search official documentation, RFCs, and open source repositories.
+3. Deep research via the `research` plugin (`/research:deep`) — search official documentation, RFCs, and open source repositories.
 
 ## Downloading with skill-dl
 

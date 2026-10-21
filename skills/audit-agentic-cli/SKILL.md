@@ -24,7 +24,7 @@ Trigger this skill when the user is doing CLI-only agent-readiness work:
 Do **not** use this skill for:
 
 - **Surface choice (CLI vs MCP vs hybrid).** Make the surface decision first using your normal architecture process. Only after the surface decision is fixed as CLI does this skill apply.
-- **MCP server audits, schemas, transports, auth, or context budgets.** Route to `audit-agentic-mcp` for audit/architecture, `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` / `build-mcp-use-server` for implementation, `test-by-mcpc-cli` for live MCP verification.
+- **MCP server audits, schemas, transports, auth, or context budgets.** Route to `audit-agentic-mcp` for audit/architecture, `build-mcp-use-server` for mcp-use implementation (raw `@modelcontextprotocol/sdk` work has no skill in this pack: follow the SDK's own docs), `test-by-mcpc-cli` for live MCP verification.
 - **Vendor CLI operations** when a vendor skill exists. Use `run-railway` instead.
 - **Generic shell scripting** unrelated to the CLI's agent contract.
 

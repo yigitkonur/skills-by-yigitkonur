@@ -23,7 +23,7 @@ Facts here were verified against the Maestro `2.11.0` source (latest release, 20
 ## Do NOT use this skill when
 
 - Writing unit or component tests (Jest, Vitest)
-- Exploratory web browsing with no regression flow needed (use `run-agent-browser`)
+- Exploratory web browsing with no regression flow needed (out of scope: general browser automation)
 - Building or refactoring app source code
 - Automating **physical iPhones**: Maestro 2.11.0 fails fast with `Physical iOS devices are not yet supported`
 - Testing a third-party MCP server (use `test-by-mcpc-cli`); this skill drives Maestro's own `maestro mcp` server

@@ -59,7 +59,7 @@ The Capture Wave (see `references/capture-workflow.md`) produces the per-URL art
 
 ## L1 capture contract
 
-For every L1 URL kept in scope, capture (via `run-agent-browser` or the equivalent helper named in `references/capture-workflow.md`):
+For every L1 URL kept in scope, capture (via the browser tool described in `references/capture-workflow.md`):
 
 - final hydrated `dom.html`
 - `headings.json` — title, H1, ordered H2/H3 outline

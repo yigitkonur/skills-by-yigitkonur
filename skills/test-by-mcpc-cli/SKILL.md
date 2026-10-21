@@ -19,10 +19,10 @@ Drive `mcpc` 0.7.x as the operator-facing harness for any MCP server — stdio o
 
 ## Do NOT use this skill when
 
-- *Building or refactoring server code* → use `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server`
-- *Building or refactoring client/agent code* → use `build-mcp-use-client` or `build-mcp-use-agent`
+- *Building or refactoring server code* → use `build-mcp-use-server` for mcp-use servers; for raw `@modelcontextprotocol/sdk` servers follow the SDK's own docs
+- *Building or refactoring client/agent code* → out of scope; this skill only drives `mcpc`
 - *Running an agentic-quality / hardening / context-budget audit beyond CLI testing* → use `audit-agentic-mcp`
-- *Porting an existing v1 server to v2* → use `convert-mcp-sdk-v1-to-v2`
+- *Porting an existing v1 server to v2* → out of scope; follow the SDK's own migration guide
 
 ## Source of truth
 

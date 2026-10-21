@@ -150,7 +150,7 @@ Why: Describes what happens AND how it happens, with trigger phrases embedded.
 ### Excellent — action + prerequisite + outcome
 
 ```yaml
-description: Use if creating or redesigning an agent skill adhering to agentskills.io, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows.
+description: Use if creating or redesigning an agent skill adhering to agentskills.io, integrating web research for quality context, MJS/Python scripts, and multi-mode workflows.
 ```
 
 Why: States the action, prerequisite methodology, and implied outcome.

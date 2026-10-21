@@ -1,6 +1,6 @@
 # Mission Brief: Third-Party Scripts & Analytics Loading Discipline Audit
 
-## 3.0 Skills / Tools: view_file, run_command, use-sentry.
+## 3.0 Skills / Tools: view_file, run_command.
 
 ## 3.1 Context Block
 

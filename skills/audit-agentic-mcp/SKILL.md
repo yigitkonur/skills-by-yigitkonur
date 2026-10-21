@@ -24,12 +24,12 @@ This skill **does not write SDK code**. It diagnoses, prescribes, and routes.
 
 **Do NOT use this skill for:**
 
-- Writing or fixing raw `@modelcontextprotocol/sdk` v1 code → route to `build-mcp-server-sdk-v1`
-- Writing or fixing raw `@modelcontextprotocol/server` v2 alpha code → route to `build-mcp-server-sdk-v2`
+- Writing or fixing raw `@modelcontextprotocol/sdk` v1 code → out of scope; follow the SDK's own docs
+- Writing or fixing raw `@modelcontextprotocol/server` v2 alpha code → out of scope; follow the SDK's own docs
 - Writing or fixing `mcp-use/server` code → route to `build-mcp-use-server`
 - Live CLI smoke-testing of an MCP server → route to `test-by-mcpc-cli`
 - CLI agent-readiness (not MCP) → route to `audit-agentic-cli`
-- Migrating SDK v1 code to v2 → route to `convert-mcp-sdk-v1-to-v2`
+- Migrating SDK v1 code to v2 → out of scope; follow the SDK's own migration guide
 
 ## Hard rules (load-bearing)
 
@@ -120,12 +120,11 @@ Do not load the whole reference tree by default. Start with the smallest bundle.
 
 | Skill | When to pick | Tradeoff |
 |---|---|---|
-| [`build-mcp-server-sdk-v1`](../../../build-mcp-server-sdk-v1/) | Production-default raw SDK with widest client compatibility, stdio or HTTP | Manual transport/OAuth wiring; deprecated overloads still compile |
-| [`build-mcp-server-sdk-v2`](../../../build-mcp-server-sdk-v2/) | New greenfield projects accepting v2 alpha risk after checking npm and docs | Alpha APIs can change; Node 20+/ESM/Zod v4; no server-side OAuth |
 | [`build-mcp-use-server`](../../../build-mcp-use-server/) | New HTTP-first TypeScript server wanting `mcp-use/server` conventions, widgets/apps, OAuth helpers | Locks into `mcp-use/server` imports; less bare-metal control |
-| [`convert-mcp-sdk-v1-to-v2`](../../../convert-mcp-sdk-v1-to-v2/) | Migrating existing SDK v1 code to v2 alpha | Targets the migration only |
 | [`test-by-mcpc-cli`](../../../test-by-mcpc-cli/) | Repeatable stdio/Streamable HTTP smoke checks, JSON scripting, post-edit verification | Requires `mcpc 0.2.x` locally |
 | [`audit-agentic-cli`](../../../audit-agentic-cli/) | The interface should stay CLI-first or the task is CLI agent-readiness, not MCP | CLI contract work, not MCP protocol work |
+
+Raw official-SDK work (`@modelcontextprotocol/sdk` v1, `@modelcontextprotocol/server` v2 alpha) and v1 → v2 migration have no companion skill in this pack. Use the SDK's own docs: v1 is the production default with the widest client compatibility; v2 is for greenfield projects that accept alpha risk after checking npm and the docs (Node 20+, ESM, Zod v4, no server-side OAuth).
 
 ## Execution rhythm
 

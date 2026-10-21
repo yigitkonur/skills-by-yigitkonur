@@ -26,15 +26,15 @@ The output is one Next.js template per unique page type the source actually uses
 - The only source is a screenshot, PDF, Figma, or "vibe" reference — there is no parseable HTML/CSS or live route. This skill needs inspectable implementation to rebuild; with no HTML to crawl, use a generic UI-build path instead.
 - The user wants a **redesign, simplification, or "same vibe" rewrite** rather than faithful reconstruction.
 - The user wants generic Next.js UI work with no source URL or snapshot grounding.
-- The user wants a TinaCMS-backed editorial site from scratch — use `build-tinacms-nextjs`.
+- The user wants a TinaCMS-backed editorial site from scratch — out of scope; this skill only reconstructs an existing URL or snapshot.
 
 ## Sibling routing
 
 | Need | Route to |
 |---|---|
-| Browser capture and the back-to-back verification loop in *this* pipeline | `run-agent-browser` is the helper this skill drives. |
+| Browser capture and the back-to-back verification loop in *this* pipeline | Any browser automation tool that can do what `references/capture-workflow.md` lists. This skill does not require a specific one. |
 | Design-doc-only output for SaaS/dashboard/admin | a generic design-documentation path. Use this skill only when the deliverable is a buildable Next.js page. |
-| New CMS-backed Next.js site | `build-tinacms-nextjs`. This skill is for URL/snapshot reconstruction, not CMS scaffolding. The user typically uses `build-tinacms-nextjs` *after* this skill, to wire content onto the recovered templates. |
+| New CMS-backed Next.js site | Out of scope. This skill is for URL/snapshot reconstruction, not CMS scaffolding. Wire content onto the recovered templates afterwards with whichever CMS the user picks. |
 
 ## Setup contract
 
@@ -104,7 +104,7 @@ Read `references/input-output-spec.md` for input detection, working-root rules, 
 | 1. Capture (L0 + L1) | Crawl homepage and every same-origin link from it; capture hydrated DOM, screenshots, runtime metadata, and mirrored assets per URL | `references/capture-workflow.md` + `references/input-output-spec.md` | `.design-soul/capture/{route}/dom.html`, `mirror/`, screenshots, `runtime-metadata.json` | per-route capture artifacts present |
 | 2. Type extraction (NEW NAMED PHASE) | Cluster L1 URLs into **unique page types** by layout fingerprint; choose a canonical exemplar per type; emit `route-map.json` | `references/type-extraction.md` | `.design-soul/types/route-map.json`, `page-types.md`, per-URL fingerprints | `route-map.json` complete, one exemplar per type |
 | 3. Per-type rebuild | For each type, extract tokens (Wave 0), unify family (Wave 1), brief the build (Wave 2), scaffold (Wave 3), render (Wave 4) into **one** Next.js template per type | `references/foundations-agent.md`, `references/sections-agent.md`, `references/section-template.md`, `references/system-template.md`, `references/wave-pipeline.md`, `references/website-patterns.md` | `nextjs-project/app/...` (one template per type) | `wave3/foundation-ready.signal` + per-type Wave 4 build passes |
-| 4. Back-to-back verification (NEW NAMED PHASE) | Per type, drive `run-agent-browser` to load the **original** exemplar URL and the **candidate** Next.js URL at the same viewport; compare; pass/iterate/escalate | `references/back-to-back-verification.md` + `scripts/diff-screenshots.md` | `.design-soul/verify/{type}/iterations.json`, screenshots, `summary.md`, `verification-report.md` | all types pass at desktop/tablet/mobile, or user-approved residual drift |
+| 4. Back-to-back verification (NEW NAMED PHASE) | Per type, drive a browser tool to load the **original** exemplar URL and the **candidate** Next.js URL at the same viewport; compare; pass/iterate/escalate | `references/back-to-back-verification.md` + `scripts/diff-screenshots.md` | `.design-soul/verify/{type}/iterations.json`, screenshots, `summary.md`, `verification-report.md` | all types pass at desktop/tablet/mobile, or user-approved residual drift |
 | 5. Report back to the user (NEW NAMED PHASE) | Surface every type found, the L1 URLs it covers, the template path, the verification evidence, the residual drift, and the recommended next step | This SKILL.md — "Report back to the user" section below | `RECOVERY-REPORT.md` at the working root | user has the complete map of what was rebuilt and what is optional from here |
 
 If the user only asked for extraction or documentation, stop after Phase 2 or Wave 1 instead of pushing to build.
@@ -113,7 +113,7 @@ If the user only asked for extraction or documentation, stop after Phase 2 or Wa
 
 The crawl is the homepage (L0) plus every same-origin link reachable from it (L1). The capture contract per URL is unchanged from the existing capture workflow.
 
-- Open L0 with `run-agent-browser`. Wait for the page to settle. Capture hydrated `dom.html`, headings, runtime metadata, screenshots at 1440/768/375, and mirror the route's CSS/JS/fonts/images.
+- Open L0 in the browser tool. Wait for the page to settle. Capture hydrated `dom.html`, headings, runtime metadata, screenshots at 1440/768/375, and mirror the route's CSS/JS/fonts/images.
 - Extract every same-origin in-DOM link from L0 (skip `mailto:`, `tel:`, `javascript:`, `#` anchors, external hosts, and obvious tracking/locale duplicates).
 - Repeat the capture contract for each L1 URL. Treat sticky headers, lazy content, and modals as default-state captures unless the user asks otherwise.
 - Crawl deeper than L1 only when the user explicitly opts in.
@@ -173,7 +173,7 @@ For each type in `route-map.json`, run the existing waves against the type's can
 
 Think first:
 
-- **Capture:** Which browser helper produces the complete evidence contract for this source? (Use `run-agent-browser`.)
+- **Capture:** Which browser helper produces the complete evidence contract for this source? (Any browser tool that meets the capability list in `references/capture-workflow.md`.)
 - **Type extraction:** Are any clusters borderline? If yes, ask before committing.
 - **Wave 0:** Which CSS corpus is strongest for this type — mirrored live capture, `_files/`, adjacent CSS, inline CSS, or source fallback?
 - **Wave 3:** Which types stay static, and which exact interactions justify Client Components?
@@ -183,16 +183,16 @@ Think first:
 
 This is the discrete named phase that proves each type's Next.js template is faithful to the deployed source. It runs **per type**, not per URL. Read `references/back-to-back-verification.md` for the full procedure.
 
-### Tool: `run-agent-browser`
+### Tool: a browser automation tool
 
-This phase explicitly drives `run-agent-browser`. The loop uses, at minimum:
+This phase needs a browser automation tool; no specific one is required. The loop needs it to:
 
-- `open` to load the original URL on the live site, then the candidate URL on `localhost:3000`
-- `snapshot -i` to confirm the DOM has settled before each screenshot
-- viewport switching (1440 × 900, 768 × 1024, 375 × 812) so original and candidate are captured at the same width
-- `screenshot` to write `.design-soul/verify/{type}/original-{viewport}.png` and `candidate-{viewport}.png`
-- `get text` and `eval --stdin` heredoc for heading-outline and section-text comparison when pixel noise is high
-- `--session-name verify-{type}` so each type runs in a clean named session; `--headed` when the original site fights headless browsers
+- open a URL: the original on the live site, then the candidate on `localhost:3000`
+- wait until the DOM has settled before each screenshot
+- set the viewport (1440 × 900, 768 × 1024, 375 × 812) so original and candidate are captured at the same width
+- save a screenshot to `.design-soul/verify/{type}/original-{viewport}.png` and `candidate-{viewport}.png`
+- read text by selector and run JavaScript in the page, for heading-outline and section-text comparison when pixel noise is high
+- keep one clean named session per type (`verify-{type}`), and run headed when the original site fights headless browsers
 
 ### Loop shape
 
@@ -241,7 +241,7 @@ When every type has either passed the verification loop or has user-accepted res
 4. **Where the screenshots live** — for each type and viewport, the original/candidate pair paths under `.design-soul/verify/{type}/`.
 5. **Known residual differences (if any)** — per type, the dimensions that did not fully match and why, taken from the type's `summary.md`.
 6. **What is still `UNVERIFIED`** — any tokens, fonts, or assets the agent could not ground from captured evidence; the user must decide whether to substitute or hunt down.
-7. **The recommended next step** — for most projects, this is *"wire up dynamic content with TinaCMS, MDX, or a CMS of your choice onto the typed templates."* Mention `build-tinacms-nextjs` as the natural follow-on when the user wants a TinaCMS-backed editorial site.
+7. **The recommended next step** — for most projects, this is *"wire up dynamic content with TinaCMS, MDX, or a CMS of your choice onto the typed templates."*
 8. **What this skill explicitly did NOT do** — name the boundaries: no L2+ crawl unless asked, no third-party analytics/chat/tag-manager scripts re-added, no auth/dashboard routes, no copy or design "improvements."
 
 The user must walk away knowing exactly what was rebuilt, exactly what is optional from here, and exactly what was deliberately left alone.
@@ -329,7 +329,7 @@ done
 | Live-capture prerequisites, working root, route normalization, canonical exemplar selection | `references/capture-workflow.md` |
 | Input detection, capture outputs, output trees, ambiguous requests | `references/input-output-spec.md` |
 | L0 + L1 crawl, layout fingerprints, type clustering, one-template-per-type output | `references/type-extraction.md` |
-| Back-to-back original-vs-candidate verification loop with `run-agent-browser` | `references/back-to-back-verification.md` |
+| Back-to-back original-vs-candidate verification loop with a browser tool | `references/back-to-back-verification.md` |
 | Hard rules: grounding, section identification, zero invention | `references/principles-and-rules.md` |
 | Wave 0 extraction method | `references/foundations-agent.md` |
 | Wave 1 design-soul extraction | `references/sections-agent.md` |

@@ -16,21 +16,21 @@ You need:
   - inspect or export DOM
 - shell access for `curl`, `find`, and basic text processing
 
-Preferred browser tools:
+Browser tool:
 
-- Use `run-agent-browser` for Capture Wave browser work.
+- Use whichever browser automation tool is available (a browser MCP, Playwright, or similar) for Capture Wave browser work. No specific one is required.
 
 If no browser automation tool is available, live capture mode is blocked. Fall back to saved snapshots or install/enable a browser driver first.
 
-`run-agent-browser` is the capture helper. It does not replace this conversion pipeline; this skill still owns route inventory, evidence contracts, extraction waves, Next.js output, and visual QA.
+The browser tool is only the capture helper. It does not replace this conversion pipeline; this skill still owns route inventory, evidence contracts, extraction waves, Next.js output, and visual QA.
 
 ### Browser Capture Routing Table
 
 | Capture need | Preferred route | Required artifact |
 |---|---|---|
-| Live URL capture | `run-agent-browser` | Route URL/title, hydrated DOM, screenshots, asset/runtime metadata |
-| Local `file://` snapshots | `run-agent-browser` with file access | DOM export plus local asset path mapping |
-| Interactive, lazy, or scroll-revealed routes | `run-agent-browser` first, preserving observe → act → verify notes | Default settled state, scroll slices, state notes |
+| Live URL capture | Browser tool | Route URL/title, hydrated DOM, screenshots, asset/runtime metadata |
+| Local `file://` snapshots | Browser tool with file access | DOM export plus local asset path mapping |
+| Interactive, lazy, or scroll-revealed routes | Browser tool first, preserving observe → act → verify notes | Default settled state, scroll slices, state notes |
 | Screenshots | Browser helper screenshot command | Desktop, tablet, mobile, and scroll-segment images |
 | DOM export | Browser helper DOM/eval command | `dom.html` after hydration and route settle |
 | Network/runtime metadata | Browser helper eval/network/runtime inspection | stylesheet/script/font/image URLs, build IDs, framework data |

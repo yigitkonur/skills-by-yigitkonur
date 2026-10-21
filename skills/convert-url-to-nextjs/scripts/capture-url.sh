@@ -124,8 +124,7 @@ cat > "$capture_dir/capture-handoff.md" <<EOF
 - URL: $url
 - Route: $route
 - Capture directory: $capture_dir
-- Preferred helper: run-agent-browser
-- Fallback helper: run-playwright only when explicitly requested, run-agent-browser is unavailable, or an existing Playwright CLI session is already active.
+- Helper: any browser automation tool that can produce the required outputs (see references/capture-workflow.md)
 
 Required outputs:
 - $capture_dir/dom.html
@@ -142,7 +141,7 @@ EOF
 
 if [ -z "$browser_command" ]; then
   echo "Prepared capture skeleton at $capture_dir"
-  echo "No browser command supplied; run browser capture with run-agent-browser or an approved fallback and leave done.signal unwritten."
+  echo "No browser command supplied; run browser capture with your browser automation tool and leave done.signal unwritten."
   exit 0
 fi
 

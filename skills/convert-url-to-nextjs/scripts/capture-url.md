@@ -37,7 +37,7 @@ Options:
 
 ## Browser Routing
 
-Use `run-agent-browser` for the command that creates the actual artifacts.
+Use your browser automation tool for the command that creates the actual artifacts.
 
 The script does not perform browser automation by itself. It delegates to the supplied command and then verifies that required files exist.
 

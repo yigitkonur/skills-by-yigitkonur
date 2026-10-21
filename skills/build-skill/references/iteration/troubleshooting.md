@@ -335,7 +335,7 @@ node scripts/skill-dl.mjs inspect ./research-corpus
 If `npx` is missing and you cannot run registry searches, fall back to:
 
 1. GitHub search via `gh search code` or web search for repos containing `SKILL.md`
-2. Direct deep research via `skills/run-research`
+2. Direct deep research via the `research` plugin (`/research:deep`)
 
 **Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability. From inside this skill, `node scripts/skill-dl.mjs ...` is the preferred portable entrypoint.
 

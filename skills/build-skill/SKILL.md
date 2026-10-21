@@ -1,6 +1,6 @@
 ---
 name: build-skill
-description: "Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows."
+description: "Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating web research for quality context, MJS/Python scripts, and multi-mode workflows."
 disable-model-invocation: true
 license: MIT
 metadata:
@@ -12,13 +12,14 @@ metadata:
 
 Synthesize robust, spec-compliant agent skills adhering to the open [Agent Skills Specification](https://agentskills.io/specification). Built on empirical research, progressive disclosure, deterministic scripting, and verified domain context.
 
-## Mandatory Companion Prerequisite: `run-research`
+## Mandatory Research Prerequisite: the `research` plugin
 
-High-quality skills cannot be built in a vacuum or from stale model memory. Skill authoring requires verified ground truth:
-- **Prerequisite skill**: [`skills/run-research`](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/run-research)
-- **Install command**: `npx -y skills add yigitkonur/skills-by-yigitkonur/skills/run-research -y`
+High-quality skills cannot be built in a vacuum or from stale model memory. Skill authoring requires verified ground truth, gathered with the `research` plugin (Research Powerpack):
+- **Plugin**: [`yigitkonur/plugin-research-powerpack`](https://github.com/yigitkonur/plugin-research-powerpack)
+- **Install command**: `claude plugin marketplace add yigitkonur/plugin-research-powerpack`, then `claude plugin install research@plugin-research-powerpack`
+- **Skills it provides**: `/research:ask` for one question, `/research:deep` for a multi-source run that ends in files, `/research:verify` to fact-check a document
 
-> **Standing Invariant**: Never draft a skill based on assumptions, unverified library contracts, or generic training weights. When non-trivial APIs, frameworks, or domain workflows are involved, invoke `run-research` first to gather authoritative documentation, verifiable quotes, and real code patterns. **If `run-research` is not installed or available, refuse to run and prompt the user to install it before proceeding.** Quality skills cannot exist without quality context.
+> **Standing Invariant**: Never draft a skill based on assumptions, unverified library contracts, or generic training weights. When non-trivial APIs, frameworks, or domain workflows are involved, run `/research:ask` (one question) or `/research:deep` (five or more sources or entities) first to gather authoritative documentation, verifiable quotes, and real code patterns. **If the `research` plugin is not installed, prompt the user to install it before proceeding.** Outside Claude Code (for example in Codex, where Claude Code plugins do not load), use whatever web-search and page-reading tools you have and hold the same standard: cited, verbatim evidence for every non-trivial claim. If you have neither, refuse to run. Quality skills cannot exist without quality context.
 
 ## When to Use
 
@@ -38,7 +39,7 @@ Do NOT use this skill for:
 ## Core Non-Negotiable Rules
 
 1. **Specification compliance first**: Frontmatter strictly adheres to `agentskills.io/specification` (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`). No arbitrary top-level fields.
-2. **Context grounding before drafting**: Invoke `run-research` for all non-trivial domains. Refuse to run without verified research and refuse to hallucinate APIs or edge cases.
+2. **Context grounding before drafting**: Run `/research:ask` or `/research:deep` for all non-trivial domains. Refuse to run without verified research and refuse to hallucinate APIs or edge cases.
 3. **Progressive disclosure architecture**: Keep `SKILL.md` under 500 lines (<5,000 tokens). Offload bulky documentation to `references/` (1-level deep) and deterministic operations to `scripts/`.
 4. **Deterministic scripting**: Write bundled scripts in portable JavaScript (`.mjs` ES Modules) or Python (`.py`). Avoid fragile shell scripts (`.sh`).
 5. **Reproduce, test, and verify**: Always test scripts and verify execution infrastructure before declaring done.
@@ -80,7 +81,7 @@ Use after discovery to draft a new skill or perform a major refactor from discov
 
 ### Mode 3: Conversation-Driven Mode (High-Token Session Distillation)
 Use when converting an extensive in-flight conversation (e.g. 200k–400k tokens) into a reusable skill.
-1. **Mental Model & Research Alignment**: Ingest the chat context and invoke `run-research` on the fly to ground any ambiguous domain tools or commands used during the session.
+1. **Mental Model & Research Alignment**: Ingest the chat context and run `/research:ask` on the fly to ground any ambiguous domain tools or commands used during the session.
 2. **Step-by-Step Confession (Up to 5-Level Nested List)**:
    Reconstruct the exact progression of actions, corrections, and discoveries to link back to agent memory:
    - Level 1: Primary Milestone (e.g. Setting up authentication)
@@ -96,15 +97,15 @@ Use when converting an extensive in-flight conversation (e.g. 200k–400k tokens
 
 ### Mode 4: Pure Research / Documentation-Driven Mode
 Use when authoring a skill for a specific repository, library, or framework from scratch.
-1. **Exhaustive Extraction via `run-research`**: Query official docs, source code, migration guides, and GitHub issue trackers.
+1. **Exhaustive Extraction via the `research` plugin**: Query official docs, source code, migration guides, and GitHub issue trackers.
 2. **Deep Reference Blocks**: Build detailed, reusable reference files under `references/` containing hundreds of verified references organized into atomic blocks.
 3. **Actionable "Do This, Not That" Guidance**: Break instructions down into explicit, imperative steps ("Run...", "Configure...", "Verify...") with clear failure modes and counters.
 
 ## Step-by-Step Authoring Workflow
 
-1. **Verify Prerequisites**: Confirm `run-research` is accessible and `node scripts/skill-dl.mjs --where` succeeds.
+1. **Verify Prerequisites**: Confirm the `research` plugin (or an equivalent web research tool) is available and `node scripts/skill-dl.mjs --where` succeeds.
 2. **Select Mode**: Choose Discovery, Creation, Conversation-driven, or Documentation mode.
-3. **Execute Research**: Collect evidence via `run-research` and `skill-dl.mjs search`. Build the comparison table.
+3. **Execute Research**: Collect evidence via `/research:deep` (or `/research:ask`) and `skill-dl.mjs search`. Build the comparison table.
 4. **Draft `SKILL.md`**:
    - Write valid YAML frontmatter conforming to `agentskills.io`.
    - Formulate clear imperative workflow sections with validation gates.
@@ -120,7 +121,7 @@ Use when authoring a skill for a specific repository, library, or framework from
 
 | Do This | Not That |
 |---|---|
-| Ground every skill in verified facts using `run-research` | Hallucinate APIs or procedures from model memory |
+| Ground every skill in verified facts using the `research` plugin | Hallucinate APIs or procedures from model memory |
 | Write portable, robust scripts in Node.js (`.mjs`) or Python (`.py`) | Author fragile shell scripts (`.sh`) with platform-dependent grep/sed |
 | Adhere strictly to the 6 canonical `agentskills.io` frontmatter fields | Invent arbitrary frontmatter fields like `user-invocable` or `hooks` |
 | Keep `SKILL.md` under 500 lines and route details to `references/` | Stuff monolithic 1,500-line guides into a single `SKILL.md` |
@@ -148,7 +149,7 @@ Read the smallest relevant reference set for your current task:
 - [`references/patterns/mcp-enhancement.md`](references/patterns/mcp-enhancement.md): Building skills that wrap and coordinate MCP server tools.
 
 ### Research & Sourcing
-- [`references/research-workflow.md`](references/research-workflow.md): Grounding with `run-research`, multi-angle discovery, and comparison tables.
+- [`references/research-workflow.md`](references/research-workflow.md): Grounding with the `research` plugin, multi-angle discovery, and comparison tables.
 - [`references/remote-sources.md`](references/remote-sources.md): Registry workflows with `skills.sh` and `scripts/skill-dl.mjs`.
 - [`references/comparison-workflow.md`](references/comparison-workflow.md): Structuring evidence, comparison tables, and inherit/avoid decisions.
 - [`references/source-patterns.md`](references/source-patterns.md): Identifying high-signal design patterns from external skills.
@@ -172,7 +173,7 @@ Read the smallest relevant reference set for your current task:
 - [ ] `name` matches directory name exactly (`build-skill`)
 - [ ] Description states WHAT the skill does and WHEN to use it (<1024 characters, no `<` or `>`)
 - [ ] `SKILL.md` line count is under 500 lines
-- [ ] Companion prerequisite `run-research` is documented and linked
+- [ ] Research prerequisite (the `research` plugin) is documented with its install command
 - [ ] All bundled scripts in `scripts/` are written in Node.js (`.mjs`) or Python (`.py`)
 - [ ] Bundled scripts execute cleanly (`node scripts/skill-dl.mjs --where`)
 - [ ] Every file in `references/` is explicitly routed in the reference routing section

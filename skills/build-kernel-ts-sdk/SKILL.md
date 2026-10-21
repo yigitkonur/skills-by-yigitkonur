@@ -29,17 +29,17 @@ Use this skill if the task involves any of:
 
 Do **NOT** use this skill for:
 
-- _Terminal-driving the `agent-browser` CLI (`agent-browser -p kernel`, `@ref` snapshots, `snapshot -i --json`) — use `run-agent-browser`. This skill owns Kernel-SDK code; `run-agent-browser` owns the CLI._
+- _Terminal-driving the `agent-browser` CLI (`agent-browser -p kernel`, `@ref` snapshots, `snapshot -i --json`) — out of scope. This skill owns Kernel-SDK code; follow the CLI's own docs for the CLI._
 - _Python Kernel SDK (`kernel-python-sdk`), or Browser Use's Python framework — no native TS package._
-- _LangChain.js / LangGraph agents that may incidentally call browser tools but are not Kernel-specific (`build-langchain-ts-app`)._
+- _LangChain.js / LangGraph agents that may incidentally call browser tools but are not Kernel-specific._
 
 ## Cross-skill disambiguation
 
 | Situation | Use |
 |---|---|
 | TypeScript code importing `@onkernel/sdk` or deploying a Kernel App | `build-kernel-ts-sdk` |
-| `agent-browser` CLI loops, including `agent-browser -p kernel` | `run-agent-browser` |
-| LangChain.js/LangGraph agent where browser tools are optional | `build-langchain-ts-app` |
+| `agent-browser` CLI loops, including `agent-browser -p kernel` | Out of scope: follow the CLI's own docs |
+| LangChain.js/LangGraph agent where browser tools are optional | Out of scope: follow LangChain's own docs |
 
 ## Two operating modes — decide first
 
@@ -269,5 +269,5 @@ End-to-end checks for any Kernel-TS task:
 This skill covers `@onkernel/sdk`, `@onkernel/managed-auth-react`, and the corresponding `@onkernel/cli` workflows in TypeScript. It does not cover:
 
 - The Python SDK (`kernel-python-sdk`)
-- Terminal-driving the `agent-browser` CLI (use `run-agent-browser`)
+- Terminal-driving the `agent-browser` CLI (out of scope: follow the CLI's own docs)
 - Browser Use's Python framework — there is no native TS package
