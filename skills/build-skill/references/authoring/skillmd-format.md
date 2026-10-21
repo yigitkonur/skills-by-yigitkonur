@@ -64,7 +64,7 @@ The markdown body after frontmatter contains the instructions the agent follows 
 Brief one-line purpose statement.
 
 ## Integration & prerequisites
-Mandatory dependencies, such as companion skills (e.g. run-research).
+Mandatory dependencies, such as companion skills or plugins (e.g. the `research` plugin).
 
 ## Core modes & decision tree
 Route the agent based on the task (Discovery, Creation, Conversation-driven, Research-driven).

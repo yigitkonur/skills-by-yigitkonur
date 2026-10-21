@@ -24,30 +24,30 @@ Original and candidate must be loaded at the **same viewport**, in the **same br
 
 ---
 
-## `run-agent-browser` is the verification tool
+## The browser tool
 
-This phase explicitly drives `run-agent-browser`. The skill assumes the agent has already read `run-agent-browser`'s SKILL (or is willing to read it now if it has not).
+This phase needs a browser automation tool (a browser MCP, Playwright, or any CLI that can do the steps below). No specific tool is required.
 
-### Commands the loop uses
+### What the loop needs
 
-| Step | `run-agent-browser` verb | Purpose |
+| Step | Capability | Purpose |
 |---|---|---|
-| Open the original URL | `agent-browser open <ORIGINAL_URL>` | Load the live deployed page |
-| Wait for layout to settle | `agent-browser snapshot -i` | Confirm the DOM is interactive (acts as a settle signal) |
-| Switch viewport | `agent-browser viewport 1440x900` (and `768x1024`, `375x812`) | Run the loop at the three target widths |
-| Capture original screenshot | `agent-browser screenshot .design-soul/verify/{type}/original-{viewport}.png` | Pixel record of the source |
-| Open the candidate URL | `agent-browser open http://localhost:3000/{path}` | Load the Next.js dev/preview build at the same viewport |
-| Capture candidate screenshot | `agent-browser screenshot .design-soul/verify/{type}/candidate-{viewport}.png` | Pixel record of the rebuild |
-| Inspect divergent text | `agent-browser get text <selector>` | Confirm visible copy matches when the user expects identical text |
-| Extract heading outline | `agent-browser eval --stdin` heredoc → `Array.from(document.querySelectorAll('h1,h2,h3')).map(h => [h.tagName, h.textContent.trim()])` | Layout-structure comparison without pixel noise |
+| Open the original URL | open a URL | Load the live deployed page |
+| Wait for layout to settle | wait until the DOM stops changing (network idle, or two identical snapshots) | Confirm the page is ready before capture |
+| Switch viewport | set the viewport to 1440x900, then 768x1024 and 375x812 | Run the loop at the three target widths |
+| Capture original screenshot | save a screenshot to `.design-soul/verify/{type}/original-{viewport}.png` | Pixel record of the source |
+| Open the candidate URL | open `http://localhost:3000/{path}` | Load the Next.js dev/preview build at the same viewport |
+| Capture candidate screenshot | save a screenshot to `.design-soul/verify/{type}/candidate-{viewport}.png` | Pixel record of the rebuild |
+| Inspect divergent text | read the text of a selector | Confirm visible copy matches when the user expects identical text |
+| Extract heading outline | run JavaScript in the page: `Array.from(document.querySelectorAll('h1,h2,h3')).map(h => [h.tagName, h.textContent.trim()])` | Layout-structure comparison without pixel noise |
 
-When the verb names above do not exactly match the installed `run-agent-browser` version, use the closest equivalent named in `run-agent-browser`'s own SKILL. The verification loop's contract — *same viewport, same settle, original first then candidate, structured iteration entry* — is what matters; the exact CLI surface follows whatever `run-agent-browser` exposes today.
+Use whatever your tool calls these operations. The verification loop's contract — *same viewport, same settle, original first then candidate, structured iteration entry* — is what matters, not the tool's command surface.
 
 ### Browser hygiene
 
-- Open the original first, capture, then navigate the same tab/session to the candidate. Re-snapshot before screenshotting the candidate.
-- Use a single named session for the whole type (`--session-name verify-{type}`) so cookies/cache do not contaminate later types.
-- For sites with heavy anti-bot defense, switch to `--headed` mode for the original capture; the candidate is local so it is unaffected.
+- Open the original first, capture, then navigate the same tab/session to the candidate. Let the page settle again before screenshotting the candidate.
+- Use a single named session for the whole type (for example `verify-{type}`) so cookies/cache do not contaminate later types.
+- For sites with heavy anti-bot defense, run the original capture in a headed (visible) browser; the candidate is local so it is unaffected.
 - Close auxiliary tabs at the end of each type — leave the browser in a sane state for the next type.
 
 ---

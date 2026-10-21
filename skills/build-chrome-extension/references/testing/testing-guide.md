@@ -8,7 +8,7 @@ Verified: 2026-05-09 against:
 - [Chrome extension service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
 - [Chrome debug extensions tutorial](https://developer.chrome.com/docs/extensions/get-started/tutorial/debug)
 
-Route general browser-driving, screenshots, form automation, and live page workflows to `run-agent-browser`.
+General browser-driving, screenshots, form automation, and live page workflows are out of scope here; use a general browser automation tool.
 
 ## Test Layers
 

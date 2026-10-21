@@ -2,13 +2,14 @@
 
 Research is mandatory before skill synthesis. You cannot create a qualified skill without verified domain context.
 
-## Mandatory Prerequisite: `run-research`
+## Mandatory Prerequisite: the `research` plugin
 
-This workflow strictly requires the **`run-research`** skill to be installed and available:
-- **Repository URL**: [skills/run-research](https://github.com/yigitkonur/skills-by-yigitkonur/tree/main/skills/run-research)
-- **Install command**: `npx -y skills add yigitkonur/skills-by-yigitkonur/skills/run-research -y`
+This workflow runs on the **`research`** plugin (Research Powerpack); install it first:
+- **Plugin**: [`yigitkonur/plugin-research-powerpack`](https://github.com/yigitkonur/plugin-research-powerpack)
+- **Install command**: `claude plugin marketplace add yigitkonur/plugin-research-powerpack`, then `claude plugin install research@plugin-research-powerpack`
+- **Skills it provides**: `/research:ask` for one question, `/research:deep` for a multi-source run that ends in files, `/research:verify` to fact-check a document
 
-> **Standing Invariant**: Never draft a skill based on LLM memory, assumptions, or generic training data alone. When non-trivial APIs, frameworks, or workflows are involved, invoke `run-research` to gather authoritative documentation, code examples, and verified quotes. If `run-research` is not available, install it before proceeding.
+> **Standing Invariant**: Never draft a skill based on LLM memory, assumptions, or generic training data alone. When non-trivial APIs, frameworks, or workflows are involved, run `/research:ask` or `/research:deep` to gather authoritative documentation, code examples, and verified quotes. If the plugin is not available, install it before proceeding. Outside Claude Code, use whatever web-search and page-reading tools you have and keep the same cited-evidence standard.
 
 ## When Remote Research is Mandatory
 
@@ -35,7 +36,7 @@ Before looking outward, capture the local baseline:
    ```
 2. **Subagent Consortium Delegation**:
    For complex topics, delegate exploration across up to 3–5 parallel subagents:
-   - *Subagent 1 (Specification & Standards)*: Verify official schemas, RFCs, and API docs via `run-research`.
+   - *Subagent 1 (Specification & Standards)*: Verify official schemas, RFCs, and API docs via `/research:ask`.
    - *Subagent 2 (Registry & Ecosystem)*: Inspect top-ranked skills on `skills.sh` for existing patterns.
    - *Subagent 3 (Edge Cases & Failure Modes)*: Investigate known issues, migration traps, and gotchas via GitHub / web search.
 3. **Download Selected Candidates**:

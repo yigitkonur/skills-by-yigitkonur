@@ -15,7 +15,7 @@ Use the full checklist for published skills. Use Phase 0-3 for personal skills. 
 
 Planning and preparation before writing any files.
 
-- [ ] If using the full research path: verified the bundled `node scripts/skill-dl.mjs --where` resolves and that Node.js / git are available. Confirmed companion skill `run-research` is installed and ready.
+- [ ] If using the full research path: verified the bundled `node scripts/skill-dl.mjs --where` resolves and that Node.js / git are available. Confirmed the `research` plugin (or an equivalent web research tool) is installed and ready.
 - [ ] Identified 2-3 concrete use cases with specific user trigger phrases
 - [ ] Classified skill type: Document/Asset Creation, Workflow Automation, or MCP Enhancement
 - [ ] Listed all tools needed: built-in Claude tools, MCP servers, scripts

@@ -24,10 +24,10 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 |---|---|---|
 | Builder/creator | `build-{thing}` or `create-{thing}` | `build-mcp-server`, `create-component` |
 | Reviewer/analyzer | `run-review` or `audit-{thing}` | `run-review`, `audit-completion` |
-| Runner/executor | `run-{thing}` | `run-agent-browser`, `run-research` |
+| Runner/executor | `run-{thing}` | `run-railway`, `run-ts-cleanup` |
 | Initializer | `init-{thing}` or `setup-{thing}` | `init-agent-config` |
 | Converter | `convert-{source}-{target}` | `convert-url-to-nextjs` |
-| Research/exploration | `research-{topic}` or `run-research` | `run-research` |
+| Research/exploration | `research-{topic}` | `research-auth-flows` |
 | Debugging | `debug-{tool}` | `debug-provider-routing` |
 
 ### Common naming mistakes
@@ -176,7 +176,7 @@ Decision tree branch:        Subdirectory:
 When one skill mentions another (in description or body):
 
 ```markdown
-For MCP server setup, see the `build-mcp-server-sdk-v1` skill.
+For MCP server setup, see the `build-mcp-use-server` skill.
 ```
 
 Always use the target skill's `name` field, not its directory path. The agent resolves the name to the correct location.

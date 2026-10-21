@@ -25,12 +25,11 @@ START: User wants to build a new MCP server
 |
 +-- Q3: Local or remote?
 |   +-- Local stdio (user's machine, one process)
-|   |   --> Official TS SDK v1 (stdio-canonical)
-|   |   --> Install build-mcp-server-sdk-v1
+|   |   --> Official TS SDK v1 (stdio-canonical; follow the SDK's own docs)
 |   +-- Remote HTTP
 |       +-- New project, HTTP-first, want modern DX --> mcp-use/server (install build-mcp-use-server)
-|       +-- Mixed stdio + HTTP, widest compatibility --> Official TS SDK v1 (install build-mcp-server-sdk-v1)
-|       +-- Willing to accept alpha/pre-release risk  --> Official TS SDK v2 (read build-mcp-server-sdk-v2 SKILL.md first)
+|       +-- Mixed stdio + HTTP, widest compatibility --> Official TS SDK v1 (follow the SDK's own docs)
+|       +-- Willing to accept alpha/pre-release risk  --> Official TS SDK v2 (read the SDK's own docs and npm dist-tags first)
 |
 +-- Q4..Q12: auth, stateful, clients, tool count, destructive, distribution, advanced features, success metric
 |
@@ -57,8 +56,8 @@ START: User wants to build a new MCP server
 | Framework | Best for | Transport | stdio | OAuth | Maturity | Install command |
 |---|---|---|---|---|---|---|
 | **mcp-use/server** | New remote MCP in TypeScript, HTTP-first, widgets/apps, OAuth helpers, modern DX | Streamable HTTP (native), SSE fallback | No — mcp-use is HTTP-first; use the official SDK if you need stdio | Built-in OAuth helpers | GA; default for new remote servers that want its conventions | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-server` |
-| **Official TS SDK v1** (`@modelcontextprotocol/sdk`) | stdio MCPs, local dev tools, widest compatibility, anything shipping as `npx` | stdio + Streamable HTTP | Yes — production-default raw SDK path | BYO or via wrapper (e.g. Cloudflare `workers-oauth-provider`) | GA, widely adopted | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v1` |
-| **Official TS SDK v2 alpha** (`@modelcontextprotocol/server`) | New projects that want the split-package v2 API and accept pre-release risk | stdio + Streamable HTTP | Yes | Client-side only; server-side OAuth removed | **Alpha if npm still shows alpha** — not production-default. Read `build-mcp-server-sdk-v2` SKILL.md before picking | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v2` |
+| **Official TS SDK v1** (`@modelcontextprotocol/sdk`) | stdio MCPs, local dev tools, widest compatibility, anything shipping as `npx` | stdio + Streamable HTTP | Yes — production-default raw SDK path | BYO or via wrapper (e.g. Cloudflare `workers-oauth-provider`) | GA, widely adopted | None in this pack; follow the SDK's own docs (`modelcontextprotocol/typescript-sdk` on GitHub) |
+| **Official TS SDK v2 alpha** (`@modelcontextprotocol/server`) | New projects that want the split-package v2 API and accept pre-release risk | stdio + Streamable HTTP | Yes | Client-side only; server-side OAuth removed | **Alpha if npm still shows alpha** — not production-default. Check the SDK's own docs and npm dist-tags before picking | None in this pack; follow the SDK's own docs (`modelcontextprotocol/typescript-sdk` on GitHub) |
 | **SKIP — use CLI / agent skill** | Agent already has well-maintained CLI/SDK access, or static workflow guidance would suffice | N/A | N/A | N/A | N/A | See `../patterns/mcp-vs-cli.md` and `companion-toolchain.md` |
 
 Before relying on this table, rerun:
@@ -116,7 +115,7 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 
 ## Next steps
 1. User approves this sketch.
-2. Install <companion skill name> (exact install command from the picker above).
+2. Install the companion skill if its picker row has an install command; otherwise follow the SDK's own docs.
 3. After the first tool lands, run `../../SKILL.md` optimize flow against the prototype.
 ```
 
@@ -141,4 +140,4 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 - Cost per session exceeds budget → `../patterns/context-engineering.md` and `../patterns/mcp-vs-cli.md` Pattern 3.
 - Single-user scope grows to multi-tenant → `security-posture.md` and `../patterns/security.md` (OBO / CIMD).
 - Trust incident or security concern → `../patterns/threat-catalog.md` + `../patterns/security.md`.
-- SDK v2 npm dist-tags or official docs change → re-read `build-mcp-server-sdk-v2` SKILL.md; if v2 remains alpha, consider falling back to v1.
+- SDK v2 npm dist-tags or official docs change → re-read the SDK's own docs; if v2 remains alpha, consider falling back to v1.

@@ -25,7 +25,7 @@ Drive the native macOS **ChatGPT desktop app** (`/Applications/ChatGPT.app`) as 
 **Do NOT use this skill for:**
 
 - Direct OpenAI API calls (use official OpenAI SDK or MCP tools instead)
-- Headless browser automation without ChatGPT (use `run-agent-browser` or `ego-browser`)
+- Headless browser automation without ChatGPT (out of scope: use a general browser automation tool)
 - Local codebase or filesystem-only search (use `grep_search` or `find_by_name`)
 
 ---

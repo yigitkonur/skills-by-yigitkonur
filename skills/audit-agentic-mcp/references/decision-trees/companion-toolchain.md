@@ -12,15 +12,13 @@ START: What needs to happen after the MCP audit or architecture sketch?
 |       Use for tools, schemas, responses, auth, sessions, transports,
 |       MCP Apps widgets, ChatGPT Apps, Inspector, and deploy mechanics.
 |
-+-- Implement or maintain raw official SDK v1?
-|   +-- YES --> build-mcp-server-sdk-v1
-|       Use for @modelcontextprotocol/sdk v1.x, single-package imports,
-|       Zod v3/raw-shape patterns, stdio, Streamable HTTP, OAuth, and v1 APIs.
-|
-+-- Implement or maintain raw official SDK v2?
-|   +-- YES --> build-mcp-server-sdk-v2
-|       Use only after checking current npm/docs state and confirming the user
-|       accepts alpha/pre-release risk when v2 is still alpha.
++-- Implement or maintain a raw official SDK server (v1 or v2)?
+|   +-- YES --> the SDK's own docs (no companion skill in this pack)
+|       v1: @modelcontextprotocol/sdk 1.x, single-package imports,
+|       Zod v3/raw-shape patterns, stdio, Streamable HTTP, OAuth.
+|       v2: @modelcontextprotocol/server split packages; use only after
+|       checking current npm/docs state and confirming the user accepts
+|       alpha/pre-release risk when v2 is still alpha.
 |
 +-- Need live verification against a running server?
 |   +-- YES --> test-by-mcpc-cli
@@ -52,8 +50,7 @@ START: What needs to happen after the MCP audit or architecture sketch?
 | Route | Pick when | Do not use for |
 |---|---|---|
 | `build-mcp-use-server` | `mcp-use/server` imports, HTTP-first TypeScript servers, widgets/apps, OAuth helpers | General agent-readiness audits |
-| `build-mcp-server-sdk-v1` | `@modelcontextprotocol/sdk` v1 single-package servers | v2 split-package imports |
-| `build-mcp-server-sdk-v2` | `@modelcontextprotocol/server` v2 split-package servers where alpha risk is accepted | Production-default raw SDK work when v2 is still alpha |
+| Official SDK docs (no skill) | `@modelcontextprotocol/sdk` v1 single-package servers, or `@modelcontextprotocol/server` v2 split-package servers where alpha risk is accepted | Production-default raw SDK work on v2 while it is still alpha |
 | `test-by-mcpc-cli` | Running stdio/Streamable HTTP smoke checks and JSON-scripted validation | Static design review without a running server |
 | `audit-agentic-cli` | CLI command contracts and machine-readable execution surfaces | MCP protocol, schema, auth, or transport design |
 | No MCP / existing CLI | Mature CLI/SDK already exposes the workflow cleanly | Multi-user auth, approval, or typed tool discovery needs |

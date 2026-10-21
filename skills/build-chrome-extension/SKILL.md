@@ -25,7 +25,7 @@ Trigger when the request matches any of:
 Do NOT use this skill when:
 
 - *the target is Firefox, Safari, or a cross-browser polyfill (`browser.*` namespace, `web-ext` tooling, Safari App Extensions)*
-- *the request is generic browser automation outside an extension context — route to `run-agent-browser`*
+- *the request is generic browser automation outside an extension context — out of scope*
 - *publishing a regular npm package or library — route to `publish-npm-package`*
 - *building a different platform's extension surface (Raycast script command, VS Code extension, Edge enterprise-policy package) — route to that platform's skill*
 
@@ -83,7 +83,7 @@ These are the failures that recur across every MV3 build. Internalize before wri
 |---|---|
 | "Build a Chrome extension" | Use this skill; target MV3 |
 | "Build for Chrome and Firefox" | Keep Chrome MV3 here; cross-browser layer is out of scope |
-| "Automate a website in a browser" | Route to `run-agent-browser` |
+| "Automate a website in a browser" | Out of scope (general browser automation) |
 | "Write Playwright tests for an extension" | Extension launch/load notes here; broader Playwright authoring is out of scope for this pack |
 | "Publish to npm" | Route to `publish-npm-package` |
 | "Submit to Chrome Web Store" | Use this skill; read `references/publishing/web-store.md` |

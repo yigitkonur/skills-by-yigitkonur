@@ -236,7 +236,7 @@ Why: Describes the workflow AND the expected outcome.
 ### Action + prerequisite pattern
 
 ```yaml
-description: Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating run-research for quality context, MJS/Python scripts, and multi-mode workflows.
+description: Use if creating, redesigning, or merging agent skills adhering to agentskills.io specifications, integrating web research for quality context, MJS/Python scripts, and multi-mode workflows.
 ```
 Why: States the action AND what preparation is needed.
 
