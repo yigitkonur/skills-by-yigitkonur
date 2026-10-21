@@ -32,7 +32,7 @@ The output is one Next.js template per unique page type the source actually uses
 
 | Need | Route to |
 |---|---|
-| Browser capture and the back-to-back verification loop in *this* pipeline | Any browser automation tool that can do what `references/capture-workflow.md` lists. This skill does not require a specific one. |
+| Browser capture and the back-to-back verification loop in *this* pipeline | Any browser automation tool that can do what `references/capture-workflow.md` (capture) and `references/back-to-back-verification.md` (verification) list. This skill does not require a specific one. |
 | Design-doc-only output for SaaS/dashboard/admin | a generic design-documentation path. Use this skill only when the deliverable is a buildable Next.js page. |
 | New CMS-backed Next.js site | Out of scope. This skill is for URL/snapshot reconstruction, not CMS scaffolding. Wire content onto the recovered templates afterwards with whichever CMS the user picks. |
 
@@ -173,7 +173,7 @@ For each type in `route-map.json`, run the existing waves against the type's can
 
 Think first:
 
-- **Capture:** Which browser helper produces the complete evidence contract for this source? (Any browser tool that meets the capability list in `references/capture-workflow.md`.)
+- **Capture:** Which browser helper produces the complete evidence contract for this source? (Any browser tool that meets the capability lists in `references/capture-workflow.md` and `references/back-to-back-verification.md`.)
 - **Type extraction:** Are any clusters borderline? If yes, ask before committing.
 - **Wave 0:** Which CSS corpus is strongest for this type — mirrored live capture, `_files/`, adjacent CSS, inline CSS, or source fallback?
 - **Wave 3:** Which types stay static, and which exact interactions justify Client Components?

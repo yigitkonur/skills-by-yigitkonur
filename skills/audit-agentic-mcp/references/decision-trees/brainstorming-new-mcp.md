@@ -115,7 +115,7 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 
 ## Next steps
 1. User approves this sketch.
-2. Install <companion skill name> (exact install command from the picker above).
+2. Install the companion skill if its picker row has an install command; otherwise follow the SDK's own docs.
 3. After the first tool lands, run `../../SKILL.md` optimize flow against the prototype.
 ```
 

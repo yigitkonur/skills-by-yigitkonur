@@ -4,7 +4,7 @@ Research is mandatory before skill synthesis. You cannot create a qualified skil
 
 ## Mandatory Prerequisite: the `research` plugin
 
-This workflow strictly requires the **`research`** plugin (Research Powerpack) to be installed and available:
+This workflow runs on the **`research`** plugin (Research Powerpack); install it first:
 - **Plugin**: [`yigitkonur/plugin-research-powerpack`](https://github.com/yigitkonur/plugin-research-powerpack)
 - **Install command**: `claude plugin marketplace add yigitkonur/plugin-research-powerpack`, then `claude plugin install research@plugin-research-powerpack`
 - **Skills it provides**: `/research:ask` for one question, `/research:deep` for a multi-source run that ends in files, `/research:verify` to fact-check a document
