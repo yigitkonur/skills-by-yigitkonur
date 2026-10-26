@@ -254,6 +254,14 @@ Expose localhost through a Cloudflare Tunnel for public URLs and webhooks.
 npx skills add yigitkonur/skills-by-yigitkonur --skill use-cloudflare-tunnel
 ```
 
+### use-linear-cli
+
+Use linear-cli for Linear issues, bulk operations, search, and git/PR workflows.
+
+```
+npx skills add yigitkonur/skills-by-yigitkonur --skill use-linear-cli
+```
+
 ## License
 
 MIT
