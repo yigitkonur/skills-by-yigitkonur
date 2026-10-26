@@ -44,7 +44,7 @@ linear-cli api query '{ __schema { queryType { name } } }'
 linear-cli api query '{ __type(name: "Issue") { fields { name type { name } } } }'
 ```
 
-Or pull the snapshot from the upstream repo's `docs/json/schema.json`.
+The upstream `docs/json/schema.json` describes CLI output schema metadata, not the Linear GraphQL schema. Use GraphQL introspection for API fields.
 
 ### Variables vs string interpolation
 

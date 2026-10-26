@@ -9,7 +9,7 @@ linear-cli rel list LIN-123                          # show all relations
 linear-cli rel add LIN-1 -r blocks LIN-2             # LIN-1 blocks LIN-2
 linear-cli rel add LIN-1 -r related LIN-2            # related (non-directional)
 linear-cli rel add LIN-1 -r duplicate LIN-2          # duplicate-of
-linear-cli rel remove LIN-1 -r blocks LIN-2          # remove relation
+linear-cli rel remove RELATION_ID                    # remove by relation ID; obtain it from rel list
 linear-cli rel parent LIN-2 LIN-1                    # set LIN-1 as parent of LIN-2
 linear-cli rel unparent LIN-2                        # remove parent
 ```

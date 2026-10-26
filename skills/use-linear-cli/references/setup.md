@@ -2,6 +2,10 @@
 
 First-run setup, authentication, profile/workspace switching, doctor, and shell completions for `linear-cli`.
 
+## Install and verify
+
+The documented tool is [nesszer/linear-cli](https://github.com/nesszer/linear-cli), whose binary is `linear-cli`. This guide was checked against release 0.3.28. Install with `cargo binstall linear-cli` (if cargo-binstall is installed) or `cargo install linear-cli`; upstream also publishes platform binaries. Run `linear-cli --version` and `linear-cli --help` and use the installed version's help when details differ.
+
 ## First-run wizard
 
 ```bash
@@ -43,6 +47,8 @@ linear-cli auth revoke                   # revoke tokens
 linear-cli auth logout                   # remove credentials
 ```
 
+The status command can return exit 0 even when `configured` or `validated` is false; inspect the JSON fields, not only the exit code.
+
 The callback server binds `127.0.0.1` only and validates `state` plus PKCE before token exchange. Tokens auto-refresh.
 
 ### Auth priority
@@ -60,7 +66,7 @@ For agent loops, prefer `LINEAR_API_KEY` from the environment — the same key w
 Multiple Linear workspaces, named profiles, switch on the fly.
 
 ```bash
-linear-cli config workspace-add work KEY      # add a workspace profile
+printf '%s\n' "$LINEAR_API_KEY" | linear-cli config workspace-add work  # add a workspace profile
 linear-cli config workspace-list
 linear-cli config workspace-switch work
 linear-cli config workspace-current
@@ -112,7 +118,7 @@ For agent runs, the canonical opener:
 export LINEAR_CLI_OUTPUT=json
 export LINEAR_CLI_NO_PAGER=1
 # Leave LINEAR_CLI_YES unset until a specific destructive command needs it.
-linear-cli auth status --validate --output json  # gate writes on exit code 0
+linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null
 linear-cli config workspace-current              # confirm intended profile/workspace
 ```
 
@@ -145,9 +151,9 @@ linear-cli completions dynamic powershell >> $PROFILE
 linear-cli --version
 
 # 2. Confirm or set auth, then validate live API access
-linear-cli auth status --validate --output json || {
-  linear-cli auth login
-  linear-cli auth status --validate --output json
+linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null || {
+  echo 'Authentication is not validated; configure credentials and retry.' >&2
+  exit 1
 }
 
 # 3. Confirm workspace

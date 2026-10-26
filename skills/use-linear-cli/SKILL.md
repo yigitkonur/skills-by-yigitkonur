@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Use linear-cli
 
-Agent-first interface to Linear.app via the `linear-cli` Rust binary. Prefer this over Linear MCP tooling — `linear-cli` commands cost roughly 50–100 tokens per call versus 500–2000 for an MCP round-trip, support `--output json` everywhere, and cover the full Linear surface (issues, projects, cycles, sprints, webhooks, raw GraphQL).
+Agent-first interface to [nesszer/linear-cli](https://github.com/nesszer/linear-cli), checked against release 0.3.28. The CLI exposes many Linear operations, but does not guarantee coverage of every Linear API feature. Check the installed command’s `--help` before use; JSON and dry-run support vary by command.
 
 ## Trigger boundary
 
@@ -30,11 +30,11 @@ Do not use this skill when:
 ## Non-negotiable rules
 
 1. **CLI > MCP.** Never call a Linear MCP tool when `linear-cli` can do the same thing.
-2. **Validate auth before any mutating command** — run `linear-cli auth status --validate --output json` or `LINEAR_API_KEY=... linear-cli u me --output json` and only proceed on exit code 0. Confirm the intended workspace/profile before bulk writes.
-3. **`--dry-run` first** for any bulk create or any mutation across more than 5 IDs. Confirm the plan, then execute.
-4. **Always `--output json`** (or `LINEAR_CLI_OUTPUT=json`) when chaining or parsing. Never grep the human table format.
+2. **Validate auth before any mutating command** — run `linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true'`, or verify a successful `linear-cli u me --output json`. The status command can return exit 0 even when validation fails. Confirm the intended workspace/profile before bulk writes.
+3. **Preview first** for bulk creates or mutations across more than 5 IDs. Use `--dry-run` where supported, check its limitations, and confirm the plan before executing.
+4. **Request `--output json`** (or `LINEAR_CLI_OUTPUT=json`) when chaining; verify that the specific command actually emits JSON. Never parse the human table format.
 5. **`--id-only` for chaining.** Capture IDs into shell variables; do not re-parse JSON for an identifier you already produced.
-6. **Treat the exit-code map as a contract**: `0` success, `1` general error, `2` not found or parser error, `3` auth, `4` rate-limited (`retry_after` is in the JSON body).
+6. **Interpret exit codes and command output together**: 1 general error, 2 not found or parser error, 3 auth, 4 rate-limited. Exit 0 does not prove validation or every imported item succeeded; `retry_after` may be absent.
 7. **Resolve names before using them.** Do not invent unknown team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths; once resolved, using those concrete values in commands is fine.
 8. **Be explicit about scope.** State whether each command is read-only or mutating. Bulk mutations get a one-line confirmation cue.
 
@@ -43,7 +43,7 @@ Do not use this skill when:
 | Concept | What an agent must know |
 |---|---|
 | Aliases | `i` issues · `p` projects · `c` cycles · `g` git · `s` search · `b` bulk · `cm` comments · `tpl` templates · `l` labels · `st` statuses · `tr` triage · `sp` sprint · `att` attachments · `up` uploads · `rel` relations · `n` notifications · `ms` milestones · `pu` project-updates · `t` teams · `u` users · `wh` webhooks · `mt` metrics · `tm` time · `hist` history · `fav` favorites · `v` views · `rm` roadmaps · `init` initiatives · `d` documents · `im` import · `exp` export |
-| JSON-everywhere | Add `--output json` (or `--output ndjson`) to anything. Combine with `--compact --fields a,b.c` to slim payloads. |
+| JSON output | Request `--output json` or `--output ndjson` for supported commands; verify the actual output and stderr. `--compact --fields a,b.c` can reduce JSON payloads. |
 | Session default | `export LINEAR_CLI_OUTPUT=json` makes the whole shell JSON-by-default — flip it on at the top of an agent session. |
 | Stdin | `-d -` reads description body from stdin; `--data -` reads a full JSON object for `i create`/`i update`. |
 | Pagination | `--limit N`, `--all`, `--page-size N`, `--after CURSOR`. |
@@ -173,7 +173,7 @@ linear-cli tr snooze LIN-123 --duration 1w
 | `i list` flag matrix, `--filter`, saved views, favorites | `references/issues/search-and-filter.md` |
 | Projects, project-updates, milestones, cycles, sprints, roadmaps, initiatives | `references/planning/projects-and-cycles.md` |
 | Teams, users, custom views, favorites | `references/planning/teams-and-org.md` |
-| CSV / JSON / Markdown round-trip import-export | `references/data/import-export.md` |
+| CSV / JSON import and CSV / JSON / Markdown export | `references/data/import-export.md` |
 | Attachments, URL linking, downloading uploaded images for multimodal review | `references/data/attachments-and-uploads.md` |
 | Watch polling, webhooks (CRUD + HMAC listener), notifications, metrics, history, time tracking | `references/eventing-and-tracking.md` |
 | Raw GraphQL escape hatch, Linear documents | `references/advanced.md` |
@@ -195,7 +195,7 @@ linear-cli tr snooze LIN-123 --duration 1w
 | `--id-only` | Print only the created/updated ID. |
 | `--quiet` / `-q` | Suppress decoration. |
 | `--fail-on-empty` | Non-zero exit when list is empty (great for `set -e` agents). |
-| `--dry-run` | Preview without writing. |
+| `--dry-run` | Preview where supported; unsupported mutations may be rejected. An import preview does not resolve status, assignee, or label names. |
 | `--yes` | Auto-confirm prompts. |
 | `--no-pager` / `--no-cache` | Disable auto-pager / read-through cache. |
 | `-d -` / `--data -` | Read description body / full JSON object from stdin. |
@@ -257,7 +257,7 @@ When answering a Linear question, return:
 
 | File | When to read |
 |---|---|
-| `references/data/import-export.md` | CSV column schema, JSON round-trip, Markdown export, `--dry-run` first, name-based field resolution for status/assignee/labels, projects export. |
+| `references/data/import-export.md` | Import/export formats, preview limits, name-resolution and partial-failure caveats. |
 | `references/data/attachments-and-uploads.md` | Attachment CRUD, URL linking, `up fetch` to file vs stdout, multimodal pattern (download then `Read` tool), `uploads.linear.app` host restriction. |
 
 ### Eventing, advanced, setup, output, troubleshooting
@@ -269,7 +269,8 @@ When answering a Linear question, return:
 | `references/setup.md` | First-run setup, API key vs OAuth (PKCE), `auth status/login/oauth/revoke/logout`, `--profile` and workspace switching, `doctor` / `doctor --fix`, static + dynamic shell completions, full env-var table, macOS keyring caveats. |
 | `references/output-and-scripting.md` | Every agent-relevant flag, `LINEAR_CLI_OUTPUT=json` session default, stdin patterns, pagination, chaining recipes, `--fail-on-empty` for `set -e`. |
 | `references/json-shapes.md` | Concrete JSON payloads for issue list/get, comments list, `context`, and the error envelope. |
-| `references/troubleshooting.md` | Exit code dispatch, rate-limit retry, auth recovery, the macOS pager-broken-state recovery, cache reset, "command in docs but not installed" → `linear-cli update`. |
+| `references/troubleshooting.md` | Exit code dispatch, rate-limit retry, auth recovery, pager recovery, cache reset. |
+| `references/command-surface.md` | Complete top-level command index for 0.3.28; use per-command help for current options. |
 
 ## Guardrails
 
@@ -287,13 +288,13 @@ When answering a Linear question, return:
 
 - **Auth fails (exit 3):** `linear-cli auth status --validate --output json` → re-run `auth login` or `auth oauth`. See `references/setup.md`.
 - **Rate-limited (exit 4):** read `retry_after` from the JSON envelope, sleep that many seconds, retry once. See `references/troubleshooting.md`.
-- **Bulk mutation hit a partial failure:** capture exit code per item with a JSON loop; rollback by inverting the mutation (e.g. `b update-state "In Progress" -i LIN-1,LIN-2` to undo). See `references/recipes/creating-many-issues.md`.
+- **Bulk mutation hit a partial failure:** inspect per-item results and current state. Restore individual previous values only after confirming them; a single inverse command is not a reliable rollback. See `references/recipes/creating-many-issues.md`.
 - **Pager left terminal in raw mode (macOS):** `reset` or `stty sane`; rerun with `--no-pager`. See `references/troubleshooting.md`.
 - **Command in upstream docs but not in your binary:** `linear-cli update` (or `linear-cli update --check` first). See `references/troubleshooting.md`.
 
 ## Final checks before declaring done
 
-- [ ] auth validated (`auth status --validate --output json` or `u me --output json`) before mutations
+- [ ] auth validated (`.configured` and `.validated` both true, or a successful `u me` call) before mutations
 - [ ] intended workspace/profile confirmed before bulk mutations
 - [ ] `--dry-run` previewed for any bulk operation > 5 IDs
 - [ ] every chained command used `--output json` and `--id-only` where appropriate

@@ -16,7 +16,7 @@ End-to-end patterns for "I have a spec / checklist / CSV / JSON, create N Linear
 ## Setup gate (do this first, every time)
 
 ```bash
-linear-cli auth status --validate --output json     # exit 0 required
+linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null || exit 1
 linear-cli config workspace-current                 # confirm intended workspace/profile
 TEAM=ENG                                            # team key
 linear-cli t get "$TEAM" --output json --fields id,key,name   # confirm team exists
@@ -84,7 +84,7 @@ printf '  %s\n' "${CREATED[@]}"
 There is **no transactional create**. If item 7/12 fails, items 1–6 are already in Linear. Three mitigations:
 
 1. **Always dry-run first** to confirm titles, team, priority.
-2. **Capture IDs as you go** so you can roll back with `b update-state "Cancelled" -i "$IDS"` or `i archive`.
+2. **Capture IDs as you go** and reconcile partial results. Any cancellation or archival is a separate mutation, not a transactional rollback.
 3. **Set a single batch label** (e.g. `b label batch:2026-04-28 -i "$IDS"`) so you can find every issue from the run later.
 
 ## Pattern B — CSV import
@@ -99,25 +99,25 @@ Fix login redirect,"Multi-line\ndescription",1,Backlog,ada@example.com,"bug,auth
 Add 429 retry headers,"",2,Backlog,,api,2,
 ```
 
-`status`, `assignee`, and `labels` resolve by name automatically. Multi-value label cells use comma separation inside a quoted CSV cell.
+The actual import attempts to resolve `status`, `assignee`, and `labels` by name; unresolved values only produce warnings and can be omitted. Validate names independently first. Multi-value labels use commas inside a quoted CSV cell.
 
 ### Recipe
 
 ```bash
 TEAM=ENG
 
-# 1. Preview — surface name resolution failures before committing
+# 1. Preview rows; validate names independently (preview does not resolve them)
 linear-cli im csv issues.csv -t "$TEAM" --dry-run
 
 # 2. Commit
 linear-cli im csv issues.csv -t "$TEAM" --output json
 
-# Output is a JSON array of created issue objects (see json-shapes.md).
+# In 0.3.28 results are reported on stderr; inspect and reconcile every row. Exit 0 can include per-item failures.
 ```
 
-### Round-trip
+### Create new issues from an export
 
-Export → tweak → re-import:
+Export → tweak → import creates new issues and does not update existing issues or preserve all fields:
 
 ```bash
 linear-cli exp json -t "$TEAM" -f backup.json
@@ -215,7 +215,7 @@ If you're migrating from GitHub Issues, Jira, or a markdown export:
 
 1. Coerce to the CSV columns in Pattern B.
 2. Map status/assignee/label names to Linear's by hand or with a `sed`/`jq` pass.
-3. Run `im csv --dry-run` until name resolution is clean.
+3. Preview with `im csv --dry-run`; independently validate each status, assignee, and label against the target workspace.
 4. Commit.
 
 ## Idempotency

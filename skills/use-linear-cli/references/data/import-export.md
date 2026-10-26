@@ -1,6 +1,6 @@
 # Import and Export
 
-Round-trip Linear data through CSV, JSON, and Markdown. Use for migrations, bulk creation from spreadsheets, archival snapshots, and external reporting.
+Export and import Linear data through CSV or JSON, and export Markdown. Import creates new issues; it does not update existing issues or preserve every field.
 
 ## Export
 
@@ -14,7 +14,7 @@ linear-cli exp csv -t ENG --limit 100
 linear-cli exp markdown -t ENG
 linear-cli exp markdown -t ENG -f issues.md
 
-linear-cli exp json -t ENG -f backup.json          # round-trip-compatible
+linear-cli exp json -t ENG -f backup.json          # export, not a full-fidelity backup
 linear-cli exp projects-csv -f projects.csv
 ```
 
@@ -41,7 +41,7 @@ linear-cli im json backup.json -t ENG --dry-run
 |---|---|
 | `-t TEAM` (req) | Target team |
 | `--dry-run` | Preview without creating |
-| `--output json` | Return created issues as JSON |
+| `--output json` | Import progress and results are written to stderr in 0.3.28; do not assume a JSON result array. |
 
 ## CSV column schema
 
@@ -68,9 +68,9 @@ Add 429 retry headers,"",2,Backlog,,api,2,
 
 ### Name resolution
 
-`status`, `assignee`, and `labels` are resolved by name within the target team. If a name doesn't match, the row fails with an exit-2 JSON not-found envelope. Always run `--dry-run` first to surface name-resolution errors before writing.
+In 0.3.28 the dry run resolves the team but does not resolve status, assignee, or label names. The real import attempts name resolution; on failure it warns and can create the issue without that field. Check each name independently before importing. Rows without titles are skipped. Per-item create failures are reported on stderr, but the import can still exit 0: reconcile results and inspect stderr rather than trusting the exit code.
 
-## JSON round-trip
+## JSON export and import
 
 ```bash
 linear-cli exp json -t ENG -f backup.json
@@ -79,7 +79,7 @@ linear-cli im json backup.json -t ENG --dry-run
 linear-cli im json backup.json -t ENG
 ```
 
-JSON is round-trip compatible: an export → import recreates issues with the same titles, descriptions, labels, etc. (but new IDs and identifiers — Linear does not allow you to set those manually).
+JSON export contains fields that import does not apply. Import creates new issues with new IDs; it does not update the originals or preserve all relationships and metadata. Check and map the fields supported by the installed version before importing.
 
 ## Markdown export
 
@@ -94,7 +94,7 @@ linear-cli exp markdown -t ENG --all -f sprint-archive.md
 1. Export from the source tool to CSV.
 2. Map columns to the schema above. Multi-value cells (labels, etc.) need comma separation inside a quoted CSV cell.
 3. Map status names to your Linear team's workflow states (use `linear-cli st list -t ENG`).
-4. Run `linear-cli im csv migration.csv -t ENG --dry-run` until it reports zero name-resolution failures.
+4. Run `linear-cli im csv migration.csv -t ENG --dry-run` to inspect rows. Independently verify all status, assignee, and label names; preview does not resolve them.
 5. Commit: `linear-cli im csv migration.csv -t ENG`.
 
 ## Recipe: weekly archive
@@ -105,9 +105,9 @@ linear-cli exp json -t ENG -f "archives/$DATE.json"
 linear-cli exp markdown -t ENG -f "archives/$DATE.md"
 ```
 
-## Recipe: round-trip edits
+## Recipe: create new issues from edited export
 
-When the upstream tool isn't programmatically editable but Linear is, export, edit programmatically, re-import.
+This creates new issues; it does not edit the exported issues. For changes to existing issues, use `i update` or a supported bulk command instead.
 
 ```bash
 linear-cli exp json -t ENG -f stale.json
@@ -122,8 +122,8 @@ linear-cli im json bumped.json -t ENG --dry-run
 |---|---|
 | `exp` | Export |
 | `im` | Import |
-| `--dry-run` (on import) | No writes; reports name-resolution outcome. |
-| `dueDate` (CSV) | ISO `YYYY-MM-DD` only — no `+3d` shortcuts inside CSV cells. |
+| `--dry-run` (on import) | Previews parsed rows after resolving the team; does not validate other names. |
+| `dueDate` (CSV) | Passed through the CLI date parser; verify accepted input with your installed version. |
 | `labels` (CSV) | Comma-separated names inside one quoted CSV cell. |
 
 ## See also

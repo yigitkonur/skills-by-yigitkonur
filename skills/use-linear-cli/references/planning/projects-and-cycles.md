@@ -118,7 +118,7 @@ linear-cli sp plan -t ENG                              # next cycle's planned is
 linear-cli sp carry-over -t ENG --force                # move incomplete to next cycle
 linear-cli sp burndown -t ENG                          # ASCII burndown chart
 linear-cli sp velocity -t ENG                          # last 6 cycles by default
-linear-cli sp velocity -t ENG --cycles 10              # last 10 cycles
+linear-cli sp velocity -t ENG --count 10              # last 10 cycles
 linear-cli sp velocity -t ENG --output json
 ```
 

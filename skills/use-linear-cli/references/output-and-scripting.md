@@ -27,7 +27,7 @@ Every agent-relevant flag, exit code, env var, stdin pattern, and chaining recip
 ## Session defaults
 
 ```bash
-export LINEAR_CLI_OUTPUT=json     # all commands default to JSON
+export LINEAR_CLI_OUTPUT=json     # request JSON where supported
 export LINEAR_CLI_NO_PAGER=1      # no pager
 export LINEAR_CLI_YES=1           # auto-confirm prompts (dangerous if mutating; opt in deliberately)
 ```
@@ -87,7 +87,7 @@ Use `--all` cautiously — large workspaces can produce hundreds of pages. Prefe
 
 | Code | Meaning | What an agent should do |
 |---|---|---|
-| 0 | success | continue |
+| 0 | command returned successfully | inspect results too; import may report per-item failures on stderr |
 | 1 | general error | parse stderr / JSON error envelope; surface to user |
 | 2 | not found or parser error | If JSON with `details.status: 404`, the ID/object does not exist; do not retry. If plain stderr/usage text, fix the command syntax via `--help`. |
 | 3 | auth error | route to `setup.md` and re-auth |
@@ -105,7 +105,7 @@ JSON error envelope (when `--output json` is set on a failing command):
 }
 ```
 
-`retry_after` is non-null when `code == 4`.
+`retry_after` may be null even for rate limits; use a bounded fallback.
 
 Parser errors can also exit 2. Regression check:
 
@@ -195,7 +195,7 @@ linear-cli i list --mine --state "In Progress" --fail-on-empty \
 - `--fields` accepts dot paths but **not** `nodes.*` shorthand — use `labels.nodes.name`.
 - `--filter` is *client-side* — it does not reduce API cost. For server-side narrowing, use the dedicated flags (`--state`, `--label`, `--assignee`, `--project`, `--team`, `--since`, `--view`).
 - `--id-only` returns just the ID; an empty result still produces empty stdout — check exit code.
-- `--dry-run` is supported on create/update/import/bulk/sprint commands. Read each `--help` to confirm.
+- `--dry-run` support differs by operation. Verify behavior for the specific command. Import preview does not resolve status, assignee, or label names.
 - `LINEAR_CLI_YES=1` auto-confirms destructive prompts. Use `--force` per-command instead when you want explicit opt-in.
 
 ## Pagination + JSON together

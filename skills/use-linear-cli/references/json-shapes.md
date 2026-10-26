@@ -1,8 +1,8 @@
 # JSON Shapes
 
-Concrete payload examples for the most-parsed `linear-cli` commands. Use these to know exactly which keys you can rely on without round-tripping to the upstream `docs/json/` samples.
+Sample payloads for common `linear-cli` commands. Check actual responses before relying on field presence.
 
-These shapes are stable as of `linear-cli` 0.35+. Always validate against the live binary if a key is load-bearing — `linear-cli i get LIN-123 --output json | jq keys`.
+These are upstream sample shapes for 0.3.28, not a guarantee: field presence varies with data and permissions. Inspect actual output before depending on keys. The sprint velocity keys are taken from the 0.3.28 source; values are illustrative.
 
 ## `linear-cli i list`
 
@@ -99,7 +99,7 @@ linear-cli context --output json | jq -e '.found' >/dev/null \
   || { echo "no Linear issue on this branch"; exit 1; }
 ```
 
-## Error envelope (every command, when `--output json` is set)
+## Error envelope (runtime errors in JSON mode)
 
 ```json
 {
@@ -119,7 +119,7 @@ linear-cli context --output json | jq -e '.found' >/dev/null \
 | `details.status` | HTTP status when relevant. |
 | `details.reason` | HTTP reason phrase. |
 | `details.request_id` | Linear request id — surface to users when reporting bugs. |
-| `retry_after` | Seconds to wait before retrying. Non-null only when `code == 4`. |
+| `retry_after` | Suggested retry delay in seconds when supplied; it may be null. |
 
 ## `linear-cli p list`
 
@@ -155,9 +155,9 @@ linear-cli context --output json | jq -e '.found' >/dev/null \
 {
   "team": "ENG",
   "cycles": [
-    { "name": "Sprint 4", "completed": 18, "planned": 22, "completion_rate": 0.82 }
+    { "name": "Sprint 4", "number": 4, "issues_completed": 18, "issues_total": 22, "points_completed": 18, "points_total": 22, "progress": 0.82, "duration_days": 14 }
   ],
-  "average_completion_rate": 0.85,
+  "average_points": 18.0,
   "trend": "stable"
 }
 ```
