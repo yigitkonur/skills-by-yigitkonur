@@ -1,173 +1,43 @@
-# JSON Shapes
+# JSON shapes
 
-Sample payloads for common `linear-cli` commands. Check actual responses before relying on field presence.
+Response paths observed with 0.3.28. Keep stdout and stderr separate; a global JSON flag does not make every mutation emit JSON.
 
-These are upstream sample shapes for 0.3.28, not a guarantee: field presence varies with data and permissions. Inspect actual output before depending on keys. The sprint velocity keys are taken from the 0.3.28 source; values are illustrative.
-
-## `linear-cli i list`
-
-```json
-[
-  {
-    "id": "issue_uuid",
-    "identifier": "LIN-123",
-    "title": "Fix login bug",
-    "priority": 2,
-    "state": { "name": "In Progress" },
-    "assignee": { "name": "Ada Lovelace" }
-  }
-]
-```
-
-Common `--fields` shortlist for agent token-frugality:
-
-```bash
---fields identifier,title,state.name,priority,assignee.name
-```
-
-## `linear-cli i get LIN-123`
-
-```json
-{
-  "id": "issue_uuid",
-  "identifier": "LIN-123",
-  "title": "Fix login bug",
-  "description": "Steps to reproduce...",
-  "priority": 2,
-  "url": "https://linear.app/team/issue/LIN-123",
-  "createdAt": "2024-01-01T12:00:00.000Z",
-  "updatedAt": "2024-01-02T12:00:00.000Z",
-  "state": { "name": "In Progress" },
-  "team": { "name": "Engineering" },
-  "assignee": { "name": "Ada Lovelace", "email": "ada@example.com" },
-  "labels": { "nodes": [ { "name": "bug", "color": "#F59E0B" } ] },
-  "project": { "name": "Auth" },
-  "parent": { "identifier": "LIN-1", "title": "Auth workstream" }
-}
-```
-
-Key gotchas:
-
-- `priority` is `0`–`4` (Linear sets `0` = "no priority", `1` = urgent, `2` = high, `3` = normal, `4` = low).
-- `labels` is `{ "nodes": [...] }`. Select `labels.nodes` with `--fields`, then use `jq` for `.labels.nodes[].name`; field paths do not traverse arrays.
-- `assignee`, `project`, `parent` are `null` when unset.
-- The issue query fetches `state.name`, not `state.id`. Resolve state UUIDs with `st list -t TEAM` when needed.
-
-## `linear-cli i get LIN-1 LIN-2 LIN-3` (batch)
-
-Runs one API request per ID, with up to ten concurrent requests. Successful issues are returned as an array, normally sorted by identifier by the output layer; do not rely on argv order. Missing/failed issues are omitted and the command exits nonzero, so reconcile the requested IDs against the result even when stdout contains valid JSON.
-
-## `linear-cli cm list LIN-123`
-
-```json
-[
-  {
-    "id": "comment_uuid",
-    "body": "LGTM",
-    "createdAt": "2024-01-02T12:00:00.000Z",
-    "user": { "name": "Ada Lovelace", "email": "ada@example.com" },
-    "issue": { "identifier": "LIN-123" }
-  }
-]
-```
-
-## `linear-cli context`
-
-The most useful command for an agent on a working branch — extracts the current issue from the git branch name.
-
-```json
-{
-  "branch": "feature/LIN-123-fix-login",
-  "issue_id": "LIN-123",
-  "found": true,
-  "issue": {
-    "id": "issue_uuid",
-    "identifier": "LIN-123",
-    "title": "Fix login bug",
-    "state": { "name": "In Progress" },
-    "assignee": { "name": "Ada Lovelace" },
-    "priority": 2,
-    "url": "https://linear.app/team/issue/LIN-123"
-  }
-}
-```
-
-When the branch does not encode an issue, `found: false` and `issue: null`. Always gate on `.found`:
-
-```bash
-linear-cli context --output json | jq -e '.found' >/dev/null \
-  || { echo "no Linear issue on this branch"; exit 1; }
-```
-
-## Error envelope (runtime errors in JSON mode)
-
-```json
-{
-  "error": true,
-  "message": "Issue not found: LIN-999",
-  "code": 2,
-  "details": { "status": 404, "reason": "Not Found", "request_id": null },
-  "retry_after": null
-}
-```
-
-| Field | Notes |
+| Command | Successful stdout |
 |---|---|
-| `error` | `true` in a runtime JSON error envelope on stderr. Parser errors can be plain text. |
-| `message` | Human-readable error. |
-| `code` | Same as the process exit code (1/2/3/4). |
-| `details.status` | HTTP status when relevant. |
-| `details.reason` | HTTP reason phrase. |
-| `details.request_id` | Linear request id — surface to users when reporting bugs. |
-| `retry_after` | Suggested retry delay in seconds when supplied; it may be null. |
+| `i list`, `p list`, `t list`, `l list`, `d list` | Array of records. |
+| `i get ID` | Issue object. |
+| `i get ID1 ID2` | Array of successful issues; concurrent requests, output sorting, and partial failures mean argv order/completeness is not guaranteed. |
+| `cm list ID` | Object with `id`, `identifier`, `title`, and `comments` array. |
+| `att list ID` | Object with `issue`, `title`, and `attachments` array. |
+| `st list -t TEAM` | Object with `team` and `statuses` array. |
+| `c list -t TEAM` | Object with `team` and `cycles` array. |
+| `hist issue ID` | Object with `issue` and `history` array. |
+| `rel list ID` | Object with `issue`, `relations`, `inverseRelations`, `parent`, and `children`. |
+| `api query` | Raw GraphQL response, except `--paginate` returns a collected nodes array. |
 
-## `linear-cli p list`
+Use the wrapper path explicitly, for example:
 
-```json
-[
-  {
-    "id": "project_uuid",
-    "name": "Q1 Roadmap",
-    "state": "started",
-    "icon": "🚀",
-    "priority": 1,
-    "startDate": "2025-01-01",
-    "targetDate": "2025-03-31",
-    "lead": { "name": "Ada Lovelace" }
-  }
-]
+```bash
+linear-cli cm list LIN-123 --output json | jq '.comments'
+linear-cli st list -t ENG --output json | jq '.statuses | map({id,name,type})'
 ```
 
-## `linear-cli t list`
+`i get` fetches fields such as `id`, `identifier`, `title`, `description`, `priority`, `updatedAt`, `state.name`, `assignee`, `labels.nodes`, and `parent`. `i list` fetches a smaller selection; `--fields` cannot add absent properties. Object-path selection does not traverse arrays: select `labels.nodes`, then use `jq` for `.labels.nodes[].name`.
+
+Priority is 0=no priority, 1=urgent, 2=high, 3=normal, 4=low. Unset related objects can be null. The issue query fetches `state.name`, not its ID; resolve workflow-state IDs through `st list`.
+
+## Branch context
+
+`context --output json` has `branch`, `issue_id`, `found`, and `issue`. Confirm a nonempty issue identifier before a branch-driven mutation. The absence of branch context is not a reason to guess a target.
+
+## Runtime error on stderr
 
 ```json
-[
-  { "id": "team_uuid", "key": "ENG", "name": "Engineering" },
-  { "id": "team_uuid", "key": "DES", "name": "Design" }
-]
+{"error":true,"message":"Issue not found","code":2,"details":null,"retry_after":null}
 ```
 
-`key` is what you pass to most commands as `-t TEAM` (e.g. `ENG`).
+Parser errors can be plain text. Partial multi-get stdout may contain valid successful records even when the process exits nonzero. Do not discard that evidence or treat it as complete success.
 
-## `linear-cli sp velocity`
+## Sprint velocity
 
-```json
-{
-  "team": "ENG",
-  "cycles": [
-    { "name": "Sprint 4", "number": 4, "issues_completed": 18, "issues_total": 22, "points_completed": 18, "points_total": 22, "progress": 0.82, "duration_days": 14 }
-  ],
-  "average_points": 18.0,
-  "trend": "stable"
-}
-```
-
-## `linear-cli api query`
-
-Returns the raw GraphQL response body as-is. The CLI does not add a wrapper. See `advanced.md`.
-
-## See also
-
-- `output-and-scripting.md` — flags that produce these shapes.
-- `troubleshooting.md` — what to do when the error envelope appears.
-- `issues/lifecycle.md` — `--data -` JSON input shapes for create/update.
+The 0.3.28 handler emits `team`, `cycles`, `average_points`, and `trend`. Cycle records include `name`, `number`, `issues_completed`, `issues_total`, `points_completed`, `points_total`, `progress`, and `duration_days`. No past cycles produces an empty array and null aggregate values. This shape was source-checked; the live test team had no cycles.

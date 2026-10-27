@@ -58,49 +58,12 @@ linear-cli att update ATTACHMENT_ID -T "New title"
 linear-cli att delete ATTACHMENT_ID --force
 ```
 
-## Fetching screenshots / uploaded images
-
-Linear stores user-uploaded images at `https://uploads.linear.app/...`. Use `up fetch` to bring one local for inspection.
-
-```bash
-# Find URLs in the issue body or comments (dots in regex must be escaped)
-linear-cli i get LIN-501 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'
-linear-cli cm list LIN-501 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'
-
-# Download to file
-linear-cli up fetch "https://uploads.linear.app/<org>/<id>/screenshot.png" -f /tmp/screenshot.png
-
-# Pipe to stdout
-linear-cli up fetch "https://uploads.linear.app/..." > out.png
-linear-cli up fetch "https://uploads.linear.app/..." | base64
-```
-
-### Multimodal pattern (Claude Code, Cursor, etc.)
-
-```bash
-# 1. Download
-linear-cli up fetch "https://uploads.linear.app/..." -f /tmp/repro.png
-
-# 2. Read the file with the agent's image-capable tool (Claude Code: the Read tool).
-#    The agent sees the screenshot directly.
-```
-
-`up fetch` only accepts `uploads.linear.app` URLs — other hosts are rejected for safety. Use `curl` for arbitrary hosts.
-
-## Bulk-claim everything in your queue
-
-```bash
-linear-cli tr list -t ENG --output json --fields identifier --compact \
-  | jq -r '.[].identifier' \
-  | xargs -I{} linear-cli tr claim {}
-```
-
-(Use cautiously. Prefer reading and snoozing item-by-item for real triage work.)
+For upload discovery and download examples, see `data/attachments-and-uploads.md`.
 
 ## Status check during triage
 
 ```bash
-linear-cli st list -t ENG --output json --compact --fields name,type
+linear-cli st list -t ENG --output json | jq '.statuses | map({name,type})'
 ```
 
 Useful when the team has custom workflow states beyond the default `Triage / Backlog / In Progress / Done / Cancelled`.
@@ -112,21 +75,3 @@ linear-cli i list --mine --since=-1d --output json \
   --fields identifier,title,state.name --compact \
   | jq -r '.[] | "\(.identifier) — \(.state.name) — \(.title)"'
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `tr list` | First 50 unassigned issues in triage/backlog states; project membership and snooze time are not filtered. |
-| `i list` | Every visible issue. Bigger, less focused. |
-| `cm create` | Issue comment. |
-| `pu create` | *Project* update (status update on a project). Different command. |
-| `att create` | Attachment object on an issue. |
-| `up fetch` | Download from `uploads.linear.app`. Read-only side. |
-
-## See also
-
-- `issues/search-and-filter.md` — `i list` flag matrix and `--filter` for triage views.
-- `data/attachments-and-uploads.md` — full attachment CRUD and URL handling.
-- `recipes/git-and-pr-loop.md` — promote a triage finding into a tracked work item.
-- `output-and-scripting.md` — the JSON / `xargs` plumbing.

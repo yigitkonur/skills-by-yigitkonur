@@ -113,37 +113,16 @@ linear-cli agent                 # print agent-focused capability summary
 | `LINEAR_CLI_NO_PAGER` | Disable auto-paging through `less`. |
 | `LINEAR_CLI_TRUST_PAGER` | Trust an absolute `PAGER` path you set explicitly. |
 
-For agent runs, the canonical opener:
-
-```bash
-export LINEAR_CLI_OUTPUT=json
-export LINEAR_CLI_NO_PAGER=1
-# Leave LINEAR_CLI_YES unset until a specific destructive command needs it.
-linear-cli u me --output json | jq -e '.id | strings | length > 0' >/dev/null
-linear-cli config workspace-current              # confirm intended profile/workspace
-```
-
 ## Shell completions
 
-### Static (command names + flags)
+Static completions describe flags; dynamic completions can query the API. Choose the shell explicitly; for example:
 
 ```bash
-linear-cli completions static bash       > ~/.bash_completion.d/linear-cli
-linear-cli completions static zsh        > ~/.zfunc/_linear-cli
-linear-cli completions static fish       > ~/.config/fish/completions/linear-cli.fish
-linear-cli completions static powershell > linear-cli.ps1
+linear-cli completions static zsh
+linear-cli completions dynamic zsh
 ```
 
-Legacy alias: `linear-cli config completions <shell>` also works.
-
-### Dynamic (queries Linear API for team / project / issue / status names)
-
-```bash
-linear-cli completions dynamic bash       >> ~/.bashrc
-linear-cli completions dynamic zsh        >> ~/.zshrc
-linear-cli completions dynamic fish       >> ~/.config/fish/completions/linear-cli.fish
-linear-cli completions dynamic powershell >> $PROFILE
-```
+Both also support Bash, Fish, and PowerShell. Inspect the generated output before installing it in the appropriate shell startup/completion file.
 
 ## First-time setup checklist (agent)
 

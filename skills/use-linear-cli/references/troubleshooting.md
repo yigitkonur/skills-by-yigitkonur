@@ -82,7 +82,7 @@ Check `linear-cli --version` and the exact subcommand's help. A missing command 
 
 ## Pager and stale data
 
-Use `LINEAR_CLI_NO_PAGER=1` or `--no-pager` in agent runs. If a terminal is already left in a bad mode, restore it with `reset` or `stty sane`. The 0.3.28 source scopes pager cleanup before process exit; do not describe the older cleanup bug as necessarily present in every installed build.
+Use `LINEAR_CLI_NO_PAGER=true` or `--no-pager` in agent runs. If a terminal is already left in a bad mode, restore it with `reset` or `stty sane`. The 0.3.28 source scopes pager cleanup before process exit; do not describe the older cleanup bug as necessarily present in every installed build.
 
 ```bash
 linear-cli cache status

@@ -137,21 +137,3 @@ linear-cli cm create "$(linear-cli context --output json | jq -r .issue_id)" \
   -b "PR is ready for review."
 linear-cli i update "$(linear-cli context --output json | jq -r .issue_id)" -s "In Review"
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `i start LIN-123 --checkout` | Assign + started state, then Git checkout; a Git failure does not undo the Linear change. |
-| `g checkout LIN-123` | Just the branch part. Doesn't change assignment or state. |
-| `i update LIN-123 -s Done` | Generic. Safe for any issue. |
-| `linear-cli done` | Convenience for "the branch I'm on right now". |
-| `g pr LIN-123` | Creates a GitHub PR. Needs `gh` authenticated. |
-| `g branch LIN-123` | Prints the branch name; does not create or check out. |
-
-## See also
-
-- `issues/lifecycle.md` for the full `i start`/`i stop`/`i update` flag matrix.
-- `recipes/triage-and-comments.md` for handling inbound comments and screenshots.
-- `recipes/creating-many-issues.md` for spawning sub-issues.
-- `output-and-scripting.md` for the chaining patterns used above.

@@ -8,23 +8,21 @@ disable-model-invocation: true
 
 Drive [nesszer/linear-cli](https://github.com/nesszer/linear-cli), whose executable is `linear-cli`. This skill targets release **0.3.28**. Check `linear-cli --version`; use the installed command's help when versions differ.
 
+Read [live compatibility](references/live-compatibility.md) before using remote templates, time tracking, or bulk previews.
+
 ## Workflow
 
-1. **Discover.** Run `linear-cli <group> --help`, then `linear-cli <group> <command> --help`. Use [command-surface.md](references/command-surface.md) for every public command group and subcommand in 0.3.28. An accepted global flag does not prove the handler implements it.
-2. **Authenticate before API work.** Confirm a successful `linear-cli u me --output json` response with a nonempty `id`, and verify the intended profile/team. `auth status --validate` is diagnostic: it can exit 0 with `validated: false`, and `configured` excludes an environment-only API key. See [setup.md](references/setup.md) for OAuth/API-key precedence.
+1. **Discover unfamiliar commands/flags** through the installed command’s `--help`. [command-surface.md](references/command-surface.md) indexes the public tree. Global flag acceptance does not prove handler support.
+2. **Verify identity once per session and after profile changes** with `linear-cli u me --output json`. `auth status --validate` can exit 0 without validated credentials; see [setup.md](references/setup.md) for auth precedence.
 3. **Resolve scope.** Resolve team keys, assignees, labels, workflow states, project names, and issue identifiers from actual data. Never pick the first team or invent IDs. Respect the user's chosen tool and workspace.
-4. **Read before changing.** Fetch current values and the exact target set. For generated bulk sets, save and inspect IDs, count them, and preview the intended changes. Use `--dry-run` where supported; its coverage differs by command. For bulk creation or more than five targets, obtain confirmation of the concrete plan before executing unless already authorized.
+4. **Read before changing.** Fetch current values and the exact target set. For generated bulk sets, save and inspect IDs, count them, and preview the intended changes. Use `--dry-run` where supported; its coverage differs by command. Keep the concrete target set within the user’s authorization.
 5. **Execute and reconcile.** Capture successful IDs and per-item results. Re-read changed resources. Partial failures are not transactions: restore a previous value only if it was captured and the follow-up change is authorized.
-6. **Report evidence.** State what changed, which commands succeeded, and what remains unverified. Exit 0, parser acceptance, and a successful dry run each establish different things.
 
 ## Output rules
 
 - Request `--output json` for structured results, and keep stdout and stderr separate. Runtime JSON errors go to **stderr**; parser failures are plain text. Some handlers still emit prose or no JSON.
 - Use `--id-only` only on handlers that implement it, such as issue create/update. `i list --id-only` does not produce a plain ID list; extract identifiers from JSON with `jq`.
-- For `i list`, JSON mode supports field selection/filtering/sorting. Its NDJSON path bypasses `--fields`, `--filter`, `--sort`, `--count-only`, and `--fail-on-empty`; perform those operations in `jq` or use JSON mode.
-- Dot paths traverse objects, not array elements. Select `labels.nodes`, then use `jq` for `.labels.nodes[].name`.
-- Set `LINEAR_CLI_NO_PAGER=1` in agent runs. Use `--yes` or a command's `--force` only for an authorized operation; there is no global `-y` alias.
-- Interpret exit codes together with results: 1 general error, 2 not-found or parser error, 3 auth, 4 rate-limit. Error categorization is partly heuristic. Import may exit 0 after per-item failures; auth status may exit 0 without validated credentials.
+- Set `LINEAR_CLI_NO_PAGER=true` in agent runs. Use `--yes` or a command's `--force` only for an authorized operation; there is no global `-y` alias.
 
 ## Common reads
 
@@ -62,11 +60,3 @@ Read only the relevant reference. Bash recipes use Bash syntax; the checklist re
 | JSON shapes and command-specific limitations | [json-shapes.md](references/json-shapes.md) |
 | Auth errors, rate limits, partial results, missing commands, cache | [troubleshooting.md](references/troubleshooting.md) |
 | Full command discovery and local verification | [command-surface.md](references/command-surface.md) |
-
-## Completion gate
-
-- Intended identity, profile/team and target IDs verified.
-- Preview and mutation scope match; existing authorization covers the operation.
-- Output parsed according to the specific handler; stderr and exit code checked.
-- Successful resources re-read; partial failures reconciled without assuming rollback.
-- Report distinguishes parser/source/offline verification from live Linear API results.

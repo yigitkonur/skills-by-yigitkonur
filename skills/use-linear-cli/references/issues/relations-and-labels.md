@@ -42,7 +42,7 @@ linear-cli l list --type issue                 # issue labels only
 linear-cli l list --output json --compact
 
 linear-cli l create "Feature" --color "#10B981"
-linear-cli l create "Bug" --color "#EF4444" --id-only
+linear-cli l create "Bug" --color "#EF4444" --output json
 
 linear-cli l delete LABEL_ID
 linear-cli l delete LABEL_ID --force
@@ -97,6 +97,8 @@ linear-cli tpl delete bug
 
 ### Remote templates
 
+`tpl remote-list` failed against the current API in the live audit; use the raw read fallback in `live-compatibility.md`. Remote mutations below are discoverable but unverified.
+
 ```bash
 linear-cli tpl remote-list
 linear-cli tpl remote-list --output json
@@ -124,9 +126,3 @@ In 0.3.28 `i create --template NAME` loads a **local** template from the filesys
 | `st update` | Renames or recolors a workflow state — affects the whole team. |
 | `tpl` | Local templates on your machine. |
 | `tpl remote-*` | Linear workspace templates, visible to the whole team. |
-
-## See also
-
-- `issues/lifecycle.md` — applying labels/states during create/update.
-- `recipes/creating-many-issues.md` — bulk label batching, parent wiring.
-- `output-and-scripting.md` — `--id-only` for capturing label IDs to use in `--data -`.

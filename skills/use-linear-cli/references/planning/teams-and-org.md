@@ -77,14 +77,7 @@ linear-cli fav remove LIN-123
 linear-cli fav list --output json
 ```
 
-## Recipe: "list all teams in my workspace"
-
-```bash
-# List all teams accessible in the current workspace
-linear-cli t list --output json
-```
-
-This lists accessible teams within the command’s pagination limits, not only memberships. For membership, run `t members TEAM --output json` and compare against the `u me` ID; `t list` does not fetch a members field. `t members` itself fetches up to 100 members in 0.3.28.
+For membership, run `t members TEAM --output json` and compare IDs with `u me`; `t list` does not fetch members. The members query is capped at 100 in 0.3.28.
 
 ## Recipe: "resolve a label by name to its UUID"
 
@@ -93,25 +86,9 @@ LABEL_ID=$(linear-cli l list --output json --compact \
   | jq -r '.[] | select(.name == "bug") | .id')
 ```
 
-## Recipe: "find every issue assigned to a teammate"
+## Find issues assigned to a teammate
 
 ```bash
 linear-cli i list --assignee "Ada Lovelace" \
   --output json --fields identifier,title,state.name --compact
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `t` | Teams |
-| `u` | Users |
-| `v` | Custom views |
-| `fav` | Favorites (personal pins) |
-| `whoami` | Alias for `u me` |
-
-## See also
-
-- `issues/search-and-filter.md` — applying views to `i list`.
-- `setup.md` — workspaces vs teams; profiles vs accounts.
-- `planning/projects-and-cycles.md` — assigning issues to projects.

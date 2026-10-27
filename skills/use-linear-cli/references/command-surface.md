@@ -72,4 +72,4 @@ Run from this skill’s directory, or use the script’s absolute path. The scri
 
 ## Verification boundary
 
-The second audit checked all help paths, parsed Bash examples, inspected the pinned release source and ran selected upstream unit tests. Offline probes cover parser and local rejection paths only. No authenticated Linear API read/write, OAuth login/refresh, webhook lifecycle, time-entry mutation or end-to-end import was exercised. Validate the task’s relevant live flow before claiming it works in a specific workspace.
+Discovery checks cover command names and help availability. See `live-compatibility.md` for the narrower set of live-tested operations and known failures.

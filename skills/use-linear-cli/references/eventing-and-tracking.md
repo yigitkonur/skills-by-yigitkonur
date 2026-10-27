@@ -90,6 +90,8 @@ For a time window, inspect the returned timestamp field and filter with `jq`. A 
 
 ## Time tracking
 
+`tm list` failed against the current API schema during live testing. Treat this group as unavailable until the relevant query/mutation is fixed or verified; see `live-compatibility.md`. The syntax below is only command discovery, not a working-workflow guarantee.
+
 ```bash
 linear-cli tm log LIN-123 2h
 linear-cli tm log LIN-123 30m
@@ -100,10 +102,3 @@ linear-cli tm delete ENTRY_ID --force
 ```
 
 The parser accepts hours/minutes and plain minute counts. **`1d` is invalid**; use `8h` when eight hours is the intended duration. Time mutations print prose in this release. Their live API support depends on the target workspace/schema and was not verified by offline parser checks.
-
-## See also
-
-- `setup.md` — profile and authentication checks.
-- `troubleshooting.md` — rate limits, errors, partial outcomes and listener cleanup.
-- `planning/projects-and-cycles.md` — sprint operations.
-- `output-and-scripting.md` — stdout/stderr and NDJSON limits.

@@ -125,9 +125,3 @@ linear-cli im json bumped.json -t ENG --dry-run
 | `--dry-run` (on import) | Previews parsed rows after resolving the team; does not validate other names. |
 | `dueDate` (CSV) | Passed through the CLI date parser; verify accepted input with your installed version. |
 | `labels` (CSV) | Comma-separated names inside one quoted CSV cell. |
-
-## See also
-
-- `recipes/creating-many-issues.md` — full CSV/JSON-driven creation patterns.
-- `issues/lifecycle.md` — `--data -` JSON shape for one-off creates.
-- `output-and-scripting.md` — `--dry-run`, `--output json` plumbing.

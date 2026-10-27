@@ -70,7 +70,7 @@ linear-cli up fetch "$URL" -f /tmp/repro.png
 #    In Claude Code: pass /tmp/repro.png to the Read tool — Claude sees the image.
 ```
 
-## Recipe: copy every screenshot from an issue to a folder
+## Download upload URLs from an issue description
 
 ```bash
 mkdir -p /tmp/lin-501
@@ -91,18 +91,3 @@ linear-cli att link-url LIN-501 https://sentry.io/issues/123 --output json
 ```
 
 `att link-url` autogenerates a title from the URL. To set a specific title, use `att create -T "Sentry — InvalidSession" -u https://...`.
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `att list` | Linear *attachment* records (metadata + URL). |
-| `up fetch` | Download a binary asset from `uploads.linear.app`. |
-| `att link-url` | Sugar for `att create` with auto title. |
-| `--force` | Skip confirmation on delete. |
-
-## See also
-
-- `recipes/triage-and-comments.md` — fetching screenshots during triage.
-- `output-and-scripting.md` — JSON parsing patterns used to find upload URLs.
-- `troubleshooting.md` — what to do when `up fetch` rejects a non-`uploads.linear.app` URL.

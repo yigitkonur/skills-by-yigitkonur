@@ -83,22 +83,7 @@ linear-cli i list -t ENG -s "In Progress" --output json | jq -r '.[].identifier'
 linear-cli i list -t ENG --format '{{identifier}} {{state.name}} {{title}}'
 ```
 
-For bulk mutations, capture and inspect the generated ID set before passing it to `-i`:
-
-```bash
-linear-cli i list -t ENG -l stale --limit 25 --output json --compact \
-  --fields identifier,title,state.name > /tmp/linear-stale.json
-jq -r '.[] | "\(.identifier)\t\(.state.name)\t\(.title)"' /tmp/linear-stale.json
-COUNT=$(jq 'length' /tmp/linear-stale.json)
-IDS=$(jq -r '.[].identifier' /tmp/linear-stale.json | paste -sd,)
-[ "$COUNT" -gt 0 ] && [ "$COUNT" -le 25 ] || { echo "Unexpected count: $COUNT"; exit 1; }
-linear-cli b update-state "Cancelled" -i "$IDS" --dry-run
-if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
-  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b update-state \"Cancelled\" -i \"$IDS\""
-  exit 0
-fi
-linear-cli b update-state "Cancelled" -i "$IDS"
-```
+For generated mutation targets, save and inspect the ID set first; see `output-and-scripting.md`.
 
 ## Saved views
 
@@ -161,21 +146,3 @@ else
   exit 1
 fi
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `s issues` | Free-text search across the workspace. |
-| `i list` | Filter-based listing. Faster, more precise. |
-| `--filter` | Client-side post-filter. |
-| `--state` | Server-side state filter. |
-| `--view NAME` | Apply a *saved* (server-side) view. |
-| `fav` | Personal pinning, not a query. |
-
-## See also
-
-- `output-and-scripting.md` — `--output ndjson`, `--fields`, `--filter` semantics.
-- `recipes/creating-many-issues.md` — using `i list --id-only` in idempotency checks.
-- `recipes/triage-and-comments.md` — using `s issues` to surface inbound work.
-- `planning/teams-and-org.md` — managing the saved views themselves.

@@ -99,7 +99,7 @@ linear-cli d get DOC_ID
 linear-cli d get DOC_ID --output json
 
 linear-cli d create "Design Doc" -p PROJECT_ID
-linear-cli d create "RFC" -p PROJECT_ID --id-only
+linear-cli d create "RFC" -p PROJECT_ID --output json
 
 linear-cli d update DOC_ID --title "New Title"
 linear-cli d update DOC_ID --content "New content"
@@ -110,7 +110,7 @@ linear-cli d update DOC_ID --content "New content"
 | `-p PROJECT` | Project UUID (or name) |
 | `--title` | Document title |
 | `--content` | Markdown body |
-| `--id-only` | Output only new ID |
+| `--output json` + `jq -er .id` | Capture the new document ID; `--id-only` is not implemented by this handler. |
 | `--output json` | JSON output |
 
 0.3.28 also exposes `d delete DOC_ID --force`; inspect `d delete --help` and confirm the specific document before deletion.
@@ -120,7 +120,7 @@ linear-cli d update DOC_ID --content "New content"
 ```bash
 PROJ=PROJECT_UUID
 ID=$(linear-cli d create "ADR-2026-04-28: Drop polling for webhooks" \
-  -p "$PROJ" --id-only --quiet)
+  -p "$PROJ" --output json | jq -er .id) || exit 1
 linear-cli d update "$ID" --content "$(cat adr.md)"
 ```
 
@@ -141,20 +141,3 @@ linear-cli api query '
   }
 ' --compact
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `api query` | Sends the supplied GraphQL document; ensure it contains only queries. Without dry-run, the handler does not enforce read-only documents. |
-| `api mutate` | GraphQL mutation. Writes. |
-| `d` | Linear `Document` (long-form page). |
-| `i` | Issue (short item with workflow state). |
-| `pu` | Project update (status post). |
-
-## See also
-
-- `output-and-scripting.md` — `-v` variables and stdin patterns.
-- `json-shapes.md` — typed-command response shapes.
-- `troubleshooting.md` — error envelope when `api` calls fail.
-- `eventing-and-tracking.md` — for streaming events instead of polling raw GraphQL.

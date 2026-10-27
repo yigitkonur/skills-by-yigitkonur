@@ -45,7 +45,7 @@ linear-cli p members PROJECT_ID
 | `--lead USER` | Lead (UUID, name, or email) |
 | `--status STATE` | `planned`, `started`, `paused`, `completed`, `canceled` |
 | `--content "..."` | Long-form project content; `--description` sets its short description. |
-| `--id-only` | Output only the new ID |
+| `--output json` + `jq -er .id` | Capture the created project ID; `--id-only` is not implemented by this handler. |
 
 ## Project updates (status reports on a project)
 
@@ -152,51 +152,3 @@ linear-cli init list
 linear-cli init get INITIATIVE_ID
 linear-cli init list --output json
 ```
-
-## Recipe: "what cycle am I in and how am I tracking?"
-
-```bash
-linear-cli sp status -t ENG
-linear-cli sp progress -t ENG
-linear-cli sp burndown -t ENG
-```
-
-## Recipe: "carry over and start next sprint"
-
-```bash
-linear-cli c current -t ENG --output json
-linear-cli sp carry-over -t ENG --force
-
-# Cross-platform 14-day-ahead date calculation
-END_DATE=$(node -e "console.log(new Date(Date.now() + 14*86400000).toISOString().split('T')[0])")
-linear-cli c create -t ENG --name "Sprint $(date +%V)" \
-  --starts-at "$(date +%Y-%m-%d)" \
-  --ends-at "$END_DATE"
-```
-
-## Recipe: "post a project health update"
-
-```bash
-linear-cli pu create "Auth Workstream" \
-  -b "Slipped one week — vendor SLA blocker." \
-  --health atRisk
-```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `pu` | *Project* updates — health reports on projects. |
-| `cm` | *Issue* comments. |
-| `c` | Cycles (Linear's sprint primitive). |
-| `sp` | Sprint analytics layered over cycles. |
-| `rm` | Roadmaps. |
-| `init` | Initiatives. |
-| `ms` | Milestones (project-scoped). |
-
-## See also
-
-- `planning/teams-and-org.md` — teams, users, custom views.
-- `data/import-export.md` — exporting projects to CSV.
-- `recipes/creating-many-issues.md` — using `--project NAME` to attach issues during bulk creation.
-- `output-and-scripting.md` — `--output json` and `--fields` for plumbing.

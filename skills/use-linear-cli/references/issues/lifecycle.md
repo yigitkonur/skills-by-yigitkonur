@@ -127,17 +127,8 @@ linear-cli i get LIN-123 --output json          # parse-friendly
 |---|---|
 | `i close` | Selects a completed-type workflow state; it need not be named Done. |
 | `i archive` | Removes from default views; preserves history. Reversible via `i unarchive` (when supported). |
-| `i delete` | Prompts by default; `--force` skips confirmation. Treat deletion as destructive. |
+| `i delete` | Uses default API deletion into trash; `--force` skips confirmation, not permanent-deletion selection. A trashed issue may remain retrievable. |
 | `i stop` | Sets backlog (or unstarted), not the previous state. Keeps the assignee unless `--unassign` is passed. |
 | `i transfer` | Moves the issue to a different team key (and re-numbers). |
 | `i move` | Moves the issue to a project; team unchanged. |
 | `i comment` | One-liner sugar for `cm create`. |
-
-## See also
-
-- `recipes/creating-many-issues.md` — bulk creation patterns using the flags above.
-- `recipes/git-and-pr-loop.md` — `i start --checkout` deep dive.
-- `issues/relations-and-labels.md` — wiring relations after create.
-- `issues/search-and-filter.md` — finding issues to update.
-- `output-and-scripting.md` — `--id-only`, `--dry-run`, `--data -` patterns.
-- `json-shapes.md` — the `i get` payload.
