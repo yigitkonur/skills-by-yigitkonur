@@ -30,7 +30,7 @@ cat query.graphql | linear-cli api query -
 
 Use the raw GraphQL surface when:
 
-- you need a field that no `linear-cli` subcommand exposes (e.g. an obscure `IssueRelationHistory` query)
+- you need a field that no `linear-cli` subcommand exposes (inspect the target GraphQL schema first)
 - you're prototyping an integration before a built-in command exists
 - you need to batch a complex multi-resource fetch in one round-trip
 - you need to set fields that `--data -` doesn't expose
@@ -82,6 +82,12 @@ linear-cli api mutate \
 
 `-v` values that look like JSON (arrays, objects, numbers, booleans) are decoded; quoted strings stay strings.
 
+## Raw-query pagination
+
+Global `--all` alone does not paginate arbitrary GraphQL. Use `api query --paginate --nodes-path data.issues.nodes --page-info-path data.issues.pageInfo` with a query that declares `$first: Int` and `$after: String`, passes them to the connection, and requests `pageInfo { hasNextPage endCursor }`. In 0.3.28 this returns a collected array of nodes rather than the raw response wrapper.
+
+The query handler can send a mutation document when dry-run is absent. Inspect the document itself before treating any raw API command as read-only. Mutation dry-run is not a supported write-permission test.
+
 ## Documents
 
 Linear `Document`s are long-form pages attached to projects (RFCs, ADRs, plans). Different from issue descriptions and from project updates.
@@ -93,7 +99,7 @@ linear-cli d get DOC_ID
 linear-cli d get DOC_ID --output json
 
 linear-cli d create "Design Doc" -p PROJECT_ID
-linear-cli d create "RFC" -p PROJECT_ID --id-only
+linear-cli d create "RFC" -p PROJECT_ID --output json
 
 linear-cli d update DOC_ID --title "New Title"
 linear-cli d update DOC_ID --content "New content"
@@ -104,23 +110,23 @@ linear-cli d update DOC_ID --content "New content"
 | `-p PROJECT` | Project UUID (or name) |
 | `--title` | Document title |
 | `--content` | Markdown body |
-| `--id-only` | Output only new ID |
+| `--output json` + `jq -er .id` | Capture the new document ID; `--id-only` is not implemented by this handler. |
 | `--output json` | JSON output |
 
-Some binary versions also support `d delete DOC_ID --force`. Confirm with `--help`.
+0.3.28 also exposes `d delete DOC_ID --force`; inspect `d delete --help` and confirm the specific document before deletion.
 
 ## Recipe: post an ADR as a Linear document
 
 ```bash
 PROJ=PROJECT_UUID
 ID=$(linear-cli d create "ADR-2026-04-28: Drop polling for webhooks" \
-  -p "$PROJ" --id-only --quiet)
+  -p "$PROJ" --output json | jq -er .id) || exit 1
 linear-cli d update "$ID" --content "$(cat adr.md)"
 ```
 
-## Recipe: query "every issue blocking another, in any team"
+## Recipe: query one page of blocking relations
 
-(No built-in command exposes this directly.)
+This example fetches at most 100 relations; it is not an exhaustive workspace scan. For complete traversal, include `pageInfo` and use the pagination options below.
 
 ```bash
 linear-cli api query '
@@ -135,20 +141,3 @@ linear-cli api query '
   }
 ' --compact
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `api query` | GraphQL `query`. Read-only. |
-| `api mutate` | GraphQL mutation. Writes. |
-| `d` | Linear `Document` (long-form page). |
-| `i` | Issue (short item with workflow state). |
-| `pu` | Project update (status post). |
-
-## See also
-
-- `output-and-scripting.md` — `-v` variables and stdin patterns.
-- `json-shapes.md` — typed-command response shapes.
-- `troubleshooting.md` — error envelope when `api` calls fail.
-- `eventing-and-tracking.md` — for streaming events instead of polling raw GraphQL.

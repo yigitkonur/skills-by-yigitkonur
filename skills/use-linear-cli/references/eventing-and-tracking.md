@@ -1,158 +1,104 @@
 # Eventing and Tracking
 
-Watching for changes, webhooks (CRUD + local listener), notifications, metrics, history, and time tracking. Cold-path commands an agent rarely reaches for daily but needs to know exist.
+Polling, webhooks, notifications, metrics, history and time tracking in 0.3.28. Check command-specific output and pagination before automating these surfaces.
 
-## Watch — poll for live changes
+## Watch
 
 ```bash
-linear-cli watch issue LIN-123                       # poll every 10 seconds (default)
-linear-cli watch issue LIN-123 --interval 30         # every 30 seconds
-linear-cli watch issue LIN-123 -i 60
-linear-cli watch issue LIN-123 --output json         # stream changes as JSON
+linear-cli watch issue LIN-123 --interval 30 --output ndjson
+linear-cli watch project PROJECT_ID --interval 30 --output ndjson
+linear-cli watch team ENG --interval 30 --output ndjson
 ```
 
-Use sparingly — polling consumes API quota. For real-time, use webhooks instead.
-
-## Webhooks — CRUD
+The default interval is ten seconds. Issue events are `initial` and `updated`, with `issue` and `timestamp` fields. They are triggered by changes to `updatedAt`; there is no `stateChanged` event or `new` payload in this release. Project and team watchers use their own resource keys.
 
 ```bash
-linear-cli wh list
+# Prints the current state on each observed issue update, not only state transitions.
+linear-cli watch issue LIN-901 --interval 30 --output ndjson \
+  | jq --unbuffered -r 'select(.event == "updated") | "\(.timestamp) → \(.issue.state.name)"'
+```
+
+Polling consumes API quota. Stop a watcher when its bounded observation task is complete.
+
+## Webhook CRUD
+
+```bash
 linear-cli wh list --output json
-
-linear-cli wh get WEBHOOK_ID
-linear-cli wh create https://example.com/hook --events Issue
-linear-cli wh update WEBHOOK_ID --url https://new-url.example.com
+linear-cli wh get WEBHOOK_ID --output json
+linear-cli wh create https://example.com/webhook --events Issue
+linear-cli wh update WEBHOOK_ID --url https://example.com/new-webhook
+linear-cli wh rotate-secret WEBHOOK_ID
 linear-cli wh delete WEBHOOK_ID --force
-
-linear-cli wh rotate-secret WEBHOOK_ID         # rotate signing secret
 ```
 
-Event types are documented in Linear's webhook docs. Common: `Issue`, `IssueComment`, `Project`, `Cycle`.
+These include remote mutations and require the appropriate permissions. Resource types are sent to Linear; verify valid resource names for the target API. Upstream help uses examples such as `Issue,Comment`. Secrets are redacted by default on supported read/rotation paths; use `--show-secret` only when the actual secret is needed and keep it out of logs.
 
-## Webhook local listener (HMAC-SHA256)
+## `wh listen` creates a remote webhook
 
-For local development and integration testing:
+This command is not an unauthenticated local HTTP server. It creates a temporary webhook in the selected Linear workspace, then binds the local server, and attempts to delete the webhook on graceful shutdown. A crash or failed cleanup may leave a remote webhook behind; reconcile it using the recorded ID.
 
 ```bash
-linear-cli wh listen --port 8080
-linear-cli wh listen --port 8080 --secret "$WEBHOOK_SIGNING_SECRET"
+# After explicitly choosing the target workspace and authorizing temporary webhook creation:
+linear-cli wh listen --port 8080 --url https://your-tunnel.example.com \
+  --events Issue --json
 ```
 
-The listener:
+Pass the tunnel's **base URL**: the CLI appends `/webhook`. Without `--url` it tries to register `http://localhost:PORT/webhook`, which Linear cannot reach remotely. Do not separately create another webhook merely to use the listener.
 
-- binds `127.0.0.1` only (not all-interfaces)
-- verifies HMAC-SHA256 on every event
-- enforces header / body size limits
+The default bind address is `127.0.0.1`; `--bind` can change it. The command uses a supplied `--secret` or the secret returned by creation, refuses to run without a secret, verifies HMAC-SHA256, and limits headers/body/concurrent connections.
 
-Combine with a tunnel (`ngrok`, `cloudflared`) to receive real Linear events on your laptop:
+Use `--json` (or a JSON output mode) for event payloads. Startup/shutdown messages still share stdout, so stdout as a whole is not pure JSON. When processing captured output, explicitly discard non-JSON lines and validate event fields, for example:
 
 ```bash
-ngrok http 8080
-linear-cli wh create "https://abc.ngrok.io/hook" --events Issue
-linear-cli wh listen --port 8080 --secret "$SECRET"
+jq -Rrc 'fromjson? | select(type == "object" and has("action") and has("data"))' listener.log
 ```
 
-Rotate the secret routinely with `linear-cli wh rotate-secret`.
+Capture and inspect the listener's complete log separately so cleanup failures remain visible. Forwarding event data to another service requires its own authorization and handling policy.
 
 ## Notifications
 
-Linear's per-user notification inbox.
-
 ```bash
-linear-cli n list                              # unread
-linear-cli n list --output json
-linear-cli n count                             # unread count
-
+linear-cli n list --output json              # unread within fetched pages
+linear-cli n count --output json
 linear-cli n read NOTIFICATION_ID
 linear-cli n read-all
-
 linear-cli n archive NOTIFICATION_ID
 linear-cli n archive-all
 ```
 
+`read-all` and `archive-all` are broad remote mutations. Check the intended scope and handler-specific failure output before using them. Several notification mutations print prose despite a global JSON flag.
+
 ## Metrics
 
-Velocity, burndown, project progress.
-
 ```bash
-linear-cli mt cycle CYCLE_ID                   # cycle metrics
 linear-cli mt cycle CYCLE_ID --output json
-linear-cli mt project PROJECT_ID
-linear-cli mt velocity ENG                     # team velocity
-linear-cli mt velocity ENG --cycles 10         # last 10 cycles
+linear-cli mt project PROJECT_ID --output json
+linear-cli mt velocity ENG --cycles 10 --output json
+linear-cli sp velocity -t ENG --count 10 --output json
 ```
 
-For the friendlier sprint-analytics surface, see `planning/projects-and-cycles.md` (`linear-cli sp velocity`).
+`mt velocity` uses `--cycles`; `sp velocity` uses `--count`. They are separate handlers with different response shapes. See `planning/projects-and-cycles.md` and `json-shapes.md`.
 
 ## History
 
-Per-issue activity timeline.
-
 ```bash
-linear-cli hist issue LIN-123
-linear-cli hist issue LIN-123 --output json
-linear-cli hist issue LIN-123 --limit 50
-linear-cli hist issue LIN-123 --all
+linear-cli hist issue LIN-123 --limit 50 --output json
+linear-cli hist issue LIN-123 --all --output json
 ```
 
-Useful for "who changed this and when" and audit trails.
+For a time window, inspect the returned timestamp field and filter with `jq`. A limit of 100 is a bounded sample, not proof that all events from today were fetched.
 
 ## Time tracking
 
-```bash
-linear-cli tm log LIN-123 2h                   # log 2 hours
-linear-cli tm log LIN-123 30m                  # 30 minutes
-linear-cli tm log LIN-123 1h30m                # 1.5 hours
-
-linear-cli tm list --issue LIN-123
-linear-cli tm list --output json
-linear-cli tm delete ENTRY_ID
-```
-
-Duration format: `30m`, `1h`, `2h30m`, `1d` (= 8 hours).
-
-## Recipe: watch for status changes on a critical issue
+`tm list` failed against the current API schema during live testing. Treat this group as unavailable until the relevant query/mutation is fixed or verified; see `live-compatibility.md`. The syntax below is only command discovery, not a working-workflow guarantee.
 
 ```bash
-linear-cli watch issue LIN-901 --interval 30 --output json \
-  | jq -r 'select(.event == "stateChanged") | "\(.timestamp) → \(.new.state.name)"'
+linear-cli tm log LIN-123 2h
+linear-cli tm log LIN-123 30m
+linear-cli tm log LIN-123 1h30m
+linear-cli tm list --issue LIN-123 --output json
+linear-cli tm update ENTRY_ID --duration 45m
+linear-cli tm delete ENTRY_ID --force
 ```
 
-## Recipe: post Linear events into Slack via webhook listener
-
-```bash
-linear-cli wh create "https://my-bridge.example.com/linear" --events Issue
-linear-cli wh listen --port 8080 --secret "$SECRET" \
-  | jq --unbuffered -r 'select(.action == "create") | .data.identifier' \
-  | while read -r id; do
-      curl -X POST -H "Content-Type: application/json" \
-        -d "{\"text\":\"new issue: $id\"}" "$SLACK_WEBHOOK"
-    done
-```
-
-## Recipe: "what changed today on this issue?"
-
-```bash
-since="$(date -u -v-1d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)"
-linear-cli hist issue LIN-123 --limit 100 --output json \
-  | jq --arg since "$since" '[.[] | select((.createdAt // .timestamp // "") >= $since)]'
-```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `watch` | Poll one issue (or project / team). Quota-heavy. |
-| `wh listen` | Local HMAC-verifying listener. Real-time. |
-| `n` | User-inbox notifications, not webhook events. |
-| `hist` | Issue activity timeline. |
-| `mt` | Raw metric numbers. |
-| `sp` | Pre-rendered sprint analytics (uses `mt` internally). |
-| `tm` | Time tracking. |
-
-## See also
-
-- `setup.md` — webhook listener security defaults.
-- `troubleshooting.md` — when the listener won't start or rate limits hit.
-- `planning/projects-and-cycles.md` — `sp velocity` is friendlier than `mt velocity` for most users.
-- `output-and-scripting.md` — `--output ndjson` for streaming.
+The parser accepts hours/minutes and plain minute counts. **`1d` is invalid**; use `8h` when eight hours is the intended duration. Time mutations print prose in this release. Their live API support depends on the target workspace/schema and was not verified by offline parser checks.

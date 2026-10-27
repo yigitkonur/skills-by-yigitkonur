@@ -50,7 +50,7 @@ Header row required.
 | Column | Required | Notes |
 |---|---|---|
 | `title` | yes | Plain string |
-| `description` | no | Markdown body; can contain `\n` for multi-line |
+| `description` | no | Markdown; quoted CSV fields can contain actual newlines. A literal `\n` is not decoded into a newline. |
 | `priority` | no | `0`–`4` (0=no priority, 1=urgent, 4=low) |
 | `status` | no | Workflow state name (resolved by name in the team) |
 | `assignee` | no | User name or email (resolved by name) |
@@ -125,9 +125,3 @@ linear-cli im json bumped.json -t ENG --dry-run
 | `--dry-run` (on import) | Previews parsed rows after resolving the team; does not validate other names. |
 | `dueDate` (CSV) | Passed through the CLI date parser; verify accepted input with your installed version. |
 | `labels` (CSV) | Comma-separated names inside one quoted CSV cell. |
-
-## See also
-
-- `recipes/creating-many-issues.md` — full CSV/JSON-driven creation patterns.
-- `issues/lifecycle.md` — `--data -` JSON shape for one-off creates.
-- `output-and-scripting.md` — `--dry-run`, `--output json` plumbing.

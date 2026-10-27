@@ -1,6 +1,6 @@
 # Recipe — Git and PR Loop
 
-The full start → code → PR → done cycle for an agent picking up a Linear issue. Covers Git, Jujutsu, draft PRs, branch naming, and the auto-revert path when work is abandoned mid-flow.
+The full start → code → PR → done cycle for an agent picking up a Linear issue. Covers Git, Jujutsu, draft PRs, branch naming, and stopping work without assuming a transactional rollback.
 
 ## The five-line happy path
 
@@ -14,14 +14,14 @@ linear-cli done                             # 3. read current branch, mark issue
 
 ## What `i start --checkout` does
 
-Atomically:
+Sequentially (the Linear mutation happens before the Git operation):
 
 1. Assigns the issue to you (`me`).
-2. Sets state to the team's "In Progress" workflow state.
-3. Creates the branch `<user>/lin-123-<title-slug>` (or matches the team's branch convention).
+2. Sets state to the team's first started-type workflow state.
+3. Uses Linear's `branchName`, or a generated identifier/title branch name.
 4. Checks it out.
 
-If the branch already exists, `i start --checkout` re-uses it. To override the branch name:
+If checkout fails, the issue may already be assigned and started; inspect both systems before retrying. If the branch already exists, `i start --checkout` re-uses it. To override the branch name:
 
 ```bash
 linear-cli g checkout LIN-123 -b custom-branch-name
@@ -61,10 +61,10 @@ ISSUE=$(linear-cli context --output json | jq -r '.issue_id // empty')
 linear-cli g pr LIN-123                     # PR with auto-filled title/body from issue
 linear-cli g pr LIN-123 --draft             # draft PR
 linear-cli g pr LIN-123 --base main         # specify base
-linear-cli g pr LIN-123 --web               # open in browser after creation
+linear-cli g pr LIN-123 --web               # pass through gh's browser-based creation flow
 ```
 
-Requires the GitHub `gh` CLI authenticated to the same repo. The PR title and body are auto-generated from the Linear issue (title, description, identifier in the body).
+Requires the GitHub `gh` CLI authenticated to the same repo. In 0.3.28 the title is `[IDENTIFIER] Issue title`; the body is only `Linear: ISSUE_URL`, not the issue description. Review and expand the PR body before publication when more context is needed.
 
 ## Closing the loop
 
@@ -108,12 +108,12 @@ linear-cli cm create "$PARENT" -b "Split out retry-helper extraction → $CHILD.
 If you start work but realize it's the wrong issue or the work isn't viable:
 
 ```bash
-linear-cli i stop LIN-123                           # unassign + reset to previous state
+linear-cli i stop LIN-123 --unassign                # backlog/unstarted + unassign
 git checkout "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
-git branch -D "$BRANCH_NAME"                        # optional cleanup
+git branch -d "$BRANCH_NAME"                        # delete only after checking the branch and preserving work
 ```
 
-`i stop` is the inverse of `i start` (without the `--checkout`). Use `git symbolic-ref` to detect the workspace's default branch rather than hardcoding `main`.
+`i stop` chooses a backlog-type state, falling back to unstarted; it does not restore the issue's previous state. Unassignment requires `--unassign`. Verify the previous state/assignee before any manual restoration. Use `git symbolic-ref` to detect the workspace's default branch.
 
 ## Jujutsu (jj) support
 
@@ -137,21 +137,3 @@ linear-cli cm create "$(linear-cli context --output json | jq -r .issue_id)" \
   -b "PR is ready for review."
 linear-cli i update "$(linear-cli context --output json | jq -r .issue_id)" -s "In Review"
 ```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `i start LIN-123 --checkout` | Atomic: assign + In Progress + branch + checkout. |
-| `g checkout LIN-123` | Just the branch part. Doesn't change assignment or state. |
-| `i update LIN-123 -s Done` | Generic. Safe for any issue. |
-| `linear-cli done` | Convenience for "the branch I'm on right now". |
-| `g pr LIN-123` | Creates a GitHub PR. Needs `gh` authenticated. |
-| `g branch LIN-123` | Prints the branch name; does not create or check out. |
-
-## See also
-
-- `issues/lifecycle.md` for the full `i start`/`i stop`/`i update` flag matrix.
-- `recipes/triage-and-comments.md` for handling inbound comments and screenshots.
-- `recipes/creating-many-issues.md` for spawning sub-issues.
-- `output-and-scripting.md` for the chaining patterns used above.

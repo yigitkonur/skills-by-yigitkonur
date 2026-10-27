@@ -40,12 +40,12 @@ linear-cli p members PROJECT_ID
 | `-t TEAM` (req) | Team key |
 | `--icon EMOJI` | Project icon |
 | `--priority N` | 1=urgent..4=low |
-| `--start-date DATE` | ISO date or `+Nw` |
-| `--target-date DATE` | ISO date or `+Nw` |
+| `--start-date DATE` | Use ISO `YYYY-MM-DD`; project date strings are sent through without relative-date conversion. |
+| `--target-date DATE` | Use ISO `YYYY-MM-DD` for projects. Milestone dates use a separate parser. |
 | `--lead USER` | Lead (UUID, name, or email) |
 | `--status STATE` | `planned`, `started`, `paused`, `completed`, `canceled` |
-| `--content "..."` | Project description |
-| `--id-only` | Output only the new ID |
+| `--content "..."` | Long-form project content; `--description` sets its short description. |
+| `--output json` + `jq -er .id` | Capture the created project ID; `--id-only` is not implemented by this handler. |
 
 ## Project updates (status reports on a project)
 
@@ -141,62 +141,14 @@ linear-cli rm get ROADMAP_ID
 linear-cli rm list --output json
 ```
 
-Some binary versions support `rm create`/`rm update`/`rm delete`. Run `linear-cli rm --help` to confirm before using.
+0.3.28 also exposes `rm create NAME`, `rm update ID --name NAME --dry-run`, and `rm delete ID --force`. Confirm the concrete change and inspect each command’s help before mutation. Roadmap list uses a bounded query; do not assume `--all` implements cursor pagination there.
 
 ## Initiatives
 
-High-level tracking spanning multiple projects. Read-mostly.
+High-level tracking spanning multiple projects. 0.3.28 exposes list/get/create/update/delete; consult `init <command> --help` for required input. Updates have an explicit dry-run path.
 
 ```bash
 linear-cli init list
 linear-cli init get INITIATIVE_ID
 linear-cli init list --output json
 ```
-
-## Recipe: "what cycle am I in and how am I tracking?"
-
-```bash
-linear-cli sp status -t ENG
-linear-cli sp progress -t ENG
-linear-cli sp burndown -t ENG
-```
-
-## Recipe: "carry over and start next sprint"
-
-```bash
-linear-cli c current -t ENG --output json
-linear-cli sp carry-over -t ENG --force
-
-# Cross-platform 14-day-ahead date calculation
-END_DATE=$(node -e "console.log(new Date(Date.now() + 14*86400000).toISOString().split('T')[0])")
-linear-cli c create -t ENG --name "Sprint $(date +%V)" \
-  --starts-at "$(date +%Y-%m-%d)" \
-  --ends-at "$END_DATE"
-```
-
-## Recipe: "post a project health update"
-
-```bash
-linear-cli pu create "Auth Workstream" \
-  -b "Slipped one week — vendor SLA blocker." \
-  --health atRisk
-```
-
-## Common confusions
-
-| Looks like | Is actually |
-|---|---|
-| `pu` | *Project* updates — health reports on projects. |
-| `cm` | *Issue* comments. |
-| `c` | Cycles (Linear's sprint primitive). |
-| `sp` | Sprint analytics layered over cycles. |
-| `rm` | Roadmaps. |
-| `init` | Initiatives. |
-| `ms` | Milestones (project-scoped). |
-
-## See also
-
-- `planning/teams-and-org.md` — teams, users, custom views.
-- `data/import-export.md` — exporting projects to CSV.
-- `recipes/creating-many-issues.md` — using `--project NAME` to attach issues during bulk creation.
-- `output-and-scripting.md` — `--output json` and `--fields` for plumbing.

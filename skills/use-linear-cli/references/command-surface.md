@@ -1,56 +1,75 @@
-# Command surface (linear-cli 0.3.28)
+# Command surface: linear-cli 0.3.28
 
-This index is derived from the installed release help. Run `linear-cli <group> --help` and `linear-cli <group> <command> --help` for current subcommands and flags. Presence here does not prove a Linear API feature is supported or that every operation supports JSON or dry-run.
+Every public command group and subcommand discovered from the installed release help is listed below. `help` and hidden completion internals are excluded. A listed command is discoverable; this does not establish live API support, permissions, complete pagination, or flag semantics.
 
-| Command | Purpose |
+Run `linear-cli GROUP COMMAND --help` for exact options and required arguments. Standalone root commands have no subcommands in the second column.
+
+| Group | Subcommands |
 |---|---|
-| `common` | Show common tasks and examples |
-| `agent` | Show agent-focused capabilities and examples |
-| `update` | Check for and install the latest released version of linear-cli |
-| `attachments` | Manage issue attachments - list, create, update, delete, link URLs |
-| `auth` | Authenticate and manage API keys |
-| `doctor` | Diagnose configuration and connectivity |
-| `api` | Execute raw GraphQL queries and mutations against the Linear API |
-| `projects` | Manage projects - list, create, update, delete projects |
-| `project-updates` | Manage project status updates - list, create, update, archive |
-| `issues` | Manage issues - list, create, update, assign, track issues |
-| `labels` | Manage labels - create and organize project/issue labels |
-| `teams` | Manage teams - list and view team details |
-| `users` | Manage users - list workspace users and view profiles |
-| `cycles` | Manage cycles - view sprint cycles and current cycle |
-| `comments` | Manage comments - add and view issue comments |
-| `documents` | Manage documents - create, update, delete documentation |
-| `search` | Search across Linear - find issues and projects |
-| `sync` | Sync operations - compare local folders with Linear |
-| `statuses` | Manage issue statuses - view workflow states |
-| `git` | Git branch operations - checkout branches, create PRs |
-| `bulk` | Bulk operations - update multiple issues at once |
-| `cache` | Manage cache - clear cached data or view status |
-| `notifications` | Manage notifications - view and mark as read |
-| `templates` | Manage issue templates - create and use templates |
-| `time` | Time tracking - log and view time entries |
-| `uploads` | Fetch uploads from Linear with authentication |
-| `interactive` | Interactive mode - TUI for browsing and managing issues |
-| `context` | Detect current Linear issue from git branch - for AI agents |
-| `favorites` | Manage favorites - quick access to issues/projects |
-| `roadmaps` | Manage roadmaps - view and manage roadmap planning |
-| `initiatives` | Manage initiatives - create, update, and track initiatives |
-| `triage` | Triage inbox - manage unassigned issues |
-| `metrics` | View metrics - velocity, burndown, progress |
-| `milestones` | Manage project milestones - list, create, update, delete milestones |
-| `export` | Export issues to CSV, JSON, or Markdown |
-| `import` | Import issues from CSV or JSON files |
-| `history` | View issue history and activity |
-| `views` | Manage custom views - create, apply, and manage saved views |
-| `webhooks` | Manage webhooks - create, update, delete, listen for events |
-| `watch` | Watch for updates (polling) |
-| `relations` | Manage issue relationships - parent/child, blocking, related |
-| `whoami` | Show current authenticated user (alias for `users me`) |
-| `done` | Mark the current branch's issue as Done |
-| `setup` | Guided onboarding wizard - configure auth, team, and output format |
-| `sprint` | Sprint planning - manage cycle-based sprints |
-| `completions` | Generate shell completions |
-| `config` | Configure CLI settings - API keys, default team, and workspaces |
-| `help` | Print this message or the help of the given subcommand(s) |
+| `common` | — |
+| `agent` | — |
+| `update` | — |
+| `attachments` | `list`, `get`, `create`, `update`, `delete`, `link-url` |
+| `auth` | `login`, `logout`, `status`, `migrate`, `oauth`, `revoke` |
+| `doctor` | — |
+| `api` | `query`, `mutate` |
+| `projects` | `list`, `get`, `open`, `create`, `update`, `delete`, `add-labels`, `remove-labels`, `set-labels`, `archive`, `unarchive`, `members` |
+| `project-updates` | `list`, `get`, `create`, `update`, `archive`, `unarchive` |
+| `issues` | `list`, `get`, `open`, `create`, `update`, `delete`, `start`, `stop`, `close`, `archive`, `unarchive`, `comment`, `link`, `assign`, `move`, `transfer` |
+| `labels` | `list`, `create`, `delete`, `update` |
+| `teams` | `list`, `get`, `members`, `create`, `update`, `delete` |
+| `users` | `list`, `me`, `get` |
+| `cycles` | `list`, `get`, `current`, `create`, `update`, `delete`, `complete` |
+| `comments` | `list`, `create`, `update`, `delete` |
+| `documents` | `list`, `get`, `create`, `update`, `delete` |
+| `search` | `issues`, `projects` |
+| `sync` | `status`, `push` |
+| `statuses` | `list`, `get`, `update` |
+| `git` | `checkout`, `branch`, `create`, `commits`, `review-url`, `pr` |
+| `bulk` | `update-state`, `assign`, `label`, `unassign` |
+| `cache` | `clear`, `status` |
+| `notifications` | `list`, `read`, `read-all`, `count`, `archive`, `archive-all` |
+| `templates` | `list`, `create`, `show`, `delete`, `remote-list`, `remote-get`, `remote-create`, `remote-update`, `remote-delete` |
+| `time` | `log`, `list`, `delete`, `update` |
+| `uploads` | `fetch` |
+| `interactive` | — |
+| `context` | — |
+| `favorites` | `list`, `add`, `remove` |
+| `roadmaps` | `list`, `get`, `create`, `update`, `delete` |
+| `initiatives` | `list`, `get`, `create`, `update`, `delete` |
+| `triage` | `list`, `claim`, `snooze` |
+| `metrics` | `cycle`, `project`, `velocity` |
+| `milestones` | `list`, `get`, `create`, `update`, `delete` |
+| `export` | `csv`, `markdown`, `json`, `projects-csv` |
+| `import` | `csv`, `json` |
+| `history` | `issue` |
+| `views` | `list`, `get`, `create`, `update`, `delete` |
+| `webhooks` | `list`, `get`, `create`, `update`, `delete`, `rotate-secret`, `listen` |
+| `watch` | `issue`, `project`, `team` |
+| `relations` | `list`, `add`, `remove`, `parent`, `unparent` |
+| `whoami` | — |
+| `done` | — |
+| `setup` | — |
+| `sprint` | `status`, `progress`, `plan`, `carry-over`, `burndown`, `velocity` |
+| `completions` | `static`, `dynamic` |
+| `config` | `set-key`, `get`, `set`, `show`, `completions`, `workspace-add`, `workspace-list`, `workspace-switch`, `workspace-current`, `workspace-remove` |
 
-`sync status` compares local folders with projects; `sync push` creates projects. Inspect its help and preview behavior before use.
+## Repeat discovery
+
+```bash
+python3 scripts/check-surface.py
+```
+
+Run from this skill’s directory, or use the script’s absolute path. The script only invokes `--version` and `--help`, compares the discovered tree with this index, emits JSON, and exits nonzero on drift. It does not execute domain commands or validate behavior.
+
+## Less common surfaces
+
+- `sync status` compares local folders and Linear projects. `sync push` creates remote projects. Resolve the target directory and team, inspect the preview, and obtain authorization before pushing.
+- `interactive` is a human TUI. Use explicit commands in unattended workflows.
+- `common` and `agent` print guidance; `agent --schema` returns CLI output schema metadata.
+- `doctor --fix`, `setup`, `update`, config and completion commands can modify local state. Some can prompt.
+- `bulk unassign`, initiative/roadmap/document mutations and `time update` exist in this release; check their own help rather than inferring flags from related handlers.
+
+## Verification boundary
+
+Discovery checks cover command names and help availability. See `live-compatibility.md` for the narrower set of live-tested operations and known failures.
