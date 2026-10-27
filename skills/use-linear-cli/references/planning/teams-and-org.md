@@ -84,7 +84,7 @@ linear-cli fav list --output json
 linear-cli t list --output json
 ```
 
-Note: This lists all teams in the workspace, not just those you belong to. `linear-cli` does not currently expose a "teams I'm a member of" filter; to check membership, review the `members` field in the JSON output for each team.
+This lists accessible teams within the command’s pagination limits, not only memberships. For membership, run `t members TEAM --output json` and compare against the `u me` ID; `t list` does not fetch a members field. `t members` itself fetches up to 100 members in 0.3.28.
 
 ## Recipe: "resolve a label by name to its UUID"
 

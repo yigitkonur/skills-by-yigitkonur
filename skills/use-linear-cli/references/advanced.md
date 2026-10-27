@@ -30,7 +30,7 @@ cat query.graphql | linear-cli api query -
 
 Use the raw GraphQL surface when:
 
-- you need a field that no `linear-cli` subcommand exposes (e.g. an obscure `IssueRelationHistory` query)
+- you need a field that no `linear-cli` subcommand exposes (inspect the target GraphQL schema first)
 - you're prototyping an integration before a built-in command exists
 - you need to batch a complex multi-resource fetch in one round-trip
 - you need to set fields that `--data -` doesn't expose
@@ -82,6 +82,12 @@ linear-cli api mutate \
 
 `-v` values that look like JSON (arrays, objects, numbers, booleans) are decoded; quoted strings stay strings.
 
+## Raw-query pagination
+
+Global `--all` alone does not paginate arbitrary GraphQL. Use `api query --paginate --nodes-path data.issues.nodes --page-info-path data.issues.pageInfo` with a query that declares `$first: Int` and `$after: String`, passes them to the connection, and requests `pageInfo { hasNextPage endCursor }`. In 0.3.28 this returns a collected array of nodes rather than the raw response wrapper.
+
+The query handler can send a mutation document when dry-run is absent. Inspect the document itself before treating any raw API command as read-only. Mutation dry-run is not a supported write-permission test.
+
 ## Documents
 
 Linear `Document`s are long-form pages attached to projects (RFCs, ADRs, plans). Different from issue descriptions and from project updates.
@@ -107,7 +113,7 @@ linear-cli d update DOC_ID --content "New content"
 | `--id-only` | Output only new ID |
 | `--output json` | JSON output |
 
-Some binary versions also support `d delete DOC_ID --force`. Confirm with `--help`.
+0.3.28 also exposes `d delete DOC_ID --force`; inspect `d delete --help` and confirm the specific document before deletion.
 
 ## Recipe: post an ADR as a Linear document
 
@@ -118,9 +124,9 @@ ID=$(linear-cli d create "ADR-2026-04-28: Drop polling for webhooks" \
 linear-cli d update "$ID" --content "$(cat adr.md)"
 ```
 
-## Recipe: query "every issue blocking another, in any team"
+## Recipe: query one page of blocking relations
 
-(No built-in command exposes this directly.)
+This example fetches at most 100 relations; it is not an exhaustive workspace scan. For complete traversal, include `pageInfo` and use the pagination options below.
 
 ```bash
 linear-cli api query '
@@ -140,7 +146,7 @@ linear-cli api query '
 
 | Looks like | Is actually |
 |---|---|
-| `api query` | GraphQL `query`. Read-only. |
+| `api query` | Sends the supplied GraphQL document; ensure it contains only queries. Without dry-run, the handler does not enforce read-only documents. |
 | `api mutate` | GraphQL mutation. Writes. |
 | `d` | Linear `Document` (long-form page). |
 | `i` | Issue (short item with workflow state). |

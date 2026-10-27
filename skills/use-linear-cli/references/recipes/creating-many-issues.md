@@ -16,7 +16,7 @@ End-to-end patterns for "I have a spec / checklist / CSV / JSON, create N Linear
 ## Setup gate (do this first, every time)
 
 ```bash
-linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null || exit 1
+linear-cli u me --output json | jq -e '.id | strings | length > 0' >/dev/null || exit 1
 linear-cli config workspace-current                 # confirm intended workspace/profile
 TEAM=ENG                                            # team key
 linear-cli t get "$TEAM" --output json --fields id,key,name   # confirm team exists
@@ -40,12 +40,15 @@ export LINEAR_CLI_NO_PAGER=1
 
 ```bash
 TEAM=ENG
-PARENT=LIN-1                  # optional umbrella issue
-mapfile -t TITLES < <(grep -E '^- \[ \] ' TODO.md | sed -E 's/^- \[ \] //')
+PARENT=${PARENT:-}             # optional; set only to a resolved umbrella issue
+TITLES=()
+while IFS= read -r title; do
+  TITLES+=("$title")
+done < <(sed -n 's/^- \[ \] //p' TODO.md)
 
 # Dry-run preview
 for t in "${TITLES[@]}"; do
-  linear-cli i create "$t" -t "$TEAM" --dry-run
+  linear-cli i create "$t" -t "$TEAM" -p 3 --dry-run || exit 1
 done
 
 if [ "${#TITLES[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
@@ -56,14 +59,16 @@ fi
 # Commit + capture IDs
 CREATED=()
 for t in "${TITLES[@]}"; do
-  ID=$(linear-cli i create "$t" -t "$TEAM" -p 3 --id-only --quiet) || break
+  ID=$(linear-cli i create "$t" -t "$TEAM" -p 3 --id-only --quiet) || exit 1
   CREATED+=("$ID")
 done
 
 # Wire to a parent issue (optional)
-for ID in "${CREATED[@]}"; do
-  linear-cli rel parent "$ID" "$PARENT"
-done
+if [ -n "$PARENT" ]; then
+  for ID in "${CREATED[@]}"; do
+    linear-cli rel parent "$ID" "$PARENT" || exit 1
+  done
+fi
 
 # Batch label
 IDS=$(IFS=,; echo "${CREATED[*]}")
@@ -145,12 +150,22 @@ Use when each issue needs distinct rich fields (description body, parent issue, 
 
 ```bash
 TEAM=ENG
+COUNT=$(jq -s 'length' plan.ndjson) || exit 1
+[ "$COUNT" -gt 0 ] || { echo "No issue rows" >&2; exit 1; }
 while IFS= read -r row; do
-  title=$(jq -r '.title' <<<"$row")
+  title=$(jq -er '.title | strings | select(length > 0)' <<<"$row") || exit 1
+  printf '%s' "$row" | linear-cli i create "$title" -t "$TEAM" --data - --dry-run || exit 1
+done < plan.ndjson
+if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the exact input and preview before authorizing this batch." >&2
+  exit 0
+fi
+while IFS= read -r row; do
+  title=$(jq -er '.title | strings | select(length > 0)' <<<"$row") || exit 1
   ID=$(printf '%s' "$row" \
     | linear-cli i create "$title" -t "$TEAM" --data - --id-only --quiet) \
-    || { echo "FAIL: $title" >&2; break; }
-  echo "$ID"
+    || { echo "FAIL: $title" >&2; exit 1; }
+  printf '%s\n' "$ID"  # persist this output as the batch's successful-ID record
 done < plan.ndjson
 ```
 
@@ -180,13 +195,13 @@ linear-cli tpl remote-list
 linear-cli tpl remote-get TEMPLATE_ID
 ```
 
-Then create issues *from* the template:
+To use the **local** `bug` template created above:
 
 ```bash
-linear-cli i create "..." -t ENG --template "Bug Report"
+linear-cli i create "..." -t ENG --template bug
 ```
 
-(Confirm the exact `--template` flag with `linear-cli i create --help`; some versions resolve by ID rather than name.)
+In 0.3.28 `--template` reads a local template name. Creating a remote template does not make it available through that flag; explicitly map its data into issue-create input if needed.
 
 ## Pattern E — Parent / child wiring
 
@@ -220,17 +235,17 @@ If you're migrating from GitHub Issues, Jira, or a markdown export:
 
 ## Idempotency
 
-Linear has **no native idempotency key**. To make a batch resumable:
+These CLI create commands do not expose an idempotency key. Title matching is only a best-effort duplicate check, with races and duplicate-title ambiguity. Persist created IDs and verify the exact target workspace/team before resuming. For a batch label check:
 
 1. Tag every issue from the run with a unique batch label (e.g. `batch:2026-04-28-foo`).
-2. Before re-running, `linear-cli i list -l batch:2026-04-28-foo --output json --fields title` to see what already exists.
+2. Before re-running, `linear-cli i list -t ENG -l batch:2026-04-28-foo --all --output json --fields title` to see what already exists.
 3. Skip titles that already match.
 
 ```bash
-EXISTING=$(linear-cli i list -l batch:2026-04-28-foo --output json --fields title \
-  --compact | jq -r '.[].title')
+EXISTING=$(linear-cli i list -t ENG -l batch:2026-04-28-foo --all --output json --fields title \
+  --compact | jq -r '.[].title') || exit 1
 for t in "${TITLES[@]}"; do
-  grep -Fxq "$t" <<<"$EXISTING" && continue
+  grep -Fxq -- "$t" <<<"$EXISTING" && continue
   linear-cli i create "$t" -t ENG -l "batch:2026-04-28-foo" --id-only --quiet
 done
 ```
@@ -258,9 +273,9 @@ fi
 linear-cli b label unreviewed -i "$IDS"
 ```
 
-## Rollback
+## Reconcile a partial batch
 
-If a run goes wrong:
+There is no automatic rollback. Inspect the IDs created by this run, verify the intended recovery, and choose cancellation or archival as a separate authorized operation. Execute one alternative only:
 
 ```bash
 # Capture the IDs from the run
@@ -275,8 +290,8 @@ if [ "${#BATCH[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
 fi
 linear-cli b update-state "Cancelled" -i "$IDS"
 
-# Or archive (heavier — hides from default views)
-for ID in "${BATCH[@]}"; do linear-cli i archive "$ID"; done
+# Alternative: archive these newly created issues instead, only if that is the chosen recovery.
+# for ID in "${BATCH[@]}"; do linear-cli i archive "$ID" || exit 1; done
 ```
 
 ## Reporting back to the user

@@ -1,6 +1,6 @@
 # Output and Scripting
 
-Every agent-relevant flag, exit code, env var, stdin pattern, and chaining recipe for `linear-cli`. This is the single source of truth for `--output`, pagination, and exit-code handling in agent scripts.
+Output and shell behavior for 0.3.28. Handlers do not uniformly implement every global flag; verify the specific command before relying on an output contract.
 
 ## Output flags
 
@@ -9,18 +9,18 @@ Every agent-relevant flag, exit code, env var, stdin pattern, and chaining recip
 | `--output json` | Machine-readable JSON. |
 | `--output ndjson` | Newline-delimited JSON (stream-friendly). |
 | `--compact` | Strip pretty-print whitespace. |
-| `--fields a,b,c` | Whitelist fields. Dot paths supported (`state.name`, `labels.nodes.name`). |
+| `--fields a,b,c` | Select fetched fields; object dot paths such as `state.name` work. Select `labels.nodes` as an array, then map names with `jq`. |
 | `--sort field` | Sort JSON arrays by field (default: `identifier` / `id`). |
 | `--order asc\|desc` | Sort direction. |
 | `--filter k=v` | Client-side filter. Operators: `=`, `!=`, `~=` (substring). Dot paths. Case-insensitive. |
 | `--format tpl` | Template output, e.g. `"{{identifier}} {{title}}"`. |
-| `--id-only` | Emit only the created/updated resource ID. |
+| `--id-only` | Supported by selected mutation handlers such as issue create/update; ignored by `i list`. Extract list identifiers from JSON. |
 | `--quiet` / `-q` | Suppress decoration / progress output. |
 | `--fail-on-empty` | Exit non-zero when an array result is empty (great for `set -e` agents). |
 | `--no-pager` | Bypass auto-pager (use in CI / agent runs). |
 | `--no-cache` | Bypass read-through cache. |
-| `--dry-run` | Preview a mutation without writing. |
-| `--yes` / `-y` | Auto-confirm interactive prompts. |
+| `--dry-run` | Preview supported handlers; unsupported operations may reject it rather than simulate a mutation. |
+| `--yes` | Auto-confirm supported interactive prompts. There is no global `-y` alias. |
 | `--no-color` | Strip ANSI color codes (also good for log capture). |
 | `--width N` / `--no-truncate` | Table width control. |
 
@@ -29,7 +29,7 @@ Every agent-relevant flag, exit code, env var, stdin pattern, and chaining recip
 ```bash
 export LINEAR_CLI_OUTPUT=json     # request JSON where supported
 export LINEAR_CLI_NO_PAGER=1      # no pager
-export LINEAR_CLI_YES=1           # auto-confirm prompts (dangerous if mutating; opt in deliberately)
+# Opt into --yes on a specific authorized command rather than setting it session-wide.
 ```
 
 ## Stdin patterns
@@ -71,6 +71,14 @@ if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
 fi
 linear-cli b label review -i "$IDS"
 ```
+
+## Handler-specific limits
+
+- `i list --output ndjson` streams raw issue rows and bypasses `--fields`, `--filter`, `--sort`, `--count-only`, and `--fail-on-empty`. Use JSON mode when those transformations matter; use `jq` to transform an NDJSON stream.
+- `i list --count-only` counts the fetched set before client-side output filtering, not necessarily every matching workspace issue. Set the intended pagination explicitly.
+- `--fields` cannot fetch a property absent from the command's GraphQL selection. `i list` does not fetch `updatedAt`, descriptions, labels, or assignee email. Use `i get` or a raw query when needed.
+- Runtime JSON errors go to stderr; parser errors remain plain text. Some commands, including several lifecycle mutations and import, emit prose rather than JSON.
+- `linear-cli agent --schema` returns CLI output schema metadata without executing the subcommand. Bare `linear-cli --schema` fails because the parser still requires a subcommand.
 
 ## Pagination
 
@@ -118,16 +126,7 @@ test "$code" = 2
 printf '%s\n' "$out" | grep -E "value is required|Usage:|unexpected argument"
 ```
 
-Agent retry pattern (rate limit only):
-
-```bash
-out=$(linear-cli i list --output json 2>&1)
-code=$?
-if [ "$code" = 4 ]; then
-  sleep "$(echo "$out" | jq -r '.retry_after // 5')"
-  out=$(linear-cli i list --output json 2>&1)
-fi
-```
+For a retry example that preserves stdout/stderr and works with `set -e`, see `troubleshooting.md`. Never retry a mutation blindly after an ambiguous network failure.
 
 ## Chaining recipes
 
@@ -192,7 +191,7 @@ linear-cli i list --mine --state "In Progress" --fail-on-empty \
 ## Common pitfalls
 
 - `--output json` is per-command; set `LINEAR_CLI_OUTPUT=json` once per session to avoid re-typing.
-- `--fields` accepts dot paths but **not** `nodes.*` shorthand — use `labels.nodes.name`.
+- `--fields` traverses object keys only. Use `labels.nodes`, then `jq` to map names inside the array.
 - `--filter` is *client-side* — it does not reduce API cost. For server-side narrowing, use the dedicated flags (`--state`, `--label`, `--assignee`, `--project`, `--team`, `--since`, `--view`).
 - `--id-only` returns just the ID; an empty result still produces empty stdout — check exit code.
 - `--dry-run` support differs by operation. Verify behavior for the specific command. Import preview does not resolve status, assignee, or label names.
@@ -203,8 +202,7 @@ linear-cli i list --mine --state "In Progress" --fail-on-empty \
 ```bash
 linear-cli i list --all --page-size 100 \
   --output ndjson \
-  --fields identifier,title,state.name,priority \
-  | jq -s 'sort_by(.priority)'
+  | jq -s 'map({identifier,title,state,priority}) | sort_by(.priority)'
 ```
 
 ## See also

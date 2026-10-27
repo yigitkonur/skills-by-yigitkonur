@@ -40,11 +40,11 @@ linear-cli p members PROJECT_ID
 | `-t TEAM` (req) | Team key |
 | `--icon EMOJI` | Project icon |
 | `--priority N` | 1=urgent..4=low |
-| `--start-date DATE` | ISO date or `+Nw` |
-| `--target-date DATE` | ISO date or `+Nw` |
+| `--start-date DATE` | Use ISO `YYYY-MM-DD`; project date strings are sent through without relative-date conversion. |
+| `--target-date DATE` | Use ISO `YYYY-MM-DD` for projects. Milestone dates use a separate parser. |
 | `--lead USER` | Lead (UUID, name, or email) |
 | `--status STATE` | `planned`, `started`, `paused`, `completed`, `canceled` |
-| `--content "..."` | Project description |
+| `--content "..."` | Long-form project content; `--description` sets its short description. |
 | `--id-only` | Output only the new ID |
 
 ## Project updates (status reports on a project)
@@ -141,11 +141,11 @@ linear-cli rm get ROADMAP_ID
 linear-cli rm list --output json
 ```
 
-Some binary versions support `rm create`/`rm update`/`rm delete`. Run `linear-cli rm --help` to confirm before using.
+0.3.28 also exposes `rm create NAME`, `rm update ID --name NAME --dry-run`, and `rm delete ID --force`. Confirm the concrete change and inspect each command’s help before mutation. Roadmap list uses a bounded query; do not assume `--all` implements cursor pagination there.
 
 ## Initiatives
 
-High-level tracking spanning multiple projects. Read-mostly.
+High-level tracking spanning multiple projects. 0.3.28 exposes list/get/create/update/delete; consult `init <command> --help` for required input. Updates have an explicit dry-run path.
 
 ```bash
 linear-cli init list

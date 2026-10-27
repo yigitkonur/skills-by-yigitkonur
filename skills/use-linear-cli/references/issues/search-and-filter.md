@@ -18,7 +18,7 @@ Search is case-insensitive, scans titles and descriptions, and is best for keywo
 ## `i list` flag matrix
 
 ```bash
-linear-cli i list                                  # everything you can see
+linear-cli i list                                  # first page of accessible issues (up to 50 by default)
 linear-cli i list --mine                           # assigned to me
 linear-cli i list -t ENG                           # team
 linear-cli i list -t ENG --mine
@@ -26,7 +26,7 @@ linear-cli i list -s "In Progress"                 # status (workflow state name
 linear-cli i list --assignee "Ada Lovelace"
 linear-cli i list --project "Q1 Roadmap"
 linear-cli i list --label bug
-linear-cli i list --since 7d                       # updated in the last 7 days
+linear-cli i list --since=-7d                     # created within the last 7 days
 linear-cli i list --view "My Sprint"               # apply a saved view
 linear-cli i list --group-by state                 # group by state / priority / assignee / project
 linear-cli i list --count-only --label bug         # count, no rows
@@ -41,7 +41,7 @@ linear-cli i list --archived                       # include archived
 | `--assignee NAME` | name or `me` |
 | `--project NAME` | project name or ID |
 | `--label NAME` | label name (single) |
-| `--since DURATION` | `1d`, `7d`, `2w`, etc. |
+| `--since DATE` | Filters **createdAt**, not updatedAt. Use `--since=-7d`, `--since=-2w`, `today`, or an ISO date. |
 | `--view NAME` | apply a saved custom view |
 | `--group-by FIELD` | `state`, `priority`, `assignee`, `project` |
 | `--count-only` | return count, no rows |
@@ -56,7 +56,7 @@ Server-side flags are first; `--filter` runs after the API result lands.
 ```bash
 linear-cli i list -t ENG --filter priority=1
 linear-cli i list -t ENG --filter "state.name=In Progress"
-linear-cli i list -t ENG --filter "assignee.email~=@vendor.com"
+linear-cli i list -t ENG --filter "assignee.name~=Ada"
 linear-cli i list -t ENG --filter "title~=login"
 linear-cli i list -t ENG --filter "priority!=4"
 ```
@@ -69,7 +69,7 @@ Operators:
 | `!=` | not equals |
 | `~=` | substring contains (case-insensitive) |
 
-Dot paths supported (e.g. `state.name`, `assignee.email`).
+Dot paths traverse object keys that the command actually fetches (e.g. `state.name`, `assignee.name`). `i list` does not fetch `assignee.email`, `updatedAt`, labels, or descriptions; requesting these with `--fields` cannot add them.
 
 `--filter` is **client-side** — it does not save API quota. Use the dedicated server-side flags first, then `--filter` for the long tail.
 
@@ -79,7 +79,7 @@ Dot paths supported (e.g. `state.name`, `assignee.email`).
 linear-cli i list -t ENG --output json --compact \
   --fields identifier,title,state.name,priority
 
-linear-cli i list -t ENG -s "In Progress" --id-only
+linear-cli i list -t ENG -s "In Progress" --output json | jq -r '.[].identifier'
 linear-cli i list -t ENG --format '{{identifier}} {{state.name}} {{title}}'
 ```
 
@@ -139,15 +139,16 @@ linear-cli i list --mine -s "In Progress" -l bug \
   --output json --fields identifier,title,project.name --compact
 ```
 
-## Recipe: "issues stale > 14 days, group by assignee"
+## Recipe: "inspect update timestamps for a bounded candidate set"
 
 ```bash
-# Fetch all In Progress issues with updatedAt, then filter client-side
-CUTOFF=$(node -e "console.log(new Date(Date.now() - 14*86400000).toISOString())")
-linear-cli i list -t ENG -s "In Progress" --output json --all \
-  --fields identifier,title,updatedAt,assignee.name \
-  | jq ".[] | select(.updatedAt < \"$CUTOFF\")" \
-  | jq -rs 'group_by(.assignee.name)[] | {assignee: .[0].assignee.name, issues: map(.identifier)}'
+# i list does not fetch updatedAt or assignee.email in 0.3.28.
+# Capture candidates, then get the full record for each (one request per issue).
+linear-cli i list -t ENG -s "In Progress" --limit 25 --output json \
+  | jq -r '.[].identifier' > /tmp/linear-candidates.txt
+while IFS= read -r id; do
+  linear-cli i get "$id" --output json --compact --fields identifier,updatedAt,assignee.name || exit 1
+done < /tmp/linear-candidates.txt
 ```
 
 ## Recipe: "fail CI if there are no open bugs"

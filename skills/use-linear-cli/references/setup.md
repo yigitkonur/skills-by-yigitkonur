@@ -47,19 +47,19 @@ linear-cli auth revoke                   # revoke tokens
 linear-cli auth logout                   # remove credentials
 ```
 
-The status command can return exit 0 even when `configured` or `validated` is false; inspect the JSON fields, not only the exit code.
+The status command can return exit 0 even when `validated` is false. Its `configured` field counts stored credentials and excludes an environment-only API key. Prefer an actual successful `u me` call as the gate; use status for diagnostics, not as the sole authority for effective auth.
 
 The callback server binds `127.0.0.1` only and validates `state` plus PKCE before token exchange. Tokens auto-refresh.
 
 ### Auth priority
 
-`LINEAR_API_KEY` env var > OS keyring > OAuth tokens > config file API key.
+In 0.3.28 an eligible OAuth configuration for the current profile is checked **before** the API-key fallback. That fallback checks `LINEAR_API_KEY`, then the OS keyring (secure-storage builds), then the config-file API key. Setting `LINEAR_API_KEY` does not necessarily override an existing OAuth profile.
 
-For agent loops, prefer `LINEAR_API_KEY` from the environment — the same key works across containers, CI, and local shells without keyring prompts.
+For an environment-key session, explicitly select a profile without OAuth credentials and verify the effective identity with `u me`. Keep the key outside source control and shell history.
 
 ### macOS keyring caveats
 
-`--secure` works best on signed release binaries (`cargo binstall linear-cli`). Locally rebuilt binaries can trigger repeated Keychain prompts and may fail readback verification. If that happens, fall back to `linear-cli auth oauth` (no keyring) or `LINEAR_API_KEY`.
+Secure storage depends on the build feature and OS keyring availability. A locally rebuilt executable may trigger Keychain prompts. Verify the installed build with `auth status`; do not assume a downloaded binary is signed or that a feature is available solely from the installation method.
 
 ## Workspaces and profiles
 
@@ -81,7 +81,7 @@ export LINEAR_CLI_PROFILE=work
 
 ## Config file
 
-Stored at `~/.config/linear-cli/config.toml` (Linux/macOS) or `%APPDATA%\linear-cli\config.toml` (Windows).
+Uses the OS config directory: `~/Library/Application Support/linear-cli/config.toml` on macOS; `$XDG_CONFIG_HOME/linear-cli/config.toml` (normally `~/.config/linear-cli/config.toml`) on Linux; `%APPDATA%\linear-cli\config.toml` on Windows. Config can contain credentials; do not print or attach the raw file.
 
 ```bash
 linear-cli config show
@@ -105,9 +105,10 @@ linear-cli agent                 # print agent-focused capability summary
 
 | Variable | Purpose |
 |---|---|
-| `LINEAR_API_KEY` | API key; highest-priority auth source. |
+| `LINEAR_API_KEY` | API-key fallback override; an eligible OAuth profile takes precedence. |
 | `LINEAR_CLI_OUTPUT` | Default output format for the session (`json`, `ndjson`, etc.). |
 | `LINEAR_CLI_PROFILE` | Default workspace profile name. |
+| `LINEAR_CLI_TEAM` | Default team override for commands that call the team resolver. |
 | `LINEAR_CLI_YES` | Auto-confirm all prompts (`--yes` everywhere). |
 | `LINEAR_CLI_NO_PAGER` | Disable auto-paging through `less`. |
 | `LINEAR_CLI_TRUST_PAGER` | Trust an absolute `PAGER` path you set explicitly. |
@@ -118,7 +119,7 @@ For agent runs, the canonical opener:
 export LINEAR_CLI_OUTPUT=json
 export LINEAR_CLI_NO_PAGER=1
 # Leave LINEAR_CLI_YES unset until a specific destructive command needs it.
-linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null
+linear-cli u me --output json | jq -e '.id | strings | length > 0' >/dev/null
 linear-cli config workspace-current              # confirm intended profile/workspace
 ```
 
@@ -151,7 +152,7 @@ linear-cli completions dynamic powershell >> $PROFILE
 linear-cli --version
 
 # 2. Confirm or set auth, then validate live API access
-linear-cli auth status --validate --output json | jq -e '.configured == true and .validated == true' >/dev/null || {
+linear-cli u me --output json | jq -e '.id | strings | length > 0' >/dev/null || {
   echo 'Authentication is not validated; configure credentials and retry.' >&2
   exit 1
 }
@@ -160,17 +161,20 @@ linear-cli auth status --validate --output json | jq -e '.configured == true and
 linear-cli config workspace-current
 linear-cli u me --output json       # who am I in this workspace?
 
-# 4. Confirm default team, or resolve the first visible team key
-TEAM=$(linear-cli config get default_team 2>/dev/null)
+# 4. Resolve the intended team; choose it explicitly if no default is set.
+# --raw returns empty output instead of the human sentinel "(not set)".
+TEAM=${LINEAR_CLI_TEAM:-$(linear-cli config get default_team --raw 2>/dev/null)}
 if [ -z "$TEAM" ]; then
-  TEAM=$(linear-cli t list --output json --compact --fields key | jq -r '.[0].key // empty')
+  linear-cli t list --output json --fields key,name
+  echo "Choose the intended team and set TEAM before continuing." >&2
+  exit 1
 fi
-[ -n "$TEAM" ] || { echo "No team key found; run linear-cli t list and choose one"; exit 1; }
+linear-cli t get "$TEAM" --output json || exit 1
 
 # 5. Confirm we can read
 linear-cli i list --mine --limit 1 --output json --compact
 
-# 6. Confirm we can write (dry-run)
+# 6. Preview create input (does not prove permission to write)
 linear-cli i create "agent-smoke-test" -t "$TEAM" --dry-run
 ```
 

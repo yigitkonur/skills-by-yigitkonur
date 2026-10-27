@@ -49,13 +49,13 @@ Common `--fields` shortlist for agent token-frugality:
 Key gotchas:
 
 - `priority` is `0`–`4` (Linear sets `0` = "no priority", `1` = urgent, `2` = high, `3` = normal, `4` = low).
-- `labels` is `{ "nodes": [...] }` — connection style. Use `labels.nodes.name` in `--fields`.
+- `labels` is `{ "nodes": [...] }`. Select `labels.nodes` with `--fields`, then use `jq` for `.labels.nodes[].name`; field paths do not traverse arrays.
 - `assignee`, `project`, `parent` are `null` when unset.
-- `state.name` is the human label; `state.id` is the workflow-state UUID.
+- The issue query fetches `state.name`, not `state.id`. Resolve state UUIDs with `st list -t TEAM` when needed.
 
 ## `linear-cli i get LIN-1 LIN-2 LIN-3` (batch)
 
-Returns a JSON array shaped like `i get`, one element per ID. Order matches argv order.
+Runs one API request per ID, with up to ten concurrent requests. Successful issues are returned as an array, normally sorted by identifier by the output layer; do not rely on argv order. Missing/failed issues are omitted and the command exits nonzero, so reconcile the requested IDs against the result even when stdout contains valid JSON.
 
 ## `linear-cli cm list LIN-123`
 
@@ -113,7 +113,7 @@ linear-cli context --output json | jq -e '.found' >/dev/null \
 
 | Field | Notes |
 |---|---|
-| `error` | `true` on failure. Always present on failed commands. |
+| `error` | `true` in a runtime JSON error envelope on stderr. Parser errors can be plain text. |
 | `message` | Human-readable error. |
 | `code` | Same as the process exit code (1/2/3/4). |
 | `details.status` | HTTP status when relevant. |

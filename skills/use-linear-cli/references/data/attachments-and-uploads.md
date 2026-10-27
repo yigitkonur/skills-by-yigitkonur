@@ -31,7 +31,7 @@ linear-cli att delete ATTACHMENT_ID --force
 
 ## `up fetch` — download Linear-hosted images
 
-User-uploaded images and files live at `https://uploads.linear.app/<org>/<id>/<filename>`. `up fetch` is the only way to download them safely.
+User-uploaded images and files live at `https://uploads.linear.app/<org>/<id>/<filename>`. `up fetch` validates the upload host and authenticates the request. Pass the actual URL, not its surrounding Markdown.
 
 ```bash
 linear-cli up fetch "https://uploads.linear.app/<org>/<id>/screenshot.png" -f /tmp/screenshot.png
@@ -51,8 +51,8 @@ linear-cli up fetch "https://uploads.linear.app/..." | base64
 
 Upload URLs appear in:
 
-- Issue descriptions: `linear-cli i get LIN-123 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'`
-- Comments: `linear-cli cm list LIN-123 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'`
+- Issue descriptions: `linear-cli i get LIN-123 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'`
+- Comments: `linear-cli cm list LIN-123 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'`
 
 URL pattern: `https://uploads.linear.app/{org}/{upload}/{filename}`.
 
@@ -61,7 +61,7 @@ URL pattern: `https://uploads.linear.app/{org}/{upload}/{filename}`.
 ```bash
 # 1. Discover
 URL=$(linear-cli i get LIN-501 --output json \
-  | jq -r '..|strings|select(test("uploads\\.linear\\.app"))' | head -1)
+  | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")' | head -1)
 
 # 2. Download
 linear-cli up fetch "$URL" -f /tmp/repro.png
@@ -75,11 +75,13 @@ linear-cli up fetch "$URL" -f /tmp/repro.png
 ```bash
 mkdir -p /tmp/lin-501
 linear-cli i get LIN-501 --output json \
-  | jq -r '..|strings|select(test("uploads\\.linear\\.app"))' \
-  | while read -r url; do
-      name=$(basename "$url")
-      linear-cli up fetch "$url" -f "/tmp/lin-501/$name"
-    done
+  | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")' \
+  | sort -u > /tmp/lin-501/urls.txt
+i=0
+while IFS= read -r url; do
+  i=$((i + 1))
+  linear-cli up fetch "$url" -f "/tmp/lin-501/asset-$i" || exit 1
+done < /tmp/lin-501/urls.txt
 ```
 
 ## Recipe: link a Sentry / Datadog / Loom URL

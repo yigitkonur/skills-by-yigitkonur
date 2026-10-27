@@ -58,7 +58,7 @@ linear-cli b label urgent -i LIN-1,LIN-2
 linear-cli b label bug -i LIN-1,LIN-2
 ```
 
-To remove a label from an issue, use `i update` with the remaining labels explicitly listed. Warning: `l delete` deletes the label definition globally (not just from issues); use it only to remove obsolete label types, not to remove labels from specific issues.
+`b label` appends a label while preserving existing ones. In contrast, `i update -l` replaces the label set. To remove one label, pass the explicitly preserved remaining list through `--data` as `labelIds`; to clear all labels, pass `{"labelIds":[]}`. Warning: `l delete` deletes the label definition globally (not just from issues); use it only to remove obsolete label types, not to remove labels from specific issues.
 
 ### Color hex format
 
@@ -66,7 +66,7 @@ To remove a label from an issue, use `i update` with the remaining labels explic
 
 ## Statuses (workflow states)
 
-Linear teams have a configurable workflow. Default states: `Backlog`, `Triage`, `In Progress`, `In Review`, `Done`, `Cancelled`.
+Linear teams have configurable state names and types. Resolve the target team's states rather than assuming names such as `Done`, `In Review`, or `Cancelled` exist.
 
 ```bash
 linear-cli st list -t ENG                          # all states for the team
@@ -112,7 +112,7 @@ linear-cli tpl remote-delete TEMPLATE_ID --force
 linear-cli i create "Login bug" -t ENG --template "Bug Report"
 ```
 
-Some binary versions resolve `--template` by ID rather than name — confirm with `linear-cli i create --help`.
+In 0.3.28 `i create --template NAME` loads a **local** template from the filesystem. Remote templates are managed separately with `tpl remote-*`; this flag does not fetch one from Linear by name or ID.
 
 ## Common confusions
 

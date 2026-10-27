@@ -5,7 +5,7 @@ Process an inbound triage queue, leave findings as comments, link or fetch attac
 ## Daily triage
 
 ```bash
-linear-cli tr list                          # all unassigned, no-project items
+linear-cli tr list                          # up to 50 unassigned issues in triage/backlog states
 linear-cli tr list -t ENG                   # filter to a team
 linear-cli tr list --output json --compact \
   --fields identifier,title,createdAt
@@ -15,7 +15,7 @@ For each item:
 
 ```bash
 # Read the body and issue metadata
-linear-cli i get LIN-501 --output json --fields title,description,labels.nodes.name
+linear-cli i get LIN-501 --output json --fields title,description,labels.nodes
 
 # Read existing comments and attachments
 linear-cli cm list LIN-501 --output json
@@ -26,12 +26,12 @@ Then act:
 
 ```bash
 linear-cli tr claim LIN-501                 # assign to me, leave triage
-linear-cli tr snooze LIN-501 --duration 1d  # come back tomorrow (1d, 2d, 1w, 2w, 1m)
+linear-cli tr snooze LIN-501 --duration 1d  # come back tomorrow (1d, 2d, 3d, 1w, 2w, 30d)
 ```
 
 ## Snooze durations
 
-`1d`, `2d`, `1w`, `2w`, `1m`. After the duration the issue reappears in the triage queue.
+Use `1d`, `2d`, `3d`, `1w`, `2w`, or an integer day count such as `30d`. In 0.3.28 `1m` silently falls back to one day; it does not mean a month. The CLI list does not filter `snoozedUntilAt`, so snoozed issues may still appear in `tr list`.
 
 ## Leaving findings as comments
 
@@ -64,8 +64,8 @@ Linear stores user-uploaded images at `https://uploads.linear.app/...`. Use `up 
 
 ```bash
 # Find URLs in the issue body or comments (dots in regex must be escaped)
-linear-cli i get LIN-501 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'
-linear-cli cm list LIN-501 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'
+linear-cli i get LIN-501 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'
+linear-cli cm list LIN-501 --output json | jq -r '.. | strings | scan("https://uploads\\.linear\\.app/[^\\s)<>\"\\\\]+")'
 
 # Download to file
 linear-cli up fetch "https://uploads.linear.app/<org>/<id>/screenshot.png" -f /tmp/screenshot.png
@@ -105,10 +105,10 @@ linear-cli st list -t ENG --output json --compact --fields name,type
 
 Useful when the team has custom workflow states beyond the default `Triage / Backlog / In Progress / Done / Cancelled`.
 
-## End-of-shift report
+## Issues created since yesterday (not an activity report)
 
 ```bash
-linear-cli i list --mine --since 1d --output json \
+linear-cli i list --mine --since=-1d --output json \
   --fields identifier,title,state.name --compact \
   | jq -r '.[] | "\(.identifier) — \(.state.name) — \(.title)"'
 ```
@@ -117,7 +117,7 @@ linear-cli i list --mine --since 1d --output json \
 
 | Looks like | Is actually |
 |---|---|
-| `tr list` | Unassigned + no project — the *triage* queue specifically. |
+| `tr list` | First 50 unassigned issues in triage/backlog states; project membership and snooze time are not filtered. |
 | `i list` | Every visible issue. Bigger, less focused. |
 | `cm create` | Issue comment. |
 | `pu create` | *Project* update (status update on a project). Different command. |
